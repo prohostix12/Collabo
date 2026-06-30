@@ -255,14 +255,18 @@ CORS_ALLOWED_ORIGINS = [
     "https://collabo-backend-uyi4.onrender.com",
     "http://localhost:3000",
     "http://collabo.co.in",
+    "https://collabo.co.in",
     "http://www.collabo.co.in",
+    "https://www.collabo.co.in",
     "http://13.206.88.135",
 ]
 CSRF_TRUSTED_ORIGINS = [
     "https://collabo-4q46.vercel.app",
     "https://*.onrender.com",
     "http://collabo.co.in",
+    "https://collabo.co.in",
     "http://www.collabo.co.in",
+    "https://www.collabo.co.in",
     "http://13.206.88.135",
 ]
 
