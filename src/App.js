@@ -75,7 +75,7 @@ function AppRoutes() {
       <Route path="/dashboard" element={
         <ProtectedRoute>
           {user?.user_type === 'buyer' ? (
-            <Navigate to="/#home" replace />
+            <Navigate to="/" replace />
           ) : (
             <Layout>
               {user?.user_type === 'influencer' && <InfluencerDashboard />}

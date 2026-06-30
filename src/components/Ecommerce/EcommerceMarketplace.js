@@ -451,13 +451,13 @@ export default function EcommerceMarketplace({ inlineMode = false, onBackToSelec
     const [hashView, hashPid] = rawHash.includes(':') ? rawHash.split(':') : [rawHash, null];
     const validViews = ['home', 'listing', 'details', 'cart', 'checkout', 'success', 'wishlist', 'profile', 'tracking', 'orders', 'dashboard', 'auth', 'support'];
 
-    if (hashView && validViews.includes(hashView)) {
+    if (hashView && hashView !== 'home' && validViews.includes(hashView)) {
       setCurrentView(hashView);
       if (hashView === 'details' && hashPid) {
         setPendingSelectProductId(hashPid);
       }
       window.history.replaceState({ view: hashView, pid: hashPid || null }, '', `#${rawHash}`);
-    } else if (window.history.state?.view) {
+    } else if (window.history.state?.view && window.history.state.view !== 'home') {
       setCurrentView(window.history.state.view);
       if (window.history.state.view === 'details' && window.history.state.pid) {
         setPendingSelectProductId(window.history.state.pid);
