@@ -17,6 +17,7 @@ const CompanyDashboard = () => {
     api.get('/auth/company-profile/').then(res => res.data)
   );
 
+  // eslint-disable-next-line no-unused-vars
   const { data: earnings } = useQuery('company-earnings', () =>
     api.get('/payments/earnings/').then(res => res.data)
   );

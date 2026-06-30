@@ -30,7 +30,7 @@ const Login = () => {
 
     if (result.success) {
       toast.success('Welcome back!', 'You have successfully signed in.');
-      navigate('/');
+      navigate('/', { replace: true });
     } else {
       toast.error('Login Failed', result.error || 'Invalid username or password.');
     }
@@ -197,10 +197,12 @@ const Login = () => {
         <div className="text-center">
           <p className="text-xs text-gray-500 dark:text-gray-400">
             By signing in, you agree to our{' '}
+            {/* eslint-disable-next-line jsx-a11y/anchor-is-valid */}
             <a href="#" className="text-accent-500 hover:text-accent-400">
               Terms of Service
             </a>{' '}
             and{' '}
+            {/* eslint-disable-next-line jsx-a11y/anchor-is-valid */}
             <a href="#" className="text-accent-500 hover:text-accent-400">
               Privacy Policy
             </a>

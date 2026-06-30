@@ -13,6 +13,7 @@ const OAuthCallback = () => {
 
   useEffect(() => {
     handleOAuthCallback();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const handleOAuthCallback = async () => {

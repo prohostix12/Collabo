@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
+// eslint-disable-next-line no-unused-vars
 import { X, Upload, AlertCircle, CheckCircle, Loader } from 'lucide-react';
 import api from '../../services/api';
 import toast from 'react-hot-toast';
@@ -22,6 +23,7 @@ const ContactSupportModal = ({ isOpen, onClose }) => {
     { value: 'payment', label: 'Payment', icon: '💳' },
     { value: 'campaign', label: 'Campaign', icon: '📢' },
     { value: 'account', label: 'Account', icon: '👤' },
+    { value: 'partnership', label: 'Partnership', icon: '🤝' },
     { value: 'other', label: 'Other', icon: '💬' },
   ];
 
@@ -175,23 +177,18 @@ const ContactSupportModal = ({ isOpen, onClose }) => {
                     <label className="block text-sm font-semibold text-gray-900 mb-2">
                       Category <span className="text-red-500">*</span>
                     </label>
-                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                    <select
+                      name="category"
+                      value={formData.category}
+                      onChange={handleChange}
+                      className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-all"
+                    >
                       {categories.map((cat) => (
-                        <button
-                          key={cat.value}
-                          type="button"
-                          onClick={() => setFormData({ ...formData, category: cat.value })}
-                          className={`p-3 rounded-xl border-2 transition-all ${
-                            formData.category === cat.value
-                              ? 'border-primary-500 bg-primary-50 text-primary-700'
-                              : 'border-gray-200 hover:border-gray-300 text-gray-700'
-                          }`}
-                        >
-                          <span className="text-2xl mb-1 block">{cat.icon}</span>
-                          <span className="text-sm font-medium">{cat.label}</span>
-                        </button>
+                        <option key={cat.value} value={cat.value}>
+                          {cat.icon} {cat.label}
+                        </option>
                       ))}
-                    </div>
+                    </select>
                   </div>
 
                   {/* Priority */}
@@ -199,22 +196,18 @@ const ContactSupportModal = ({ isOpen, onClose }) => {
                     <label className="block text-sm font-semibold text-gray-900 mb-2">
                       Priority <span className="text-red-500">*</span>
                     </label>
-                    <div className="flex gap-3">
+                    <select
+                      name="priority"
+                      value={formData.priority}
+                      onChange={handleChange}
+                      className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-all"
+                    >
                       {priorities.map((priority) => (
-                        <button
-                          key={priority.value}
-                          type="button"
-                          onClick={() => setFormData({ ...formData, priority: priority.value })}
-                          className={`flex-1 px-4 py-2 rounded-lg font-medium text-sm transition-all ${
-                            formData.priority === priority.value
-                              ? priority.color
-                              : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-                          }`}
-                        >
+                        <option key={priority.value} value={priority.value}>
                           {priority.label}
-                        </button>
+                        </option>
                       ))}
-                    </div>
+                    </select>
                   </div>
 
                   {/* Message */}

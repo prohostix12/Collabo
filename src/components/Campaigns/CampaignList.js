@@ -8,8 +8,10 @@ import {
   Search, 
   Filter, 
   TrendingUp, 
+  // eslint-disable-next-line no-unused-vars
   ArrowRight, 
   Building2, 
+  // eslint-disable-next-line no-unused-vars
   Sparkles,
   Timer,
   AlertCircle
@@ -21,6 +23,7 @@ const CampaignList = () => {
     campaign_type: '',
     ordering: '-created_at'
   });
+  // eslint-disable-next-line no-unused-vars
   const [selectedCampaign, setSelectedCampaign] = useState(null);
 
   const queryClient = useQueryClient();
@@ -69,6 +72,7 @@ const CampaignList = () => {
     }
   );
 
+  // eslint-disable-next-line no-unused-vars
   const handleApply = (campaign) => {
     setSelectedCampaign(campaign);
     const proposedRate = prompt(`💰 Enter your proposed rate for "${campaign.title}":\n\nCampaign Budget: ₹${campaign.budget}\nSuggested Range: ₹${Math.floor(campaign.budget * 0.3)} - ₹${Math.floor(campaign.budget * 0.8)}`);

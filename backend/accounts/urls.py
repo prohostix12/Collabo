@@ -9,7 +9,10 @@ from .views import (
     PendingInfluencersListView, AllInfluencersListView, AllUsersListView,
     approve_influencer, reject_influencer, bulk_approve_influencers,
     delete_influencer, approval_stats, mark_approval_shown,
-    admin_reset_password
+    admin_create_influencer, admin_reset_password,
+    # Seller profile & admin views
+    SellerProfileView, PendingSellersListView, approve_seller, reject_seller,
+    seller_audit_log, admin_convert_to_influencer,
 )
 
 urlpatterns = [
@@ -19,6 +22,7 @@ urlpatterns = [
     path('profile/', ProfileView.as_view(), name='profile'),
     path('influencer-profile/', InfluencerProfileView.as_view(), name='influencer-profile'),
     path('company-profile/', CompanyProfileView.as_view(), name='company-profile'),
+    path('seller-profile/', SellerProfileView.as_view(), name='seller-profile'),
     path('influencers/', InfluencerListView.as_view(), name='influencers-list'),
     path('influencers/<int:id>/', InfluencerDetailView.as_view(), name='influencer-detail'),
     path('companies/', CompanyListView.as_view(), name='companies-list'),
@@ -29,12 +33,17 @@ urlpatterns = [
     
     # Admin approval endpoints
     path('admin/pending-influencers/', PendingInfluencersListView.as_view(), name='pending-influencers'),
+    path('admin/pending-sellers/', PendingSellersListView.as_view(), name='pending-sellers'),
+    path('admin/approve-seller/<int:user_id>/', approve_seller, name='approve-seller'),
+    path('admin/reject-seller/<int:user_id>/', reject_seller, name='reject-seller'),
+    path('admin/seller-audit/<int:user_id>/', seller_audit_log, name='seller-audit-log'),
     path('admin/all-influencers/', AllInfluencersListView.as_view(), name='all-influencers'),
     path('admin/all-users/', AllUsersListView.as_view(), name='all-users'),
     path('admin/approve-influencer/<int:user_id>/', approve_influencer, name='approve-influencer'),
     path('admin/reject-influencer/<int:user_id>/', reject_influencer, name='reject-influencer'),
-    path('admin/bulk-approve/', bulk_approve_influencers, name='bulk-approve-influencers'),
+    path('admin/create-influencer/', admin_create_influencer, name='admin-create-influencer'),
     path('admin/delete-influencer/<int:user_id>/', delete_influencer, name='delete-influencer'),
+    path('admin/convert-to-influencer/<int:user_id>/', admin_convert_to_influencer, name='convert-to-influencer'),
     path('admin/approval-stats/', approval_stats, name='approval-stats'),
     
     # Influencer approval status

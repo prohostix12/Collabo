@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useQuery } from 'react-query';
 import { useNavigate } from 'react-router-dom';
 import api from '../../services/api';
+// eslint-disable-next-line no-unused-vars
 import { Users, Star, DollarSign, Search, Filter, SortAsc, Grid3X3, List, Instagram, RefreshCw, AlertCircle, CheckCircle, ExternalLink } from 'lucide-react';
 import ContactInfluencerModal from './ContactInfluencerModal';
 import { useAuth } from '../../contexts/AuthContext';

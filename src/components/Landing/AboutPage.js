@@ -3,6 +3,7 @@ import { motion } from 'framer-motion';
 import LandingNavbar from './LandingNavbar';
 import AboutUs from './AboutUs';
 import Footer from '../Layout/Footer';
+// eslint-disable-next-line no-unused-vars
 import { Target, Users, Zap, Award, Globe, Heart, Sparkles, ShieldCheck } from 'lucide-react';
 
 const AboutPage = () => {

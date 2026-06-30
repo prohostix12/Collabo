@@ -151,83 +151,54 @@ const UserAccountMenu = () => {
 
         {/* Dropdown Menu */}
         {isDropdownOpen && (
-          <div className="absolute right-0 mt-2 w-72 sm:w-80 glass-card rounded-2xl shadow-2xl border border-white/10 z-[9999] overflow-hidden animate-fadeIn">
+          <div className="absolute right-0 mt-2 w-64 bg-white rounded-xl shadow-lg border border-gray-100 z-[9999] overflow-hidden origin-top-right animate-fadeIn">
             {/* Header */}
-            <div className="p-4 border-b border-white/10 bg-gradient-to-r from-dark-800/50 to-dark-700/50">
-              <div className="flex items-center space-x-3">
-                <div className={`w-12 h-12 rounded-xl bg-gradient-to-br ${getUserTypeColor(user?.user_type)} flex items-center justify-center text-white font-bold text-lg shadow-lg`}>
-                  {getDisplayInitials()}
-                </div>
-                <div className="flex-1 min-w-0">
-                  <h3 className="text-lg font-semibold text-gray-900 truncate">
-                    {getDisplayName()}
-                  </h3>
-                  <div className="flex items-center space-x-2">
-                    <UserTypeIcon className="w-4 h-4 text-gray-900" />
-                    <span className="text-sm text-gray-900 capitalize">
-                      {user?.user_type} Account
-                    </span>
-                  </div>
-                  {user?.email && (
-                    <p className="text-xs text-gray-900 truncate mt-1">
-                      {user.email}
-                    </p>
-                  )}
-                </div>
-              </div>
+            <div className="px-4 py-3 border-b border-gray-100">
+              <p className="text-sm font-medium text-gray-900 truncate">
+                {getDisplayName()}
+              </p>
+              <p className="text-xs text-gray-500 truncate mt-0.5">
+                {user?.email || `${user?.user_type} account`}
+              </p>
             </div>
 
             {/* Menu Items */}
-            <div className="py-2">
+            <div className="py-1">
               {menuItems.map((item) => {
                 const IconComponent = item.icon;
                 return (
                   <button
                     key={item.id}
                     onClick={item.action}
-                    className={`w-full px-4 py-3 flex items-center space-x-3 hover:bg-dark-700/30 transition-all duration-200 group ${
-                      item.danger ? 'hover:bg-red-500/10' : ''
+                    className={`w-full px-4 py-2 flex items-center space-x-3 transition-colors duration-150 group ${
+                      item.danger ? 'hover:bg-red-50' : 'hover:bg-gray-50'
                     }`}
                   >
-                    <div className={`w-10 h-10 rounded-lg flex items-center justify-center transition-all duration-200 ${
+                    <IconComponent className={`w-4 h-4 flex-shrink-0 ${
                       item.danger 
-                        ? 'bg-red-500/10 text-red-400 group-hover:bg-red-500/20' 
-                        : 'bg-primary-500/10 text-primary-400 group-hover:bg-primary-500/20'
+                        ? 'text-red-500 group-hover:text-red-600' 
+                        : 'text-gray-400 group-hover:text-gray-500'
+                    }`} />
+                    <span className={`text-sm font-medium truncate ${
+                      item.danger ? 'text-red-600' : 'text-gray-700 group-hover:text-gray-900'
                     }`}>
-                      <IconComponent className="w-5 h-5" />
-                    </div>
-                    <div className="flex-1 text-left">
-                      <p className={`text-sm font-medium ${
-                        item.danger ? 'text-red-400' : 'text-gray-900'
-                      }`}>
-                        {item.label}
-                      </p>
-                      <p className="text-xs text-gray-900">
-                        {item.description}
-                      </p>
-                    </div>
+                      {item.label}
+                    </span>
                   </button>
                 );
               })}
             </div>
 
             {/* Logout Section */}
-            <div className="border-t border-white/10 p-2">
+            <div className="border-t border-gray-100 py-1">
               <button
                 onClick={handleLogout}
-                className="w-full px-4 py-3 flex items-center space-x-3 hover:bg-dark-700/30 transition-all duration-200 group rounded-lg"
+                className="w-full px-4 py-2 flex items-center space-x-3 hover:bg-gray-50 transition-colors duration-150 group"
               >
-                <div className="w-10 h-10 rounded-lg bg-gray-500/10 text-gray-900 group-hover:bg-gray-500/20 flex items-center justify-center transition-all duration-200">
-                  <LogOut className="w-5 h-5" />
-                </div>
-                <div className="flex-1 text-left">
-                  <p className="text-sm font-medium text-gray-900">
-                    Sign Out
-                  </p>
-                  <p className="text-xs text-gray-900">
-                    Sign out of your account
-                  </p>
-                </div>
+                <LogOut className="w-4 h-4 flex-shrink-0 text-gray-400 group-hover:text-gray-500" />
+                <span className="text-sm font-medium text-gray-700 group-hover:text-gray-900 truncate">
+                  Sign Out
+                </span>
               </button>
             </div>
           </div>

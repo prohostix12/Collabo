@@ -6,6 +6,8 @@ class User(AbstractUser):
         ('influencer', 'Influencer'),
         ('company', 'Company'),
         ('admin', 'Admin'),
+        ('buyer', 'Buyer'),
+        ('seller', 'Seller'),
     )
     
     APPROVAL_STATUS = (
@@ -26,6 +28,7 @@ class User(AbstractUser):
     approved_by = models.ForeignKey('self', null=True, blank=True, on_delete=models.SET_NULL, related_name='approved_users', help_text="Admin who approved this user")
     rejection_reason = models.TextField(blank=True, help_text="Reason for rejection (if applicable)")
     approval_shown = models.BooleanField(default=False, help_text="Whether approval popup has been shown to user")
+    reward_points = models.IntegerField(default=0, help_text="Accumulated customer reward points")
     
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
@@ -107,6 +110,7 @@ class InfluencerProfile(models.Model):
     
     # Media and Links
     profile_image = models.TextField(blank=True, help_text="Profile picture URL or base64 data")
+    cover_image = models.TextField(blank=True, help_text="Banner/cover image URL or base64 data")
     portfolio_images = models.JSONField(default=list, blank=True, help_text="List of portfolio image URLs or base64 data")
     portfolio_videos = models.JSONField(default=list, blank=True, help_text="List of portfolio video URLs or base64 data")
     website_url = models.URLField(blank=True, help_text="Personal website or portfolio")
@@ -156,3 +160,35 @@ class CompanyProfile(models.Model):
     
     def __str__(self):
         return self.company_name
+
+
+class SellerProfile(models.Model):
+    VERIFICATION_STATUS = (
+        ('pending', 'Pending'),
+        ('approved', 'Approved'),
+        ('rejected', 'Rejected'),
+    )
+    
+    user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='seller_profile')
+    store_name = models.CharField(max_length=200, unique=True)
+    tax_id = models.CharField(max_length=50, help_text="GSTIN / EIN / PAN")
+    bank_name = models.CharField(max_length=150)
+    bank_account_number = models.CharField(max_length=50)
+    bank_ifsc = models.CharField(max_length=50, help_text="IFSC / Branch / Routing Code")
+    business_address = models.TextField()
+    
+    # Verification Documents (legacy base64 fields kept for backward compat)
+    kyc_document = models.TextField(blank=True, help_text="Deprecated: base64 encoded KYC document")
+    bank_document = models.TextField(blank=True, help_text="Deprecated: base64 encoded bank document")
+    # Secure file-based storage
+    kyc_document_file = models.FileField(upload_to='seller_kyc/', blank=True, null=True)
+    bank_document_file = models.FileField(upload_to='seller_kyc/', blank=True, null=True)
+    
+    verification_status = models.CharField(max_length=20, choices=VERIFICATION_STATUS, default='pending')
+    rejection_reason = models.TextField(blank=True, null=True)
+    
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return f"{self.store_name} ({self.user.email})"

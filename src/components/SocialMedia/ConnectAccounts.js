@@ -14,8 +14,10 @@ import {
   Users,
   TrendingUp
 } from 'lucide-react';
+import { showConfirmToast } from '../../utils/toastHelpers';
 
 const ConnectAccounts = () => {
+  // eslint-disable-next-line no-unused-vars
   const { user } = useAuth();
   const [accounts, setAccounts] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -88,18 +90,16 @@ const ConnectAccounts = () => {
   };
 
   const handleDisconnect = async (accountId) => {
-    if (!window.confirm('Are you sure you want to disconnect this account?')) {
-      return;
-    }
-
-    try {
-      await api.delete(`/social-media/accounts/${accountId}/disconnect/`);
-      toast.success('Account disconnected successfully');
-      fetchAccounts();
-      fetchStats();
-    } catch (error) {
-      toast.error('Failed to disconnect account');
-    }
+    showConfirmToast('Are you sure you want to disconnect this account?', async () => {
+      try {
+        await api.delete(`/social-media/accounts/${accountId}/disconnect/`);
+        toast.success('Account disconnected successfully');
+        fetchAccounts();
+        fetchStats();
+      } catch (error) {
+        toast.error('Failed to disconnect account');
+      }
+    }, "Disconnect");
   };
 
   const getPlatformIcon = (platform) => {

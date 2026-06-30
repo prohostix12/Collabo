@@ -80,16 +80,19 @@ const InfluencerHero = ({ influencer, onViewAnalytics, onViewProfile }) => {
 
   const data = influencer || defaultInfluencer;
 
+  const formatFollowers = (count) => {
+    if (!count || count === 0) return '0';
+    if (count >= 1000000) return `${(count / 1000000).toFixed(1)}M`;
+    if (count >= 1000) return `${(count / 1000).toFixed(1)}K`;
+    return count.toLocaleString();
+  };
+
   // Reset image error when influencer changes
   React.useEffect(() => {
     setImageError(false);
   }, [influencer?.profile_image]);
 
-  // Debug: Log profile image
-  console.log('InfluencerHero - Full influencer data:', influencer);
-  console.log('InfluencerHero - Profile Image URL:', data.profile_image);
-  console.log('InfluencerHero - Profile Image exists?', !!data.profile_image);
-  console.log('InfluencerHero - Image error state:', imageError);
+
 
   return (
     <section className="relative min-h-[70vh] flex items-center overflow-hidden bg-gradient-to-br from-gray-50 via-white to-gray-100">
@@ -146,11 +149,11 @@ const InfluencerHero = ({ influencer, onViewAnalytics, onViewProfile }) => {
           
           {/* Left Side - Text Content */}
           <motion.div
-            variants={containerVariants}
-            initial="hidden"
-            animate={controls}
-            className="space-y-6"
-          >
+              variants={containerVariants}
+              initial="hidden"
+              animate={controls}
+              className="space-y-6 -mt-8"
+            >
             {/* Small Label */}
             <motion.div variants={itemVariants} className="inline-flex">
               <div className="inline-flex items-center space-x-2 px-4 py-2 rounded-full bg-primary-600 text-white text-sm font-medium shadow-lg">
@@ -249,12 +252,7 @@ const InfluencerHero = ({ influencer, onViewAnalytics, onViewProfile }) => {
 
                 {/* Image */}
                 <div className="absolute inset-4 rounded-full overflow-hidden shadow-2xl bg-gradient-to-br from-gray-100 to-gray-200">
-                  {/* Debug indicator */}
-                  {process.env.NODE_ENV === 'development' && (
-                    <div className="absolute top-2 right-2 z-50 bg-black/80 text-white text-xs px-2 py-1 rounded">
-                      {data.profile_image ? (imageError ? '❌ Error' : '🖼️ Loading') : '👤 No Image'}
-                    </div>
-                  )}
+
                   
                   {data.profile_image && !imageError ? (
                     <img
@@ -291,7 +289,7 @@ const InfluencerHero = ({ influencer, onViewAnalytics, onViewProfile }) => {
                     ease: 'easeInOut',
                   }}
                 >
-                  <span className="text-white font-bold text-xs">100K+</span>
+                  <span className="text-white font-bold text-xs">{formatFollowers(data.followers_count)}</span>
                 </motion.div>
 
                 <motion.div

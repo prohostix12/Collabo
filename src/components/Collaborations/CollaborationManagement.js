@@ -23,8 +23,10 @@ import {
   Sparkles,
   MoreHorizontal
 } from 'lucide-react';
+import { showConfirmToast } from '../../utils/toastHelpers';
 
 const CollaborationManagement = () => {
+  // eslint-disable-next-line no-unused-vars
   const { user } = useAuth();
   const queryClient = useQueryClient();
   const [searchTerm, setSearchTerm] = useState('');
@@ -106,7 +108,7 @@ const CollaborationManagement = () => {
   const handleRejectRequest = (request) => {
     const reason = prompt('💬 Please provide a reason for rejection (optional):');
     
-    if (window.confirm(`Are you sure you want to reject the request from ${request.influencer_username}?`)) {
+    showConfirmToast(`Are you sure you want to reject the request from ${request.influencer_username}?`, () => {
       const updateData = { 
         status: 'rejected'
       };
@@ -120,7 +122,7 @@ const CollaborationManagement = () => {
         id: request.id,
         data: updateData
       });
-    }
+    }, "Reject");
   };
 
   const getStatusColor = (status) => {

@@ -1,8 +1,20 @@
-import React, { useRef } from 'react';
+import React, { useRef, useEffect } from 'react';
 import { motion, useInView } from 'framer-motion';
 import { ArrowRight, Users, Target, Award } from 'lucide-react';
 
 const AboutUs = () => {
+  // SEO meta tags
+  useEffect(() => {
+    document.title = "About Us - Collabo";
+    const meta = document.createElement('meta');
+    meta.name = "description";
+    meta.content = "Learn about Collabo, our mission to connect brands with authentic influencers.";
+    document.head.appendChild(meta);
+    return () => {
+      document.head.removeChild(meta);
+    };
+  }, []);
+
   const ref = useRef(null);
   const inView = useInView(ref, {
     once: true,

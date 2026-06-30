@@ -4,60 +4,68 @@ import { motion, AnimatePresence } from 'framer-motion';
 import api from '../../services/api';
 import toast from 'react-hot-toast';
 import {
-  Users, Heart, Eye, Briefcase, TrendingUp, TrendingDown,
-  ThumbsUp, MessageCircle, Share2, BarChart3, Shirt, Smartphone,
+  Users, Heart, Eye, TrendingUp, TrendingDown,
+  ThumbsUp, MessageCircle, Share2, BarChart3,
   Camera, Sun, RefreshCw, AlertCircle, DollarSign, Target,
-  Zap, Award, Activity, X
+  Zap, Award, Activity, X, Link2
 } from 'lucide-react';
 import ConnectAccounts from '../SocialMedia/ConnectAccounts';
 
 const InfluencerAnalytics = () => {
   const [isRefreshing, setIsRefreshing] = useState(false);
-  const [timeRange, setTimeRange] = useState('6months');
   const [showConnectModal, setShowConnectModal] = useState(false);
   const [animatedValues, setAnimatedValues] = useState({
     totalFollowers: 0,
     engagementRate: 0,
-    totalViews: 0,
-    totalEarnings: 0
+    totalClicks: 0,
+    totalEarnings: 0,
   });
 
   // Fetch influencer profile data
   const { data: profile } = useQuery('influencer-profile', async () => {
-    const response = await api.get('/auth/influencer-profile/');
-    return response.data;
+    const res = await api.get('/auth/influencer-profile/');
+    return res.data;
   });
 
   // Fetch collaborations data
   const { data: collaborationsData } = useQuery('influencer-collaborations', async () => {
-    const response = await api.get('/collaborations/collaborations/');
-    return response.data;
+    const res = await api.get('/collaborations/collaborations/');
+    return res.data;
   });
 
-  // Fetch real-time analytics data
-  const { 
-    data: analyticsData, 
-    isLoading: analyticsLoading, 
+  // Fetch real affiliate/commission data
+  const { data: referralsData, refetch: refetchReferrals } = useQuery(
+    'influencer-referrals-analytics',
+    async () => {
+      const res = await api.get('/ecommerce/reviews/my-referrals/');
+      return res.data;
+    },
+    { refetchInterval: 60000, staleTime: 50000 }
+  );
+
+  // Fetch real-time social analytics data
+  const {
+    data: analyticsData,
+    isLoading: analyticsLoading,
     error: analyticsError,
-    refetch: refetchAnalytics 
+    refetch: refetchAnalytics,
   } = useQuery(
     'influencer-analytics-realtime',
     async () => {
-      const response = await api.get('/social-media/analytics/influencer/');
-      return response.data;
+      const res = await api.get('/social-media/analytics/influencer/');
+      return res.data;
     },
     {
       refetchInterval: 300000,
       refetchOnWindowFocus: true,
       staleTime: 240000,
       retry: 2,
-      onError: (error) => {
-        console.log('Analytics API error:', error?.response?.data || error.message);
-      }
+      onError: (err) => console.log('Analytics API error:', err?.response?.data || err.message),
     }
   );
 
-  const noAccountsConnected = analyticsError?.response?.status === 404 && 
+  const noAccountsConnected =
+    analyticsError?.response?.status === 404 &&
     analyticsError?.response?.data?.error === 'No connected social media accounts found';
 
   const handleRefresh = async () => {
@@ -67,95 +75,105 @@ const InfluencerAnalytics = () => {
       toast.success('Refreshing analytics data...');
       setTimeout(async () => {
         await refetchAnalytics();
+        await refetchReferrals();
         setIsRefreshing(false);
         toast.success('Analytics data updated!');
       }, 30000);
-    } catch (error) {
+    } catch {
+      await refetchReferrals();
       setIsRefreshing(false);
-      toast.error('Failed to refresh analytics');
+      toast.error('Social refresh failed — commission data updated.');
     }
   };
 
   const collaborations = collaborationsData?.results || [];
   const realTimeData = analyticsData?.data;
+  const summary = referralsData?.summary || {};
+  const referrals = referralsData?.referrals || [];
 
-  const performanceMetrics = {
-    totalFollowers: realTimeData?.kpi?.total_followers || profile?.followers_count || 35600,
-    engagementRate: realTimeData?.kpi?.engagement_rate || parseFloat(profile?.engagement_rate) || 5.3,
-    totalViews: realTimeData?.kpi?.total_reach || 1250000,
-    totalCollaborations: realTimeData?.collaboration_stats?.active_collaborations || collaborations.length,
-    totalEarnings: 135000,
-    followersChange: realTimeData?.kpi?.follower_growth || 8.5,
-    engagementChange: realTimeData?.kpi?.engagement_change || 3.2,
-    viewsChange: 15.7,
-    earningsChange: 22.5
+  // Real values — social data when available, profile fallback, then 0
+  const totalFollowers =
+    realTimeData?.kpi?.total_followers || parseFloat(profile?.followers_count) || 0;
+  const engagementRate =
+    realTimeData?.kpi?.engagement_rate || parseFloat(profile?.engagement_rate) || 0;
+  const totalClicks = summary.total_clicks || 0;
+  const totalEarnings = summary.total_earned || 0;
+  const totalConversions = summary.total_conversions || 0;
+  const followersChange = realTimeData?.kpi?.follower_growth || null;
+  const engagementChange = realTimeData?.kpi?.engagement_change || null;
+
+  // Build monthly earnings chart from real referral commission data
+  const buildMonthlyEarnings = () => {
+    if (!referrals.length) return [];
+    const map = {};
+    referrals.forEach(r => {
+      if (!r.created_at) return;
+      const d = new Date(r.created_at);
+      const key = d.toLocaleDateString('en-US', { month: 'short', year: '2-digit' });
+      map[key] = (map[key] || 0) + (r.earned_commission || 0);
+    });
+    return Object.entries(map)
+      .slice(-6)
+      .map(([month, earnings]) => ({ month, earnings, clicks: 0 }));
   };
 
-  // Demo data for charts (use when real data unavailable)
-  const growthData = realTimeData?.growth_trends?.slice(-6).map((trend, index) => ({
-    month: new Date(trend.date).toLocaleDateString('en-US', { month: 'short' }),
-    followers: trend.followers || 0,
-    engagement: parseFloat(trend.engagement_rate) || 0,
-    earnings: 0
-  })) || [
-    { month: 'Jan', followers: 12500, engagement: 2.8, earnings: 18000 },
-    { month: 'Feb', followers: 14200, engagement: 3.1, earnings: 26000 },
-    { month: 'Mar', followers: 17800, engagement: 3.6, earnings: 42000 },
-    { month: 'Apr', followers: 22400, engagement: 4.2, earnings: 68000 },
-    { month: 'May', followers: 28900, engagement: 4.8, earnings: 95000 },
-    { month: 'Jun', followers: 35600, engagement: 5.3, earnings: 135000 }
-  ];
+  // Use social growth trends when available, otherwise use earnings-based months
+  const growthData =
+    realTimeData?.growth_trends?.slice(-6).map(trend => ({
+      month: new Date(trend.date).toLocaleDateString('en-US', { month: 'short' }),
+      followers: trend.followers || 0,
+      engagement: parseFloat(trend.engagement_rate) || 0,
+    })) || [];
 
-  const topContent = analyticsData?.top_content?.slice(0, 4).map((content, index) => ({
-    id: content.id || index + 1,
-    title: content.title || content.caption?.substring(0, 50) || 'Untitled Content',
-    type: content.media_type || 'Post',
-    icon: content.media_type === 'VIDEO' || content.media_type === 'REEL' ? Camera : 
-          content.media_type === 'CAROUSEL_ALBUM' ? Smartphone : Sun,
-    views: content.impressions || content.reach || 0,
-    likes: content.like_count || 0,
-    comments: content.comments_count || 0,
-    shares: content.shares_count || 0
-  })) || [
-    { id: 1, title: 'Summer Fashion Lookbook 2024', type: 'Reel', icon: Shirt, views: 125000, likes: 8500, comments: 420, shares: 1200 },
-    { id: 2, title: 'Product Review: Latest Tech Gadget', type: 'Post', icon: Smartphone, views: 98000, likes: 6200, comments: 380, shares: 890 },
-    { id: 3, title: 'Behind the Scenes - Photoshoot', type: 'Reel', icon: Camera, views: 156000, likes: 12000, comments: 650, shares: 1500 },
-    { id: 4, title: 'Daily Routine & Lifestyle Tips', type: 'Post', icon: Sun, views: 87000, likes: 5800, comments: 290, shares: 720 }
-  ];
+  const earningsChartData = buildMonthlyEarnings();
+  const hasGrowthData = growthData.length > 0;
+  const hasEarningsData = earningsChartData.length > 0;
 
-  // Animate numbers on mount
+  // Top content — social API when available, otherwise affiliate referrals
+  const topContent =
+    analyticsData?.top_content?.slice(0, 4).map((content, index) => ({
+      id: content.id || index + 1,
+      title: content.title || content.caption?.substring(0, 50) || 'Untitled Content',
+      type: content.media_type || 'Post',
+      icon: content.media_type === 'VIDEO' || content.media_type === 'REEL' ? Camera : Sun,
+      views: content.impressions || content.reach || 0,
+      likes: content.like_count || 0,
+      comments: content.comments_count || 0,
+    })) ||
+    referrals.slice(0, 4).map((r, i) => ({
+      id: r.id || i + 1,
+      title: r.product_name || 'Affiliate Product',
+      type: 'Affiliate Link',
+      icon: Link2,
+      views: r.clicks || 0,
+      likes: r.conversions || 0,
+      comments: 0,
+    }));
+
+  // Animate counters whenever the real values arrive
   useEffect(() => {
-    const duration = 2000;
+    const duration = 1800;
     const steps = 60;
-    const interval = duration / steps;
-
-    let currentStep = 0;
+    let step = 0;
     const timer = setInterval(() => {
-      currentStep++;
-      const progress = currentStep / steps;
-      
+      step++;
+      const p = step / steps;
       setAnimatedValues({
-        totalFollowers: Math.floor(performanceMetrics.totalFollowers * progress),
-        engagementRate: parseFloat((performanceMetrics.engagementRate * progress).toFixed(1)),
-        totalViews: Math.floor(performanceMetrics.totalViews * progress),
-        totalEarnings: Math.floor(performanceMetrics.totalEarnings * progress)
+        totalFollowers: Math.floor(totalFollowers * p),
+        engagementRate: parseFloat((engagementRate * p).toFixed(1)),
+        totalClicks: Math.floor(totalClicks * p),
+        totalEarnings: Math.floor(totalEarnings * p),
       });
-
-      if (currentStep >= steps) {
+      if (step >= steps) {
         clearInterval(timer);
-        setAnimatedValues({
-          totalFollowers: performanceMetrics.totalFollowers,
-          engagementRate: performanceMetrics.engagementRate,
-          totalViews: performanceMetrics.totalViews,
-          totalEarnings: performanceMetrics.totalEarnings
-        });
+        setAnimatedValues({ totalFollowers, engagementRate, totalClicks, totalEarnings });
       }
-    }, interval);
-
+    }, duration / steps);
     return () => clearInterval(timer);
-  }, [performanceMetrics.totalFollowers, performanceMetrics.engagementRate, performanceMetrics.totalViews, performanceMetrics.totalEarnings]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [totalFollowers, engagementRate, totalClicks, totalEarnings]);
 
-  if (analyticsLoading && !profile) {
+  if (analyticsLoading && !profile && !referralsData) {
     return (
       <div className="flex items-center justify-center min-h-screen bg-gradient-to-br from-violet-50 via-cyan-50 to-lime-50">
         <div className="text-center">
@@ -174,32 +192,30 @@ const InfluencerAnalytics = () => {
         <motion.div
           initial={{ opacity: 0, y: -20 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5, ease: "easeOut" }}
+          transition={{ duration: 0.5 }}
           className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div>
             <h1 className="text-3xl font-bold text-neutral-800 mb-2">Analytics Dashboard</h1>
             <p className="text-neutral-500">
-              {realTimeData ? 'Live data from connected accounts' : 'Track your performance and growth'}
+              {realTimeData ? 'Live data from connected accounts' : 'Affiliate & collaboration performance'}
             </p>
           </div>
-          
           <motion.button
             whileHover={{ scale: 1.02 }}
             whileTap={{ scale: 0.98 }}
             onClick={handleRefresh}
             disabled={isRefreshing}
-            className="flex items-center gap-2 px-4 py-2.5 bg-gradient-to-r from-violet-600 to-cyan-500 text-white rounded-xl hover:from-violet-700 hover:to-cyan-600 transition-all shadow-lg hover:shadow-xl disabled:opacity-50 disabled:cursor-not-allowed">
+            className="flex items-center gap-2 px-4 py-2.5 bg-gradient-to-r from-violet-600 to-cyan-500 text-white rounded-xl hover:from-violet-700 hover:to-cyan-600 transition-all shadow-lg disabled:opacity-50 disabled:cursor-not-allowed">
             <RefreshCw className={`w-4 h-4 ${isRefreshing ? 'animate-spin' : ''}`} />
             <span className="font-medium">{isRefreshing ? 'Refreshing...' : 'Refresh Data'}</span>
           </motion.button>
         </motion.div>
 
-        {/* Alert if no social accounts connected */}
+        {/* No social accounts alert */}
         {noAccountsConnected && (
           <motion.div
             initial={{ opacity: 0, y: -10 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.3, ease: "easeOut" }}
             className="bg-orange-50 border-2 border-orange-300 rounded-xl p-5 flex items-start gap-4 shadow-sm">
             <div className="flex-shrink-0 w-10 h-10 bg-orange-100 rounded-full flex items-center justify-center">
               <AlertCircle className="w-6 h-6 text-orange-600" />
@@ -207,12 +223,11 @@ const InfluencerAnalytics = () => {
             <div className="flex-1">
               <h3 className="text-base font-bold text-orange-900 mb-1">Connect Your Social Media Accounts</h3>
               <p className="text-sm text-orange-800 mb-4">
-                You haven't connected any social media accounts yet. Connect Instagram or YouTube to unlock real-time analytics, follower tracking, and engagement insights.
+                Connect Instagram or YouTube to unlock real-time follower analytics, engagement tracking, and reach insights.
               </p>
               <button
                 onClick={() => setShowConnectModal(true)}
-                className="inline-flex items-center gap-2 px-5 py-2.5 bg-gradient-to-r from-orange-600 to-orange-500 hover:from-orange-700 hover:to-orange-600 text-white text-sm font-semibold rounded-lg transition-all duration-200 shadow-md hover:shadow-lg transform hover:scale-105"
-              >
+                className="inline-flex items-center gap-2 px-5 py-2.5 bg-gradient-to-r from-orange-600 to-orange-500 hover:from-orange-700 hover:to-orange-600 text-white text-sm font-semibold rounded-lg transition-all shadow-md">
                 <Share2 className="w-4 h-4" />
                 Connect Account Now
               </button>
@@ -220,245 +235,298 @@ const InfluencerAnalytics = () => {
           </motion.div>
         )}
 
-        {/* KPI Cards */}
+        {/* KPI Cards — all real data */}
         <motion.div
           initial="hidden"
           animate="visible"
-          variants={{
-            visible: {
-              transition: {
-                staggerChildren: 0.1
-              }
-            }
-          }}
+          variants={{ visible: { transition: { staggerChildren: 0.1 } } }}
           className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
           <KPICard
             title="Total Followers"
-            value={animatedValues.totalFollowers.toLocaleString()}
-            change={performanceMetrics.followersChange}
+            value={totalFollowers > 0 ? animatedValues.totalFollowers.toLocaleString() : '—'}
+            change={followersChange}
             icon={Users}
             gradient="from-violet-600 to-cyan-500"
+            note={!totalFollowers ? 'Connect social account' : null}
           />
           <KPICard
             title="Engagement Rate"
-            value={`${animatedValues.engagementRate.toFixed(1)}%`}
-            change={performanceMetrics.engagementChange}
+            value={engagementRate > 0 ? `${animatedValues.engagementRate.toFixed(1)}%` : '—'}
+            change={engagementChange}
             icon={Heart}
             gradient="from-cyan-500 to-lime-500"
+            note={!engagementRate ? 'Connect social account' : null}
           />
           <KPICard
-            title="Total Views"
-            value={animatedValues.totalViews >= 1000000 
-              ? `${(animatedValues.totalViews / 1000000).toFixed(1)}M` 
-              : animatedValues.totalViews >= 1000 
-                ? `${(animatedValues.totalViews / 1000).toFixed(1)}K`
-                : animatedValues.totalViews.toLocaleString()}
-            change={performanceMetrics.viewsChange}
+            title="Total Link Clicks"
+            value={animatedValues.totalClicks.toLocaleString()}
             icon={Eye}
             gradient="from-lime-500 to-violet-600"
           />
           <KPICard
-            title="Total Earnings"
-            value={`₹${(animatedValues.totalEarnings / 1000).toFixed(0)}K`}
-            change={performanceMetrics.earningsChange}
+            title="Commission Earned"
+            value={`₹${animatedValues.totalEarnings.toLocaleString('en-IN', { maximumFractionDigits: 0 })}`}
             icon={DollarSign}
             gradient="from-orange-500 to-violet-600"
           />
         </motion.div>
 
-        {/* Main Growth Chart */}
+        {/* Affiliate Summary Strip */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.4, duration: 0.5, ease: "easeOut" }}
-          className="bg-white rounded-2xl p-6 border border-neutral-200 shadow-sm">
-          <div className="flex items-center justify-between mb-6">
-            <div>
-              <h2 className="text-xl font-bold text-neutral-800 mb-1">Follower Growth</h2>
-              <p className="text-sm text-neutral-500">Track your audience growth over time</p>
-            </div>
-          </div>
-
-          <GrowthChart data={growthData} />
+          transition={{ delay: 0.3 }}
+          className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+          {[
+            { label: 'Affiliate Links', value: referrals.length, icon: Link2, color: 'violet' },
+            { label: 'Conversions', value: totalConversions, icon: Target, color: 'cyan' },
+            { label: 'Active Collabs', value: collaborations.length, icon: Award, color: 'lime' },
+            { label: 'Avg per Click', value: totalClicks > 0 ? `₹${(totalEarnings / totalClicks).toFixed(1)}` : '₹0', icon: Zap, color: 'orange' },
+          ].map((item, i) => {
+            const Icon = item.icon;
+            const colors = {
+              violet: 'bg-violet-50 border-violet-200 text-violet-700',
+              cyan: 'bg-cyan-50 border-cyan-200 text-cyan-700',
+              lime: 'bg-lime-50 border-lime-200 text-lime-700',
+              orange: 'bg-orange-50 border-orange-200 text-orange-700',
+            };
+            return (
+              <motion.div
+                key={i}
+                initial={{ opacity: 0, scale: 0.95 }}
+                animate={{ opacity: 1, scale: 1 }}
+                transition={{ delay: 0.35 + i * 0.05 }}
+                className={`${colors[item.color]} border rounded-2xl p-4 flex items-center gap-3`}>
+                <Icon className="w-5 h-5 flex-shrink-0" />
+                <div>
+                  <p className="text-xs font-semibold opacity-70">{item.label}</p>
+                  <p className="text-xl font-bold">{item.value}</p>
+                </div>
+              </motion.div>
+            );
+          })}
         </motion.div>
 
-        {/* Secondary Metrics */}
+        {/* Charts row */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          {/* Engagement Breakdown */}
+          {/* Follower Growth (social) or message */}
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.4 }}
+            className="bg-white rounded-2xl p-6 border border-neutral-200 shadow-sm">
+            <div className="flex items-center justify-between mb-4">
+              <div>
+                <h2 className="text-lg font-bold text-neutral-800">Follower Growth</h2>
+                <p className="text-xs text-neutral-500">From connected social accounts</p>
+              </div>
+              <BarChart3 className="w-5 h-5 text-violet-500" />
+            </div>
+            {hasGrowthData ? (
+              <GrowthChart data={growthData} valueKey="followers" label="followers" color="#7c3aed" />
+            ) : (
+              <EmptyChart message="Connect a social account to see follower growth" />
+            )}
+          </motion.div>
+
+          {/* Monthly Commission Earnings */}
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.45 }}
+            className="bg-white rounded-2xl p-6 border border-neutral-200 shadow-sm">
+            <div className="flex items-center justify-between mb-4">
+              <div>
+                <h2 className="text-lg font-bold text-neutral-800">Commission Earnings</h2>
+                <p className="text-xs text-neutral-500">By month from affiliate link sales</p>
+              </div>
+              <DollarSign className="w-5 h-5 text-orange-500" />
+            </div>
+            {hasEarningsData ? (
+              <EarningsChart data={earningsChartData} />
+            ) : (
+              <EmptyChart message="Generate affiliate links and make sales to see earnings over time" />
+            )}
+          </motion.div>
+        </div>
+
+        {/* Engagement Breakdown & Performance */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           <motion.div
             initial={{ opacity: 0, x: -20 }}
             animate={{ opacity: 1, x: 0 }}
-            transition={{ delay: 0.5, duration: 0.5, ease: "easeOut" }}
+            transition={{ delay: 0.5 }}
             className="bg-white rounded-2xl p-6 border border-neutral-200 shadow-sm">
             <div className="flex items-center justify-between mb-6">
               <div>
-                <h3 className="text-lg font-bold text-neutral-800 mb-1">Engagement Breakdown</h3>
-                <p className="text-sm text-neutral-500">Average interactions per post</p>
+                <h3 className="text-lg font-bold text-neutral-800">Affiliate Breakdown</h3>
+                <p className="text-sm text-neutral-500">Performance across your affiliate links</p>
               </div>
               <Activity className="w-6 h-6 text-violet-600" />
             </div>
-            
             <div className="space-y-4">
-              <EngagementBar
-                label="Likes"
-                value={7600}
-                max={10000}
-                color="cyan"
-                icon={ThumbsUp}
-              />
-              <EngagementBar
-                label="Comments"
-                value={435}
-                max={1000}
-                color="lime"
-                icon={MessageCircle}
-              />
-              <EngagementBar
-                label="Shares"
-                value={1100}
-                max={2000}
-                color="violet"
-                icon={Share2}
-              />
-              <EngagementBar
-                label="Saves"
-                value={2800}
-                max={5000}
-                color="orange"
-                icon={Award}
-              />
+              <EngagementBar label="Total Clicks" value={totalClicks} max={Math.max(totalClicks, 1)} color="cyan" icon={Eye} />
+              <EngagementBar label="Conversions" value={totalConversions} max={Math.max(totalConversions, totalClicks, 1)} color="lime" icon={ThumbsUp} />
+              <EngagementBar label="Active Links" value={referrals.length} max={Math.max(referrals.length, 1)} color="violet" icon={Link2} />
+              <EngagementBar label="Paid Commission" value={Math.round(totalEarnings)} max={Math.max(Math.round(totalEarnings), 1)} color="orange" icon={DollarSign} displayPrefix="₹" />
             </div>
           </motion.div>
 
-          {/* Performance Score */}
           <motion.div
             initial={{ opacity: 0, x: 20 }}
             animate={{ opacity: 1, x: 0 }}
-            transition={{ delay: 0.5, duration: 0.5, ease: "easeOut" }}
+            transition={{ delay: 0.5 }}
             className="bg-gradient-to-br from-violet-600 to-cyan-500 rounded-2xl p-6 text-white shadow-lg">
             <div className="flex items-center justify-between mb-6">
               <div>
-                <h3 className="text-lg font-bold mb-1">Performance Score</h3>
-                <p className="text-violet-100 text-sm">Overall account health</p>
+                <h3 className="text-lg font-bold mb-1">Conversion Rate</h3>
+                <p className="text-violet-100 text-sm">Clicks that led to a purchase</p>
               </div>
               <Zap className="w-6 h-6 text-violet-200" />
             </div>
-            
             <div className="space-y-6">
               <div>
-                <div className="text-5xl font-bold mb-2">92/100</div>
+                <div className="text-5xl font-bold mb-2">
+                  {totalClicks > 0 ? `${((totalConversions / totalClicks) * 100).toFixed(1)}%` : '0%'}
+                </div>
                 <div className="flex items-center gap-2 text-violet-100">
                   <TrendingUp className="w-4 h-4" />
-                  <span className="text-sm">Excellent performance</span>
+                  <span className="text-sm">
+                    {totalConversions} sale{totalConversions !== 1 ? 's' : ''} from {totalClicks} click{totalClicks !== 1 ? 's' : ''}
+                  </span>
                 </div>
               </div>
-              
               <div className="grid grid-cols-2 gap-4 pt-4 border-t border-violet-400/30">
                 <div>
-                  <p className="text-violet-200 text-sm mb-1">Content Quality</p>
-                  <p className="text-2xl font-bold">95%</p>
+                  <p className="text-violet-200 text-sm mb-1">Avg Commission</p>
+                  <p className="text-2xl font-bold">
+                    {totalConversions > 0 ? `₹${(totalEarnings / totalConversions).toFixed(0)}` : '₹0'}
+                  </p>
                 </div>
                 <div>
-                  <p className="text-violet-200 text-sm mb-1">Consistency</p>
-                  <p className="text-2xl font-bold">88%</p>
+                  <p className="text-violet-200 text-sm mb-1">Active Collabs</p>
+                  <p className="text-2xl font-bold">{collaborations.length}</p>
                 </div>
               </div>
             </div>
           </motion.div>
         </div>
 
-        {/* Top Content */}
+        {/* Top Performing Content */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.6, duration: 0.5, ease: "easeOut" }}
+          transition={{ delay: 0.6 }}
           className="bg-white rounded-2xl p-6 border border-neutral-200 shadow-sm">
           <div className="flex items-center justify-between mb-6">
             <div>
-              <h3 className="text-lg font-bold text-neutral-800 mb-1">Top Performing Content</h3>
-              <p className="text-sm text-neutral-500">Your best posts this month</p>
+              <h3 className="text-lg font-bold text-neutral-800">
+                {analyticsData?.top_content ? 'Top Performing Content' : 'Top Affiliate Products'}
+              </h3>
+              <p className="text-sm text-neutral-500">
+                {analyticsData?.top_content ? 'Your best posts' : 'Products with the most clicks or conversions'}
+              </p>
             </div>
             <Target className="w-5 h-5 text-violet-600" />
           </div>
-          
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {topContent.map((content, index) => {
-              const IconComponent = content.icon;
-              return (
-                <motion.div
-                  key={content.id}
-                  initial={{ opacity: 0, scale: 0.9 }}
-                  animate={{ opacity: 1, scale: 1 }}
-                  transition={{ delay: 0.7 + index * 0.1, duration: 0.3, ease: "easeOut" }}
-                  className="flex items-center gap-4 p-4 bg-gradient-to-br from-neutral-50 to-white rounded-xl border border-neutral-100 hover:border-violet-200 hover:shadow-md transition-all cursor-pointer group">
-                  <div className="relative flex-shrink-0">
-                    <div className="w-14 h-14 bg-gradient-to-br from-violet-500 to-cyan-500 rounded-xl flex items-center justify-center shadow-lg group-hover:scale-110 transition-transform">
-                      <IconComponent className="w-7 h-7 text-white" />
+          {topContent.length > 0 ? (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {topContent.map((content, index) => {
+                const IconComponent = content.icon;
+                return (
+                  <motion.div
+                    key={content.id}
+                    initial={{ opacity: 0, scale: 0.9 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    transition={{ delay: 0.7 + index * 0.1 }}
+                    className="flex items-center gap-4 p-4 bg-gradient-to-br from-neutral-50 to-white rounded-xl border border-neutral-100 hover:border-violet-200 hover:shadow-md transition-all cursor-pointer group">
+                    <div className="relative flex-shrink-0">
+                      <div className="w-14 h-14 bg-gradient-to-br from-violet-500 to-cyan-500 rounded-xl flex items-center justify-center shadow-lg group-hover:scale-110 transition-transform">
+                        <IconComponent className="w-7 h-7 text-white" />
+                      </div>
+                      <div className="absolute -top-2 -right-2 w-6 h-6 bg-violet-600 rounded-full flex items-center justify-center text-xs font-bold text-white">
+                        {index + 1}
+                      </div>
                     </div>
-                    <div className="absolute -top-2 -right-2 w-6 h-6 bg-violet-600 rounded-full flex items-center justify-center text-xs font-bold text-white">
-                      {index + 1}
+                    <div className="flex-1 min-w-0">
+                      <h4 className="text-sm font-semibold text-neutral-800 truncate mb-1 group-hover:text-violet-600 transition-colors">
+                        {content.title}
+                      </h4>
+                      <p className="text-xs text-neutral-500 mb-2">{content.type}</p>
+                      <div className="flex items-center gap-3 text-xs text-neutral-600">
+                        <span className="flex items-center gap-1">
+                          <Eye className="w-3 h-3" />
+                          {content.views >= 1000 ? `${(content.views / 1000).toFixed(1)}K` : content.views}
+                        </span>
+                        <span className="flex items-center gap-1">
+                          <ThumbsUp className="w-3 h-3" />
+                          {content.likes >= 1000 ? `${(content.likes / 1000).toFixed(1)}K` : content.likes}
+                        </span>
+                        {content.comments > 0 && (
+                          <span className="flex items-center gap-1">
+                            <MessageCircle className="w-3 h-3" />
+                            {content.comments}
+                          </span>
+                        )}
+                      </div>
                     </div>
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <h4 className="text-sm font-semibold text-neutral-800 truncate mb-1 group-hover:text-violet-600 transition-colors">
-                      {content.title}
-                    </h4>
-                    <p className="text-xs text-neutral-500 mb-2">{content.type}</p>
-                    <div className="flex items-center gap-3 text-xs text-neutral-600">
-                      <span className="flex items-center gap-1">
-                        <Eye className="w-3 h-3" />
-                        {(content.views / 1000).toFixed(0)}K
-                      </span>
-                      <span className="flex items-center gap-1">
-                        <ThumbsUp className="w-3 h-3" />
-                        {(content.likes / 1000).toFixed(1)}K
-                      </span>
-                      <span className="flex items-center gap-1">
-                        <MessageCircle className="w-3 h-3" />
-                        {content.comments}
-                      </span>
-                    </div>
-                  </div>
-                </motion.div>
-              );
-            })}
-          </div>
+                  </motion.div>
+                );
+              })}
+            </div>
+          ) : (
+            <div className="text-center py-8 text-neutral-400">
+              <Link2 className="w-10 h-10 mx-auto mb-2 opacity-30" />
+              <p className="text-sm">Create affiliate links from the Affiliated Marketing tab to see performance here.</p>
+            </div>
+          )}
         </motion.div>
 
-        {/* Monthly Highlights */}
+        {/* Monthly Summary */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.7, duration: 0.5, ease: "easeOut" }}
+          transition={{ delay: 0.7 }}
           className="bg-gradient-to-br from-violet-600 via-cyan-500 to-lime-500 rounded-2xl p-6 text-white shadow-lg">
           <div className="flex items-center justify-between mb-6">
             <div>
-              <h3 className="text-lg font-bold mb-1">Monthly Highlights</h3>
-              <p className="text-violet-100 text-sm">Your achievements this month</p>
+              <h3 className="text-lg font-bold mb-1">Summary</h3>
+              <p className="text-violet-100 text-sm">Your overall affiliate performance</p>
             </div>
             <Award className="w-6 h-6 text-violet-200" />
           </div>
-          
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
             <div className="bg-white/10 backdrop-blur-sm rounded-xl p-4">
-              <p className="text-white/80 text-xs mb-1">New Followers</p>
-              <p className="text-2xl font-bold">+{((profile?.followers_count || 35600) - 28900).toLocaleString()}</p>
-              <p className="text-xs text-white/70 mt-1">+23.2%</p>
+              <p className="text-white/80 text-xs mb-1">Followers</p>
+              <p className="text-2xl font-bold">
+                {totalFollowers >= 1000 ? `${(totalFollowers / 1000).toFixed(1)}K` : totalFollowers || '—'}
+              </p>
+              {followersChange !== null && (
+                <p className="text-xs text-white/70 mt-1 flex items-center gap-1">
+                  {followersChange > 0 ? <TrendingUp className="w-3 h-3" /> : <TrendingDown className="w-3 h-3" />}
+                  {Math.abs(followersChange).toFixed(1)}%
+                </p>
+              )}
             </div>
             <div className="bg-white/10 backdrop-blur-sm rounded-xl p-4">
-              <p className="text-white/80 text-xs mb-1">Avg. Engagement</p>
-              <p className="text-2xl font-bold">{parseFloat(profile?.engagement_rate || 5.3).toFixed(1)}%</p>
-              <p className="text-xs text-white/70 mt-1">+10.4%</p>
+              <p className="text-white/80 text-xs mb-1">Engagement</p>
+              <p className="text-2xl font-bold">{engagementRate > 0 ? `${engagementRate.toFixed(1)}%` : '—'}</p>
+              {engagementChange !== null && (
+                <p className="text-xs text-white/70 mt-1 flex items-center gap-1">
+                  {engagementChange > 0 ? <TrendingUp className="w-3 h-3" /> : <TrendingDown className="w-3 h-3" />}
+                  {Math.abs(engagementChange).toFixed(1)}%
+                </p>
+              )}
             </div>
             <div className="bg-white/10 backdrop-blur-sm rounded-xl p-4">
-              <p className="text-white/80 text-xs mb-1">Total Reach</p>
-              <p className="text-2xl font-bold">1.2M</p>
-              <p className="text-xs text-white/70 mt-1">+15.7%</p>
+              <p className="text-white/80 text-xs mb-1">Total Clicks</p>
+              <p className="text-2xl font-bold">{totalClicks.toLocaleString()}</p>
+              <p className="text-xs text-white/70 mt-1">{referrals.length} links active</p>
             </div>
             <div className="bg-white/10 backdrop-blur-sm rounded-xl p-4">
-              <p className="text-white/80 text-xs mb-1">Active Collabs</p>
-              <p className="text-2xl font-bold">{collaborations.length}</p>
-              <p className="text-xs text-white/70 mt-1">+25%</p>
+              <p className="text-white/80 text-xs mb-1">Commission Earned</p>
+              <p className="text-2xl font-bold">₹{totalEarnings.toLocaleString('en-IN', { maximumFractionDigits: 0 })}</p>
+              <p className="text-xs text-white/70 mt-1">{totalConversions} conversions</p>
             </div>
           </div>
         </motion.div>
@@ -472,31 +540,23 @@ const InfluencerAnalytics = () => {
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4"
-            onClick={() => setShowConnectModal(false)}
-          >
+            onClick={() => setShowConnectModal(false)}>
             <motion.div
               initial={{ scale: 0.9, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
               exit={{ scale: 0.9, opacity: 0 }}
-              transition={{ type: "spring", duration: 0.5 }}
+              transition={{ type: 'spring', duration: 0.5 }}
               className="bg-white rounded-2xl shadow-2xl max-w-5xl w-full max-h-[90vh] overflow-hidden"
-              onClick={(e) => e.stopPropagation()}
-            >
-              {/* Modal Header */}
+              onClick={e => e.stopPropagation()}>
               <div className="flex items-center justify-between p-6 border-b border-neutral-200 bg-gradient-to-r from-violet-50 to-cyan-50">
                 <div>
                   <h2 className="text-2xl font-bold text-neutral-800">Connect Social Accounts</h2>
                   <p className="text-sm text-neutral-600 mt-1">Link your social media to track analytics</p>
                 </div>
-                <button
-                  onClick={() => setShowConnectModal(false)}
-                  className="p-2 hover:bg-neutral-100 rounded-lg transition-colors"
-                >
+                <button onClick={() => setShowConnectModal(false)} className="p-2 hover:bg-neutral-100 rounded-lg transition-colors">
                   <X className="w-6 h-6 text-neutral-600" />
                 </button>
               </div>
-
-              {/* Modal Content */}
               <div className="overflow-y-auto max-h-[calc(90vh-88px)]">
                 <ConnectAccounts />
               </div>
@@ -508,176 +568,118 @@ const InfluencerAnalytics = () => {
   );
 };
 
-// KPI Card Component
-const KPICard = ({ title, value, change, icon: Icon, gradient }) => (
+// ── Sub-components ──────────────────────────────────────────────────────────
+
+const KPICard = ({ title, value, change, icon: Icon, gradient, note }) => (
   <motion.div
-    variants={{
-      hidden: { opacity: 0, y: 20 },
-      visible: { opacity: 1, y: 0 }
-    }}
-    transition={{ duration: 0.5, ease: "easeOut" }}
+    variants={{ hidden: { opacity: 0, y: 20 }, visible: { opacity: 1, y: 0 } }}
+    transition={{ duration: 0.5 }}
     whileHover={{ y: -4, scale: 1.02 }}
     className="bg-white rounded-2xl p-6 border border-neutral-200 shadow-sm hover:shadow-md transition-all">
     <div className="flex items-center justify-between mb-4">
       <div className={`w-12 h-12 bg-gradient-to-br ${gradient} rounded-xl flex items-center justify-center shadow-lg`}>
         <Icon className="w-6 h-6 text-white" />
       </div>
-      {change !== undefined && (
-        <div className={`flex items-center gap-1 text-sm font-medium ${
-          change > 0 ? 'text-lime-600' : 'text-red-600'
-        }`}>
+      {change !== null && change !== undefined && (
+        <div className={`flex items-center gap-1 text-sm font-medium ${change > 0 ? 'text-lime-600' : 'text-red-600'}`}>
           {change > 0 ? <TrendingUp className="w-4 h-4" /> : <TrendingDown className="w-4 h-4" />}
-          <span>{Math.abs(change)}%</span>
+          <span>{Math.abs(change).toFixed(1)}%</span>
         </div>
       )}
     </div>
     <h3 className="text-3xl font-bold text-neutral-800 mb-1">{value}</h3>
     <p className="text-sm text-neutral-500 font-medium">{title}</p>
+    {note && <p className="text-xs text-orange-500 mt-1">{note}</p>}
   </motion.div>
 );
 
-// Growth Chart Component
-const GrowthChart = ({ data }) => {
-  const maxValue = Math.max(...data.map(d => d.followers));
-  const minValue = Math.min(...data.map(d => d.followers));
+const EmptyChart = ({ message }) => (
+  <div className="h-48 flex flex-col items-center justify-center text-neutral-400 gap-2">
+    <BarChart3 className="w-8 h-8 opacity-30" />
+    <p className="text-sm text-center max-w-xs">{message}</p>
+  </div>
+);
+
+const GrowthChart = ({ data, valueKey, label, color }) => {
+  const values = data.map(d => d[valueKey] || 0);
+  const maxValue = Math.max(...values, 1);
+  const minValue = Math.min(...values, 0);
+  const range = maxValue - minValue || 1;
+
+  const points = data.map((item, i) => ({
+    x: data.length > 1 ? (i / (data.length - 1)) * 100 : 50,
+    y: 100 - ((( item[valueKey] || 0) - minValue) / range) * 85,
+    ...item,
+  }));
 
   return (
-    <div className="relative h-80">
-      {/* Y-axis labels */}
-      <div className="absolute left-0 top-0 bottom-12 flex flex-col justify-between text-xs text-neutral-500 pr-2">
-        <span>{(maxValue / 1000).toFixed(0)}K</span>
-        <span>{((maxValue * 0.75) / 1000).toFixed(0)}K</span>
-        <span>{((maxValue * 0.5) / 1000).toFixed(0)}K</span>
-        <span>{((maxValue * 0.25) / 1000).toFixed(0)}K</span>
-        <span>0</span>
-      </div>
-
-      {/* Chart area */}
-      <div className="ml-12 h-full relative">
-        {/* Grid lines */}
-        <div className="absolute inset-0 bottom-12 flex flex-col justify-between">
-          {[0, 1, 2, 3, 4].map((i) => (
-            <div key={i} className="border-t border-neutral-100"></div>
-          ))}
-        </div>
-
-        {/* SVG Chart */}
-        <svg className="absolute inset-0 bottom-12 w-full h-full">
-          <defs>
-            <linearGradient id="followerGradient" x1="0%" y1="0%" x2="0%" y2="100%">
-              <stop offset="0%" stopColor="#7c3aed" stopOpacity="0.3" />
-              <stop offset="100%" stopColor="#7c3aed" stopOpacity="0.05" />
-            </linearGradient>
-          </defs>
-
-          {/* Calculate points */}
-          {(() => {
-            const points = data.map((item, index) => {
-              // Guard against division by zero if data has only one item
-              const x = data.length > 1 ? (index / (data.length - 1)) * 100 : 0;
-              
-              // Guard against division by zero if all values are the same
-              const range = maxValue - minValue;
-              const y = range !== 0 
-                ? 100 - ((item.followers - minValue) / range) * 100 
-                : 50; // Place in middle if no range
-                
-              return { x, y, ...item };
-            });
-
-            const linePoints = points.map(p => `${p.x},${p.y}`).join(' ');
-            const areaPoints = `0,100 ${linePoints} 100,100`;
-
-            return (
-              <>
-                {/* Area */}
-                <motion.polygon
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  transition={{ duration: 1, ease: "easeOut" }}
-                  points={areaPoints}
-                  fill="url(#followerGradient)"
-                />
-
-                {/* Line */}
-                <motion.polyline
-                  initial={{ pathLength: 0 }}
-                  animate={{ pathLength: 1 }}
-                  transition={{ duration: 1.5, ease: "easeOut" }}
-                  points={linePoints}
-                  fill="none"
-                  stroke="#7c3aed"
-                  strokeWidth="3"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                />
-
-                {/* Points */}
-                {points.map((point, index) => (
-                  <g key={index} className="group">
-                    <circle
-                      cx={`${point.x}%`}
-                      cy={`${point.y}%`}
-                      r="20"
-                      fill="transparent"
-                      className="cursor-pointer"
-                    />
-                    <motion.circle
-                      initial={{ scale: 0 }}
-                      animate={{ scale: 1 }}
-                      transition={{ delay: 1.5 + index * 0.1, duration: 0.3 }}
-                      cx={`${point.x}%`}
-                      cy={`${point.y}%`}
-                      r="4"
-                      fill="white"
-                      stroke="#7c3aed"
-                      strokeWidth="3"
-                      className="transition-all duration-200 group-hover:r-6"
-                    />
-                    <foreignObject
-                      x={`${point.x - 15}%`}
-                      y={`${point.y - 25}%`}
-                      width="120"
-                      height="80"
-                      className="pointer-events-none">
-                      <div className="opacity-0 group-hover:opacity-100 transition-opacity duration-200">
-                        <div className="bg-neutral-900 text-white text-xs rounded-lg px-3 py-2 shadow-lg whitespace-nowrap">
-                          <div className="font-semibold">{point.month}</div>
-                          <div className="text-neutral-300">{(point.followers / 1000).toFixed(1)}K followers</div>
-                          <div className="text-neutral-300">{point.engagement}% engagement</div>
-                        </div>
-                      </div>
-                    </foreignObject>
-                  </g>
-                ))}
-              </>
-            );
-          })()}
-        </svg>
-
-        {/* X-axis labels */}
-        <div className="absolute bottom-0 left-0 right-0 flex justify-between">
-          {data.map((item, index) => (
-            <div key={index} className="text-xs text-neutral-600 font-medium">
-              {item.month}
-            </div>
-          ))}
-        </div>
+    <div className="relative h-48">
+      <svg className="w-full h-full" viewBox="0 0 100 100" preserveAspectRatio="none">
+        <defs>
+          <linearGradient id={`grad-${valueKey}`} x1="0%" y1="0%" x2="0%" y2="100%">
+            <stop offset="0%" stopColor={color} stopOpacity="0.25" />
+            <stop offset="100%" stopColor={color} stopOpacity="0.03" />
+          </linearGradient>
+        </defs>
+        <motion.polygon
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ duration: 0.8 }}
+          points={`0,100 ${points.map(p => `${p.x},${p.y}`).join(' ')} 100,100`}
+          fill={`url(#grad-${valueKey})`}
+        />
+        <motion.polyline
+          initial={{ pathLength: 0 }}
+          animate={{ pathLength: 1 }}
+          transition={{ duration: 1.2 }}
+          points={points.map(p => `${p.x},${p.y}`).join(' ')}
+          fill="none"
+          stroke={color}
+          strokeWidth="2.5"
+          vectorEffect="non-scaling-stroke"
+        />
+      </svg>
+      <div className="absolute bottom-0 left-0 right-0 flex justify-between text-xs text-neutral-500 px-1">
+        {data.map((item, i) => <span key={i}>{item.month}</span>)}
       </div>
     </div>
   );
 };
 
-// Engagement Bar Component
-const EngagementBar = ({ label, value, max, color, icon: Icon }) => {
-  const percentage = (value / max) * 100;
+const EarningsChart = ({ data }) => {
+  const maxVal = Math.max(...data.map(d => d.earnings), 1);
+  return (
+    <div className="h-48 flex items-end gap-2 pt-4">
+      {data.map((item, i) => {
+        const h = Math.max((item.earnings / maxVal) * 100, 2);
+        return (
+          <div key={i} className="flex-1 flex flex-col items-center gap-1 group relative">
+            <div className="absolute -top-6 left-1/2 -translate-x-1/2 bg-neutral-900 text-white text-[10px] px-2 py-1 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap z-10 pointer-events-none">
+              ₹{item.earnings.toLocaleString('en-IN', { maximumFractionDigits: 0 })}
+            </div>
+            <motion.div
+              initial={{ height: 0 }}
+              animate={{ height: `${h}%` }}
+              transition={{ delay: i * 0.08, duration: 0.6 }}
+              className="w-full bg-gradient-to-t from-orange-500 to-orange-400 rounded-t-lg min-h-[4px]"
+              style={{ height: `${h}%` }}
+            />
+            <span className="text-[10px] text-neutral-500 truncate w-full text-center">{item.month}</span>
+          </div>
+        );
+      })}
+    </div>
+  );
+};
+
+const EngagementBar = ({ label, value, max, color, icon: Icon, displayPrefix = '' }) => {
+  const percentage = Math.min((value / Math.max(max, 1)) * 100, 100);
   const colorClasses = {
     cyan: 'from-cyan-500 to-cyan-600',
     lime: 'from-lime-500 to-lime-600',
     violet: 'from-violet-500 to-violet-600',
-    orange: 'from-orange-500 to-orange-600'
+    orange: 'from-orange-500 to-orange-600',
   };
-
   return (
     <div className="space-y-2">
       <div className="flex items-center justify-between text-sm">
@@ -685,13 +687,13 @@ const EngagementBar = ({ label, value, max, color, icon: Icon }) => {
           <Icon className="w-4 h-4 text-neutral-600" />
           <span className="text-neutral-700 font-medium">{label}</span>
         </div>
-        <span className="text-neutral-800 font-bold">{value.toLocaleString()}</span>
+        <span className="text-neutral-800 font-bold">{displayPrefix}{value.toLocaleString('en-IN')}</span>
       </div>
       <div className="relative h-2.5 bg-neutral-100 rounded-full overflow-hidden">
         <motion.div
           initial={{ width: 0 }}
           animate={{ width: `${percentage}%` }}
-          transition={{ duration: 1, delay: 0.5, ease: "easeOut" }}
+          transition={{ duration: 1, delay: 0.5 }}
           className={`absolute inset-y-0 left-0 bg-gradient-to-r ${colorClasses[color]} rounded-full`}
         />
       </div>

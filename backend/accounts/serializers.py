@@ -1,6 +1,6 @@
 from rest_framework import serializers
 from django.contrib.auth import authenticate
-from .models import User, InfluencerProfile, CompanyProfile
+from .models import User, InfluencerProfile, CompanyProfile, SellerProfile
 
 class UserRegistrationSerializer(serializers.ModelSerializer):
     password = serializers.CharField(write_only=True, min_length=8)
@@ -53,6 +53,7 @@ class InfluencerProfileSerializer(serializers.ModelSerializer):
     
     # Override to accept both URLs and base64 data
     profile_image = serializers.CharField(allow_blank=True, required=False)
+    cover_image = serializers.CharField(allow_blank=True, required=False)
     
     class Meta:
         model = InfluencerProfile
@@ -62,7 +63,7 @@ class InfluencerProfileSerializer(serializers.ModelSerializer):
             'followers_count', 'engagement_rate',
             'rate_per_post', 'rate_per_story', 'rate_per_reel', 'rate_per_video',
             'instagram_handle', 'youtube_channel',
-            'profile_image', 'portfolio_images', 'portfolio_videos', 'website_url',
+            'profile_image', 'cover_image', 'portfolio_images', 'portfolio_videos', 'website_url',
             'latest_product_review_link', 'latest_product_review_cover',
             'latest_product_review_views', 'latest_product_review_likes',
             'most_viewed_content_link', 'most_viewed_content_cover',
@@ -97,17 +98,59 @@ class CompanyProfileSerializer(serializers.ModelSerializer):
         fields = '__all__'
         read_only_fields = ('user',)
 
+
+class SellerProfileSerializer(serializers.ModelSerializer):
+    user_email = serializers.EmailField(source='user.email', read_only=True)
+    username = serializers.CharField(source='user.username', read_only=True)
+    kyc_document_url = serializers.SerializerMethodField()
+    bank_document_url = serializers.SerializerMethodField()
+
+    class Meta:
+        model = SellerProfile
+        fields = '__all__'
+        read_only_fields = ('user', 'verification_status', 'rejection_reason',
+                            'kyc_document_file', 'bank_document_file')
+
+    def get_kyc_document_url(self, obj):
+        if obj.kyc_document_file:
+            request = self.context.get('request')
+            if request:
+                return request.build_absolute_uri(obj.kyc_document_file.url)
+            return obj.kyc_document_file.url
+        return obj.kyc_document or None
+
+    def get_bank_document_url(self, obj):
+        if obj.bank_document_file:
+            request = self.context.get('request')
+            if request:
+                return request.build_absolute_uri(obj.bank_document_file.url)
+            return obj.bank_document_file.url
+        return obj.bank_document or None
+
+
+class ApprovalAuditLogSerializer(serializers.ModelSerializer):
+    admin_username = serializers.ReadOnlyField(source='admin.username', default=None)
+
+    class Meta:
+        from .models import ApprovalAuditLog
+        model = ApprovalAuditLog
+        fields = ('id', 'admin', 'admin_username', 'action', 'previous_status',
+                  'new_status', 'reason', 'ip_address', 'timestamp')
+        read_only_fields = fields
+
+
 class UserSerializer(serializers.ModelSerializer):
     influencer_profile = InfluencerProfileSerializer(read_only=True)
     company_profile = CompanyProfileSerializer(read_only=True)
+    seller_profile = SellerProfileSerializer(read_only=True)
     
     class Meta:
         model = User
         fields = ('id', 'email', 'username', 'user_type', 'phone', 'is_verified', 
-                 'created_at', 'influencer_profile', 'company_profile',
-                 'approval_status', 'is_approved', 'rejection_reason', 'approval_shown')
+                 'created_at', 'influencer_profile', 'company_profile', 'seller_profile',
+                 'approval_status', 'is_approved', 'rejection_reason', 'approval_shown', 'reward_points')
         read_only_fields = ('id', 'created_at', 'approval_status', 'is_approved', 
-                           'rejection_reason', 'approval_shown')
+                           'rejection_reason', 'approval_shown', 'user_type')
 
 
 class ChangePasswordSerializer(serializers.Serializer):

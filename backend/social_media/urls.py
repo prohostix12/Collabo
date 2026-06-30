@@ -6,6 +6,7 @@ from django.urls import path, include
 from rest_framework.routers import DefaultRouter
 from . import views
 from . import analytics_views
+from .views import FetchHandleStatsView
 
 # Create router for ViewSets
 router = DefaultRouter()
@@ -40,6 +41,9 @@ urlpatterns = [
     
     # Webhook endpoints
     path('webhooks/<str:platform>/', views.WebhookView.as_view(), name='webhook'),
+    
+    # Auto-fetch handle stats endpoint (Instagram + YouTube)
+    path('fetch-handle-stats/', FetchHandleStatsView.as_view(), name='fetch-handle-stats'),
     
     # Legacy endpoints for backward compatibility
     path('update-followers/', views.update_my_followers, name='update-followers'),

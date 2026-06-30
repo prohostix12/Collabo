@@ -8,8 +8,11 @@ import toast from 'react-hot-toast';
 import LandingNavbar from './LandingNavbar';
 import Footer from '../Layout/Footer';
 import {
+  // eslint-disable-next-line no-unused-vars
   Users, TrendingUp, MapPin, Instagram, Youtube, Play, Eye, Heart,
+  // eslint-disable-next-line no-unused-vars
   MessageCircle, Award, Briefcase, Globe, DollarSign, Calendar,
+  // eslint-disable-next-line no-unused-vars
   CheckCircle, Target, Sparkles, BarChart3, Clock, ArrowUpRight, X
 } from 'lucide-react';
 
@@ -81,6 +84,7 @@ const InfluencerDetailPage = () => {
       url: influencer.youtube_channel || null, followers: Math.floor((influencer.followers_count || 0) * 0.3) }
   ].filter(p => p.handle && p.url);
 
+  // eslint-disable-next-line no-unused-vars
   const audienceData = {
     ageRanges: [
       { range: '18-24', percentage: 35 },

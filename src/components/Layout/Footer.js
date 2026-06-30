@@ -1,210 +1,148 @@
-import React from 'react';
-import { 
-  Sparkles, 
-  Mail, 
-  Phone, 
-  MapPin, 
-  Twitter, 
-  Linkedin, 
-  Instagram, 
-  Github,
-  ExternalLink,
-  Heart
-} from 'lucide-react';
+import React, { useState } from 'react';
+import { Mail, Phone, MapPin, ArrowRight, CheckCircle2, Loader2 } from 'lucide-react';
 import { Link } from 'react-router-dom';
+import api from '../../services/api';
 
 const Footer = () => {
   const currentYear = new Date().getFullYear();
+  const [email, setEmail] = useState('');
+  const [status, setStatus] = useState('idle');
+  const [message, setMessage] = useState('');
 
-  const platformLinks = [
-    { name: 'Find Creators', href: '/creators' },
-    { name: 'Browse Campaigns', href: '/campaigns' },
-    { name: 'Create Campaign', href: '/campaigns/create' },
-    { name: 'My Collaborations', href: '/collaborations' },
-    { name: 'Dashboard', href: '/dashboard' }
-  ];
-
-  const aboutLinks = [
-    { name: 'About Us', href: '/about' },
-    { name: 'How It Works', href: '/how-it-works' },
-    { name: 'Success Stories', href: '/success-stories' },
-    { name: 'Pricing', href: '/pricing' },
-    { name: 'Careers', href: '/careers' }
-  ];
-
-  const supportLinks = [
-    { name: 'Help Center', href: '/help' },
-    { name: 'Contact Support', href: '/support' },
-    { name: 'API Documentation', href: '/docs' },
-    { name: 'Community Forum', href: '/community' },
-    { name: 'Status Page', href: '/status' }
-  ];
-
-  const legalLinks = [
-    { name: 'Privacy Policy', href: '/privacy' },
-    { name: 'Terms of Service', href: '/terms' },
-    { name: 'Cookie Policy', href: '/cookies' },
-    { name: 'GDPR Compliance', href: '/gdpr' }
-  ];
-
-  const socialLinks = [
-    { name: 'Twitter', icon: Twitter, href: 'https://twitter.com/collabo' },
-    { name: 'LinkedIn', icon: Linkedin, href: 'https://linkedin.com/company/collabo' },
-    { name: 'Instagram', icon: Instagram, href: 'https://instagram.com/collabo' },
-    { name: 'GitHub', icon: Github, href: 'https://github.com/collabo' }
-  ];
+  const handleSubscribe = async (e) => {
+    e.preventDefault();
+    if (!email.trim()) return;
+    setStatus('loading');
+    try {
+      const res = await api.post('/ecommerce/newsletter/subscribe/', { email: email.trim() });
+      setStatus('success');
+      setMessage(res.data.message || 'Successfully subscribed!');
+      setEmail('');
+      setTimeout(() => setStatus('idle'), 4000);
+    } catch (err) {
+      setStatus('error');
+      const errMsg = err.response?.data?.error || err.response?.data?.email?.[0] || 'Something went wrong.';
+      setMessage(errMsg);
+      setTimeout(() => setStatus('idle'), 4000);
+    }
+  };
 
   return (
-    <footer className="bg-white border-t border-gray-100 mt-auto relative overflow-hidden">
-      {/* Subtle top glow */}
-      <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[600px] h-[300px] bg-accent-500/5 rounded-full blur-[100px] pointer-events-none" />
-      
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16 sm:py-20 relative z-10">
-        {/* Main Footer Content */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-10 lg:gap-12">
-          {/* Logo and Company Info */}
-          <div className="lg:col-span-2">
-            <div className="flex items-center space-x-3 mb-6">
-              <div className="w-10 h-10 bg-gradient-to-br from-primary-500 to-accent-500 rounded-xl flex items-center justify-center shadow-lg">
-                <Sparkles className="w-6 h-6 text-white" />
+    <footer className="mt-auto">
+      {/* Newsletter strip */}
+      <div className="bg-[#1B5E6B]">
+        <div className="max-w-6xl mx-auto px-4 sm:px-6 py-5 flex flex-col sm:flex-row items-center justify-between gap-4">
+          <div>
+            <h4 className="text-sm font-black text-white tracking-tight">Get updates on new deals & offers</h4>
+            <p className="text-[11px] text-white/70 font-medium mt-0.5">Subscribe for the latest arrivals, exclusive discounts & more.</p>
+          </div>
+          <form onSubmit={handleSubscribe} className="flex gap-2 w-full sm:w-auto">
+            <input
+              type="email"
+              required
+              placeholder="Enter your email address"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              disabled={status === 'loading'}
+              className="flex-1 sm:w-64 bg-white text-slate-800 placeholder-slate-400 text-xs font-medium rounded-lg px-4 py-2.5 outline-none focus:ring-2 focus:ring-[#ff9f00] transition-all disabled:opacity-60"
+            />
+            <button
+              type="submit"
+              disabled={status === 'loading'}
+              className="bg-[#ff9f00] hover:bg-[#e88f00] text-white text-xs font-bold px-5 py-2.5 rounded-lg flex items-center gap-1.5 transition-colors shadow-sm whitespace-nowrap disabled:opacity-60"
+            >
+              {status === 'loading' ? (
+                <><Loader2 className="w-3 h-3 animate-spin" /> Subscribing...</>
+              ) : status === 'success' ? (
+                <><CheckCircle2 className="w-3 h-3" /> Subscribed!</>
+              ) : (
+                <>Subscribe <ArrowRight className="w-3 h-3" /></>
+              )}
+            </button>
+          </form>
+          {status !== 'idle' && status !== 'loading' && (
+            <p className={`text-[11px] font-semibold w-full sm:w-auto text-center sm:text-right ${status === 'success' ? 'text-emerald-200' : 'text-red-200'}`}>{message}</p>
+          )}
+        </div>
+      </div>
+
+      {/* Main footer */}
+      <div className="bg-white border-t border-slate-100">
+        <div className="max-w-6xl mx-auto px-4 sm:px-6 py-10">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8">
+            {/* Brand + Contact */}
+            <div>
+              <img src="/collabo-logo.png" alt="Collabo" className="h-20 object-contain mb-3 scale-[1.6] origin-left transform" />
+              <p className="text-[12px] text-slate-500 leading-relaxed mb-5">
+                Your one-stop marketplace for quality products. Shop smart, sell easy.
+              </p>
+              <div className="space-y-3">
+                <a href="mailto:support@collabo.com" className="flex items-center gap-2.5 text-[12px] text-slate-500 hover:text-[#1B5E6B] transition-colors group">
+                  <div className="w-8 h-8 rounded-lg bg-[#1B5E6B]/5 group-hover:bg-[#1B5E6B]/10 flex items-center justify-center shrink-0 transition-colors">
+                    <Mail className="w-3.5 h-3.5 text-[#1B5E6B]" />
+                  </div>
+                  support@collabo.com
+                </a>
+                <a href="tel:+918448119359" className="flex items-center gap-2.5 text-[12px] text-slate-500 hover:text-[#1B5E6B] transition-colors group">
+                  <div className="w-8 h-8 rounded-lg bg-[#1B5E6B]/5 group-hover:bg-[#1B5E6B]/10 flex items-center justify-center shrink-0 transition-colors">
+                    <Phone className="w-3.5 h-3.5 text-[#1B5E6B]" />
+                  </div>
+                  +91 84481 19359
+                </a>
+                <div className="flex items-start gap-2.5 text-[12px] text-slate-500">
+                  <div className="w-8 h-8 rounded-lg bg-[#1B5E6B]/5 flex items-center justify-center shrink-0 mt-0.5">
+                    <MapPin className="w-3.5 h-3.5 text-[#1B5E6B]" />
+                  </div>
+                  <span>Collabo Marketplace Inc.,<br/>H-123, Sector 63, Noida,<br/>Uttar Pradesh, 201301, India</span>
+                </div>
               </div>
-              <h3 className="text-2xl font-bold text-gray-900 tracking-tight">Collabo</h3>
             </div>
-            
-            <p className="text-gray-600 text-sm leading-relaxed mb-8 max-w-md">
-              The premier platform connecting forward-thinking brands with authentic creators. 
-              Build meaningful partnerships, scale campaigns effortlessly, and monitor ROAS 
-              with our state-of-the-art infrastructure.
+
+            {/* Shop */}
+            <div>
+              <h4 className="text-[11px] font-black text-[#1B5E6B] uppercase tracking-widest mb-4 pb-2 border-b-2 border-[#ff9f00] inline-block">Shop</h4>
+              <ul className="space-y-3">
+                <li><Link to="/" className="text-[12px] text-slate-500 hover:text-[#1B5E6B] transition-colors font-medium">Browse Products</Link></li>
+                <li><Link to="/sell" className="text-[12px] text-slate-500 hover:text-[#1B5E6B] transition-colors font-medium">Sell on Collabo</Link></li>
+                <li><Link to="/collab" className="text-[12px] text-slate-500 hover:text-[#1B5E6B] transition-colors font-medium">For Creators</Link></li>
+                <li><Link to="/dashboard" className="text-[12px] text-slate-500 hover:text-[#1B5E6B] transition-colors font-medium">Dashboard</Link></li>
+              </ul>
+            </div>
+
+            {/* Support */}
+            <div>
+              <h4 className="text-[11px] font-black text-[#1B5E6B] uppercase tracking-widest mb-4 pb-2 border-b-2 border-[#ff9f00] inline-block">Support</h4>
+              <ul className="space-y-3">
+                <li><a href="/#support" className="text-[12px] text-slate-500 hover:text-[#1B5E6B] transition-colors font-medium">Contact Support</a></li>
+                <li><a href="tel:+918448119359" className="text-[12px] text-slate-500 hover:text-[#1B5E6B] transition-colors font-medium">Call Us</a></li>
+                <li><Link to="/shipping-policy" className="text-[12px] text-slate-500 hover:text-[#1B5E6B] transition-colors font-medium">Shipping Info</Link></li>
+                <li><Link to="/return-policy" className="text-[12px] text-slate-500 hover:text-[#1B5E6B] transition-colors font-medium">Returns & Refunds</Link></li>
+              </ul>
+            </div>
+
+            {/* Legal */}
+            <div>
+              <h4 className="text-[11px] font-black text-[#1B5E6B] uppercase tracking-widest mb-4 pb-2 border-b-2 border-[#ff9f00] inline-block">Legal</h4>
+              <ul className="space-y-3">
+                <li><Link to="/privacy" className="text-[12px] text-slate-500 hover:text-[#1B5E6B] transition-colors font-medium">Privacy Policy</Link></li>
+                <li><Link to="/terms" className="text-[12px] text-slate-500 hover:text-[#1B5E6B] transition-colors font-medium">Terms of Service</Link></li>
+                <li><Link to="/return-policy" className="text-[12px] text-slate-500 hover:text-[#1B5E6B] transition-colors font-medium">Return Policy</Link></li>
+                <li><Link to="/shipping-policy" className="text-[12px] text-slate-500 hover:text-[#1B5E6B] transition-colors font-medium">Shipping Policy</Link></li>
+              </ul>
+            </div>
+          </div>
+        </div>
+
+        {/* Bottom bar */}
+        <div className="border-t border-slate-100 bg-slate-50">
+          <div className="max-w-6xl mx-auto px-4 sm:px-6 py-4 flex flex-wrap items-center justify-between gap-3">
+            <p className="text-[10px] text-slate-400 font-medium">
+              &copy; {currentYear} Collabo Marketplace Inc. All rights reserved.
             </p>
-
-            {/* Contact Info */}
-            <div className="space-y-4">
-              <div className="flex items-center space-x-3 text-sm text-gray-600">
-                <div className="w-8 h-8 rounded-full bg-gray-50 flex items-center justify-center border border-gray-100">
-                  <Mail className="w-4 h-4 text-accent-500" />
-                </div>
-                <span>hello@collabo.com</span>
-              </div>
-              <div className="flex items-center space-x-3 text-sm text-gray-600">
-                <div className="w-8 h-8 rounded-full bg-gray-50 flex items-center justify-center border border-gray-100">
-                  <Phone className="w-4 h-4 text-accent-500" />
-                </div>
-                <span>+1 (555) 123-4567</span>
-              </div>
-              <div className="flex items-center space-x-3 text-sm text-gray-600">
-                <div className="w-8 h-8 rounded-full bg-gray-50 flex items-center justify-center border border-gray-100">
-                  <MapPin className="w-4 h-4 text-accent-500" />
-                </div>
-                <span>San Francisco, CA</span>
-              </div>
-            </div>
-          </div>
-
-          {/* Platform Links */}
-          <div>
-            <h4 className="text-lg font-bold text-gray-900 mb-6">Platform</h4>
-            <ul className="space-y-4">
-              {platformLinks.map((link) => (
-                <li key={link.name}>
-                  <Link
-                    to={link.href}
-                    className="text-sm text-gray-500 hover:text-accent-600 transition-colors duration-200 flex items-center group"
-                  >
-                    <span>{link.name}</span>
-                    <ExternalLink className="w-3 h-3 ml-2 opacity-0 -translate-y-1 group-hover:opacity-100 group-hover:translate-y-0 transition-all duration-200 text-accent-500" />
-                  </Link>
-                </li>
-              ))}
-            </ul>
-          </div>
-
-          {/* About Links */}
-          <div>
-            <h4 className="text-lg font-bold text-gray-900 mb-6">Company</h4>
-            <ul className="space-y-4">
-              {aboutLinks.map((link) => (
-                <li key={link.name}>
-                  <Link
-                    to={link.href}
-                    className="text-sm text-gray-500 hover:text-accent-600 transition-colors duration-200 flex items-center group"
-                  >
-                    <span>{link.name}</span>
-                    <ExternalLink className="w-3 h-3 ml-2 opacity-0 -translate-y-1 group-hover:opacity-100 group-hover:translate-y-0 transition-all duration-200 text-accent-500" />
-                  </Link>
-                </li>
-              ))}
-            </ul>
-          </div>
-
-          {/* Help & Support */}
-          <div>
-            <h4 className="text-lg font-bold text-gray-900 mb-6">Resources</h4>
-            <ul className="space-y-4">
-              {supportLinks.map((link) => (
-                <li key={link.name}>
-                  <Link
-                    to={link.href}
-                    className="text-sm text-gray-500 hover:text-accent-600 transition-colors duration-200 flex items-center group"
-                  >
-                    <span>{link.name}</span>
-                    <ExternalLink className="w-3 h-3 ml-2 opacity-0 -translate-y-1 group-hover:opacity-100 group-hover:translate-y-0 transition-all duration-200 text-accent-500" />
-                  </Link>
-                </li>
-              ))}
-            </ul>
-          </div>
-        </div>
-
-        {/* Bottom Section */}
-        <div className="mt-16 pt-8 border-t border-gray-100 flex flex-col lg:flex-row lg:items-center lg:justify-between space-y-6 lg:space-y-0">
-          
-          {/* Social Media Links */}
-          <div className="flex items-center space-x-6">
-            <span className="text-sm text-gray-500 font-medium">Follow us</span>
-            <div className="flex items-center space-x-3">
-              {socialLinks.map((social) => {
-                const SocialIcon = social.icon;
-                return (
-                  <a
-                    key={social.name}
-                    href={social.href}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="w-10 h-10 bg-gray-50 border border-gray-100 hover:border-accent-200 hover:bg-white rounded-full flex items-center justify-center transition-all duration-300 transform hover:-translate-y-1 group shadow-sm"
-                    aria-label={social.name}
-                  >
-                    <SocialIcon className="w-4 h-4 text-gray-500 group-hover:text-accent-600 transition-colors duration-200" />
-                  </a>
-                );
-              })}
-            </div>
-          </div>
-
-          {/* Legal Links */}
-          <div className="flex flex-wrap items-center gap-6">
-            {legalLinks.map((link, index) => (
-              <React.Fragment key={link.name}>
-                <Link
-                  to={link.href}
-                  className="text-xs text-gray-400 hover:text-gray-900 transition-colors duration-200 uppercase tracking-widest font-semibold"
-                >
-                  {link.name}
-                </Link>
-              </React.Fragment>
-            ))}
-          </div>
-        </div>
-
-        {/* Copyright */}
-        <div className="mt-8 flex flex-col sm:flex-row sm:items-center sm:justify-between space-y-4 sm:space-y-0">
-          <p className="text-sm text-gray-500">
-            © {currentYear} Collabo Inc. All rights reserved.
-          </p>
-          
-          <div className="flex items-center space-x-2 text-sm text-gray-500 bg-gray-50 px-4 py-2 rounded-full border border-gray-100">
-            <span>Built with</span>
-            <Heart className="w-4 h-4 text-accent-500 fill-current" />
-            <span>for the future of internet</span>
+            <p className="text-[10px] text-slate-400 font-medium text-right sm:text-left">
+              support@collabo.com &middot; +91 84481 19359<br/>
+              Address: H-123, Sector 63, Noida, UP, 201301, India
+            </p>
           </div>
         </div>
       </div>

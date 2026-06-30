@@ -157,7 +157,7 @@ const AdminSupportTickets = () => {
     return (
       <div className="flex items-center justify-center py-12">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600 mx-auto mb-4"></div>
+          <div className="w-5 h-5 border-2 border-gray-300 border-t-gray-600 rounded-full animate-spin mx-auto mb-3"></div>
           <p className="text-gray-600 dark:text-gray-400">Loading tickets...</p>
         </div>
       </div>
@@ -165,219 +165,124 @@ const AdminSupportTickets = () => {
   }
 
   return (
-    <div className="space-y-6 animate-fadeIn">
+    <div className="space-y-3">
       {/* Header */}
       <div>
-        <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-white">Support Tickets Management</h1>
-        <p className="text-sm sm:text-base text-gray-600 dark:text-gray-400 mt-1">
-          Manage and respond to user support requests
-        </p>
+        <h1 className="text-sm font-semibold text-gray-900 dark:text-white">Support Tickets</h1>
+        <p className="text-[11px] text-gray-500">{filteredTickets.length} tickets</p>
       </div>
 
-      {/* Stats Cards */}
+      {/* Stats */}
       {stats && (
-        <div className="grid grid-cols-2 lg:grid-cols-5 gap-3 sm:gap-4">
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="bg-white dark:bg-gray-800 rounded-lg p-4 shadow-md hover:shadow-lg transition-shadow"
-          >
-            <div className="flex items-center justify-between mb-2">
-              <Ticket className="w-5 h-5 text-gray-600 dark:text-gray-400" />
+        <div className="grid grid-cols-2 lg:grid-cols-5 gap-3">
+          {[
+            { label: 'Total', value: stats.total_tickets, icon: Ticket },
+            { label: 'Open', value: stats.status_breakdown?.open || 0, icon: AlertCircle },
+            { label: 'In Progress', value: stats.status_breakdown?.in_progress || 0, icon: Clock },
+            { label: 'Resolved', value: stats.status_breakdown?.resolved || 0, icon: CheckCircle },
+            { label: 'Avg Response', value: stats.average_response_time_hours ? `${stats.average_response_time_hours}h` : 'N/A', icon: Activity },
+          ].map((s) => (
+            <div key={s.label} className="bg-white dark:bg-gray-800 rounded-xl p-3.5 border border-gray-200 dark:border-gray-700">
+              <div className="flex items-center justify-between mb-2">
+                <s.icon className="w-4 h-4 text-gray-400" />
+              </div>
+              <p className="text-lg font-bold text-gray-900 dark:text-white">{s.value}</p>
+              <p className="text-[10px] text-gray-500 mt-0.5">{s.label}</p>
             </div>
-            <p className="text-2xl font-bold text-gray-900 dark:text-white">{stats.total_tickets}</p>
-            <p className="text-sm text-gray-600 dark:text-gray-400">Total Tickets</p>
-          </motion.div>
-
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.1 }}
-            className="bg-white dark:bg-gray-800 rounded-lg p-4 shadow-md hover:shadow-lg transition-shadow"
-          >
-            <div className="flex items-center justify-between mb-2">
-              <AlertCircle className="w-5 h-5 text-amber-600" />
-            </div>
-            <p className="text-2xl font-bold text-gray-900 dark:text-white">
-              {stats.status_breakdown?.open || 0}
-            </p>
-            <p className="text-sm text-gray-600 dark:text-gray-400">Open</p>
-          </motion.div>
-
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.2 }}
-            className="bg-white dark:bg-gray-800 rounded-lg p-4 shadow-md hover:shadow-lg transition-shadow"
-          >
-            <div className="flex items-center justify-between mb-2">
-              <Clock className="w-5 h-5 text-indigo-600" />
-            </div>
-            <p className="text-2xl font-bold text-gray-900 dark:text-white">
-              {stats.status_breakdown?.in_progress || 0}
-            </p>
-            <p className="text-sm text-gray-600 dark:text-gray-400">In Progress</p>
-          </motion.div>
-
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.3 }}
-            className="bg-white dark:bg-gray-800 rounded-lg p-4 shadow-md hover:shadow-lg transition-shadow"
-          >
-            <div className="flex items-center justify-between mb-2">
-              <CheckCircle className="w-5 h-5 text-emerald-600" />
-            </div>
-            <p className="text-2xl font-bold text-gray-900 dark:text-white">
-              {stats.status_breakdown?.resolved || 0}
-            </p>
-            <p className="text-sm text-gray-600 dark:text-gray-400">Resolved</p>
-          </motion.div>
-
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.4 }}
-            className="bg-white dark:bg-gray-800 rounded-lg p-4 shadow-md hover:shadow-lg transition-shadow"
-          >
-            <div className="flex items-center justify-between mb-2">
-              <Activity className="w-5 h-5 text-blue-600" />
-            </div>
-            <p className="text-2xl font-bold text-gray-900 dark:text-white">
-              {stats.average_response_time_hours ? `${stats.average_response_time_hours}h` : 'N/A'}
-            </p>
-            <p className="text-sm text-gray-600 dark:text-gray-400">Avg Response</p>
-          </motion.div>
+          ))}
         </div>
       )}
 
-      {/* Filters */}
-      <div className="bg-white dark:bg-gray-800 rounded-xl p-4 shadow-md border border-gray-200 dark:border-gray-700">
-        <div className="flex flex-col sm:flex-row gap-4">
-          <div className="flex-1 relative">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
-            <input
-              type="text"
-              placeholder="Search tickets..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full pl-10 pr-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
-            />
+      {/* Filters + List */}
+      <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 overflow-hidden">
+        <div className="flex flex-col sm:flex-row sm:items-center gap-2 p-3 border-b border-gray-100 dark:border-gray-700">
+          <div className="relative flex-1">
+            <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-400 w-3 h-3" />
+            <input type="text" placeholder="Search..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)}
+              className="w-full pl-8 pr-3 py-1.5 border border-gray-200 dark:border-gray-700 rounded-lg text-[11px] focus:outline-none focus:ring-1 focus:ring-gray-400 bg-white dark:bg-gray-800" />
           </div>
-          <div className="relative">
-            <Filter className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
-            <select
-              value={statusFilter}
-              onChange={(e) => setStatusFilter(e.target.value)}
-              className="pl-10 pr-8 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent appearance-none bg-white dark:bg-gray-700 text-gray-900 dark:text-white min-w-40"
-            >
-              <option value="all">All Status</option>
-              <option value="open">Open</option>
-              <option value="in_progress">In Progress</option>
-              <option value="resolved">Resolved</option>
-              <option value="closed">Closed</option>
-            </select>
-          </div>
-          <div className="relative">
-            <select
-              value={priorityFilter}
-              onChange={(e) => setPriorityFilter(e.target.value)}
-              className="pl-4 pr-8 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent appearance-none bg-white dark:bg-gray-700 text-gray-900 dark:text-white min-w-32"
-            >
-              <option value="all">All Priority</option>
-              <option value="high">High</option>
-              <option value="medium">Medium</option>
-              <option value="low">Low</option>
-            </select>
-          </div>
+          <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)}
+            className="px-3 py-1.5 border border-gray-200 dark:border-gray-700 rounded-lg text-[11px] focus:outline-none focus:ring-1 focus:ring-gray-400 bg-white dark:bg-gray-800">
+            <option value="all">All Status</option>
+            <option value="open">Open</option>
+            <option value="in_progress">In Progress</option>
+            <option value="resolved">Resolved</option>
+            <option value="closed">Closed</option>
+          </select>
+          <select value={priorityFilter} onChange={(e) => setPriorityFilter(e.target.value)}
+            className="px-3 py-1.5 border border-gray-200 dark:border-gray-700 rounded-lg text-[11px] focus:outline-none focus:ring-1 focus:ring-gray-400 bg-white dark:bg-gray-800">
+            <option value="all">All Priority</option>
+            <option value="high">High</option>
+            <option value="medium">Medium</option>
+            <option value="low">Low</option>
+          </select>
         </div>
-      </div>
 
-      {/* Tickets List */}
-      <div className="bg-white dark:bg-gray-800 rounded-xl shadow-md border border-gray-200 dark:border-gray-700">
+        {/* Quick Filter Tabs */}
+        <div className="flex gap-2 flex-wrap">
+          {[
+            { value: 'all', label: 'All', color: 'bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300' },
+            { value: 'open', label: 'Open', color: 'bg-blue-50 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400' },
+            { value: 'in_progress', label: 'In Progress', color: 'bg-amber-50 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400' },
+            { value: 'resolved', label: 'Resolved', color: 'bg-green-50 text-green-700 dark:bg-green-900/30 dark:text-green-400' },
+            { value: 'closed', label: 'Closed', color: 'bg-gray-50 text-gray-500 dark:bg-gray-800 dark:text-gray-500' },
+          ].map(tab => (
+            <button
+              key={tab.value}
+              onClick={() => setStatusFilter(tab.value)}
+              className={`px-3 py-1.5 rounded-lg text-[11px] font-bold transition-all ${statusFilter === tab.value ? tab.color + ' ring-2 ring-offset-1 ring-gray-300 dark:ring-gray-600 shadow-sm' : 'bg-white dark:bg-gray-800 text-gray-400 border border-gray-100 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700'}`}
+            >
+              {tab.label}
+              {tab.value !== 'all' && stats && (
+                <span className="ml-1.5 text-[9px] opacity-70">
+                  {tab.value === 'open' ? (stats.status_breakdown?.open || 0) :
+                   tab.value === 'in_progress' ? (stats.status_breakdown?.in_progress || 0) :
+                   tab.value === 'resolved' ? (stats.status_breakdown?.resolved || 0) :
+                   (stats.status_breakdown?.closed || 0)}
+                </span>
+              )}
+            </button>
+          ))}
+        </div>
+
         {filteredTickets.length === 0 ? (
-          <div className="text-center py-12 px-4">
-            <Ticket className="w-16 h-16 text-gray-400 mx-auto mb-4" />
-            <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">No tickets found</h3>
-            <p className="text-gray-600 dark:text-gray-400">
-              {searchQuery ? 'Try adjusting your search or filters' : 'No support tickets yet'}
-            </p>
-          </div>
+          <div className="text-center py-10 text-[11px] text-gray-400">No tickets found</div>
         ) : (
-          <div className="divide-y divide-gray-200 dark:divide-gray-700">
+          <div className="divide-y divide-gray-50 dark:divide-gray-700">
             {filteredTickets.map((ticket, index) => {
               const statusConfig = getStatusConfig(ticket.status);
               const StatusIcon = statusConfig.icon;
-
               return (
-                <motion.div
-                  key={ticket.id}
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: index * 0.05 }}
-                  className="p-6 hover:bg-gray-50 dark:hover:bg-gray-750 transition-colors cursor-pointer"
-                  onClick={() => setSelectedTicket(ticket)}
-                >
-                  <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4">
-                    <div className="flex-1">
-                      <div className="flex items-start gap-3 mb-3">
-                        <div className="w-10 h-10 bg-primary-100 dark:bg-primary-900 rounded-lg flex items-center justify-center flex-shrink-0">
-                          <Ticket className="w-5 h-5 text-primary-600 dark:text-primary-400" />
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center gap-2 mb-1 flex-wrap">
-                            <h3 className="text-lg font-semibold text-gray-900 dark:text-white truncate">
-                              {ticket.subject}
-                            </h3>
-                            <span className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium border ${statusConfig.color}`}>
-                              <StatusIcon className="w-3 h-3" />
-                              {statusConfig.label}
-                            </span>
-                            <span className={`px-2.5 py-0.5 rounded-full text-xs font-medium ${getPriorityColor(ticket.priority)}`}>
-                              {ticket.priority.toUpperCase()}
-                            </span>
-                          </div>
-                          <p className="text-sm text-gray-600 dark:text-gray-400 mb-2">
-                            Ticket #{ticket.ticket_number}
-                          </p>
-                          <div className="flex flex-wrap items-center gap-3 text-xs text-gray-600 dark:text-gray-400">
-                            <span className="inline-flex items-center gap-1">
-                              <User className="w-3 h-3" />
-                              {ticket.user_details?.username || 'Unknown User'}
-                            </span>
-                            <span className="inline-flex items-center gap-1">
-                              <Calendar className="w-3 h-3" />
-                              {new Date(ticket.created_at).toLocaleDateString()}
-                            </span>
-                            <span className="px-2 py-0.5 bg-gray-100 dark:bg-gray-700 rounded-full">
-                              {ticket.category.charAt(0).toUpperCase() + ticket.category.slice(1)}
-                            </span>
-                            {ticket.response_time && (
-                              <span className="text-green-600 dark:text-green-400 font-medium">
-                                Responded in {ticket.response_time}h
-                              </span>
-                            )}
-                          </div>
-                        </div>
+                <div key={ticket.id}
+                  className="px-4 py-3 hover:bg-gray-50 dark:hover:bg-gray-700/30 transition-colors cursor-pointer"
+                  onClick={() => setSelectedTicket(ticket)}>
+                  <div className="flex items-start gap-3">
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 mb-0.5 flex-wrap">
+                        <span className="text-[11px] font-medium text-gray-900 dark:text-white truncate">{ticket.subject}</span>
+                        <span className={`inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-full text-[9px] font-medium ${statusConfig.color}`}>
+                          <StatusIcon className="w-2.5 h-2.5" />
+                          {statusConfig.label}
+                        </span>
+                        <span className={`px-1.5 py-0.5 rounded-full text-[9px] font-medium ${getPriorityColor(ticket.priority)}`}>
+                          {ticket.priority}
+                        </span>
                       </div>
-                      <p className="text-sm text-gray-700 dark:text-gray-300 line-clamp-2 ml-13">
-                        {ticket.message}
-                      </p>
+                      <div className="flex items-center gap-3 text-[10px] text-gray-400">
+                        <span>#{ticket.ticket_number}</span>
+                        <span>{ticket.user_details?.username || 'Unknown'}</span>
+                        <span>{new Date(ticket.created_at).toLocaleDateString()}</span>
+                        <span className="capitalize">{ticket.category}</span>
+                      </div>
                       {ticket.admin_reply && (
-                        <div className="mt-3 ml-13 p-3 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg">
-                          <div className="flex items-center gap-2 mb-1">
-                            <MessageSquare className="w-4 h-4 text-blue-600 dark:text-blue-400" />
-                            <span className="text-sm font-semibold text-blue-900 dark:text-blue-300">Your Reply</span>
-                          </div>
-                          <p className="text-sm text-blue-800 dark:text-blue-200 line-clamp-2">{ticket.admin_reply}</p>
+                        <div className="mt-1.5 text-[10px] text-gray-500 bg-gray-50 dark:bg-gray-700/30 px-2.5 py-1.5 rounded-lg line-clamp-1">
+                          Replied: {ticket.admin_reply}
                         </div>
                       )}
                     </div>
-                    <button className="flex-shrink-0 p-2 text-gray-600 dark:text-gray-400 hover:text-primary-600 dark:hover:text-primary-400 hover:bg-primary-50 dark:hover:bg-primary-900/20 rounded-lg transition-colors">
-                      <Eye className="w-5 h-5" />
-                    </button>
+                    <Eye className="w-3.5 h-3.5 text-gray-400 shrink-0 mt-0.5" />
                   </div>
-                </motion.div>
+                </div>
               );
             })}
           </div>
@@ -430,187 +335,105 @@ const TicketDetailModal = ({
   const StatusIcon = statusConfig.icon;
 
   return (
-    <motion.div
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      exit={{ opacity: 0 }}
-      className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4"
-      onClick={onClose}
-    >
-      <motion.div
-        initial={{ scale: 0.9, opacity: 0 }}
-        animate={{ scale: 1, opacity: 1 }}
-        exit={{ scale: 0.9, opacity: 0 }}
-        className="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl max-w-4xl w-full max-h-[90vh] overflow-hidden"
-        onClick={(e) => e.stopPropagation()}
-      >
-        {/* Header */}
-        <div className="flex items-center justify-between p-6 border-b border-gray-200 dark:border-gray-700 bg-gradient-to-r from-primary-50 to-accent-50 dark:from-gray-900 dark:to-gray-800">
+    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+      className="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-center justify-center p-4"
+      onClick={onClose}>
+      <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.95 }}
+        className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 w-full max-w-lg max-h-[80vh] flex flex-col"
+        onClick={(e) => e.stopPropagation()}>
+
+        {/* Header — fixed */}
+        <div className="flex items-center justify-between px-5 py-3 border-b border-gray-100 dark:border-gray-700 shrink-0">
           <div>
-            <h2 className="text-2xl font-bold text-gray-900 dark:text-white">{ticket.subject}</h2>
-            <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">Ticket #{ticket.ticket_number}</p>
+            <h2 className="text-sm font-semibold text-gray-900 dark:text-white">{ticket.subject}</h2>
+            <div className="flex items-center gap-2 mt-0.5">
+              <span className="text-[10px] text-gray-400">#{ticket.ticket_number}</span>
+              <span className={`inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[9px] font-medium ${statusConfig.color}`}>
+                <StatusIcon className="w-2.5 h-2.5" />{statusConfig.label}
+              </span>
+              <span className={`px-1.5 py-0.5 rounded text-[9px] font-medium ${ticket.priority === 'high' ? 'bg-red-50 text-red-600' : ticket.priority === 'medium' ? 'bg-blue-50 text-blue-600' : 'bg-gray-100 text-gray-600'}`}>{ticket.priority}</span>
+            </div>
           </div>
-          <button
-            onClick={onClose}
-            className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
-          >
-            <X className="w-6 h-6 text-gray-600 dark:text-gray-400" />
+          <button onClick={onClose} className="p-1.5 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors">
+            <X className="w-4 h-4 text-gray-400" />
           </button>
         </div>
 
-        {/* Content */}
-        <div className="p-6 overflow-y-auto max-h-[calc(90vh-88px)]">
-          {/* Status and Info */}
-          <div className="flex flex-wrap items-center gap-3 mb-6">
-            <span className={`inline-flex items-center gap-1 px-3 py-1.5 rounded-full text-sm font-medium ${statusConfig.color}`}>
-              <StatusIcon className="w-4 h-4" />
-              {statusConfig.label}
-            </span>
-            <span className="px-3 py-1.5 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-full text-sm font-medium">
-              {ticket.category.charAt(0).toUpperCase() + ticket.category.slice(1)}
-            </span>
-            <span className={`px-3 py-1.5 rounded-full text-sm font-medium ${
-              ticket.priority === 'high' ? 'bg-red-100 text-red-700' :
-              ticket.priority === 'medium' ? 'bg-blue-100 text-blue-700' :
-              'bg-gray-100 text-gray-700'
-            }`}>
-              {ticket.priority.charAt(0).toUpperCase() + ticket.priority.slice(1)} Priority
-            </span>
-            <span className="text-sm text-gray-600 dark:text-gray-400">
-              User: <span className="font-medium">{ticket.user_details?.username}</span>
-            </span>
-            <span className="text-sm text-gray-600 dark:text-gray-400">
-              Created: {new Date(ticket.created_at).toLocaleString()}
-            </span>
+        {/* Scrollable body */}
+        <div className="flex-1 overflow-y-auto p-5 space-y-4">
+          {/* Meta */}
+          <div className="flex items-center gap-3 text-[10px] text-gray-400">
+            <span>User: <span className="text-gray-700 dark:text-gray-200 font-medium">{ticket.user_details?.username}</span></span>
+            <span>{new Date(ticket.created_at).toLocaleDateString()}</span>
+            <span className="capitalize">{ticket.category}</span>
           </div>
 
-          {/* Quick Status Change */}
-          <div className="mb-6 p-4 bg-gray-50 dark:bg-gray-900 rounded-xl">
-            <label className="block text-sm font-semibold text-gray-900 dark:text-white mb-2">
-              Quick Status Change
-            </label>
-            <div className="flex gap-2">
-              {['open', 'in_progress', 'resolved', 'closed'].map((status) => (
-                <button
-                  key={status}
-                  onClick={() => onStatusChange(ticket.id, status)}
-                  disabled={ticket.status === status || isSubmitting}
-                  className={`flex-1 px-4 py-2 rounded-lg text-sm font-medium transition-all ${
-                    ticket.status === status
-                      ? 'bg-primary-600 text-white cursor-not-allowed'
-                      : 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-primary-50 dark:hover:bg-gray-700 border border-gray-200 dark:border-gray-600'
-                  }`}
-                >
-                  {status.replace('_', ' ').charAt(0).toUpperCase() + status.replace('_', ' ').slice(1)}
+          {/* Status Change */}
+          <div>
+            <p className="text-[10px] text-gray-400 uppercase font-medium mb-1.5">Status</p>
+            <div className="flex gap-1.5">
+              {['open', 'in_progress', 'resolved', 'closed'].map((s) => (
+                <button key={s} onClick={() => onStatusChange(ticket.id, s)}
+                  disabled={ticket.status === s || isSubmitting}
+                  className={`flex-1 py-1.5 rounded-md text-[10px] font-medium transition-colors ${
+                    ticket.status === s ? 'bg-gray-900 text-white' : 'bg-gray-50 dark:bg-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-100 border border-gray-200 dark:border-gray-600'
+                  } disabled:opacity-50`}>
+                  {s.replace('_', ' ').replace(/^\w/, c => c.toUpperCase())}
                 </button>
               ))}
             </div>
           </div>
 
-          {/* User Message */}
-          <div className="mb-6">
-            <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-3">User Message</h3>
-            <div className="p-4 bg-gray-50 dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-700">
-              <p className="text-gray-700 dark:text-gray-300 whitespace-pre-wrap">{ticket.message}</p>
+          {/* Message */}
+          <div>
+            <p className="text-[10px] text-gray-400 uppercase font-medium mb-1">Message</p>
+            <div className="p-3 bg-gray-50 dark:bg-gray-900 rounded-lg border border-gray-100 dark:border-gray-700">
+              <p className="text-[11px] text-gray-700 dark:text-gray-300 whitespace-pre-wrap leading-relaxed">{ticket.message}</p>
             </div>
           </div>
 
           {/* Screenshot */}
           {ticket.screenshot && (
-            <div className="mb-6">
-              <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-3">Screenshot</h3>
-              <img
-                src={ticket.screenshot}
-                alt="Ticket screenshot"
-                className="w-full rounded-xl border border-gray-200 dark:border-gray-700"
-              />
+            <div>
+              <p className="text-[10px] text-gray-400 uppercase font-medium mb-1">Attachment</p>
+              <img src={ticket.screenshot} alt="Screenshot" className="w-full rounded-lg border border-gray-200 dark:border-gray-700 max-h-48 object-contain bg-gray-50" />
             </div>
           )}
 
-          {/* Existing Admin Reply */}
+          {/* Previous Reply */}
           {ticket.admin_reply && (
-            <div className="mb-6">
-              <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-3">Previous Response</h3>
-              <div className="p-4 bg-blue-50 dark:bg-blue-900/20 rounded-xl border border-blue-200 dark:border-blue-800">
-                <div className="flex items-center gap-2 mb-2">
-                  <MessageSquare className="w-5 h-5 text-blue-600 dark:text-blue-400" />
-                  <span className="text-sm font-medium text-blue-900 dark:text-blue-300">
-                    Replied on {new Date(ticket.admin_replied_at).toLocaleString()}
-                  </span>
-                </div>
-                <p className="text-blue-900 dark:text-blue-200 whitespace-pre-wrap">{ticket.admin_reply}</p>
+            <div>
+              <p className="text-[10px] text-gray-400 uppercase font-medium mb-1">Previous Reply</p>
+              <div className="p-3 bg-gray-50 dark:bg-gray-900 rounded-lg border border-gray-100 dark:border-gray-700">
+                <p className="text-[9px] text-gray-400 mb-1">{new Date(ticket.admin_replied_at).toLocaleDateString()}</p>
+                <p className="text-[11px] text-gray-700 dark:text-gray-300 whitespace-pre-wrap">{ticket.admin_reply}</p>
               </div>
             </div>
           )}
+        </div>
 
-          {/* Reply Form */}
-          <div className="mb-6">
-            <div className="flex items-center justify-between mb-2">
-              <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
-                {ticket.admin_reply ? 'Send Another Reply' : 'Send Reply'}
-              </h3>
-              <span className={`text-sm ${
-                replyText.length < 10 ? 'text-red-600' : 'text-gray-600 dark:text-gray-400'
-              }`}>
-                {replyText.length} / 10 min
-              </span>
-            </div>
-            <textarea
-              value={replyText}
-              onChange={(e) => setReplyText(e.target.value)}
-              placeholder="Type your response to the user... (minimum 10 characters)"
-              rows={6}
-              className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-xl focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-all resize-none bg-white dark:bg-gray-900 text-gray-900 dark:text-white"
-            />
-            {replyText.length > 0 && replyText.length < 10 && (
-              <p className="text-sm text-red-600 mt-1">
-                Please enter at least {10 - replyText.length} more character{10 - replyText.length !== 1 ? 's' : ''}
-              </p>
-            )}
-          </div>
-
-          {/* Status Change on Reply */}
-          <div className="mb-6">
-            <label className="block text-sm font-semibold text-gray-900 dark:text-white mb-2">
-              Change Status (Optional)
-            </label>
-            <select
-              value={newStatus}
-              onChange={(e) => setNewStatus(e.target.value)}
-              className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-xl focus:ring-2 focus:ring-primary-500 focus:border-transparent bg-white dark:bg-gray-900 text-gray-900 dark:text-white"
-            >
-              <option value="">Keep current status</option>
+        {/* Footer — fixed reply + actions */}
+        <div className="shrink-0 border-t border-gray-100 dark:border-gray-700 p-4 space-y-3 bg-gray-50/50 dark:bg-gray-800">
+          <textarea value={replyText} onChange={(e) => setReplyText(e.target.value)}
+            placeholder="Type your reply..." rows={3}
+            className="w-full px-3 py-2 border border-gray-200 dark:border-gray-700 rounded-lg text-[11px] focus:outline-none focus:ring-1 focus:ring-gray-400 resize-none bg-white dark:bg-gray-900 dark:text-white" />
+          <div className="flex items-center gap-2">
+            <select value={newStatus} onChange={(e) => setNewStatus(e.target.value)}
+              className="px-2.5 py-1.5 border border-gray-200 dark:border-gray-700 rounded-lg text-[10px] focus:outline-none bg-white dark:bg-gray-800 text-gray-600">
+              <option value="">Keep status</option>
               <option value="in_progress">In Progress</option>
               <option value="resolved">Resolved</option>
               <option value="closed">Closed</option>
             </select>
-          </div>
-
-          {/* Action Buttons */}
-          <div className="flex gap-3">
-            <button
-              onClick={onClose}
-              disabled={isSubmitting}
-              className="flex-1 px-6 py-3 bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-xl hover:bg-gray-300 dark:hover:bg-gray-600 transition-colors font-medium disabled:opacity-50"
-            >
+            <div className="flex-1" />
+            <button onClick={onClose} disabled={isSubmitting}
+              className="px-4 py-1.5 text-[11px] font-medium text-gray-600 bg-white dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-lg hover:bg-gray-50 transition-colors">
               Close
             </button>
-            <button
-              onClick={onReply}
-              disabled={isSubmitting || !replyText.trim() || replyText.trim().length < 10}
-              className="flex-1 px-6 py-3 bg-gradient-to-r from-primary-600 to-accent-500 text-white rounded-xl hover:from-primary-700 hover:to-accent-600 transition-all font-medium shadow-lg hover:shadow-xl disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
-            >
-              {isSubmitting ? (
-                <>
-                  <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                  <span>Sending...</span>
-                </>
-              ) : (
-                <>
-                  <Send className="w-5 h-5" />
-                  <span>Send Reply</span>
-                </>
-              )}
+            <button onClick={onReply} disabled={isSubmitting || !replyText.trim() || replyText.trim().length < 10}
+              className="px-4 py-1.5 text-[11px] font-medium text-white bg-gray-900 rounded-lg hover:bg-gray-800 transition-colors disabled:opacity-40 flex items-center gap-1.5">
+              <Send className="w-3 h-3" />
+              {isSubmitting ? 'Sending...' : 'Send Reply'}
             </button>
           </div>
         </div>

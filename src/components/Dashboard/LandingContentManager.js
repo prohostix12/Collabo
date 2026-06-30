@@ -2,7 +2,9 @@ import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
   Save, Plus, Trash2, Image as ImageIcon, 
+  // eslint-disable-next-line no-unused-vars
   Type, Palette, Layout, ArrowUp, ArrowDown,
+  // eslint-disable-next-line no-unused-vars
   Monitor, Smartphone, Globe, CheckCircle, Upload
 } from 'lucide-react';
 import api from '../../services/api';
@@ -182,47 +184,30 @@ const LandingContentManager = () => {
   if (loading) {
     return (
       <div className="flex justify-center items-center py-20">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-violet-600"></div>
+        <div className="w-5 h-5 border-2 border-gray-300 border-t-gray-600 rounded-full animate-spin"></div>
       </div>
     );
   }
 
   return (
-    <div className="space-y-6 animate-fadeIn">
-      <div className="flex items-center justify-between mb-6">
+    <div className="space-y-3">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-1">
         <div>
-          <h2 className="text-2xl font-bold text-gray-900 dark:text-white">Landing Page Management</h2>
-          <p className="text-gray-600 dark:text-gray-400">Customize your hero section and marquee cards</p>
+          <h2 className="text-sm font-semibold text-gray-900 dark:text-white">Landing Page</h2>
+          <p className="text-[11px] text-gray-500">Hero section, marquee cards & catalog</p>
         </div>
-        <div className="flex bg-gray-100 dark:bg-gray-700 p-1 rounded-xl">
-          <button 
-            onClick={() => setActiveView('texts')}
-            className={`flex items-center space-x-2 px-4 py-2 rounded-lg text-sm font-medium transition-all ${activeView === 'texts' ? 'bg-white dark:bg-gray-600 text-violet-600 dark:text-white shadow-sm' : 'text-gray-600 dark:text-gray-400 hover:text-gray-900'}`}
-          >
-            <Type className="w-4 h-4" />
-            <span>Texts & CTAs</span>
-          </button>
-          <button 
-            onClick={() => setActiveView('cards')}
-            className={`flex items-center space-x-2 px-4 py-2 rounded-lg text-sm font-medium transition-all ${activeView === 'cards' ? 'bg-white dark:bg-gray-600 text-violet-600 dark:text-white shadow-sm' : 'text-gray-600 dark:text-gray-400 hover:text-gray-900'}`}
-          >
-            <Layout className="w-4 h-4" />
-            <span>Image Banner Cards</span>
-          </button>
-          <button 
-            onClick={() => setActiveView('animations')}
-            className={`flex items-center space-x-2 px-4 py-2 rounded-lg text-sm font-medium transition-all ${activeView === 'animations' ? 'bg-white dark:bg-gray-600 text-violet-600 dark:text-white shadow-sm' : 'text-gray-600 dark:text-gray-400 hover:text-gray-900'}`}
-          >
-            <ImageIcon className="w-4 h-4" />
-            <span>Animated Section</span>
-          </button>
-          <button 
-            onClick={() => setActiveView('catalog')}
-            className={`flex items-center space-x-2 px-4 py-2 rounded-lg text-sm font-medium transition-all ${activeView === 'catalog' ? 'bg-white dark:bg-gray-600 text-violet-600 dark:text-white shadow-sm' : 'text-gray-600 dark:text-gray-400 hover:text-gray-900'}`}
-          >
-            <Globe className="w-4 h-4" />
-            <span>Catalog Showreel</span>
-          </button>
+        <div className="flex items-center gap-1">
+          {[
+            { id: 'texts', label: 'Texts' },
+            { id: 'cards', label: 'Cards' },
+            { id: 'animations', label: 'Animated' },
+            { id: 'catalog', label: 'Catalog' },
+          ].map(v => (
+            <button key={v.id} onClick={() => setActiveView(v.id)}
+              className={`px-3 py-1.5 rounded-md text-[11px] font-medium transition-colors ${
+                activeView === v.id ? 'bg-gray-900 dark:bg-gray-600 text-white' : 'text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-700'
+              }`}>{v.label}</button>
+          ))}
         </div>
       </div>
 
@@ -233,70 +218,70 @@ const LandingContentManager = () => {
             initial={{ opacity: 0, x: -20 }}
             animate={{ opacity: 1, x: 0 }}
             exit={{ opacity: 0, x: 20 }}
-            className="bg-white dark:bg-gray-800 rounded-2xl p-6 shadow-lg border border-gray-100 dark:border-gray-700"
+            className="bg-white dark:bg-gray-800 rounded-xl p-4 border border-gray-200 dark:border-gray-700"
           >
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div className="space-y-4">
                 <div>
-                  <label className="block text-sm font-bold text-gray-700 dark:text-gray-300 mb-2">Badge Text</label>
+                  <label className="block text-[10px] font-medium text-gray-500 uppercase tracking-wider mb-1">Badge Text</label>
                   <input 
                     type="text" 
                     name="badge_text"
                     value={data.hero.badge_text}
                     onChange={handleHeroChange}
-                    className="w-full px-4 py-2 rounded-xl border border-gray-200 dark:border-gray-600 bg-gray-50 dark:bg-gray-700 dark:text-white focus:ring-2 focus:ring-violet-500"
+                    className="w-full px-3 py-1.5 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-[11px] dark:text-white focus:outline-none focus:ring-1 focus:ring-gray-400"
                     placeholder="e.g. The New Standard"
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-bold text-gray-700 dark:text-gray-300 mb-2">Main Title</label>
+                  <label className="block text-[10px] font-medium text-gray-500 uppercase tracking-wider mb-1">Main Title</label>
                   <textarea 
                     name="title"
                     value={data.hero.title}
                     onChange={handleHeroChange}
                     rows="3"
-                    className="w-full px-4 py-2 rounded-xl border border-gray-200 dark:border-gray-600 bg-gray-50 dark:bg-gray-700 dark:text-white focus:ring-2 focus:ring-violet-500 font-medium"
+                    className="w-full px-3 py-1.5 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-[11px] dark:text-white focus:outline-none focus:ring-1 focus:ring-gray-400 font-medium"
                     placeholder="e.g. Where {Teams} Connect"
                   />
                   <p className="text-[10px] text-gray-400 mt-1 italic">Use {'{text}'} for gradient styling and \n for line breaks.</p>
                 </div>
                 <div>
-                  <label className="block text-sm font-bold text-gray-700 dark:text-gray-300 mb-2">Subtitle</label>
+                  <label className="block text-[10px] font-medium text-gray-500 uppercase tracking-wider mb-1">Subtitle</label>
                   <textarea 
                     name="subtitle"
                     value={data.hero.subtitle}
                     onChange={handleHeroChange}
                     rows="4"
-                    className="w-full px-4 py-2 rounded-xl border border-gray-200 dark:border-gray-600 bg-gray-50 dark:bg-gray-700 dark:text-white focus:ring-2 focus:ring-violet-500"
+                    className="w-full px-3 py-1.5 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-[11px] dark:text-white focus:outline-none focus:ring-1 focus:ring-gray-400"
                   />
                 </div>
               </div>
               <div className="space-y-4">
                 <div>
-                  <label className="block text-sm font-bold text-gray-700 dark:text-gray-300 mb-2">Creator Button Text</label>
+                  <label className="block text-[10px] font-medium text-gray-500 uppercase tracking-wider mb-1">Creator Button Text</label>
                   <input 
                     type="text" 
                     name="creator_button_text"
                     value={data.hero.creator_button_text}
                     onChange={handleHeroChange}
-                    className="w-full px-4 py-2 rounded-xl border border-gray-200 dark:border-gray-600 bg-gray-50 dark:bg-gray-700 dark:text-white focus:ring-2 focus:ring-violet-500"
+                    className="w-full px-3 py-1.5 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-[11px] dark:text-white focus:outline-none focus:ring-1 focus:ring-gray-400"
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-bold text-gray-700 dark:text-gray-300 mb-2">Brand Button Text</label>
+                  <label className="block text-[10px] font-medium text-gray-500 uppercase tracking-wider mb-1">Brand Button Text</label>
                   <input 
                     type="text" 
                     name="brand_button_text"
                     value={data.hero.brand_button_text}
                     onChange={handleHeroChange}
-                    className="w-full px-4 py-2 rounded-xl border border-gray-200 dark:border-gray-600 bg-gray-50 dark:bg-gray-700 dark:text-white focus:ring-2 focus:ring-violet-500"
+                    className="w-full px-3 py-1.5 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-[11px] dark:text-white focus:outline-none focus:ring-1 focus:ring-gray-400"
                   />
                 </div>
                 <div className="pt-6">
                   <button 
                     onClick={saveHero}
                     disabled={saving}
-                    className="w-full flex items-center justify-center space-x-2 bg-violet-600 hover:bg-violet-700 text-white font-bold py-3 rounded-xl shadow-lg transition-all transform active:scale-95 disabled:opacity-50"
+                    className="w-full flex items-center justify-center gap-1.5 bg-gray-900 hover:bg-gray-800 text-white text-[11px] font-medium py-2 rounded-lg transition-colors disabled:opacity-50"
                   >
                     {saving ? <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div> : <Save className="w-5 h-5" />}
                     <span>Save Hero Content</span>
@@ -311,18 +296,18 @@ const LandingContentManager = () => {
             initial={{ opacity: 0, scale: 0.95 }}
             animate={{ opacity: 1, scale: 1 }}
             exit={{ opacity: 0, scale: 0.95 }}
-            className="bg-white dark:bg-gray-800 rounded-2xl p-6 shadow-lg border border-gray-100 dark:border-gray-700"
+            className="bg-white dark:bg-gray-800 rounded-xl p-4 border border-gray-200 dark:border-gray-700"
           >
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div className="space-y-4">
                 <div>
-                  <label className="block text-sm font-bold text-gray-700 dark:text-gray-300 mb-2">Animated Text</label>
+                  <label className="block text-[10px] font-medium text-gray-500 uppercase tracking-wider mb-1">Animated Text</label>
                   <textarea 
                     name="anim_text"
                     value={data.hero.anim_text || ''}
                     onChange={handleHeroChange}
                     rows="6"
-                    className="w-full px-4 py-2 rounded-xl border border-gray-200 dark:border-gray-600 bg-gray-50 dark:bg-gray-700 dark:text-white focus:ring-2 focus:ring-violet-500 font-medium"
+                    className="w-full px-3 py-1.5 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-[11px] dark:text-white focus:outline-none focus:ring-1 focus:ring-gray-400 font-medium"
                     placeholder="e.g. Maximize Your {img1} Brand's\nGrowth and {img2}{img3}{img4} Skyrocket Sales"
                   />
                   <p className="text-[10px] text-gray-400 mt-1 italic">Use {'{img1}'}, {'{img2}'}, {'{img3}'}, {'{img4}'} to place image pills inside the text. Use \n for line breaks.</p>
@@ -331,7 +316,7 @@ const LandingContentManager = () => {
                   <button 
                     onClick={saveHero}
                     disabled={saving}
-                    className="w-full flex items-center justify-center space-x-2 bg-violet-600 hover:bg-violet-700 text-white font-bold py-3 rounded-xl shadow-lg transition-all transform active:scale-95 disabled:opacity-50"
+                    className="w-full flex items-center justify-center gap-1.5 bg-gray-900 hover:bg-gray-800 text-white text-[11px] font-medium py-2 rounded-lg transition-colors disabled:opacity-50"
                   >
                     {saving ? <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div> : <Save className="w-5 h-5" />}
                     <span>Save Content</span>
@@ -341,7 +326,7 @@ const LandingContentManager = () => {
               <div className="space-y-4">
                 {[1, 2, 3, 4].map((num) => (
                   <div key={`img_${num}`}>
-                    <label className="block text-sm font-bold text-gray-700 dark:text-gray-300 mb-2">Image {num} URL</label>
+                    <label className="block text-[10px] font-medium text-gray-500 uppercase tracking-wider mb-1">Image {num} URL</label>
                     <div className="relative">
                       <ImageIcon className="absolute left-3 top-2.5 w-4 h-4 text-gray-400" />
                       <input 
@@ -368,7 +353,7 @@ const LandingContentManager = () => {
           >
             <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
               {data.cards.map((card, index) => (
-                <div key={index} className="bg-white dark:bg-gray-800 rounded-2xl p-5 shadow-lg border border-gray-100 dark:border-gray-700 relative group overflow-hidden">
+                <div key={index} className="bg-white dark:bg-gray-800 rounded-xl p-4 border border-gray-200 dark:border-gray-700 relative group overflow-hidden">
                   <div className="flex justify-between items-start mb-4">
                     <span className="bg-violet-100 dark:bg-violet-900 text-violet-600 dark:text-violet-300 text-[10px] font-black uppercase px-2 py-1 rounded-md">
                       Card #{index + 1}
@@ -467,7 +452,7 @@ const LandingContentManager = () => {
                     <div className="pt-2">
                        <button 
                          onClick={() => saveCard(index)}
-                         className="w-full flex items-center justify-center space-x-2 bg-violet-600 hover:bg-violet-700 text-white text-xs font-bold py-2.5 rounded-xl transition-all shadow-md active:scale-95"
+                         className="w-full flex items-center justify-center gap-1.5 bg-gray-900 hover:bg-gray-800 text-white text-[10px] font-medium py-1.5 rounded-lg transition-colors"
                        >
                          <Save className="w-3.5 h-3.5" />
                          <span>{card.id ? 'Save Changes' : 'Create Card'}</span>
@@ -491,7 +476,7 @@ const LandingContentManager = () => {
               ))}
               <button 
                 onClick={addCard}
-                className="bg-gray-50 dark:bg-gray-800 border-2 border-dashed border-gray-200 dark:border-gray-700 rounded-2xl flex flex-col items-center justify-center py-10 hover:border-violet-400 dark:hover:border-violet-500 transition-all group"
+                className="bg-gray-50 dark:bg-gray-800 border border-dashed border-gray-200 dark:border-gray-700 rounded-xl flex flex-col items-center justify-center py-8 hover:border-gray-400 transition-colors"
               >
                 <div className="w-12 h-12 rounded-full bg-violet-50 dark:bg-violet-900/30 flex items-center justify-center mb-3 group-hover:scale-110 transition-transform">
                   <Plus className="w-6 h-6 text-violet-500" />
@@ -510,7 +495,7 @@ const LandingContentManager = () => {
           >
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
               {data.catalog_images?.map((img, index) => (
-                <div key={index} className="bg-white dark:bg-gray-800 rounded-2xl p-6 shadow-lg border border-gray-100 dark:border-gray-700 relative group overflow-hidden">
+                <div key={index} className="bg-white dark:bg-gray-800 rounded-xl p-4 border border-gray-200 dark:border-gray-700 relative group overflow-hidden">
                   <div className="flex justify-between items-start mb-6">
                     <span className="bg-emerald-100 dark:bg-emerald-900 text-emerald-600 dark:text-emerald-300 text-[10px] font-black uppercase px-3 py-1.5 rounded-lg border border-emerald-200/50">
                       Catalog Item #{index + 1}
@@ -616,7 +601,7 @@ const LandingContentManager = () => {
                       <div className="pt-4">
                         <button 
                           onClick={() => saveCatalogImage(index)}
-                          className="w-full flex items-center justify-center space-x-2 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold py-3.5 rounded-2xl transition-all shadow-lg active:scale-95"
+                          className="w-full flex items-center justify-center gap-1.5 bg-gray-900 hover:bg-gray-800 text-white text-[10px] font-medium py-2 rounded-lg transition-colors"
                         >
                           <Save className="w-4 h-4" />
                           <span>{img.id ? 'Apply Changes' : 'Initialize Catalog Item'}</span>

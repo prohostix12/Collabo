@@ -169,3 +169,164 @@ The Collabo Team
         except Exception as e:
             logger.error(f"Failed to send rejection email to {user.email}: {str(e)}")
             return False
+
+    @staticmethod
+    def send_seller_approval_email(user, store_name):
+        try:
+            subject = 'Your Seller Account Has Been Approved! 🎉'
+            name = user.username or user.first_name or 'Seller'
+            login_url = f"{settings.FRONTEND_URL}/login"
+            support_email = settings.DEFAULT_FROM_EMAIL
+
+            message = f"""
+Hello {name}!
+
+Great news! Your seller account for "{store_name}" has been approved and is now active on Collabo.
+
+You can now:
+✓ List products on the marketplace
+✓ Manage your inventory and orders
+✓ Track revenue and analytics
+✓ Request payouts for your earnings
+
+Login here: {login_url}
+
+If you have any questions, reach out to us at {support_email}.
+
+Welcome to Collabo!
+
+Best regards,
+The Collabo Team
+            """.strip()
+
+            html_message = f"""
+<!DOCTYPE html>
+<html>
+<head>
+    <style>
+        body {{ font-family: Arial, sans-serif; line-height: 1.6; color: #333; }}
+        .container {{ max-width: 600px; margin: 0 auto; padding: 20px; }}
+        .header {{ background: linear-gradient(135deg, #f97316 0%, #ea580c 100%); color: white; padding: 30px; text-align: center; border-radius: 10px 10px 0 0; }}
+        .content {{ background: #f9f9f9; padding: 30px; border-radius: 0 0 10px 10px; }}
+        .button {{ display: inline-block; padding: 12px 30px; background: linear-gradient(135deg, #f97316 0%, #ea580c 100%); color: white; text-decoration: none; border-radius: 5px; margin: 20px 0; }}
+        .features {{ background: white; padding: 20px; border-radius: 5px; margin: 20px 0; }}
+        .feature {{ padding: 10px 0; }}
+        .feature::before {{ content: "✓"; color: #f97316; font-weight: bold; margin-right: 10px; }}
+        .store-name {{ background: #fff7ed; border: 1px solid #fed7aa; padding: 12px 20px; border-radius: 8px; font-weight: bold; text-align: center; margin: 15px 0; }}
+        .footer {{ text-align: center; color: #666; font-size: 12px; margin-top: 30px; }}
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🎉 Seller Account Approved!</h1>
+        </div>
+        <div class="content">
+            <p>Hello <strong>{name}</strong>!</p>
+            <p>Your seller account has been approved and is now active.</p>
+            <div class="store-name">🏪 {store_name}</div>
+            <div class="features">
+                <div class="feature">List products on the marketplace</div>
+                <div class="feature">Manage inventory and orders</div>
+                <div class="feature">Track revenue and analytics</div>
+                <div class="feature">Request payouts for your earnings</div>
+            </div>
+            <center><a href="{login_url}" class="button">Go to Seller Dashboard</a></center>
+            <p>Questions? Contact us at <a href="mailto:{support_email}">{support_email}</a>.</p>
+            <div class="footer">
+                <p>Best regards,<br>The Collabo Team</p>
+            </div>
+        </div>
+    </div>
+</body>
+</html>
+            """.strip()
+
+            send_mail(
+                subject=subject,
+                message=message,
+                from_email=settings.DEFAULT_FROM_EMAIL,
+                recipient_list=[user.email],
+                html_message=html_message,
+                fail_silently=False,
+            )
+            logger.info(f"Seller approval email sent to {user.email}")
+            return True
+        except Exception as e:
+            logger.error(f"Failed to send seller approval email to {user.email}: {str(e)}")
+            return False
+
+    @staticmethod
+    def send_seller_rejection_email(user, store_name, reason=''):
+        try:
+            subject = 'Update on Your Seller Application'
+            name = user.username or user.first_name or 'Seller'
+            support_email = settings.DEFAULT_FROM_EMAIL
+            reapply_url = f"{settings.FRONTEND_URL}"
+
+            reason_text = f"\nReason: {reason}\n" if reason else ""
+
+            message = f"""
+Hello {name},
+
+Thank you for applying to sell on Collabo with your store "{store_name}".
+
+After reviewing your application, we are unable to approve your seller account at this time.
+{reason_text}
+You can update your details and re-apply at any time by visiting: {reapply_url}
+
+If you have questions, contact us at {support_email}.
+
+Best regards,
+The Collabo Team
+            """.strip()
+
+            html_message = f"""
+<!DOCTYPE html>
+<html>
+<head>
+    <style>
+        body {{ font-family: Arial, sans-serif; line-height: 1.6; color: #333; }}
+        .container {{ max-width: 600px; margin: 0 auto; padding: 20px; }}
+        .header {{ background: linear-gradient(135deg, #64748b 0%, #475569 100%); color: white; padding: 30px; text-align: center; border-radius: 10px 10px 0 0; }}
+        .content {{ background: #f9f9f9; padding: 30px; border-radius: 0 0 10px 10px; }}
+        .button {{ display: inline-block; padding: 12px 30px; background: linear-gradient(135deg, #f97316 0%, #ea580c 100%); color: white; text-decoration: none; border-radius: 5px; margin: 20px 0; }}
+        .reason-box {{ background: #fef2f2; border: 1px solid #fecaca; padding: 15px 20px; border-radius: 8px; margin: 15px 0; }}
+        .footer {{ text-align: center; color: #666; font-size: 12px; margin-top: 30px; }}
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>Application Update</h1>
+        </div>
+        <div class="content">
+            <p>Hello <strong>{name}</strong>,</p>
+            <p>Thank you for applying to sell on Collabo with your store "<strong>{store_name}</strong>".</p>
+            <p>After reviewing your application, we are unable to approve your seller account at this time.</p>
+            {f'<div class="reason-box"><strong>Reason:</strong> {reason}</div>' if reason else ''}
+            <p>You can update your details and re-apply at any time:</p>
+            <center><a href="{reapply_url}" class="button">Update & Re-apply</a></center>
+            <p>Questions? Contact us at <a href="mailto:{support_email}">{support_email}</a>.</p>
+            <div class="footer">
+                <p>Best regards,<br>The Collabo Team</p>
+            </div>
+        </div>
+    </div>
+</body>
+</html>
+            """.strip()
+
+            send_mail(
+                subject=subject,
+                message=message,
+                from_email=settings.DEFAULT_FROM_EMAIL,
+                recipient_list=[user.email],
+                html_message=html_message,
+                fail_silently=False,
+            )
+            logger.info(f"Seller rejection email sent to {user.email}")
+            return True
+        except Exception as e:
+            logger.error(f"Failed to send seller rejection email to {user.email}: {str(e)}")
+            return False

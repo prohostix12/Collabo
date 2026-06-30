@@ -25,6 +25,19 @@ app.conf.beat_schedule = {
         'task': 'social_media.tasks.schedule_follower_updates',
         'schedule': crontab(minute='*/30'),  # Every 30 minutes
     },
+    # ── Notification tasks ──────────────────────────────────────────────────
+    'delivery-day-messages': {
+        'task': 'ecommerce.tasks.send_delivery_day_messages',
+        'schedule': crontab(hour=8, minute=0),   # 8:00 AM daily
+    },
+    'pre-delivery-reminders': {
+        'task': 'ecommerce.tasks.send_pre_delivery_reminders',
+        'schedule': crontab(hour=9, minute=0),   # 9:00 AM daily
+    },
+    'abandoned-cart-reminders': {
+        'task': 'ecommerce.tasks.send_abandoned_cart_reminders',
+        'schedule': crontab(minute=0, hour='*/2'),  # Every 2 hours
+    },
 }
 
 app.conf.timezone = 'UTC'

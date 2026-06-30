@@ -22,7 +22,7 @@ def test_login():
         },
         {
             'name': 'Admin Login',
-            'data': {'email': 'rinsnac44@gmail.com', 'password': 'test123'}
+            'data': {'email': 'admin@collabo.com', 'password': 'admin123'}
         }
     ]
     

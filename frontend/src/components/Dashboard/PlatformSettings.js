@@ -1,11 +1,19 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+// eslint-disable-next-line no-unused-vars
 import { motion } from 'framer-motion';
+import api from '../../services/api';
 import { 
+  // eslint-disable-next-line no-unused-vars
   Settings, Shield, Zap, Lock, Globe, 
+  // eslint-disable-next-line no-unused-vars
   Bell, Database, Cpu, Cloud, RefreshCw, 
+  // eslint-disable-next-line no-unused-vars
   ToggleRight, Moon, Sun, Monitor, Save,
+  // eslint-disable-next-line no-unused-vars
   AlertTriangle, Key, Mail, Smartphone,
+  // eslint-disable-next-line no-unused-vars
   Activity, Server, HardDrive, Layout,
+  // eslint-disable-next-line no-unused-vars
   Cpu as Processor, Radio, Terminal
 } from 'lucide-react';
 import toast from 'react-hot-toast';
@@ -27,34 +35,62 @@ const PlatformSettings = () => {
     cacheType: 'Redis',
     debugMode: false,
     logLevel: 'info',
-    backupFrequency: 'Daily'
+    backupFrequency: 'Daily',
+    globalCommissionRate: 10
   });
+
+  const fetchGlobalSettings = async () => {
+    try {
+      const response = await api.get('/ecommerce/settings/');
+      if (response.data && response.data.global_commission_rate !== undefined) {
+        setSettings(prev => ({
+          ...prev,
+          globalCommissionRate: response.data.global_commission_rate
+        }));
+      }
+    } catch (err) {
+      console.error("Error fetching global settings:", err);
+    }
+  };
+
+  useEffect(() => {
+    fetchGlobalSettings();
+  }, []);
 
   const handleToggle = (key) => {
     setSettings(prev => ({ ...prev, [key]: !prev[key] }));
   };
 
-  const handleSave = () => {
+  const handleSave = async () => {
     setLoading(true);
-    toast.promise(
-      new Promise(resolve => setTimeout(resolve, 1500)),
-      {
-        loading: 'Uploading configurations to core...',
-        success: 'Platform settings updated successfully!',
-        error: 'Failed to apply configuration change'
-      },
-      {
-        style: {
-          borderRadius: '16px',
-          background: '#18181b',
-          color: '#fff',
-          fontWeight: '900',
-          fontSize: '10px',
-          textTransform: 'uppercase'
+    try {
+      await api.post('/ecommerce/settings/', {
+        global_commission_rate: Number(settings.globalCommissionRate)
+      });
+      toast.promise(
+        new Promise(resolve => setTimeout(resolve, 1000)),
+        {
+          loading: 'Uploading configurations to core...',
+          success: 'Platform settings updated successfully!',
+          error: 'Failed to apply configuration change'
+        },
+        {
+          style: {
+            borderRadius: '16px',
+            background: '#18181b',
+            color: '#fff',
+            fontWeight: '900',
+            fontSize: '10px',
+            textTransform: 'uppercase'
+          }
         }
-      }
-    );
-    setTimeout(() => setLoading(false), 1500);
+      );
+    } catch (err) {
+      console.error("Error saving global settings:", err);
+      toast.error("Failed to save settings to core");
+    } finally {
+      setTimeout(() => setLoading(false), 1000);
+    }
   };
 
   const subTabs = [
@@ -169,6 +205,15 @@ const PlatformSettings = () => {
                               type="number"
                               value={settings.sessionTimeout}
                               onChange={(e) => setSettings({...settings, sessionTimeout: e.target.value})}
+                              className="w-full bg-transparent text-lg font-black text-gray-900 dark:text-white border-none p-0 focus:ring-0"
+                            />
+                         </div>
+                         <div className="p-5 bg-gray-50 dark:bg-gray-700/30 rounded-2xl border border-gray-100 dark:border-gray-600">
+                            <p className="text-[9px] text-gray-400 font-black uppercase mb-1">Global Default Commission Rate (%)</p>
+                            <input 
+                              type="number"
+                              value={settings.globalCommissionRate}
+                              onChange={(e) => setSettings({...settings, globalCommissionRate: e.target.value})}
                               className="w-full bg-transparent text-lg font-black text-gray-900 dark:text-white border-none p-0 focus:ring-0"
                             />
                          </div>

@@ -17,6 +17,13 @@ import ServicesPage from './components/Landing/ServicesPage';
 import InfluencerDetailPage from './components/Landing/InfluencerDetailPage';
 import CreatorsPage from './components/Landing/CreatorsPage';
 import OAuthCallback from './components/SocialMedia/OAuthCallback';
+import EcommerceMarketplace from './components/Ecommerce/EcommerceMarketplace';
+import SellOnCollabo from './components/Ecommerce/SellOnCollabo';
+import ShippingPolicy from './components/Legal/ShippingPolicy';
+import ReturnPolicy from './components/Legal/ReturnPolicy';
+import PrivacyPolicy from './components/Legal/PrivacyPolicy';
+import TermsConditions from './components/Legal/TermsConditions';
+import CollabHub from './components/Collab/CollabHub';
 
 function ProtectedRoute({ children, allowedUserTypes }) {
   const { user, loading } = useAuth();
@@ -42,14 +49,20 @@ function AppRoutes() {
   return (
     <Routes>
       {/* Public Routes */}
-      <Route path="/" element={user ? <Navigate to="/dashboard" /> : <LandingPage />} />
+      <Route path="/" element={<EcommerceMarketplace />} />
+      <Route path="/sell" element={<SellOnCollabo />} />
+      <Route path="/collab" element={user?.user_type === 'company' ? <CollabHub /> : <LandingPage />} />
       <Route path="/about" element={<AboutPage />} />
       <Route path="/services" element={<ServicesPage />} />
       <Route path="/creators" element={<CreatorsPage />} />
+      <Route path="/shipping-policy" element={<ShippingPolicy />} />
+      <Route path="/return-policy" element={<ReturnPolicy />} />
+      <Route path="/privacy" element={<PrivacyPolicy />} />
+      <Route path="/terms" element={<TermsConditions />} />
       <Route path="/influencer/:id" element={<InfluencerDetailPage />} />
-      <Route path="/login" element={user ? <Navigate to="/dashboard" /> : <Login />} />
-      <Route path="/register" element={user ? <Navigate to="/dashboard" /> : <Register />} />
-      <Route path="/forgot-password" element={user ? <Navigate to="/dashboard" /> : <ForgotPassword />} />
+      <Route path="/login" element={<Navigate to="/" replace />} />
+      <Route path="/register" element={<Navigate to="/" replace />} />
+      <Route path="/forgot-password" element={<Navigate to="/" replace />} />
       
       {/* OAuth Callback Routes */}
       <Route path="/auth/:platform/callback" element={
@@ -61,11 +74,15 @@ function AppRoutes() {
       {/* Dashboard Route */}
       <Route path="/dashboard" element={
         <ProtectedRoute>
-          <Layout>
-            {user?.user_type === 'influencer' && <InfluencerDashboard />}
-            {user?.user_type === 'company' && <CompanyDashboard />}
-            {user?.user_type === 'admin' && <AdminDashboard />}
-          </Layout>
+          {user?.user_type === 'buyer' ? (
+            <Navigate to="/#home" replace />
+          ) : (
+            <Layout>
+              {user?.user_type === 'influencer' && <InfluencerDashboard />}
+              {user?.user_type === 'company' && <CompanyDashboard />}
+              {user?.user_type === 'admin' && <AdminDashboard />}
+            </Layout>
+          )}
         </ProtectedRoute>
       } />
       
@@ -123,44 +140,46 @@ function App() {
                 right: 20,
               }}
               toastOptions={{
-                duration: 3000,
+                duration: 4000,
                 style: {
-                  background: '#363636',
-                  color: '#fff',
-                  padding: '12px 16px',
-                  borderRadius: '8px',
-                  fontSize: '14px',
-                  fontWeight: '500',
-                  maxWidth: '90vw',
+                  background: '#ffffff',
+                  color: '#0f172a',
+                  padding: '12px 20px',
+                  borderRadius: '10px',
+                  fontSize: '13px',
+                  fontWeight: '600',
+                  boxShadow: '0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1)',
+                  border: '1px solid #f1f5f9',
+                  maxWidth: '400px',
                   wordBreak: 'break-word',
                 },
                 success: {
-                  duration: 3000,
+                  duration: 4000,
                   style: {
-                    background: '#10B981',
+                    borderLeft: '4px solid #10B981',
                   },
                   iconTheme: {
-                    primary: '#fff',
-                    secondary: '#10B981',
+                    primary: '#10B981',
+                    secondary: '#fff',
                   },
                 },
                 error: {
                   duration: 4000,
                   style: {
-                    background: '#EF4444',
+                    borderLeft: '4px solid #EF4444',
                   },
                   iconTheme: {
-                    primary: '#fff',
-                    secondary: '#EF4444',
+                    primary: '#EF4444',
+                    secondary: '#fff',
                   },
                 },
                 loading: {
                   style: {
-                    background: '#3B82F6',
+                    borderLeft: '4px solid #3B82F6',
                   },
                   iconTheme: {
-                    primary: '#fff',
-                    secondary: '#3B82F6',
+                    primary: '#3B82F6',
+                    secondary: '#fff',
                   },
                 },
               }}

@@ -119,23 +119,41 @@ def earnings_summary(request):
     user = request.user
     
     if user.user_type == 'influencer':
-        total_earnings = Payment.objects.filter(
+        from ecommerce.models import AffiliateCommission
+        
+        affiliate_earnings = AffiliateCommission.objects.filter(
+            influencer=user,
+            status='completed'
+        ).aggregate(
+            total=Sum('amount')
+        )['total'] or 0
+        
+        pending_affiliate = AffiliateCommission.objects.filter(
+            influencer=user,
+            status='pending'
+        ).aggregate(
+            total=Sum('amount')
+        )['total'] or 0
+
+        total_earnings = (Payment.objects.filter(
             payee=user, 
             status='completed'
         ).aggregate(
             total=Sum('net_amount')
-        )['total'] or 0
+        )['total'] or 0) + affiliate_earnings
         
-        pending_earnings = Payment.objects.filter(
+        pending_earnings = (Payment.objects.filter(
             payee=user, 
             status__in=['pending', 'processing']
         ).aggregate(
             total=Sum('net_amount')
-        )['total'] or 0
+        )['total'] or 0) + pending_affiliate
         
         return Response({
-            'total_earnings': total_earnings,
-            'pending_earnings': pending_earnings
+            'total_earnings': float(total_earnings),
+            'pending_earnings': float(pending_earnings),
+            'affiliate_earnings': float(affiliate_earnings),
+            'pending_affiliate': float(pending_affiliate),
         })
         
     elif user.user_type == 'company':

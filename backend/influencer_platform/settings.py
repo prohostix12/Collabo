@@ -1,11 +1,25 @@
 import os
+import platform
 from pathlib import Path
 from decouple import config
+import dj_database_url
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
-# Define a persistent data directory for Render (default is /data)
-DATA_DIR = Path(config('DATA_DIR', default='/data'))
+
+# Detect OS for platform-specific defaults
+IS_MACOS = platform.system() == 'Darwin'
+IS_WINDOWS = platform.system() == 'Windows'
+IS_RENDER = 'RENDER' in os.environ
+
+# Define a persistent data directory
+# On Render: use /data (persistent disk mount)
+# On macOS/Windows (local dev): use BASE_DIR / 'data'
+if IS_RENDER:
+    _default_data_dir = '/data'
+else:
+    _default_data_dir = str(BASE_DIR / 'data')
+DATA_DIR = Path(config('DATA_DIR', default=_default_data_dir))
 
 SECRET_KEY = config('SECRET_KEY')
 
@@ -38,6 +52,7 @@ LOCAL_APPS = [
     'social_media',
     'support',
     'landing',
+    'ecommerce',
 ]
 
 INSTALLED_APPS = DJANGO_APPS + THIRD_PARTY_APPS + LOCAL_APPS
@@ -75,13 +90,39 @@ TEMPLATES = [
 WSGI_APPLICATION = 'influencer_platform.wsgi.application'
 
 
-# Database Configuration - FORCED SQLITE
-DATABASES = {
-    'default': {
-        'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': config('DB_PATH', default=str(BASE_DIR / 'db.sqlite3')),
+# Database Configuration — PostgreSQL only
+DATABASE_URL = config('DATABASE_URL', default='')
+
+# SSL is required for remote databases (Render, RDS) but not for local dev
+_db_ssl_require = not (IS_MACOS or IS_WINDOWS) or IS_RENDER
+_db_sslmode_default = 'require' if IS_RENDER else 'disable' if (IS_MACOS or IS_WINDOWS) else 'prefer'
+
+if DATABASE_URL:
+    DATABASES = {
+        'default': dj_database_url.parse(
+            DATABASE_URL,
+            conn_max_age=600,
+            ssl_require=_db_ssl_require,
+        )
     }
-}
+else:
+    _db_sslmode = config('DB_SSLMODE', default=_db_sslmode_default)
+    _db_options = {}
+    if _db_sslmode != 'disable':
+        _db_options['sslmode'] = _db_sslmode
+
+    DATABASES = {
+        'default': {
+            'ENGINE': 'django.db.backends.postgresql',
+            'NAME': config('DB_NAME', default='postgres'),
+            'USER': config('DB_USER', default='postgres'),
+            'PASSWORD': config('DB_PASSWORD', default=''),
+            'HOST': config('DB_HOST', default='localhost'),
+            'PORT': config('DB_PORT', default='5432'),
+        }
+    }
+    if _db_options:
+        DATABASES['default']['OPTIONS'] = _db_options
 
 
 # Password validation
@@ -111,6 +152,9 @@ STATIC_URL = '/static/'
 STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
 
 STORAGES = {
+    "default": {
+        "BACKEND": "django.core.files.storage.FileSystemStorage",
+    },
     "staticfiles": {
         "BACKEND": "whitenoise.storage.CompressedStaticFilesStorage",
     },
@@ -127,6 +171,14 @@ except OSError:
     # This might happen during Render build time when /data is not mounted
     pass
 
+# Razorpay
+RAZORPAY_KEY_ID = config('RAZORPAY_KEY_ID', default='rzp_test_XXXXXXXXXXXXXXXX')
+RAZORPAY_KEY_SECRET = config('RAZORPAY_KEY_SECRET', default='XXXXXXXXXXXXXXXXXXXXXXXX')
+
+# Shiprocket
+SHIPROCKET_EMAIL = config('SHIPROCKET_EMAIL', default='')
+SHIPROCKET_PASSWORD = config('SHIPROCKET_PASSWORD', default='')
+
 # Custom User Model
 AUTH_USER_MODEL = 'accounts.User'
 
@@ -142,7 +194,7 @@ REST_FRAMEWORK = {
     'DEFAULT_FILTER_BACKENDS': (
         'django_filters.rest_framework.DjangoFilterBackend',
     ),
-    'DEFAULT_PAGINATION_CLASS': 'rest_framework.pagination.PageNumberPagination',
+    'DEFAULT_PAGINATION_CLASS': 'influencer_platform.pagination.FlexiblePageNumberPagination',
     'PAGE_SIZE': 10,
 }
 
@@ -188,7 +240,8 @@ ALLOWED_HOSTS = [
     'collabo-backend-y2de.onrender.com', 
     '.onrender.com', 
     'localhost', 
-    '127.0.0.1'
+    '127.0.0.1',
+    'testserver'
 ]
 
 # CORS & CSRF Configuration

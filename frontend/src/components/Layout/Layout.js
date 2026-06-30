@@ -1,10 +1,14 @@
 import React, { useState } from 'react';
+import { Link } from 'react-router-dom';
 import { Menu, X } from 'lucide-react';
 import Footer from './Footer';
 import UserAccountMenu from './UserAccountMenu';
+import { useAuth } from '../../contexts/AuthContext';
 
 const Layout = ({ children }) => {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const { user } = useAuth();
+  const isAdmin = user?.user_type === 'admin' || user?.is_staff;
 
   return (
     <div className="min-h-screen saas-background connection-lines flex flex-col">
@@ -12,9 +16,9 @@ const Layout = ({ children }) => {
         <div className="w-full px-4 sm:px-6 lg:px-12 xl:px-16">
           <div className="flex justify-between h-14">
             <div className="flex items-center">
-              <h1 className="text-lg sm:text-xl brand-text text-gradient-primary">
-                Collabo
-              </h1>
+              <Link to="/" className="flex items-center group hover:opacity-90 transition-opacity">
+                <img src="/collabo-logo.png" alt="Collabo" className="h-10 object-contain scale-[2.0] origin-left transform" />
+              </Link>
             </div>
             
             <div className="hidden sm:flex items-center">
@@ -51,7 +55,7 @@ const Layout = ({ children }) => {
         {children}
       </main>
       
-      <Footer />
+      {!isAdmin && <Footer />}
     </div>
   );
 };

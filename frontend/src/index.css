@@ -6,6 +6,7 @@
 
 /* New Color Theme Variables */
 :root {
+  color-scheme: light;
   --color-primary: #8915A0;
   --color-accent: #EC4899;
   --color-background: #FFF1E8;
@@ -66,7 +67,7 @@ body {
   background: rgba(255, 255, 255, 0.95);
   backdrop-filter: blur(16px);
   border: 1px solid var(--color-border);
-  box-shadow: 
+  box-shadow:
     0 4px 16px rgba(137, 21, 160, 0.08),
     0 1px 4px rgba(0, 0, 0, 0.04);
 }
@@ -163,6 +164,21 @@ body {
   animation: fadeIn 0.5s ease-out;
 }
 
+@keyframes slideIn {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-slideIn {
+  animation: slideIn 0.3s ease-out;
+}
+
 @keyframes slideUp {
   from {
     opacity: 0;
@@ -200,24 +216,29 @@ body {
 }
 
 /* Scrollbar Styling */
+* {
+  scrollbar-color: rgba(249, 115, 22, 0.4) transparent;
+  scrollbar-width: thin;
+}
+
 ::-webkit-scrollbar {
-  width: 8px;
-  height: 8px;
+  width: 8px !important;
+  height: 8px !important;
 }
 
 ::-webkit-scrollbar-track {
-  background: var(--color-background-warm);
+  background: var(--color-background-warm) !important;
   border-radius: 4px;
 }
 
 ::-webkit-scrollbar-thumb {
-  background: rgba(137, 21, 160, 0.3);
+  background: rgba(249, 115, 22, 0.4) !important;
   border-radius: 4px;
   transition: background 0.3s ease;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: rgba(137, 21, 160, 0.5);
+  background: rgba(249, 115, 22, 0.6) !important;
 }
 
 .scrollbar-hide {
@@ -245,7 +266,15 @@ h1, h2, h3, h4, h5, h6 {
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   margin: 0;
-  color: var(--color-primary);
+  color: var(--color-text-primary);
+}
+
+/* Global typography overrides to enforce clean, standard weights */
+.font-black {
+  font-weight: 700 !important;
+}
+.font-extrabold {
+  font-weight: 700 !important;
 }
 
 /* Override heading colors when inside text-white containers */
@@ -1190,12 +1219,6 @@ body {
   }
 }
 
-/* Dark mode support (future enhancement) */
-@media (prefers-color-scheme: dark) {
-  /* Dark mode styles can be added here in the future */
-}
-
-
 
 .nav-hover-effect {
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
@@ -1222,4 +1245,28 @@ nav button.nav-hover-effect:hover *,
 @keyframes gradient-x {
   0%, 100% { background-position: 0% 50%; }
   50% { background-position: 100% 50%; }
+}
+
+/* Trusted Partners scrolling marquee */
+@keyframes partners-scroll {
+  0%   { transform: translateX(0); }
+  100% { transform: translateX(-33.333%); }
+}
+
+/* Testimonials carousel slide-in from right */
+@keyframes testimonial-slide-in {
+  from {
+    opacity: 0;
+    transform: translateX(48px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+/* Offer ticker slide fade-in */
+@keyframes fadeInSlide {
+  from { opacity: 0; transform: translateY(4px); }
+  to   { opacity: 1; transform: translateY(0); }
 }

@@ -3,6 +3,7 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import { useQuery } from 'react-query';
 import api from '../../services/api';
 import { motion } from 'framer-motion';
+// eslint-disable-next-line no-unused-vars
 import { Users, Star, ArrowRight, CheckCircle, Zap, Target, Heart, ChevronLeft, ChevronRight } from 'lucide-react';
 import LandingNavbar from './LandingNavbar';
 import ModernHero from './ModernHero';
@@ -123,7 +124,7 @@ const InfluencerCarouselRow = ({ influencers, onInfluencerClick }) => {
                 )}
               </div>
             </div>
-          </div>
+          </motion.div>
         ))}
       </div>
 
@@ -144,6 +145,7 @@ const LandingPage = () => {
   const location = useLocation();
   const [selectedCategory, setSelectedCategory] = useState('all');
   const [showAllInfluencers, setShowAllInfluencers] = useState(false);
+  // eslint-disable-next-line no-unused-vars
   const [searchQuery, setSearchQuery] = useState('');
   const observerRef = useRef(null);
 
@@ -189,6 +191,7 @@ const LandingPage = () => {
         }
       }, 500); // Wait for components to mount
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [location.state, navigate]);
 
   useEffect(() => {
@@ -216,6 +219,7 @@ const LandingPage = () => {
     navigate(`/influencer/${influencer.id}`);
   };
 
+  // eslint-disable-next-line no-unused-vars
   const handleCategoryClick = (categoryId) => {
     setSelectedCategory(categoryId);
     setShowAllInfluencers(false);
@@ -232,130 +236,16 @@ const LandingPage = () => {
     <div className="min-h-screen bg-transparent relative overflow-hidden selection:bg-primary-100 selection:text-primary-900">
       <LandingNavbar onSearch={handleSearch} />
 
-      {/* Performance Optimized Background - Global Ambient Glow System */}
+      {/* Static background — no continuous animations, no backdrop-blur on full-page overlay */}
       <div className="fixed inset-0 pointer-events-none z-0 bg-[#FDFCFE] overflow-hidden">
-        {/* Primary Ambient Glow - Global Spread */}
-        <motion.div 
-          animate={{ 
-            scale: [1, 1.15, 1],
-            opacity: [0.35, 0.45, 0.35],
-          }}
-          transition={{ duration: 15, repeat: Infinity, ease: "easeInOut" }}
-          className="absolute top-[-25%] left-[-15%] w-[110%] h-[110%] bg-gradient-to-br from-[#8915A0]/30 via-[#DB2777]/15 to-transparent rounded-full blur-[140px]" 
-        />
-        
-        {/* Central Ambient Glow for Global Depth */}
-        <motion.div 
-          animate={{ 
-            scale: [1.1, 1.3, 1.1],
-            opacity: [0.1, 0.2, 0.1],
-          }}
-          transition={{ duration: 25, repeat: Infinity, ease: "easeInOut", delay: 1 }}
-          className="absolute top-1/4 left-1/4 w-[60%] h-[60%] bg-[#8915A0]/15 rounded-full blur-[160px]" 
-        />
-
-        {/* Accent Glow */}
-        <motion.div 
-          animate={{ 
-            scale: [1, 1.2, 1],
-            x: [0, 40, 0],
-            y: [0, -30, 0],
-          }}
-          transition={{ duration: 30, repeat: Infinity, ease: "easeInOut" }}
-          className="absolute bottom-[-15%] right-[-10%] w-[80%] h-[80%] bg-[#8915A0]/15 rounded-full blur-[120px]" 
-        />
-
-        {/* Global Glassmorphic Spread Overlay */}
-        <div className="absolute inset-0 bg-white/20 backdrop-blur-[60px]" />
-        
-        {/* Subtle Mesh Texture */}
-        <div className="absolute inset-0 opacity-[0.2]" 
-             style={{ 
-               backgroundImage: 'radial-gradient(circle at 2px 2px, rgba(137, 21, 160, 0.05) 1px, transparent 0)',
-               backgroundSize: '40px 40px' 
-             }} 
-        />
+        <div className="absolute top-[-25%] left-[-15%] w-[110%] h-[110%] bg-gradient-to-br from-[#8915A0]/20 via-[#DB2777]/10 to-transparent rounded-full blur-[140px]" />
+        <div className="absolute top-1/4 left-1/4 w-[60%] h-[60%] bg-[#8915A0]/10 rounded-full blur-[120px]" />
+        <div className="absolute bottom-[-15%] right-[-10%] w-[80%] h-[80%] bg-[#8915A0]/10 rounded-full blur-[100px]" />
       </div>
 
       <div className="relative z-10 font-sans">
         <ModernHero />
 
-        <section id="influencers-grid" className="max-w-[90rem] mx-auto px-4 sm:px-6 lg:px-8 py-16 sm:py-20 relative">
-          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-8 sm:mb-12 gap-4">
-            <div>
-              <h2 className="text-3xl sm:text-4xl md:text-5xl font-extrabold text-gray-900 mb-3 tracking-tight">
-                {(() => {
-                  const text = searchQuery && searchQuery.trim() !== ''
-                    ? `Search Results for "${searchQuery}"` 
-                    : selectedCategory === 'all' 
-                      ? 'Top {Creators}' 
-                      : `Top {${CATEGORIES.find(c => c.id === selectedCategory)?.name}} Creators`;
-                  
-                  const parts = text.split(/({.*?})/);
-                  return parts.map((part, index) => {
-                    if (part.startsWith('{') && part.endsWith('}')) {
-                      const inner = part.slice(1, -1);
-                      return (
-                        <span 
-                          key={index}
-                          style={{
-                            background: 'linear-gradient(to right, #8915A0, #DB2777, #8915A0)',
-                            WebkitBackgroundClip: 'text',
-                            WebkitTextFillColor: 'transparent',
-                            backgroundClip: 'text',
-                            backgroundSize: '200% auto',
-                            color: 'transparent',
-                          }}
-                          className="animate-gradient-x inline-block"
-                        >
-                          {inner}
-                        </span>
-                      );
-                    }
-                    return <span key={index}>{part}</span>;
-                  });
-                })()}
-              </h2>
-              <p className="text-base sm:text-lg text-gray-600">
-                {searchQuery && searchQuery.trim() !== ''
-                  ? `Found ${filteredInfluencers.length} creator${filteredInfluencers.length !== 1 ? 's' : ''}` 
-                  : 'Discover and collaborate with the perfect match for your brand'}
-              </p>
-            </div>
-            <div className="flex items-center space-x-4">
-              {!showAllInfluencers && influencers.length > 8 && (
-                <button onClick={handleViewAll} className="hidden sm:flex items-center space-x-2 text-primary-600 hover:text-primary-700 font-semibold transition-colors text-sm md:text-base">
-                  <span>View All</span>
-                  <ArrowRight className="h-4 w-4 md:h-5 md:w-5" />
-                </button>
-              )}
-            </div>
-          </div>
-          
-          {isLoading ? (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8">
-              {[...Array(12)].map((_, i) => (
-                <div key={i} className="bg-white/40 backdrop-blur-md rounded-[24px] p-4 border border-white/50 animate-pulse shadow-sm">
-                  <div className="w-full aspect-square bg-gray-100/50 rounded-[16px] mb-4"></div>
-                  <div className="h-4 bg-gray-100/50 rounded mb-2"></div>
-                  <div className="h-3 bg-gray-50/50 rounded w-2/3"></div>
-                </div>
-              ))}
-            </div>
-          ) : filteredInfluencers.length > 0 ? (
-            <div className="flex flex-col space-y-4 sm:space-y-6">
-              <InfluencerCarouselRow influencers={filteredInfluencers} onInfluencerClick={handleInfluencerClick} />
-            </div>
-          ) : (
-            <div className="text-center py-32 bg-white/40 backdrop-blur-md rounded-[32px] border border-white/50 shadow-sm">
-              <div className="w-20 h-20 bg-gray-200/50 rounded-full flex items-center justify-center mx-auto mb-6">
-                <Users className="h-10 w-10 text-gray-400" />
-              </div>
-              <p className="text-gray-900 text-xl font-bold mb-2">No creators found</p>
-              <p className="text-gray-600">Try adjusting your filters or search terms</p>
-            </div>
-          )}
-        </section>
 
         <BrandChoiceSection />
 
@@ -408,34 +298,6 @@ const LandingPage = () => {
                   <h3 className="text-2xl font-bold text-gray-900 mb-4">{feature.title}</h3>
                   <p className="text-gray-600 leading-relaxed text-lg">{feature.content}</p>
                 </motion.div>
-              ))}
-            </div>
-          </div>
-        </section>
-
-        <section id="testimonials" className="bg-transparent py-24 relative overflow-hidden">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div className="text-center mb-20">
-              <h2 className="text-4xl md:text-5xl font-extrabold text-gray-900 mb-6 tracking-tight">Community Love</h2>
-              <p className="text-xl text-gray-600"> Trusted by leading brands and creators worldwide </p>
-            </div>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-              {[
-                { name: 'Sarah Johnson', title: 'Marketing Director, TechCorp', init: 'S', content: 'Collabo made it incredibly easy to find the perfect influencers for our campaign. The analytics and targeting tools are unmatched.' },
-                { name: 'Rahul Sharma', title: 'Creator • 500k+ Followers', init: 'R', content: 'As a creator, Collabo has connected me with amazing brands that align with my exact values. The entire collaboration process is seamless.' },
-                { name: 'Priya Patel', title: 'Founder, Aura Brands', init: 'P', content: "The ROI from our influencer campaigns has tripled since we started using Collabo. The platform's insights are absolutely game-changing." }
-              ].map((testi, i) => (
-                <div key={i} className="bg-white/50 backdrop-blur-md rounded-[32px] p-10 border border-white/60 shadow-sm relative group hover:shadow-xl transition-all duration-300">
-                  <div className="absolute top-0 right-10 transform -translate-y-1/2 text-6xl text-primary-100 font-serif group-hover:text-primary-200 transition-colors">"</div>
-                  <p className="text-gray-700 leading-relaxed text-lg mb-8 relative z-10">{testi.content}</p>
-                  <div className="flex items-center border-t border-gray-100 pt-6">
-                    <div className="w-14 h-14 bg-gradient-to-br from-primary-600 to-accent-500 rounded-full flex items-center justify-center text-white text-xl font-bold mr-4 shrink-0 shadow-md transition-transform group-hover:scale-105">{testi.init}</div>
-                    <div>
-                      <h4 className="text-lg font-bold text-gray-900">{testi.name}</h4>
-                      <p className="text-sm text-gray-500 font-medium">{testi.title}</p>
-                    </div>
-                  </div>
-                </div>
               ))}
             </div>
           </div>

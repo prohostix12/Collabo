@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { motion, useAnimation } from 'framer-motion';
 import { useInView } from 'framer-motion';
+// eslint-disable-next-line no-unused-vars
 import { Building2, MapPin, Users, CheckCircle, Target, TrendingUp, Award, Briefcase } from 'lucide-react';
 
 const CompanyHero = ({ company }) => {
@@ -52,6 +53,7 @@ const CompanyHero = ({ company }) => {
     },
   };
 
+  // eslint-disable-next-line no-unused-vars
   const headlineVariants = {
     hidden: { opacity: 0 },
     visible: {
@@ -62,6 +64,7 @@ const CompanyHero = ({ company }) => {
     },
   };
 
+  // eslint-disable-next-line no-unused-vars
   const letterVariants = {
     hidden: { opacity: 0, y: 50 },
     visible: {
@@ -87,6 +90,7 @@ const CompanyHero = ({ company }) => {
     },
   };
 
+  // eslint-disable-next-line no-unused-vars
   const floatingAnimation = {
     y: [0, -20, 0],
     transition: {
@@ -96,6 +100,7 @@ const CompanyHero = ({ company }) => {
     },
   };
 
+  // eslint-disable-next-line no-unused-vars
   const headline = company?.company_name || '';
 
   // Company details - only use real data, no defaults

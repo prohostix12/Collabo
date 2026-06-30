@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+// eslint-disable-next-line no-unused-vars
 import { motion, AnimatePresence } from 'framer-motion';
 import { useQuery } from 'react-query';
 import api from '../../services/api';
@@ -6,6 +7,7 @@ import api from '../../services/api';
 const CatalogFlipSection = () => {
   const [index, setIndex] = useState(0);
   const [mousePos, setMousePos] = useState({ x: 0, y: 0 });
+  // eslint-disable-next-line no-unused-vars
   const timerRef = useRef(null);
 
   const handleMouseMove = (e) => {

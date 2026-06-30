@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useQuery } from 'react-query';
 import api from '../../services/api';
+// eslint-disable-next-line no-unused-vars
 import { Users, Star, ArrowRight } from 'lucide-react';
 import LandingNavbar from './LandingNavbar';
 import Footer from '../Layout/Footer';

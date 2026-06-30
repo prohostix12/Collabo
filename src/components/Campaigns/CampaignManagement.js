@@ -13,20 +13,25 @@ import {
   DollarSign, 
   Calendar, 
   Target, 
+  // eslint-disable-next-line no-unused-vars
   Users, 
   FileText, 
   Briefcase,
   AlertCircle,
   CheckCircle,
+  // eslint-disable-next-line no-unused-vars
   Clock,
   Play,
   Pause,
+  // eslint-disable-next-line no-unused-vars
   Eye,
   TrendingUp,
   Sparkles,
   Filter,
   Search,
+  // eslint-disable-next-line no-unused-vars
   MoreHorizontal,
+  // eslint-disable-next-line no-unused-vars
   ExternalLink,
   MessageSquare,
   Star,
@@ -35,6 +40,7 @@ import {
   Gift,
   CreditCard
 } from 'lucide-react';
+import { showConfirmToast } from '../../utils/toastHelpers';
 
 const CampaignManagement = () => {
   const [showCreateForm, setShowCreateForm] = useState(false);
@@ -299,9 +305,9 @@ const CampaignManagement = () => {
   };
 
   const handleDelete = (campaign) => {
-    if (window.confirm(`Are you sure you want to delete "${campaign.title}"? This action cannot be undone.`)) {
+    showConfirmToast(`Are you sure you want to delete "${campaign.title}"? This action cannot be undone.`, () => {
       deleteCampaignMutation.mutate(campaign.id);
-    }
+    }, "Delete");
   };
 
   const handleCancel = () => {

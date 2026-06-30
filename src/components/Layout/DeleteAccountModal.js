@@ -86,7 +86,7 @@ const DeleteAccountModal = ({ isOpen, onClose }) => {
         />
 
         {/* Modal */}
-        <div className="inline-block w-full max-w-md p-6 my-8 overflow-hidden text-left align-middle transition-all transform glass-card rounded-2xl shadow-2xl border border-red-500/20 relative">
+        <div className="inline-block w-full max-w-md p-6 my-8 overflow-hidden text-left align-middle transition-all transform bg-white rounded-2xl shadow-xl border border-red-100 relative">
           {/* Header */}
           <div className="flex items-center justify-between mb-6">
             <div className="flex items-center space-x-3">
@@ -105,7 +105,7 @@ const DeleteAccountModal = ({ isOpen, onClose }) => {
             <button
               onClick={handleClose}
               disabled={loading}
-              className="p-2 hover:bg-dark-700/30 rounded-lg transition-colors disabled:opacity-50"
+              className="p-2 hover:bg-gray-100 rounded-lg transition-colors disabled:opacity-50"
             >
               <X className="w-5 h-5 text-gray-900" />
             </button>
@@ -133,7 +133,7 @@ const DeleteAccountModal = ({ isOpen, onClose }) => {
               </div>
 
               {/* Account Info */}
-              <div className="p-4 bg-dark-700/30 rounded-lg">
+              <div className="p-4 bg-gray-50 border border-gray-100 rounded-lg">
                 <h4 className="text-sm font-medium text-gray-900 mb-2">Account to be deleted:</h4>
                 <div className="flex items-center space-x-3">
                   <div className="w-8 h-8 bg-gradient-to-br from-red-600 to-red-700 rounded-lg flex items-center justify-center text-white font-semibold text-sm">

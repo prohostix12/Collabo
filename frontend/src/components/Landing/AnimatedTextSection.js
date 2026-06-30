@@ -1,4 +1,5 @@
 import React, { useRef } from 'react';
+// eslint-disable-next-line no-unused-vars
 import { motion, useScroll, useTransform } from 'framer-motion';
 import { useQuery } from 'react-query';
 import api from '../../services/api';
@@ -21,13 +22,11 @@ const AnimatedTextSection = () => {
     hidden: { 
       opacity: 0, 
       y: 40,
-      filter: 'blur(15px)',
       scale: 0.95
     },
     visible: { 
       opacity: 1, 
       y: 0, 
-      filter: 'blur(0px)',
       scale: 1,
       transition: { 
         duration: 0.8, 
@@ -40,13 +39,11 @@ const AnimatedTextSection = () => {
     hidden: { 
       opacity: 0, 
       y: 40,
-      filter: 'blur(15px)',
       scale: 0.8 
     },
     visible: { 
       opacity: 1, 
       y: 0, 
-      filter: 'blur(0px)',
       scale: 1, 
       transition: { 
         duration: 0.8, 
@@ -130,19 +127,18 @@ const AnimatedTextSection = () => {
                   const textContent = isGradient ? token.slice(1, -1) : token;
                   
                   return textContent.split(' ').filter(Boolean).map((word, wordIdx) => (
-                    <motion.span 
+                    <motion.span
                       key={`${tokenIdx}-${wordIdx}`}
                       variants={wordVariants}
                       style={isGradient ? {
-                        background: 'linear-gradient(to right, #8915A0, #DB2777, #EC4899)',
+                        background: 'linear-gradient(to right, #8915A0, #DB2777)',
                         WebkitBackgroundClip: 'text',
                         WebkitTextFillColor: 'transparent',
                         backgroundClip: 'text',
-                        backgroundSize: '200% auto',
                         color: 'transparent',
-                        fontWeight: 900
-                      } : {}}
-                      className={`text-3xl sm:text-4xl md:text-5xl lg:text-7xl font-black tracking-tighter leading-tight ${isGradient ? 'animate-gradient-x' : 'text-white'}`}
+                        fontWeight: 900,
+                      } : undefined}
+                      className={`text-3xl sm:text-4xl md:text-5xl lg:text-7xl font-black tracking-tighter leading-tight ${isGradient ? '' : 'text-white'}`}
                     >
                       {word}
                     </motion.span>
@@ -154,15 +150,6 @@ const AnimatedTextSection = () => {
         </motion.div>
       </div>
 
-      <style dangerouslySetInnerHTML={{__html: `
-        @keyframes gradient-x {
-          0%, 100% { background-position: 0% 50%; }
-          50% { background-position: 100% 50%; }
-        }
-        .animate-gradient-x {
-          animation: gradient-x 10s ease infinite;
-        }
-      `}} />
     </section>
   );
 };

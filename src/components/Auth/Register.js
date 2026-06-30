@@ -12,6 +12,7 @@ import {
   Sparkles,
   Users,
   Building2,
+  Phone,
   CheckCircle,
   Home
 } from 'lucide-react';
@@ -29,8 +30,11 @@ const Register = () => {
     username: '',
     password: '',
     password_confirm: '',
+    phone: '',
     user_type: initialType
   });
+
+  const [countryCode, setCountryCode] = useState('+91');
 
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
@@ -60,11 +64,16 @@ const Register = () => {
 
     setLoading(true);
 
-    const result = await register(formData);
+    const dataToSubmit = { ...formData };
+    if (dataToSubmit.phone && dataToSubmit.phone.trim() !== '') {
+      dataToSubmit.phone = `${countryCode}${dataToSubmit.phone.replace(/^0+/, '')}`;
+    }
+
+    const result = await register(dataToSubmit);
 
     if (result.success) {
       toast.success('Account Created!', 'Welcome to Collabo. Your account has been created successfully.');
-      navigate('/');
+      navigate('/', { replace: true });
     } else {
       toast.error('Registration Failed', result.error || 'Unable to create account. Please try again.');
     }
@@ -210,6 +219,43 @@ const Register = () => {
               </div>
             </div>
 
+            {/* Phone Field */}
+            <div className="space-y-2">
+              <label htmlFor="phone" className="text-sm font-medium text-gray-700 dark:text-gray-200 flex justify-between">
+                <span>Phone Number (Optional)</span>
+              </label>
+              <div className="flex gap-2">
+                <select
+                  value={countryCode}
+                  onChange={(e) => setCountryCode(e.target.value)}
+                  className="w-24 pl-2 pr-1 py-3 border border-gray-300 dark:border-gray-600 rounded-xl text-gray-900 dark:text-white bg-white dark:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-accent-500"
+                >
+                  <option value="+1">+1 (US)</option>
+                  <option value="+44">+44 (UK)</option>
+                  <option value="+91">+91 (IN)</option>
+                  <option value="+61">+61 (AU)</option>
+                  <option value="+81">+81 (JP)</option>
+                  <option value="+971">+971 (AE)</option>
+                  <option value="+49">+49 (DE)</option>
+                  <option value="+33">+33 (FR)</option>
+                </select>
+                <div className="relative flex-1">
+                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                    <Phone className="h-5 w-5 text-gray-400" />
+                  </div>
+                  <input
+                    id="phone"
+                    name="phone"
+                    type="tel"
+                    className="block w-full pl-10 pr-3 py-3 border border-gray-300 dark:border-gray-600 rounded-xl text-gray-900 dark:text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-accent-500 focus:border-transparent transition-all duration-200 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700"
+                    placeholder="Mobile Number"
+                    value={formData.phone}
+                    onChange={handleChange}
+                  />
+                </div>
+              </div>
+            </div>
+
             {/* Password Field */}
             <div className="space-y-2">
               <label htmlFor="password" className="text-sm font-medium text-gray-700 dark:text-gray-200">
@@ -318,16 +364,27 @@ const Register = () => {
               <ArrowRight className="ml-2 h-4 w-4 group-hover:translate-x-1 transition-transform duration-200" />
             </Link>
           </div>
+          
+          <div className="mt-4 text-center">
+             <Link
+               to="/forgot-password"
+               className="text-xs text-accent-500 hover:text-accent-400 transition-colors font-medium"
+             >
+               Forgot your password?
+             </Link>
+          </div>
         </div>
 
         {/* Footer */}
         <div className="text-center">
           <p className="text-xs text-gray-500 dark:text-gray-400">
             By creating an account, you agree to our{' '}
+            {/* eslint-disable-next-line jsx-a11y/anchor-is-valid */}
             <a href="#" className="text-accent-500 hover:text-accent-400">
               Terms of Service
             </a>{' '}
             and{' '}
+            {/* eslint-disable-next-line jsx-a11y/anchor-is-valid */}
             <a href="#" className="text-accent-500 hover:text-accent-400">
               Privacy Policy
             </a>

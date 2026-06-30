@@ -725,3 +725,235 @@ def update_followers_sync(request):
 
 # Alias for backward compatibility
 get_follower_stats = follower_stats
+
+
+class FetchHandleStatsView(APIView):
+    """
+    POST /api/social/fetch-handle-stats/
+    Fetches real public stats for an Instagram handle or YouTube channel URL.
+    No OAuth required — uses instaloader for Instagram, YouTube Data API v3 for YouTube.
+    """
+    permission_classes = [permissions.IsAuthenticated]
+
+    def post(self, request):
+        platform = request.data.get('platform', '').lower().strip()
+        handle = request.data.get('handle', '').strip()
+
+        if not platform or not handle:
+            return Response({'error': 'Both platform and handle are required'},
+                            status=status.HTTP_400_BAD_REQUEST)
+        if platform not in ('instagram', 'youtube'):
+            return Response({'error': 'Platform must be "instagram" or "youtube"'},
+                            status=status.HTTP_400_BAD_REQUEST)
+
+        try:
+            if platform == 'instagram':
+                data = self._fetch_instagram_stats(handle)
+            else:
+                data = self._fetch_youtube_stats(handle)
+
+            if data:
+                data['fetched_at'] = timezone.now().isoformat()
+                return Response(data)
+            else:
+                return Response(
+                    {'error': f'Could not fetch stats for {handle}. The account may be private, not found, or temporarily rate-limited.'},
+                    status=status.HTTP_404_NOT_FOUND
+                )
+        except Exception as e:
+            logger.error(f"FetchHandleStatsView error for {platform}/{handle}: {e}")
+            return Response({'error': 'Stats fetch service temporarily unavailable.'},
+                            status=status.HTTP_503_SERVICE_UNAVAILABLE)
+
+    def _fetch_instagram_stats(self, handle: str):
+        """Fetch public Instagram profile stats using instaloader (no API key needed)."""
+        try:
+            import instaloader
+            username = handle.lstrip('@').strip()
+
+            loader = instaloader.Instaloader(
+                quiet=True, download_pictures=False,
+                download_video_thumbnails=False, download_geotags=False,
+                download_comments=False, save_metadata=False, compress_json=False,
+            )
+            profile = instaloader.Profile.from_username(loader.context, username)
+
+            followers = profile.followers
+            following = profile.followees
+            posts_count = profile.mediacount
+
+            total_likes = 0
+            total_comments = 0
+            sampled = 0
+            try:
+                for post in profile.get_posts():
+                    total_likes += post.likes
+                    total_comments += post.comments
+                    sampled += 1
+                    if sampled >= 12:
+                        break
+            except Exception:
+                pass
+
+            avg_likes = int(total_likes / sampled) if sampled > 0 else 0
+            avg_comments = int(total_comments / sampled) if sampled > 0 else 0
+            engagement_rate = round(
+                ((avg_likes + avg_comments) / followers * 100) if followers > 0 else 0, 2
+            )
+
+            return {
+                'platform': 'instagram',
+                'handle': username,
+                'followers': followers,
+                'following': following,
+                'posts': posts_count,
+                'likes': avg_likes,
+                'comments': avg_comments,
+                'posts_sampled': sampled,
+                'engagement_rate': engagement_rate,
+                'profile_url': f'https://instagram.com/{username}',
+                'is_private': profile.is_private,
+                'is_verified': profile.is_verified,
+                'bio': profile.biography[:200] if profile.biography else '',
+                'source': 'instaloader',
+            }
+        except Exception as e:
+            logger.warning(f"instaloader fetch failed for @{handle}: {e}")
+            return None
+
+    def _fetch_youtube_stats(self, channel_input: str):
+        """Fetch YouTube channel stats using YouTube Data API v3."""
+        try:
+            api_key = getattr(settings, 'YOUTUBE_API_KEY', None)
+            if not api_key or api_key == 'your_youtube_api_key_here':
+                logger.warning("YOUTUBE_API_KEY not configured — YouTube stats unavailable")
+                return None
+
+            from googleapiclient.discovery import build
+            youtube = build('youtube', 'v3', developerKey=api_key)
+
+            channel_id = self._resolve_youtube_channel_id(youtube, channel_input)
+            if not channel_id:
+                return None
+
+            ch_resp = youtube.channels().list(
+                part='statistics,snippet', id=channel_id
+            ).execute()
+            if not ch_resp.get('items'):
+                return None
+
+            item = ch_resp['items'][0]
+            stats = item.get('statistics', {})
+            snippet = item.get('snippet', {})
+
+            subscribers = int(stats.get('subscriberCount', 0))
+            total_views = int(stats.get('viewCount', 0))
+            video_count = int(stats.get('videoCount', 0))
+            title = snippet.get('title', channel_input)
+            description = snippet.get('description', '')[:200]
+            thumbnail = snippet.get('thumbnails', {}).get('default', {}).get('url', '')
+
+            total_likes = 0
+            total_comments = 0
+            sampled = 0
+            try:
+                search_resp = youtube.search().list(
+                    part='id', channelId=channel_id, type='video',
+                    order='date', maxResults=10
+                ).execute()
+                video_ids = [i['id']['videoId'] for i in search_resp.get('items', [])]
+                if video_ids:
+                    vids_resp = youtube.videos().list(
+                        part='statistics', id=','.join(video_ids)
+                    ).execute()
+                    for vid in vids_resp.get('items', []):
+                        vstats = vid.get('statistics', {})
+                        total_likes += int(vstats.get('likeCount', 0))
+                        total_comments += int(vstats.get('commentCount', 0))
+                        sampled += 1
+            except Exception as e:
+                logger.warning(f"YouTube engagement sampling failed: {e}")
+
+            avg_likes = int(total_likes / sampled) if sampled > 0 else 0
+            avg_comments = int(total_comments / sampled) if sampled > 0 else 0
+            engagement_rate = round(
+                ((avg_likes + avg_comments) / subscribers * 100) if subscribers > 0 else 0, 2
+            )
+
+            import re
+            handle_match = re.search(r'@([a-zA-Z0-9_.-]+)', channel_input)
+            handle = handle_match.group(1) if handle_match else title
+
+            return {
+                'platform': 'youtube',
+                'handle': handle,
+                'title': title,
+                'description': description,
+                'thumbnail': thumbnail,
+                'channel_id': channel_id,
+                'followers': subscribers,
+                'subscribers': subscribers,
+                'total_views': total_views,
+                'video_count': video_count,
+                'likes': avg_likes,
+                'comments': avg_comments,
+                'posts_sampled': sampled,
+                'engagement_rate': engagement_rate,
+                'profile_url': f'https://youtube.com/channel/{channel_id}',
+                'source': 'youtube_data_api_v3',
+            }
+        except Exception as e:
+            logger.error(f"YouTube Data API fetch failed for '{channel_input}': {e}")
+            return None
+
+    def _resolve_youtube_channel_id(self, youtube_client, channel_input: str):
+        """Resolve a YouTube channel URL, @handle, or ID to a channel ID string."""
+        import re
+
+        if re.match(r'^UC[a-zA-Z0-9_-]{22}$', channel_input):
+            return channel_input
+
+        patterns = [
+            r'youtube\.com/channel/([a-zA-Z0-9_-]+)',
+            r'youtube\.com/@([a-zA-Z0-9_.-]+)',
+            r'youtube\.com/c/([a-zA-Z0-9_.-]+)',
+            r'youtube\.com/user/([a-zA-Z0-9_.-]+)',
+        ]
+        extracted = None
+        for pattern in patterns:
+            match = re.search(pattern, channel_input)
+            if match:
+                extracted = match.group(1)
+                break
+
+        if extracted:
+            if re.match(r'^UC[a-zA-Z0-9_-]{22}$', extracted):
+                return extracted
+            try:
+                resp = youtube_client.channels().list(
+                    part='id', forHandle=f'@{extracted.lstrip("@")}'
+                ).execute()
+                if resp.get('items'):
+                    return resp['items'][0]['id']
+            except Exception:
+                pass
+            try:
+                resp = youtube_client.channels().list(
+                    part='id', forUsername=extracted
+                ).execute()
+                if resp.get('items'):
+                    return resp['items'][0]['id']
+            except Exception:
+                pass
+
+        try:
+            query = re.sub(r'https?://(www\.)?', '', channel_input)
+            resp = youtube_client.search().list(
+                part='id', q=query, type='channel', maxResults=1
+            ).execute()
+            if resp.get('items'):
+                return resp['items'][0]['id']['channelId']
+        except Exception as e:
+            logger.warning(f"YouTube channel search fallback failed: {e}")
+
+        return None

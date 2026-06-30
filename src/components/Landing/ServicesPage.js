@@ -7,13 +7,10 @@ import {
   BarChart3, 
   Users, 
   Zap, 
-  ShieldCheck, 
   Target, 
-  PieChart, 
   ArrowRight,
   TrendingUp,
-  Globe,
-  MessageSquare
+  Globe
 } from 'lucide-react';
 
 const ServicesPage = () => {
@@ -82,7 +79,7 @@ const ServicesPage = () => {
             className="text-5xl sm:text-7xl font-black text-gray-900 leading-tight mb-8"
           >
             Infrastructure Built for <br/>
-            <span className="text-transparent bg-clip-text bg-gradient-to-r from-primary-600 to-accent-600 italic">High-Performance</span> Marketing
+            <span className="text-transparent bg-clip-text bg-gradient-to-r from-primary-600 to-accent-600">High-Performance</span> Marketing
           </motion.h1>
           
           <motion.p
@@ -118,7 +115,7 @@ const ServicesPage = () => {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-20">
             <h2 className="text-4xl font-extrabold text-gray-900 mb-4 tracking-tight">Enterprise-Grade Features</h2>
-            <p className="text-xl text-gray-600 max-w-2xl mx-auto italic">Everything you need to orchestrate multi-channel influencer success.</p>
+            <p className="text-xl text-gray-600 max-w-2xl mx-auto">Everything you need to orchestrate multi-channel influencer success.</p>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-8 lg:gap-12">

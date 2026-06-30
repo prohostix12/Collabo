@@ -12,6 +12,7 @@ class SupportTicket(models.Model):
         ('payment', 'Payment'),
         ('campaign', 'Campaign'),
         ('account', 'Account'),
+        ('partnership', 'Partnership'),
         ('other', 'Other'),
     ]
     

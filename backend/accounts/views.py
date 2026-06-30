@@ -1,4 +1,4 @@
-from rest_framework import generics, status, permissions, filters
+from rest_framework import generics, status, permissions, filters, parsers
 from rest_framework.response import Response
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import AllowAny, IsAuthenticated, IsAdminUser
@@ -6,11 +6,12 @@ from rest_framework_simplejwt.tokens import RefreshToken
 from django.contrib.auth import authenticate
 from django.contrib.auth.hashers import check_password
 from django.utils import timezone
-from .models import User, InfluencerProfile, CompanyProfile
+from .models import User, InfluencerProfile, CompanyProfile, SellerProfile
 from .serializers import (
     UserRegistrationSerializer, UserLoginSerializer, 
     UserSerializer, InfluencerProfileSerializer, CompanyProfileSerializer,
-    ChangePasswordSerializer, PendingInfluencerSerializer, ApprovalActionSerializer
+    ChangePasswordSerializer, PendingInfluencerSerializer, ApprovalActionSerializer,
+    SellerProfileSerializer
 )
 from .youtube_service import VideoStatsService
 
@@ -39,9 +40,13 @@ class RegisterView(generics.CreateAPIView):
         elif user.user_type == 'company':
             CompanyProfile.objects.create(user=user)
         
+        # Welcome bonus: 10 reward points for new signup
+        user.reward_points = 10
+        user.save(update_fields=['reward_points'])
+
         # Generate tokens
         refresh = RefreshToken.for_user(user)
-        
+
         return Response({
             'user': UserSerializer(user).data,
             'refresh': str(refresh),
@@ -101,6 +106,10 @@ class LoginView(generics.GenericAPIView):
         serializer.is_valid(raise_exception=True)
         user = serializer.validated_data['user']
         
+        if user.reward_points is None:
+            user.reward_points = 0
+            user.save(update_fields=['reward_points'])
+
         refresh = RefreshToken.for_user(user)
         
         return Response({
@@ -390,6 +399,65 @@ def get_video_stats(request):
 
 
 # ============================================
+@api_view(['POST'])
+@permission_classes([IsAdminUser])
+def admin_create_influencer(request):
+    """
+    Admin endpoint to create an influencer account with provided credentials.
+    Returns the created influencer's email and password once.
+    """
+    username = request.data.get('username')
+    email = request.data.get('email')
+    password = request.data.get('password')
+    if not all([username, email, password]):
+        return Response({'error': 'username, email and password are required'}, status=status.HTTP_400_BAD_REQUEST)
+    if User.objects.filter(username=username).exists():
+        return Response({'error': 'Username already exists'}, status=status.HTTP_400_BAD_REQUEST)
+    if User.objects.filter(email=email).exists():
+        return Response({'error': 'Email already exists'}, status=status.HTTP_400_BAD_REQUEST)
+    user = User.objects.create_user(
+        username=username,
+        email=email,
+        password=password,
+        user_type='influencer',
+        approval_status='approved',
+        is_approved=True,
+    )
+    InfluencerProfile.objects.create(user=user)
+    return Response({'email': email, 'password': password, 'message': 'Influencer created and approved'}, status=status.HTTP_201_CREATED)
+
+@api_view(['POST'])
+@permission_classes([IsAdminUser])
+def admin_convert_to_influencer(request, user_id):
+    """Convert an existing buyer/user to an influencer account."""
+    try:
+        user = User.objects.get(id=user_id)
+    except User.DoesNotExist:
+        return Response({'error': 'User not found'}, status=status.HTTP_404_NOT_FOUND)
+
+    if user.user_type == 'influencer':
+        return Response({'error': 'User is already an influencer'}, status=status.HTTP_400_BAD_REQUEST)
+
+    if user.user_type == 'admin' or user.is_staff:
+        return Response({'error': 'Cannot convert admin accounts'}, status=status.HTTP_400_BAD_REQUEST)
+
+    user.user_type = 'influencer'
+    user.approval_status = 'approved'
+    user.is_approved = True
+    user.save(update_fields=['user_type', 'approval_status', 'is_approved'])
+
+    if not hasattr(user, 'influencer_profile'):
+        InfluencerProfile.objects.create(user=user)
+
+    return Response({
+        'message': f'{user.username} has been converted to an approved influencer',
+        'user_id': user.id,
+        'username': user.username,
+        'email': user.email,
+        'user_type': user.user_type,
+    })
+
+
 # ADMIN APPROVAL SYSTEM
 # ============================================
 
@@ -547,7 +615,7 @@ def reject_influencer(request, user_id):
     # Reject the influencer - no rejection reason required
     user.is_approved = False
     user.approval_status = 'rejected'
-    user.rejection_reason = None  # Clear any previous rejection reason
+    user.rejection_reason = ''  # Clear any previous rejection reason
     user.approved_at = None
     user.approved_by = None
     user.save()
@@ -567,7 +635,7 @@ def reject_influencer(request, user_id):
             action='rejected',
             previous_status=previous_status,
             new_status='rejected',
-            reason=rejection_reason,
+            reason='',
             ip_address=ip_address
         )
         logger.info(f"Audit log created for rejection of {user.username}")
@@ -747,3 +815,169 @@ def mark_approval_shown(request):
     return Response({
         'message': 'Approval popup marked as shown'
     }, status=status.HTTP_200_OK)
+
+
+# ============================================
+# SELLER ONBOARDING & VERIFICATION SYSTEM
+# ============================================
+
+class SellerProfileView(generics.RetrieveUpdateAPIView):
+    serializer_class = SellerProfileSerializer
+    permission_classes = [IsAuthenticated]
+    parser_classes = [parsers.MultiPartParser, parsers.FormParser, parsers.JSONParser]
+
+    def get_object(self):
+        profile, created = SellerProfile.objects.get_or_create(user=self.request.user)
+        return profile
+
+    def get_serializer_context(self):
+        ctx = super().get_serializer_context()
+        ctx['request'] = self.request
+        return ctx
+
+    def post(self, request, *args, **kwargs):
+        profile, created = SellerProfile.objects.get_or_create(user=request.user)
+
+        MAX_SIZE = 5 * 1024 * 1024
+        ALLOWED = ['application/pdf', 'image/png', 'image/jpeg', 'image/jpg']
+
+        kyc_file = request.FILES.get('kyc_document_file')
+        bank_file = request.FILES.get('bank_document_file')
+
+        if kyc_file:
+            if kyc_file.size > MAX_SIZE:
+                return Response({'error': 'KYC document must be under 5MB'}, status=status.HTTP_400_BAD_REQUEST)
+            if kyc_file.content_type not in ALLOWED:
+                return Response({'error': 'KYC document must be PDF, PNG, or JPG'}, status=status.HTTP_400_BAD_REQUEST)
+            if profile.kyc_document_file:
+                profile.kyc_document_file.delete(save=False)
+            profile.kyc_document_file = kyc_file
+
+        if bank_file:
+            if bank_file.size > MAX_SIZE:
+                return Response({'error': 'Bank document must be under 5MB'}, status=status.HTTP_400_BAD_REQUEST)
+            if bank_file.content_type not in ALLOWED:
+                return Response({'error': 'Bank document must be PDF, PNG, or JPG'}, status=status.HTTP_400_BAD_REQUEST)
+            if profile.bank_document_file:
+                profile.bank_document_file.delete(save=False)
+            profile.bank_document_file = bank_file
+
+        serializer = self.get_serializer(profile, data=request.data, partial=True)
+        serializer.is_valid(raise_exception=True)
+        serializer.save(user=request.user, verification_status='pending', rejection_reason=None)
+        return Response(serializer.data, status=status.HTTP_200_OK)
+
+
+class PendingSellersListView(generics.ListAPIView):
+    serializer_class = SellerProfileSerializer
+    permission_classes = [IsAdminUser]
+    filter_backends = [filters.SearchFilter, filters.OrderingFilter]
+    search_fields = ['store_name', 'user__email', 'user__username']
+    ordering_fields = ['created_at', 'store_name']
+    ordering = ['-created_at']
+    
+    def get_queryset(self):
+        return SellerProfile.objects.filter(verification_status='pending').select_related('user')
+
+
+@api_view(['POST'])
+@permission_classes([IsAdminUser])
+def approve_seller(request, user_id):
+    from .models import ApprovalAuditLog
+    from .email_service import ApprovalEmailService
+
+    try:
+        user = User.objects.get(id=user_id)
+    except User.DoesNotExist:
+        return Response({'error': 'User not found'}, status=status.HTTP_404_NOT_FOUND)
+
+    try:
+        profile = SellerProfile.objects.get(user=user)
+    except SellerProfile.DoesNotExist:
+        return Response({'error': 'Seller profile not found'}, status=status.HTTP_404_NOT_FOUND)
+
+    previous_status = profile.verification_status
+    profile.verification_status = 'approved'
+    profile.rejection_reason = None
+    profile.save()
+
+    user.user_type = 'seller'
+    user.save(update_fields=['user_type'])
+
+    x_forwarded = request.META.get('HTTP_X_FORWARDED_FOR')
+    ip = x_forwarded.split(',')[0].strip() if x_forwarded else request.META.get('REMOTE_ADDR')
+    try:
+        ApprovalAuditLog.objects.create(
+            user=user, admin=request.user, action='approved',
+            previous_status=previous_status, new_status='approved',
+            reason='', ip_address=ip,
+        )
+    except Exception:
+        pass
+
+    try:
+        ApprovalEmailService.send_seller_approval_email(user, profile.store_name)
+    except Exception:
+        pass
+
+    return Response({
+        'message': 'Seller approved successfully',
+        'profile': SellerProfileSerializer(profile).data
+    })
+
+
+@api_view(['POST'])
+@permission_classes([IsAdminUser])
+def reject_seller(request, user_id):
+    from .models import ApprovalAuditLog
+    from .email_service import ApprovalEmailService
+
+    try:
+        user = User.objects.get(id=user_id)
+    except User.DoesNotExist:
+        return Response({'error': 'User not found'}, status=status.HTTP_404_NOT_FOUND)
+
+    try:
+        profile = SellerProfile.objects.get(user=user)
+    except SellerProfile.DoesNotExist:
+        return Response({'error': 'Seller profile not found'}, status=status.HTTP_404_NOT_FOUND)
+
+    reason = request.data.get('rejection_reason', 'Compliance or document details verification failed.')
+    previous_status = profile.verification_status
+    profile.verification_status = 'rejected'
+    profile.rejection_reason = reason
+    profile.save()
+
+    if user.user_type == 'seller':
+        user.user_type = 'buyer'
+        user.save(update_fields=['user_type'])
+
+    x_forwarded = request.META.get('HTTP_X_FORWARDED_FOR')
+    ip = x_forwarded.split(',')[0].strip() if x_forwarded else request.META.get('REMOTE_ADDR')
+    try:
+        ApprovalAuditLog.objects.create(
+            user=user, admin=request.user, action='rejected',
+            previous_status=previous_status, new_status='rejected',
+            reason=reason, ip_address=ip,
+        )
+    except Exception:
+        pass
+
+    try:
+        ApprovalEmailService.send_seller_rejection_email(user, profile.store_name, reason)
+    except Exception:
+        pass
+
+    return Response({
+        'message': 'Seller application rejected',
+        'profile': SellerProfileSerializer(profile).data
+    })
+
+
+@api_view(['GET'])
+@permission_classes([IsAdminUser])
+def seller_audit_log(request, user_id):
+    from .models import ApprovalAuditLog
+    from .serializers import ApprovalAuditLogSerializer
+    logs = ApprovalAuditLog.objects.filter(user_id=user_id).order_by('-timestamp')
+    return Response(ApprovalAuditLogSerializer(logs, many=True).data)

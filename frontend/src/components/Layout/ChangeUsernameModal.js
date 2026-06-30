@@ -84,7 +84,7 @@ const ChangeUsernameModal = ({ isOpen, onClose }) => {
         />
 
         {/* Modal */}
-        <div className="inline-block w-full max-w-md p-6 my-8 overflow-hidden text-left align-middle transition-all transform glass-card rounded-2xl shadow-2xl border border-white/10 relative">
+        <div className="inline-block w-full max-w-md p-6 my-8 overflow-hidden text-left align-middle transition-all transform bg-white rounded-2xl shadow-xl border border-gray-100 relative">
           {/* Header */}
           <div className="flex items-center justify-between mb-6">
             <div className="flex items-center space-x-3">
@@ -103,7 +103,7 @@ const ChangeUsernameModal = ({ isOpen, onClose }) => {
             <button
               onClick={handleClose}
               disabled={loading}
-              className="p-2 hover:bg-dark-700/30 rounded-lg transition-colors disabled:opacity-50"
+              className="p-2 hover:bg-gray-100 rounded-lg transition-colors disabled:opacity-50"
             >
               <X className="w-5 h-5 text-gray-900" />
             </button>
@@ -124,7 +124,7 @@ const ChangeUsernameModal = ({ isOpen, onClose }) => {
                   type="text"
                   value={user?.username || ''}
                   disabled
-                  className="form-input w-full pl-10 pr-4 py-3 rounded-xl bg-dark-700/50 border-dark-600 text-gray-900 cursor-not-allowed"
+                  className="form-input w-full pl-10 pr-4 py-3 rounded-xl bg-gray-100 border-gray-200 text-gray-500 cursor-not-allowed"
                 />
               </div>
             </div>

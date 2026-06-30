@@ -3,11 +3,13 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import { useQuery } from 'react-query';
 import api from '../../services/api';
 import { motion } from 'framer-motion';
+// eslint-disable-next-line no-unused-vars
 import { Users, Star, ArrowRight, CheckCircle, Zap, Target, Heart, ChevronLeft, ChevronRight } from 'lucide-react';
 import LandingNavbar from './LandingNavbar';
 import ModernHero from './ModernHero';
 import AnimatedTextSection from './AnimatedTextSection';
 import CatalogFlipSection from './CatalogFlipSection';
+import BrandChoiceSection from './BrandChoiceSection';
 import Footer from '../Layout/Footer';
 
 const CATEGORIES = [
@@ -40,7 +42,19 @@ const InfluencerCarouselRow = ({ influencers, onInfluencerClick }) => {
   if (influencers.length === 0) return null;
 
   return (
-    <div className="relative group/carousel w-full py-4 px-4 sm:px-14 scroll-animate opacity-0 transition-opacity duration-1000 mb-6 sm:mb-8">
+    <motion.div 
+      initial="hidden"
+      whileInView="visible"
+      viewport={{ once: true, margin: "-50px" }}
+      variants={{
+        hidden: { opacity: 0 },
+        visible: {
+          opacity: 1,
+          transition: { staggerChildren: 0.1 }
+        }
+      }}
+      className="relative group/carousel w-full py-4 px-4 sm:px-14 mb-6 sm:mb-8"
+    >
       {currentIndex > 0 && (
         <button 
           onClick={handlePrev}
@@ -52,9 +66,16 @@ const InfluencerCarouselRow = ({ influencers, onInfluencerClick }) => {
       
       <div className="flex flex-col sm:flex-row w-full gap-4 sm:gap-6 h-auto sm:h-[450px]">
         {displayed.map((influencer, index) => (
-          <div key={influencer.id} onClick={() => onInfluencerClick(influencer)}
-            className="cursor-pointer group relative flex-1 hover:flex-[3] transition-all duration-700 ease-in-out rounded-[32px] overflow-hidden shadow-sm hover:shadow-2xl border border-gray-100/50 min-h-[400px] sm:min-h-0"
-            style={{ animationDelay: `${index * 0.05}s` }}>
+          <motion.div 
+            key={influencer.id} 
+            onClick={() => onInfluencerClick(influencer)}
+            variants={{
+              hidden: { opacity: 0, scale: 0.9, y: 20 },
+              visible: { opacity: 1, scale: 1, y: 0 }
+            }}
+            transition={{ type: "spring", stiffness: 100, damping: 15 }}
+            className="cursor-pointer group relative flex-1 hover:flex-[3] transition-all duration-700 ease-in-out rounded-[32px] overflow-hidden shadow-sm hover:shadow-2xl border border-white/40 min-h-[400px] sm:min-h-0"
+          >
             
             <div className="absolute inset-0 bg-gray-100">
               {influencer.profile_image ? (
@@ -103,7 +124,7 @@ const InfluencerCarouselRow = ({ influencers, onInfluencerClick }) => {
                 )}
               </div>
             </div>
-          </div>
+          </motion.div>
         ))}
       </div>
 
@@ -115,7 +136,7 @@ const InfluencerCarouselRow = ({ influencers, onInfluencerClick }) => {
           <ChevronRight className="h-5 w-5 sm:h-6 sm:w-6 text-gray-700 hover:text-accent-600" />
         </button>
       )}
-    </div>
+    </motion.div>
   );
 };
 
@@ -124,6 +145,7 @@ const LandingPage = () => {
   const location = useLocation();
   const [selectedCategory, setSelectedCategory] = useState('all');
   const [showAllInfluencers, setShowAllInfluencers] = useState(false);
+  // eslint-disable-next-line no-unused-vars
   const [searchQuery, setSearchQuery] = useState('');
   const observerRef = useRef(null);
 
@@ -169,6 +191,7 @@ const LandingPage = () => {
         }
       }, 500); // Wait for components to mount
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [location.state, navigate]);
 
   useEffect(() => {
@@ -196,6 +219,7 @@ const LandingPage = () => {
     navigate(`/influencer/${influencer.id}`);
   };
 
+  // eslint-disable-next-line no-unused-vars
   const handleCategoryClick = (categoryId) => {
     setSelectedCategory(categoryId);
     setShowAllInfluencers(false);
@@ -209,123 +233,25 @@ const LandingPage = () => {
   };
 
   return (
-    <div className="min-h-screen bg-white/95 relative overflow-hidden selection:bg-primary-100 selection:text-primary-900">
+    <div className="min-h-screen bg-transparent relative overflow-hidden selection:bg-primary-100 selection:text-primary-900">
       <LandingNavbar onSearch={handleSearch} />
 
-      {/* Vibrant Branded Glassmorphic Background Blobs */}
-      <div className="fixed inset-0 pointer-events-none z-0">
-        <motion.div 
-          animate={{ 
-            x: [0, 60, 0], 
-            y: [0, 40, 0],
-            scale: [1, 1.25, 1] 
-          }}
-          transition={{ duration: 20, repeat: Infinity, ease: "easeInOut" }}
-          className="absolute -top-[10%] -left-[10%] w-[80%] h-[80%] bg-[#8915A0]/15 rounded-full blur-[120px]" 
-        />
-        <motion.div 
-          animate={{ 
-            x: [0, -60, 0], 
-            y: [0, -40, 0],
-            scale: [1, 1.3, 1] 
-          }}
-          transition={{ duration: 25, repeat: Infinity, ease: "easeInOut" }}
-          className="absolute bottom-[10%] -right-[5%] w-[70%] h-[70%] bg-[#EC4899]/12 rounded-full blur-[100px]" 
-        />
-        <motion.div 
-          animate={{ 
-            scale: [1, 1.3, 1],
-            opacity: [0.08, 0.15, 0.08]
-          }}
-          transition={{ duration: 18, repeat: Infinity, ease: "easeInOut" }}
-          className="absolute top-1/2 left-1/3 -translate-x-1/2 -translate-y-1/2 w-[50%] h-[50%] bg-primary-200/20 rounded-full blur-[140px]" 
-        />
-        <div className="absolute inset-0 backdrop-blur-[60px] bg-white/10" />
+      {/* Static background — no continuous animations, no backdrop-blur on full-page overlay */}
+      <div className="fixed inset-0 pointer-events-none z-0 bg-[#FDFCFE] overflow-hidden">
+        <div className="absolute top-[-25%] left-[-15%] w-[110%] h-[110%] bg-gradient-to-br from-[#8915A0]/20 via-[#DB2777]/10 to-transparent rounded-full blur-[140px]" />
+        <div className="absolute top-1/4 left-1/4 w-[60%] h-[60%] bg-[#8915A0]/10 rounded-full blur-[120px]" />
+        <div className="absolute bottom-[-15%] right-[-10%] w-[80%] h-[80%] bg-[#8915A0]/10 rounded-full blur-[100px]" />
       </div>
 
       <div className="relative z-10 font-sans">
         <ModernHero />
 
-        <section id="influencers-grid" className="max-w-[90rem] mx-auto px-4 sm:px-6 lg:px-8 py-16 sm:py-20 relative">
-          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-8 sm:mb-12 gap-4">
-            <div>
-              <h2 className="text-3xl sm:text-4xl md:text-5xl font-extrabold text-gray-900 mb-3 tracking-tight">
-                {(() => {
-                  const text = searchQuery && searchQuery.trim() !== ''
-                    ? `Search Results for "${searchQuery}"` 
-                    : selectedCategory === 'all' 
-                      ? 'Top {Creators}' 
-                      : `Top {${CATEGORIES.find(c => c.id === selectedCategory)?.name}} Creators`;
-                  
-                  const parts = text.split(/({.*?})/);
-                  return parts.map((part, index) => {
-                    if (part.startsWith('{') && part.endsWith('}')) {
-                      const inner = part.slice(1, -1);
-                      return (
-                        <span 
-                          key={index}
-                          style={{
-                            background: 'linear-gradient(to right, #8915A0, #DB2777, #8915A0)',
-                            WebkitBackgroundClip: 'text',
-                            WebkitTextFillColor: 'transparent',
-                            backgroundClip: 'text',
-                            backgroundSize: '200% auto',
-                            color: 'transparent',
-                          }}
-                          className="animate-gradient-x inline-block"
-                        >
-                          {inner}
-                        </span>
-                      );
-                    }
-                    return <span key={index}>{part}</span>;
-                  });
-                })()}
-              </h2>
-              <p className="text-base sm:text-lg text-gray-600">
-                {searchQuery && searchQuery.trim() !== ''
-                  ? `Found ${filteredInfluencers.length} creator${filteredInfluencers.length !== 1 ? 's' : ''}` 
-                  : 'Discover and collaborate with the perfect match for your brand'}
-              </p>
-            </div>
-            <div className="flex items-center space-x-4">
-              {!showAllInfluencers && influencers.length > 8 && (
-                <button onClick={handleViewAll} className="hidden sm:flex items-center space-x-2 text-primary-600 hover:text-primary-700 font-semibold transition-colors text-sm md:text-base">
-                  <span>View All</span>
-                  <ArrowRight className="h-4 w-4 md:h-5 md:w-5" />
-                </button>
-              )}
-            </div>
-          </div>
-          
-          {isLoading ? (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8">
-              {[...Array(12)].map((_, i) => (
-                <div key={i} className="bg-white/40 backdrop-blur-md rounded-[24px] p-4 border border-white/50 animate-pulse shadow-sm">
-                  <div className="w-full aspect-square bg-gray-100/50 rounded-[16px] mb-4"></div>
-                  <div className="h-4 bg-gray-100/50 rounded mb-2"></div>
-                  <div className="h-3 bg-gray-50/50 rounded w-2/3"></div>
-                </div>
-              ))}
-            </div>
-          ) : filteredInfluencers.length > 0 ? (
-            <div className="flex flex-col space-y-4 sm:space-y-6">
-              <InfluencerCarouselRow influencers={filteredInfluencers} onInfluencerClick={handleInfluencerClick} />
-            </div>
-          ) : (
-            <div className="text-center py-32 bg-white/40 backdrop-blur-md rounded-[32px] border border-white/50 shadow-sm">
-              <div className="w-20 h-20 bg-gray-200/50 rounded-full flex items-center justify-center mx-auto mb-6">
-                <Users className="h-10 w-10 text-gray-400" />
-              </div>
-              <p className="text-gray-900 text-xl font-bold mb-2">No creators found</p>
-              <p className="text-gray-600">Try adjusting your filters or search terms</p>
-            </div>
-          )}
-        </section>
+
+        <BrandChoiceSection />
 
         <AnimatedTextSection />
 
-        <section className="bg-transparent py-24 relative overflow-hidden mt-12">
+        <section id="features" className="bg-transparent py-24 relative overflow-hidden mt-12">
           {/* Decorative Purple Blobs */}
           <div className="absolute top-0 right-0 w-[400px] h-[400px] bg-primary-100/20 rounded-full blur-[120px]" />
           <div className="absolute bottom-0 left-0 w-[400px] h-[400px] bg-accent-100/20 rounded-full blur-[120px]" />
@@ -345,47 +271,39 @@ const LandingPage = () => {
                 { icon: Target, title: 'Targeted Reach', content: 'Filter by category, followers, and engagement to find the perfect match for your brand.', color: 'primary' },
                 { icon: CheckCircle, title: 'Verified Profiles', content: 'All creators are verified with real-time follower counts and authentic engagement metrics.', color: 'green' }
               ].map((feature, i) => (
-                <div key={i} className="bg-white/40 backdrop-blur-md rounded-[32px] p-8 border border-white/60 hover:border-primary-200 hover:shadow-[0_20px_50px_rgba(137,21,160,0.08)] transition-all duration-300 transform hover:-translate-y-2 group shadow-sm">
+                <motion.div 
+                  key={i}
+                  initial={{ opacity: 0, y: 30 }}
+                  whileInView={{ opacity: 1, y: 0 }}
+                  whileHover={{ 
+                    y: -10,
+                    scale: 1.02,
+                    boxShadow: "0 25px 50px -12px rgba(137, 21, 160, 0.15)"
+                  }}
+                  transition={{ 
+                    type: "spring", 
+                    stiffness: 400, 
+                    damping: 25,
+                    delay: i * 0.1
+                  }}
+                  viewport={{ once: true }}
+                  className="bg-white/40 backdrop-blur-md rounded-[32px] p-8 border border-white/60 hover:border-primary-200 transition-all duration-300 group shadow-sm relative overflow-hidden"
+                >
+                  {/* Decorative Glow Pulse On Hover */}
+                  <div className="absolute inset-0 bg-gradient-to-br from-primary-500/0 via-primary-500/0 to-primary-500/0 group-hover:from-primary-500/5 group-hover:to-accent-500/5 transition-all duration-700" />
+                  
                   <div className={`w-16 h-16 bg-${feature.color}-50 rounded-2xl mb-6 flex items-center justify-center group-hover:scale-110 transition-transform shadow-inner`}>
                     <feature.icon className={`h-8 w-8 text-${feature.color}-500`} />
                   </div>
                   <h3 className="text-2xl font-bold text-gray-900 mb-4">{feature.title}</h3>
                   <p className="text-gray-600 leading-relaxed text-lg">{feature.content}</p>
-                </div>
+                </motion.div>
               ))}
             </div>
           </div>
         </section>
 
-        <section className="bg-white/10 backdrop-blur-sm py-24 relative overflow-hidden">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div className="text-center mb-20">
-              <h2 className="text-4xl md:text-5xl font-extrabold text-gray-900 mb-6 tracking-tight">Community Love</h2>
-              <p className="text-xl text-gray-600"> Trusted by leading brands and creators worldwide </p>
-            </div>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-              {[
-                { name: 'Sarah Johnson', title: 'Marketing Director, TechCorp', init: 'S', content: 'Collabo made it incredibly easy to find the perfect influencers for our campaign. The analytics and targeting tools are unmatched.' },
-                { name: 'Rahul Sharma', title: 'Creator • 500k+ Followers', init: 'R', content: 'As a creator, Collabo has connected me with amazing brands that align with my exact values. The entire collaboration process is seamless.' },
-                { name: 'Priya Patel', title: 'Founder, Aura Brands', init: 'P', content: "The ROI from our influencer campaigns has tripled since we started using Collabo. The platform's insights are absolutely game-changing." }
-              ].map((testi, i) => (
-                <div key={i} className="bg-white/50 backdrop-blur-md rounded-[32px] p-10 border border-white/60 shadow-sm relative group hover:shadow-xl transition-all duration-300">
-                  <div className="absolute top-0 right-10 transform -translate-y-1/2 text-6xl text-primary-100 font-serif group-hover:text-primary-200 transition-colors">"</div>
-                  <p className="text-gray-700 leading-relaxed text-lg mb-8 relative z-10">{testi.content}</p>
-                  <div className="flex items-center border-t border-gray-100 pt-6">
-                    <div className="w-14 h-14 bg-gradient-to-br from-primary-600 to-accent-500 rounded-full flex items-center justify-center text-white text-xl font-bold mr-4 shrink-0 shadow-md transition-transform group-hover:scale-105">{testi.init}</div>
-                    <div>
-                      <h4 className="text-lg font-bold text-gray-900">{testi.name}</h4>
-                      <p className="text-sm text-gray-500 font-medium">{testi.title}</p>
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        </section>
-
-        <section className="bg-white/30 backdrop-blur-xl py-24 border-t border-white/40 relative overflow-hidden">
+        <section id="cta" className="bg-transparent py-24 border-t border-white/40 relative overflow-hidden">
           <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[400px] bg-primary-500/10 rounded-full blur-[120px] pointer-events-none" />
           <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
             <div className="bg-white/30 backdrop-blur-md rounded-[48px] p-12 sm:p-20 text-center shadow-[0_20px_60px_rgba(137,21,160,0.1)] border border-white/80">

@@ -9,7 +9,7 @@ django.setup()
 from accounts.models import User
 
 def seed_superuser():
-    email = os.environ.get('DJANGO_SUPERUSER_EMAIL', 'rinsnac44@gmail.com')
+    email = os.environ.get('DJANGO_SUPERUSER_EMAIL', 'admin@collabo.com')
     password = os.environ.get('DJANGO_SUPERUSER_PASSWORD', 'admin123')
     username = os.environ.get('DJANGO_SUPERUSER_USERNAME', 'admin')
 
