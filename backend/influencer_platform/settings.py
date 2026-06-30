@@ -236,12 +236,14 @@ DEFAULT_FROM_EMAIL = config('DEFAULT_FROM_EMAIL', default='')
 
 # Final Production Security & Host validation
 ALLOWED_HOSTS = [
-    'collabo-backend-uyi4.onrender.com', 
-    'collabo-backend-y2de.onrender.com', 
-    '.onrender.com', 
-    'localhost', 
+    'collabo-backend-uyi4.onrender.com',
+    'collabo-backend-y2de.onrender.com',
+    '.onrender.com',
+    'localhost',
     '127.0.0.1',
-    'testserver'
+    'testserver',
+    '13.206.88.135',
+    'ec2-13-206-88-135.ap-south-1.compute.amazonaws.com',
 ]
 
 # CORS & CSRF Configuration
@@ -263,12 +265,9 @@ if not DEBUG:
     SECURE_BROWSER_XSS_FILTER = True
     SECURE_CONTENT_TYPE_NOSNIFF = True
     X_FRAME_OPTIONS = 'DENY'
-    SECURE_SSL_REDIRECT = True
-    SESSION_COOKIE_SECURE = True
-    CSRF_COOKIE_SECURE = True
-    SECURE_HSTS_SECONDS = 31536000
-    SECURE_HSTS_INCLUDE_SUBDOMAINS = True
-    SECURE_HSTS_PRELOAD = True
+    SECURE_SSL_REDIRECT = False
+    SESSION_COOKIE_SECURE = False
+    CSRF_COOKIE_SECURE = False
 else:
     # Always set proxy header on Render environments
     SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
