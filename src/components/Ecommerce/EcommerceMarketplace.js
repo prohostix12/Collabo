@@ -437,7 +437,8 @@ export default function EcommerceMarketplace({ inlineMode = false, onBackToSelec
       window.scrollTo({ top: 0, behavior: 'instant' });
       const hashVal = currentView === 'details' && selectedProduct ? `details:${selectedProduct.id}` : currentView;
       if (window.history.state?.view !== currentView) {
-        window.history.pushState({ view: currentView, pid: selectedProduct?.id || null }, '', `#${hashVal}`);
+        const newUrl = currentView === 'home' ? window.location.pathname : `#${hashVal}`;
+        window.history.pushState({ view: currentView, pid: selectedProduct?.id || null }, '', newUrl);
       }
       prevViewRef.current = currentView;
     }
@@ -462,7 +463,7 @@ export default function EcommerceMarketplace({ inlineMode = false, onBackToSelec
         setPendingSelectProductId(window.history.state.pid);
       }
     } else {
-      window.history.replaceState({ view: currentView }, '', `#${currentView}`);
+      window.history.replaceState({ view: 'home' }, '', window.location.pathname);
     }
 
     const handlePopState = (event) => {
