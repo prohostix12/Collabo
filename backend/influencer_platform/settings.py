@@ -244,18 +244,26 @@ ALLOWED_HOSTS = [
     'testserver',
     '13.206.88.135',
     'ec2-13-206-88-135.ap-south-1.compute.amazonaws.com',
+    'collabo.co.in',
+    'www.collabo.co.in',
 ]
 
 # CORS & CSRF Configuration
 CORS_ALLOW_ALL_ORIGINS = True  # Fallback for flexibility
 CORS_ALLOWED_ORIGINS = [
     "https://collabo-4q46.vercel.app",
-    "https://collabo-backend-uyi4.onrender.com", 
+    "https://collabo-backend-uyi4.onrender.com",
     "http://localhost:3000",
+    "http://collabo.co.in",
+    "http://www.collabo.co.in",
+    "http://13.206.88.135",
 ]
 CSRF_TRUSTED_ORIGINS = [
     "https://collabo-4q46.vercel.app",
-    "https://*.onrender.com"
+    "https://*.onrender.com",
+    "http://collabo.co.in",
+    "http://www.collabo.co.in",
+    "http://13.206.88.135",
 ]
 
 
