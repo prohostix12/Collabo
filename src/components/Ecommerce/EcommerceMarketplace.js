@@ -229,13 +229,24 @@ export default function EcommerceMarketplace({ inlineMode = false, onBackToSelec
   const [selectedProduct, setSelectedProduct] = useState(null);
   const [selectedCartItems, setSelectedCartItems] = useState([]);
 
+  // Persist selections to localStorage so they survive page refresh
+  useEffect(() => {
+    localStorage.setItem('cart_selected_items', JSON.stringify(selectedCartItems));
+  }, [selectedCartItems]);
+
   const cartInitializedRef = useRef(false);
   useEffect(() => {
     const cartIds = cart.map(i => i.id);
     if (!cartInitializedRef.current) {
-      // First load: don't auto-select anything, just mark as initialized
-      if (cartIds.length > 0) cartInitializedRef.current = true;
-      setSelectedCartItems([]);
+      if (cartIds.length === 0) return; // wait for cart to load from API
+      cartInitializedRef.current = true;
+      // Restore saved selections, keeping only IDs still present in cart
+      try {
+        const saved = JSON.parse(localStorage.getItem('cart_selected_items') || '[]');
+        setSelectedCartItems(saved.filter(id => cartIds.includes(id)));
+      } catch {
+        setSelectedCartItems([]);
+      }
       return;
     }
     // After init: keep existing selections, remove deleted items, auto-select newly added items
