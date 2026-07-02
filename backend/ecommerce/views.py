@@ -1450,6 +1450,52 @@ def verify_razorpay_payment(request):
         return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
+@api_view(['POST'])
+@permission_classes([permissions.AllowAny])
+def razorpay_webhook(request):
+    """Handle Razorpay webhook events for payment.captured and payment.failed."""
+    import hmac
+    import hashlib
+    import json
+
+    webhook_secret = getattr(settings, 'RAZORPAY_WEBHOOK_SECRET', '')
+    payload = request.body
+    received_sig = request.headers.get('X-Razorpay-Signature', '')
+
+    if webhook_secret:
+        expected_sig = hmac.new(
+            webhook_secret.encode('utf-8'),
+            payload,
+            hashlib.sha256
+        ).hexdigest()
+        if not hmac.compare_digest(expected_sig, received_sig):
+            return Response({'error': 'Invalid signature'}, status=status.HTTP_400_BAD_REQUEST)
+
+    try:
+        data = json.loads(payload)
+        event = data.get('event')
+        payment_data = data.get('payload', {}).get('payment', {}).get('entity', {})
+        rzp_order_id = payment_data.get('order_id')
+
+        if event == 'payment.captured' and rzp_order_id:
+            order = Order.objects.filter(razorpay_order_id=rzp_order_id).first()
+            if order and order.status == 'pending':
+                order.status = 'confirmed'
+                order.payment_status = 'paid'
+                order.save()
+
+        elif event == 'payment.failed' and rzp_order_id:
+            order = Order.objects.filter(razorpay_order_id=rzp_order_id).first()
+            if order and order.status == 'pending':
+                order.payment_status = 'failed'
+                order.save()
+
+    except Exception as e:
+        pass
+
+    return Response({'status': 'ok'})
+
+
 class BroadcastOfferView(views.APIView):
     """
     POST: Admin only.
