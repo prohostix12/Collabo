@@ -213,27 +213,20 @@ export default function EcommerceMarketplace({ inlineMode = false, onBackToSelec
   const [selectedProduct, setSelectedProduct] = useState(null);
   const [selectedCartItems, setSelectedCartItems] = useState([]);
 
+  const cartInitializedRef = useRef(false);
   useEffect(() => {
-    // Select all items by default when cart changes, only if currently empty or adding new items
+    const cartIds = cart.map(i => i.id);
+    if (!cartInitializedRef.current) {
+      // First load: don't auto-select anything, just mark as initialized
+      if (cartIds.length > 0) cartInitializedRef.current = true;
+      setSelectedCartItems([]);
+      return;
+    }
+    // After init: keep existing selections, remove deleted items, auto-select newly added items
     setSelectedCartItems(prev => {
-      const currentIds = cart.map(i => i.id);
-      return prev.length === 0 ? currentIds : prev.filter(id => currentIds.includes(id)).concat(currentIds.filter(id => !prev.includes(id) && !cart.find(c => c.id === id && prev.includes(id)))); // Wait, safer to just keep existing selected and add any new ids
-    });
-  }, [cart]);
-
-  // Simplify sync logic:
-  useEffect(() => {
-    setSelectedCartItems(prev => {
-      const cartIds = cart.map(i => i.id);
-      if (prev.length === 0 && cartIds.length > 0) return cartIds;
-      // Remove ids no longer in cart
-      const validPrev = prev.filter(id => cartIds.includes(id));
-      // Add ids that are in cart but not in validPrev (meaning they were just added)
-      const newIds = cartIds.filter(id => !validPrev.includes(id) && cart.find(c => c.id === id && c.quantity > 0)); // Actually let's just make newly added items checked
-      // To keep it simple, let's just use validPrev and let the user check them manually if we don't know, BUT wait, we want all new items selected!
-      // Let's just do:
-      const previouslyUnseenIds = cartIds.filter(id => !prev.includes(id)); 
-      return [...validPrev, ...previouslyUnseenIds];
+      const valid = prev.filter(id => cartIds.includes(id));
+      const newlyAdded = cartIds.filter(id => !prev.includes(id));
+      return [...valid, ...newlyAdded];
     });
   }, [cart]);
   const [pincodeInput, setPincodeInput] = useState('');
