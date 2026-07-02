@@ -211,6 +211,7 @@ export default function EcommerceMarketplace({ inlineMode = false, onBackToSelec
   const [activeProfileModal, setActiveProfileModal] = useState(null); // 'username' | 'password' | 'delete' | null
   const [cancelModal, setCancelModal] = useState(null); // order object or null
   const [cancelComment, setCancelComment] = useState('');
+  const [cancelFiles, setCancelFiles] = useState([]);
   const [cancellingOrder, setCancellingOrder] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [selectedProduct, setSelectedProduct] = useState(null);
@@ -1360,13 +1361,17 @@ export default function EcommerceMarketplace({ inlineMode = false, onBackToSelec
     }
     setCancellingOrder(true);
     try {
-      await api.post(`/ecommerce/orders/${cancelModal.id}/cancel/`, {
-        reason: 'Customer Cancelled',
-        comment: cancelComment.trim(),
+      const formData = new FormData();
+      formData.append('reason', 'Customer Cancelled');
+      formData.append('comment', cancelComment.trim());
+      cancelFiles.forEach(f => formData.append('attachments', f));
+      await api.post(`/ecommerce/orders/${cancelModal.id}/cancel/`, formData, {
+        headers: { 'Content-Type': 'multipart/form-data' },
       });
       toast.success('Order cancelled successfully');
       setCancelModal(null);
       setCancelComment('');
+      setCancelFiles([]);
       fetchCustomerOrders();
       if (trackedOrder?.id === cancelModal.id) {
         setTrackedOrder(prev => ({ ...prev, status: 'cancelled' }));
@@ -7095,7 +7100,7 @@ export default function EcommerceMarketplace({ inlineMode = false, onBackToSelec
 
       {/* Cancel Order Modal */}
       {cancelModal && (
-        <div className="fixed inset-0 z-[9999] bg-black/60 backdrop-blur-sm flex items-center justify-center p-4" onClick={() => setCancelModal(null)}>
+        <div className="fixed inset-0 z-[9999] bg-black/60 backdrop-blur-sm flex items-center justify-center p-4" onClick={() => { setCancelModal(null); setCancelFiles([]); }}>
           <div className="bg-white dark:bg-slate-900 rounded-3xl shadow-2xl max-w-sm w-full p-6 space-y-5" onClick={e => e.stopPropagation()}>
             <div className="text-center space-y-1">
               <div className="w-12 h-12 bg-rose-100 dark:bg-rose-900/30 rounded-full flex items-center justify-center mx-auto mb-3">
@@ -7104,6 +7109,7 @@ export default function EcommerceMarketplace({ inlineMode = false, onBackToSelec
               <h3 className="font-black text-base dark:text-white">Cancel Order</h3>
               <p className="text-[11px] text-slate-500 font-semibold">Order ID: {cancelModal.order_id}</p>
             </div>
+
             <div className="space-y-2">
               <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Reason for cancellation *</label>
               <textarea
@@ -7114,9 +7120,38 @@ export default function EcommerceMarketplace({ inlineMode = false, onBackToSelec
                 className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2.5 text-xs font-semibold text-slate-800 dark:text-white outline-none focus:border-rose-400 resize-none"
               />
             </div>
+
+            <div className="space-y-2">
+              <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Attach screenshots / images / videos (optional)</label>
+              <label className="flex flex-col items-center justify-center gap-2 border-2 border-dashed border-slate-200 dark:border-slate-700 rounded-xl py-4 px-3 cursor-pointer hover:border-rose-300 dark:hover:border-rose-700 transition-colors">
+                <span className="text-2xl">📎</span>
+                <span className="text-[11px] font-bold text-slate-500 dark:text-slate-400 text-center">Click to upload images or videos</span>
+                <span className="text-[9px] text-slate-400">JPG, PNG, MP4, MOV — max 10MB each</span>
+                <input
+                  type="file"
+                  multiple
+                  accept="image/*,video/*"
+                  className="hidden"
+                  onChange={e => setCancelFiles(prev => [...prev, ...Array.from(e.target.files)])}
+                />
+              </label>
+              {cancelFiles.length > 0 && (
+                <div className="space-y-1">
+                  {cancelFiles.map((f, i) => (
+                    <div key={i} className="flex items-center justify-between bg-slate-50 dark:bg-slate-800 rounded-lg px-3 py-1.5">
+                      <span className="text-[10px] font-semibold text-slate-600 dark:text-slate-300 truncate max-w-[200px]">
+                        {f.type.startsWith('video') ? '🎥' : '🖼️'} {f.name}
+                      </span>
+                      <button onClick={() => setCancelFiles(prev => prev.filter((_, idx) => idx !== i))} className="text-slate-400 hover:text-rose-500 ml-2 text-xs font-bold">✕</button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
             <div className="flex gap-3">
               <button
-                onClick={() => setCancelModal(null)}
+                onClick={() => { setCancelModal(null); setCancelFiles([]); setCancelComment(''); }}
                 className="flex-1 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 text-slate-700 dark:text-white font-bold text-xs py-3 rounded-xl transition-colors"
               >
                 Keep Order
