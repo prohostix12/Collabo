@@ -169,14 +169,13 @@ from .tasks import notify_order_placed_async, notify_order_delivered_async
 @receiver(post_save, sender=Order)
 def order_post_save(sender, instance, created, **kwargs):
     """Trigger notifications on order creation and delivery."""
-    if created:
-        # New order placed – send order placed notification asynchronously
-        notify_order_placed_async.delay(instance.id)
-    else:
-        # Check for status transition to delivered
-        if instance.status == 'delivered':
-            # Send delivery confirmation notification
+    try:
+        if created:
+            notify_order_placed_async.delay(instance.id)
+        elif instance.status == 'delivered':
             notify_order_delivered_async.delay(instance.id)
+    except Exception:
+        pass
 
 
 class OrderItem(models.Model):
