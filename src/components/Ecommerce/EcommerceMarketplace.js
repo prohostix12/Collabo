@@ -4474,6 +4474,11 @@ export default function EcommerceMarketplace({ inlineMode = false, onBackToSelec
                             <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Order ID: {ord.order_id}</span>
                             <h4 className="font-extrabold text-slate-800 dark:text-white line-clamp-1">{displayTitle}</h4>
                             <span className="text-[10px] text-slate-500 font-semibold">{orderDate} • <span className="text-slate-700 dark:text-slate-300">₹{Number(ord.final_amount).toLocaleString()}</span></span>
+                            {ord.payment_method === 'cod' && (
+                              <span className="text-[9px] font-black px-2 py-0.5 rounded-full bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-400 uppercase tracking-wider">
+                                Cash on Delivery {ord.payment_status === 'pending' ? '• Pay on arrival' : '• Paid'}
+                              </span>
+                            )}
                           </div>
                         </div>
                         
@@ -5530,6 +5535,11 @@ export default function EcommerceMarketplace({ inlineMode = false, onBackToSelec
                                 </span>
                               </div>
                               <p className="text-[11px] text-slate-500 font-semibold">{orderDate} • Customer: <span className="text-slate-800 dark:text-slate-200 font-extrabold">{ord.address_details?.name || ord.user_username}</span></p>
+                              {ord.payment_method === 'cod' && (
+                                <span className="inline-flex items-center gap-1 text-[9px] font-black px-2 py-0.5 rounded-full bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-400 uppercase tracking-wider mt-0.5">
+                                  💵 COD — Collect Cash on Delivery
+                                </span>
+                              )}
                             </div>
                             <div className="text-left sm:text-right">
                               <span className="text-[10px] text-slate-400 font-bold block uppercase tracking-wider">Seller Payout</span>
@@ -5576,8 +5586,6 @@ export default function EcommerceMarketplace({ inlineMode = false, onBackToSelec
                                   <option value="pending">Pending</option>
                                   <option value="processing">Processing</option>
                                   <option value="shipped">Shipped</option>
-                                  <option value="in_transit">In Transit</option>
-                                  <option value="out_for_delivery">Out for Delivery</option>
                                   <option value="delivered">Delivered</option>
                                   <option value="cancelled">Cancelled</option>
                                   <option value="returned">Returned</option>

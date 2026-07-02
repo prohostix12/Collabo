@@ -1480,8 +1480,8 @@ def razorpay_webhook(request):
         if event == 'payment.captured' and rzp_order_id:
             order = Order.objects.filter(razorpay_order_id=rzp_order_id).first()
             if order and order.status == 'pending':
-                order.status = 'confirmed'
-                order.payment_status = 'paid'
+                order.status = 'processing'
+                order.payment_status = 'completed'
                 order.save()
 
         elif event == 'payment.failed' and rzp_order_id:
