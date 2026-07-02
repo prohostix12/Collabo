@@ -11,6 +11,11 @@ class BrandSerializer(serializers.ModelSerializer):
         model = Brand
         fields = ['id', 'name']
 
+def _force_https(url):
+    if isinstance(url, str) and url.startswith('http://'):
+        return 'https://' + url[7:]
+    return url
+
 class ProductSerializer(serializers.ModelSerializer):
     seller_username = serializers.ReadOnlyField(source='seller.username')
     id = serializers.IntegerField(required=False)
@@ -25,6 +30,13 @@ class ProductSerializer(serializers.ModelSerializer):
             'product_shipping_charge', 'commission_rate', 'link_discount_percent', 'created_at', 'updated_at'
         ]
         read_only_fields = ['seller', 'discount_percent']
+
+    def to_representation(self, instance):
+        data = super().to_representation(instance)
+        data['image'] = _force_https(data.get('image'))
+        if isinstance(data.get('images'), list):
+            data['images'] = [_force_https(u) for u in data['images']]
+        return data
 
 class CartItemSerializer(serializers.ModelSerializer):
     product_details = ProductSerializer(source='product', read_only=True)
