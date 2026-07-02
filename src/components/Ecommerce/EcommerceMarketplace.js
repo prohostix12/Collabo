@@ -227,9 +227,12 @@ export default function EcommerceMarketplace({ inlineMode = false, onBackToSelec
   ];
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [selectedProduct, setSelectedProduct] = useState(null);
-  const [selectedCartItems, setSelectedCartItems] = useState([]);
+  // Initialize directly from localStorage so the save effect never fires with []
+  const [selectedCartItems, setSelectedCartItems] = useState(() => {
+    try { return JSON.parse(localStorage.getItem('cart_selected_items') || '[]'); } catch { return []; }
+  });
 
-  // Persist selections to localStorage so they survive page refresh
+  // Save selections to localStorage on every change
   useEffect(() => {
     localStorage.setItem('cart_selected_items', JSON.stringify(selectedCartItems));
   }, [selectedCartItems]);
@@ -240,13 +243,8 @@ export default function EcommerceMarketplace({ inlineMode = false, onBackToSelec
     if (!cartInitializedRef.current) {
       if (cartIds.length === 0) return; // wait for cart to load from API
       cartInitializedRef.current = true;
-      // Restore saved selections, keeping only IDs still present in cart
-      try {
-        const saved = JSON.parse(localStorage.getItem('cart_selected_items') || '[]');
-        setSelectedCartItems(saved.filter(id => cartIds.includes(id)));
-      } catch {
-        setSelectedCartItems([]);
-      }
+      // Filter restored selection to only IDs still in cart (removes stale IDs from old sessions)
+      setSelectedCartItems(prev => prev.filter(id => cartIds.includes(id)));
       return;
     }
     // After init: keep existing selections, remove deleted items, auto-select newly added items
