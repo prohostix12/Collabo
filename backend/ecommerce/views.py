@@ -680,7 +680,7 @@ class OrderViewSet(viewsets.ModelViewSet):
             return Response({'error': 'You do not have permission to cancel this order'}, status=status.HTTP_403_FORBIDDEN)
             
         # Check current status: pre-dispatch only
-        if order.status not in ['pending', 'processing']:
+        if order.status not in ['pending', 'processing', 'shipped']:
             return Response({'error': f'Order cannot be cancelled. Current status is: {order.status}'}, status=status.HTTP_400_BAD_REQUEST)
 
         reason = request.data.get('reason', 'User Cancelled')

@@ -4373,7 +4373,7 @@ export default function EcommerceMarketplace({ inlineMode = false, onBackToSelec
               })()}
             </div>
 
-            {trackedOrder && ['pending', 'processing'].includes(trackedOrder.status) && (
+            {trackedOrder && ['pending', 'processing', 'shipped'].includes(trackedOrder.status) && (
               <button
                 onClick={() => { setCancelModal(trackedOrder); setCancelComment(''); }}
                 className="w-full bg-rose-50 hover:bg-rose-100 dark:bg-rose-950/30 dark:hover:bg-rose-950/50 text-rose-600 dark:text-rose-400 font-bold text-xs py-3.5 rounded-2xl transition-all border border-rose-200 dark:border-rose-800"
@@ -4549,7 +4549,7 @@ export default function EcommerceMarketplace({ inlineMode = false, onBackToSelec
                           >
                             Track Order
                           </button>
-                          {['pending', 'processing'].includes(ord.status) && (
+                          {['pending', 'processing', 'shipped'].includes(ord.status) && (
                             <button
                               onClick={() => { setCancelModal(ord); setCancelComment(''); }}
                               className="bg-rose-50 hover:bg-rose-100 dark:bg-rose-950/30 text-rose-600 dark:text-rose-400 border border-rose-200 dark:border-rose-800 px-4 py-2 rounded-xl text-xs font-bold transition-colors"
