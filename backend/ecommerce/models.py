@@ -81,6 +81,7 @@ class Address(models.Model):
     phone = models.CharField(max_length=20)
     street_address = models.TextField()
     city = models.CharField(max_length=100)
+    district = models.CharField(max_length=100, blank=True, default='')
     state = models.CharField(max_length=100)
     postal_code = models.CharField(max_length=20)
     is_default = models.BooleanField(default=False)

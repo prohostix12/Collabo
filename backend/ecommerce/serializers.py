@@ -45,7 +45,7 @@ class CartSerializer(serializers.ModelSerializer):
 class AddressSerializer(serializers.ModelSerializer):
     class Meta:
         model = Address
-        fields = ['id', 'user', 'name', 'phone', 'street_address', 'city', 'state', 'postal_code', 'is_default']
+        fields = ['id', 'user', 'name', 'phone', 'street_address', 'city', 'district', 'state', 'postal_code', 'is_default']
         read_only_fields = ['user']
 
 class OrderItemSerializer(serializers.ModelSerializer):
