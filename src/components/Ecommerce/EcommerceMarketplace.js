@@ -5635,6 +5635,50 @@ export default function EcommerceMarketplace({ inlineMode = false, onBackToSelec
                             <p>{ord.address_details?.city}{ord.address_details?.district ? `, ${ord.address_details.district}` : ''}, {ord.address_details?.state} - {ord.address_details?.postal_code}</p>
                           </div>
 
+                          {/* Cancellation Details — shown to seller/admin when order is cancelled */}
+                          {ord.status === 'cancelled' && ord.cancel_reason && (
+                            <div className="bg-rose-50 dark:bg-rose-950/20 border border-rose-200 dark:border-rose-800/50 rounded-2xl p-4 space-y-2">
+                              <h5 className="text-[10px] font-black text-rose-600 dark:text-rose-400 uppercase tracking-widest flex items-center gap-1.5">
+                                <span>🚫</span> Cancellation Details
+                              </h5>
+                              <div className="space-y-1.5 text-xs">
+                                <div className="flex items-start gap-2">
+                                  <span className="text-[10px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-wide shrink-0 pt-0.5">Reason:</span>
+                                  <span className="font-bold text-slate-800 dark:text-white">{ord.cancel_reason}</span>
+                                </div>
+                                {ord.cancel_comment && ord.cancel_comment !== ord.cancel_reason && (
+                                  <div className="flex items-start gap-2">
+                                    <span className="text-[10px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-wide shrink-0 pt-0.5">Details:</span>
+                                    <span className="font-semibold text-slate-600 dark:text-slate-300">{ord.cancel_comment}</span>
+                                  </div>
+                                )}
+                                {ord.cancelled_at && (
+                                  <div className="flex items-start gap-2">
+                                    <span className="text-[10px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-wide shrink-0 pt-0.5">Cancelled at:</span>
+                                    <span className="font-semibold text-slate-600 dark:text-slate-300">{new Date(ord.cancelled_at).toLocaleString('en-IN', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })}</span>
+                                  </div>
+                                )}
+                                {Array.isArray(ord.cancel_attachments) && ord.cancel_attachments.length > 0 && (
+                                  <div className="space-y-1 pt-1">
+                                    <span className="text-[10px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-wide">Attachments ({ord.cancel_attachments.length}):</span>
+                                    <div className="flex flex-wrap gap-2 pt-1">
+                                      {ord.cancel_attachments.map((url, ai) => {
+                                        const fullUrl = url.startsWith('http') ? url : `${window.location.origin}${url}`;
+                                        const isVideo = typeof url === 'string' && (url.endsWith('.mp4') || url.endsWith('.mov') || url.endsWith('.webm'));
+                                        return (
+                                          <a key={ai} href={fullUrl} target="_blank" rel="noopener noreferrer"
+                                            className="flex items-center gap-1.5 bg-white dark:bg-slate-800 border border-rose-200 dark:border-rose-800/50 rounded-xl px-3 py-1.5 text-[10px] font-bold text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-900/20 transition-colors">
+                                            {isVideo ? '🎥' : '🖼️'} View {isVideo ? 'Video' : 'Image'} {ai + 1}
+                                          </a>
+                                        );
+                                      })}
+                                    </div>
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+                          )}
+
                           {/* Status Management Actions */}
                           <div className="space-y-3 pt-2">
                             <div className="flex flex-wrap items-center gap-3">
