@@ -210,9 +210,21 @@ export default function EcommerceMarketplace({ inlineMode = false, onBackToSelec
   const [placingOrder, setPlacingOrder] = useState(false);
   const [activeProfileModal, setActiveProfileModal] = useState(null); // 'username' | 'password' | 'delete' | null
   const [cancelModal, setCancelModal] = useState(null); // order object or null
+  const [cancelReason, setCancelReason] = useState('');
   const [cancelComment, setCancelComment] = useState('');
   const [cancelFiles, setCancelFiles] = useState([]);
   const [cancellingOrder, setCancellingOrder] = useState(false);
+  const CANCEL_REASONS = [
+    'Changed my mind',
+    'Ordered by mistake / Duplicate order',
+    'Found a better price elsewhere',
+    'Delivery is taking too long',
+    'Wrong item selected',
+    'Wrong delivery address entered',
+    'Item no longer needed',
+    'Payment issue / Want to repay',
+    'Other',
+  ];
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [selectedProduct, setSelectedProduct] = useState(null);
   const [selectedCartItems, setSelectedCartItems] = useState([]);
@@ -1355,21 +1367,28 @@ export default function EcommerceMarketplace({ inlineMode = false, onBackToSelec
   };
 
   const handleCancelOrder = async () => {
-    if (!cancelModal || !cancelComment.trim()) {
-      toast.error('Please provide a reason for cancellation');
+    if (!cancelModal || !cancelReason) {
+      toast.error('Please select a reason for cancellation');
+      return;
+    }
+    if (cancelReason === 'Other' && !cancelComment.trim()) {
+      toast.error('Please describe your reason');
       return;
     }
     setCancellingOrder(true);
     try {
+      const finalReason = cancelReason === 'Other' ? cancelComment.trim() : cancelReason;
+      const finalComment = cancelReason === 'Other' ? cancelComment.trim() : (cancelComment.trim() || cancelReason);
       const formData = new FormData();
-      formData.append('reason', 'Customer Cancelled');
-      formData.append('comment', cancelComment.trim());
+      formData.append('reason', finalReason);
+      formData.append('comment', finalComment);
       cancelFiles.forEach(f => formData.append('attachments', f));
       await api.post(`/ecommerce/orders/${cancelModal.id}/cancel/`, formData, {
         headers: { 'Content-Type': 'multipart/form-data' },
       });
       toast.success('Order cancelled successfully');
       setCancelModal(null);
+      setCancelReason('');
       setCancelComment('');
       setCancelFiles([]);
       fetchCustomerOrders();
@@ -7100,68 +7119,97 @@ export default function EcommerceMarketplace({ inlineMode = false, onBackToSelec
 
       {/* Cancel Order Modal */}
       {cancelModal && (
-        <div className="fixed inset-0 z-[9999] bg-black/60 backdrop-blur-sm flex items-center justify-center p-4" onClick={() => { setCancelModal(null); setCancelFiles([]); }}>
-          <div className="bg-white dark:bg-slate-900 rounded-3xl shadow-2xl max-w-sm w-full p-6 space-y-5" onClick={e => e.stopPropagation()}>
-            <div className="text-center space-y-1">
-              <div className="w-12 h-12 bg-rose-100 dark:bg-rose-900/30 rounded-full flex items-center justify-center mx-auto mb-3">
+        <div className="fixed inset-0 z-[9999] bg-black/60 backdrop-blur-sm flex items-center justify-center p-4" onClick={() => { setCancelModal(null); setCancelReason(''); setCancelComment(''); setCancelFiles([]); }}>
+          <div className="bg-white dark:bg-slate-900 rounded-3xl shadow-2xl max-w-md w-full overflow-hidden" onClick={e => e.stopPropagation()}>
+
+            {/* Header */}
+            <div className="bg-rose-50 dark:bg-rose-950/30 px-6 pt-6 pb-4 text-center border-b border-rose-100 dark:border-rose-900/40">
+              <div className="w-12 h-12 bg-white dark:bg-slate-800 rounded-full flex items-center justify-center mx-auto mb-3 shadow-sm">
                 <span className="text-2xl">🚫</span>
               </div>
               <h3 className="font-black text-base dark:text-white">Cancel Order</h3>
-              <p className="text-[11px] text-slate-500 font-semibold">Order ID: {cancelModal.order_id}</p>
+              <p className="text-[11px] text-slate-500 font-semibold mt-0.5">Order ID: <span className="font-black text-slate-700 dark:text-slate-300">{cancelModal.order_id}</span></p>
             </div>
 
-            <div className="space-y-2">
-              <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Reason for cancellation *</label>
-              <textarea
-                rows={3}
-                placeholder="Please tell us why you want to cancel this order..."
-                value={cancelComment}
-                onChange={e => setCancelComment(e.target.value)}
-                className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2.5 text-xs font-semibold text-slate-800 dark:text-white outline-none focus:border-rose-400 resize-none"
-              />
-            </div>
+            <div className="p-6 space-y-5 max-h-[70vh] overflow-y-auto">
 
-            <div className="space-y-2">
-              <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Attach screenshots / images / videos (optional)</label>
-              <label className="flex flex-col items-center justify-center gap-2 border-2 border-dashed border-slate-200 dark:border-slate-700 rounded-xl py-4 px-3 cursor-pointer hover:border-rose-300 dark:hover:border-rose-700 transition-colors">
-                <span className="text-2xl">📎</span>
-                <span className="text-[11px] font-bold text-slate-500 dark:text-slate-400 text-center">Click to upload images or videos</span>
-                <span className="text-[9px] text-slate-400">JPG, PNG, MP4, MOV — max 10MB each</span>
-                <input
-                  type="file"
-                  multiple
-                  accept="image/*,video/*"
-                  className="hidden"
-                  onChange={e => setCancelFiles(prev => [...prev, ...Array.from(e.target.files)])}
-                />
-              </label>
-              {cancelFiles.length > 0 && (
-                <div className="space-y-1">
-                  {cancelFiles.map((f, i) => (
-                    <div key={i} className="flex items-center justify-between bg-slate-50 dark:bg-slate-800 rounded-lg px-3 py-1.5">
-                      <span className="text-[10px] font-semibold text-slate-600 dark:text-slate-300 truncate max-w-[200px]">
-                        {f.type.startsWith('video') ? '🎥' : '🖼️'} {f.name}
-                      </span>
-                      <button onClick={() => setCancelFiles(prev => prev.filter((_, idx) => idx !== i))} className="text-slate-400 hover:text-rose-500 ml-2 text-xs font-bold">✕</button>
-                    </div>
+              {/* Step 1: Reason dropdown */}
+              <div className="space-y-2">
+                <label className="text-[10px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-widest flex items-center gap-1">
+                  <span className="w-4 h-4 bg-rose-500 text-white rounded-full text-[9px] flex items-center justify-center font-black">1</span>
+                  Select reason for cancellation *
+                </label>
+                <div className="space-y-2">
+                  {CANCEL_REASONS.map((reason) => (
+                    <label key={reason} className={`flex items-center gap-3 p-3 rounded-xl border cursor-pointer transition-all ${cancelReason === reason ? 'border-rose-400 bg-rose-50 dark:bg-rose-950/30' : 'border-slate-200 dark:border-slate-700 hover:border-slate-300 dark:hover:border-slate-600'}`}>
+                      <div className={`w-4 h-4 rounded-full border-2 flex items-center justify-center shrink-0 transition-colors ${cancelReason === reason ? 'border-rose-500 bg-rose-500' : 'border-slate-300 dark:border-slate-600'}`}>
+                        {cancelReason === reason && <span className="w-1.5 h-1.5 bg-white rounded-full block" />}
+                      </div>
+                      <input type="radio" name="cancelReason" value={reason} checked={cancelReason === reason} onChange={() => { setCancelReason(reason); if (reason !== 'Other') setCancelComment(''); }} className="hidden" />
+                      <span className={`text-xs font-semibold ${cancelReason === reason ? 'text-rose-700 dark:text-rose-300 font-bold' : 'text-slate-700 dark:text-slate-300'}`}>{reason}</span>
+                    </label>
                   ))}
                 </div>
-              )}
+              </div>
+
+              {/* Step 2: Additional details */}
+              <div className="space-y-2">
+                <label className="text-[10px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-widest flex items-center gap-1">
+                  <span className="w-4 h-4 bg-slate-400 text-white rounded-full text-[9px] flex items-center justify-center font-black">2</span>
+                  {cancelReason === 'Other' ? 'Describe your reason *' : 'Additional comments (optional)'}
+                </label>
+                <textarea
+                  rows={3}
+                  placeholder={cancelReason === 'Other' ? 'Please describe your reason...' : 'Any additional details? (optional)'}
+                  value={cancelComment}
+                  onChange={e => setCancelComment(e.target.value)}
+                  className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2.5 text-xs font-semibold text-slate-800 dark:text-white outline-none focus:border-rose-400 resize-none transition-colors"
+                />
+              </div>
+
+              {/* Step 3: Attachments */}
+              <div className="space-y-2">
+                <label className="text-[10px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-widest flex items-center gap-1">
+                  <span className="w-4 h-4 bg-slate-400 text-white rounded-full text-[9px] flex items-center justify-center font-black">3</span>
+                  Attach proof — screenshots / images / videos (optional)
+                </label>
+                <label className="flex flex-col items-center justify-center gap-1.5 border-2 border-dashed border-slate-200 dark:border-slate-700 rounded-xl py-4 px-3 cursor-pointer hover:border-rose-300 dark:hover:border-rose-700 hover:bg-rose-50/40 dark:hover:bg-rose-950/10 transition-all">
+                  <span className="text-xl">📎</span>
+                  <span className="text-[11px] font-bold text-slate-500 dark:text-slate-400">Click to upload images or videos</span>
+                  <span className="text-[9px] text-slate-400">JPG, PNG, MP4, MOV — max 10MB each</span>
+                  <input type="file" multiple accept="image/*,video/*" className="hidden" onChange={e => setCancelFiles(prev => [...prev, ...Array.from(e.target.files)])} />
+                </label>
+                {cancelFiles.length > 0 && (
+                  <div className="space-y-1.5">
+                    {cancelFiles.map((f, i) => (
+                      <div key={i} className="flex items-center justify-between bg-slate-50 dark:bg-slate-800 rounded-xl px-3 py-2 border border-slate-100 dark:border-slate-700">
+                        <div className="flex items-center gap-2 min-w-0">
+                          <span className="text-sm shrink-0">{f.type.startsWith('video') ? '🎥' : '🖼️'}</span>
+                          <span className="text-[10px] font-semibold text-slate-600 dark:text-slate-300 truncate">{f.name}</span>
+                          <span className="text-[9px] text-slate-400 shrink-0">{(f.size / 1024 / 1024).toFixed(1)}MB</span>
+                        </div>
+                        <button onClick={() => setCancelFiles(prev => prev.filter((_, idx) => idx !== i))} className="text-slate-400 hover:text-rose-500 ml-2 font-black text-xs shrink-0 transition-colors">✕</button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
             </div>
 
-            <div className="flex gap-3">
+            {/* Footer Buttons */}
+            <div className="flex gap-3 px-6 pb-6 pt-2">
               <button
-                onClick={() => { setCancelModal(null); setCancelFiles([]); setCancelComment(''); }}
-                className="flex-1 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 text-slate-700 dark:text-white font-bold text-xs py-3 rounded-xl transition-colors"
+                onClick={() => { setCancelModal(null); setCancelReason(''); setCancelComment(''); setCancelFiles([]); }}
+                className="flex-1 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-white font-bold text-xs py-3.5 rounded-xl transition-colors"
               >
                 Keep Order
               </button>
               <button
                 onClick={handleCancelOrder}
-                disabled={cancellingOrder || !cancelComment.trim()}
-                className="flex-1 bg-rose-500 hover:bg-rose-600 disabled:opacity-50 text-white font-bold text-xs py-3 rounded-xl transition-colors"
+                disabled={cancellingOrder || !cancelReason || (cancelReason === 'Other' && !cancelComment.trim())}
+                className="flex-1 bg-rose-500 hover:bg-rose-600 disabled:opacity-40 disabled:cursor-not-allowed text-white font-bold text-xs py-3.5 rounded-xl transition-colors shadow-sm"
               >
-                {cancellingOrder ? 'Cancelling...' : 'Yes, Cancel'}
+                {cancellingOrder ? 'Cancelling...' : 'Yes, Cancel Order'}
               </button>
             </div>
           </div>
