@@ -209,6 +209,9 @@ export default function EcommerceMarketplace({ inlineMode = false, onBackToSelec
   const [createdOrderId, setCreatedOrderId] = useState('');
   const [placingOrder, setPlacingOrder] = useState(false);
   const [activeProfileModal, setActiveProfileModal] = useState(null); // 'username' | 'password' | 'delete' | null
+  const [cancelModal, setCancelModal] = useState(null); // order object or null
+  const [cancelComment, setCancelComment] = useState('');
+  const [cancellingOrder, setCancellingOrder] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [selectedProduct, setSelectedProduct] = useState(null);
   const [selectedCartItems, setSelectedCartItems] = useState([]);
@@ -1347,6 +1350,31 @@ export default function EcommerceMarketplace({ inlineMode = false, onBackToSelec
     } catch (err) {
       console.error("Error updating order status:", err);
       toast.error(err.response?.data?.error || "Failed to update order status");
+    }
+  };
+
+  const handleCancelOrder = async () => {
+    if (!cancelModal || !cancelComment.trim()) {
+      toast.error('Please provide a reason for cancellation');
+      return;
+    }
+    setCancellingOrder(true);
+    try {
+      await api.post(`/ecommerce/orders/${cancelModal.id}/cancel/`, {
+        reason: 'Customer Cancelled',
+        comment: cancelComment.trim(),
+      });
+      toast.success('Order cancelled successfully');
+      setCancelModal(null);
+      setCancelComment('');
+      fetchCustomerOrders();
+      if (trackedOrder?.id === cancelModal.id) {
+        setTrackedOrder(prev => ({ ...prev, status: 'cancelled' }));
+      }
+    } catch (err) {
+      toast.error(err.response?.data?.error || 'Failed to cancel order');
+    } finally {
+      setCancellingOrder(false);
     }
   };
 
@@ -4321,7 +4349,16 @@ export default function EcommerceMarketplace({ inlineMode = false, onBackToSelec
               })()}
             </div>
 
-            <button 
+            {trackedOrder && ['pending', 'processing'].includes(trackedOrder.status) && (
+              <button
+                onClick={() => { setCancelModal(trackedOrder); setCancelComment(''); }}
+                className="w-full bg-rose-50 hover:bg-rose-100 dark:bg-rose-950/30 dark:hover:bg-rose-950/50 text-rose-600 dark:text-rose-400 font-bold text-xs py-3.5 rounded-2xl transition-all border border-rose-200 dark:border-rose-800"
+              >
+                Cancel Order
+              </button>
+            )}
+
+            <button
               onClick={() => setCurrentView('home')}
               className="w-full bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 text-slate-800 dark:text-white font-bold text-xs py-3.5 rounded-2xl transition-all text-center block"
             >
@@ -4475,11 +4512,11 @@ export default function EcommerceMarketplace({ inlineMode = false, onBackToSelec
                           </div>
                         </div>
                         
-                        <div className="flex items-center gap-3 sm:shrink-0 mt-2 sm:mt-0">
+                        <div className="flex items-center gap-3 sm:shrink-0 mt-2 sm:mt-0 flex-wrap">
                           <span className={`text-[9px] font-black px-2.5 py-1 rounded-md uppercase ${getStatusColor(ord.status)}`}>
                             {ord.status}
                           </span>
-                          <button 
+                          <button
                             onClick={() => {
                               setTrackedOrder(ord);
                               setCurrentView('tracking');
@@ -4488,6 +4525,14 @@ export default function EcommerceMarketplace({ inlineMode = false, onBackToSelec
                           >
                             Track Order
                           </button>
+                          {['pending', 'processing'].includes(ord.status) && (
+                            <button
+                              onClick={() => { setCancelModal(ord); setCancelComment(''); }}
+                              className="bg-rose-50 hover:bg-rose-100 dark:bg-rose-950/30 text-rose-600 dark:text-rose-400 border border-rose-200 dark:border-rose-800 px-4 py-2 rounded-xl text-xs font-bold transition-colors"
+                            >
+                              Cancel
+                            </button>
+                          )}
                         </div>
                       </div>
                     );
@@ -7042,6 +7087,46 @@ export default function EcommerceMarketplace({ inlineMode = false, onBackToSelec
               <button onClick={handleMediaUpload} disabled={mediaUploading || !mediaUploadFiles.length}
                 className="flex-1 py-2.5 text-xs font-bold text-white bg-violet-600 hover:bg-violet-700 rounded-xl transition-colors disabled:opacity-50 flex items-center justify-center gap-1.5">
                 {mediaUploading ? 'Uploading...' : <><Film className="w-3.5 h-3.5" /> Upload</>}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Cancel Order Modal */}
+      {cancelModal && (
+        <div className="fixed inset-0 z-[9999] bg-black/60 backdrop-blur-sm flex items-center justify-center p-4" onClick={() => setCancelModal(null)}>
+          <div className="bg-white dark:bg-slate-900 rounded-3xl shadow-2xl max-w-sm w-full p-6 space-y-5" onClick={e => e.stopPropagation()}>
+            <div className="text-center space-y-1">
+              <div className="w-12 h-12 bg-rose-100 dark:bg-rose-900/30 rounded-full flex items-center justify-center mx-auto mb-3">
+                <span className="text-2xl">🚫</span>
+              </div>
+              <h3 className="font-black text-base dark:text-white">Cancel Order</h3>
+              <p className="text-[11px] text-slate-500 font-semibold">Order ID: {cancelModal.order_id}</p>
+            </div>
+            <div className="space-y-2">
+              <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Reason for cancellation *</label>
+              <textarea
+                rows={3}
+                placeholder="Please tell us why you want to cancel this order..."
+                value={cancelComment}
+                onChange={e => setCancelComment(e.target.value)}
+                className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2.5 text-xs font-semibold text-slate-800 dark:text-white outline-none focus:border-rose-400 resize-none"
+              />
+            </div>
+            <div className="flex gap-3">
+              <button
+                onClick={() => setCancelModal(null)}
+                className="flex-1 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 text-slate-700 dark:text-white font-bold text-xs py-3 rounded-xl transition-colors"
+              >
+                Keep Order
+              </button>
+              <button
+                onClick={handleCancelOrder}
+                disabled={cancellingOrder || !cancelComment.trim()}
+                className="flex-1 bg-rose-500 hover:bg-rose-600 disabled:opacity-50 text-white font-bold text-xs py-3 rounded-xl transition-colors"
+              >
+                {cancellingOrder ? 'Cancelling...' : 'Yes, Cancel'}
               </button>
             </div>
           </div>
