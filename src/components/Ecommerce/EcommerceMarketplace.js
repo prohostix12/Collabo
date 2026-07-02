@@ -7183,17 +7183,24 @@ export default function EcommerceMarketplace({ inlineMode = false, onBackToSelec
                   <span className="w-4 h-4 bg-rose-500 text-white rounded-full text-[9px] flex items-center justify-center font-black">1</span>
                   Select reason for cancellation *
                 </label>
-                <div className="space-y-2">
-                  {CANCEL_REASONS.map((reason) => (
-                    <label key={reason} className={`flex items-center gap-3 p-3 rounded-xl border cursor-pointer transition-all ${cancelReason === reason ? 'border-rose-400 bg-rose-50 dark:bg-rose-950/30' : 'border-slate-200 dark:border-slate-700 hover:border-slate-300 dark:hover:border-slate-600'}`}>
-                      <div className={`w-4 h-4 rounded-full border-2 flex items-center justify-center shrink-0 transition-colors ${cancelReason === reason ? 'border-rose-500 bg-rose-500' : 'border-slate-300 dark:border-slate-600'}`}>
-                        {cancelReason === reason && <span className="w-1.5 h-1.5 bg-white rounded-full block" />}
-                      </div>
-                      <input type="radio" name="cancelReason" value={reason} checked={cancelReason === reason} onChange={() => { setCancelReason(reason); if (reason !== 'Other') setCancelComment(''); }} className="hidden" />
-                      <span className={`text-xs font-semibold ${cancelReason === reason ? 'text-rose-700 dark:text-rose-300 font-bold' : 'text-slate-700 dark:text-slate-300'}`}>{reason}</span>
-                    </label>
-                  ))}
+                <div className="relative">
+                  <select
+                    value={cancelReason}
+                    onChange={e => { setCancelReason(e.target.value); if (e.target.value !== 'Other') setCancelComment(''); }}
+                    className={`w-full appearance-none bg-slate-50 dark:bg-slate-800 border rounded-xl px-4 py-3 text-xs font-semibold outline-none transition-colors cursor-pointer pr-10 ${cancelReason ? 'border-rose-400 text-slate-800 dark:text-white' : 'border-slate-200 dark:border-slate-700 text-slate-400 dark:text-slate-500'} focus:border-rose-400`}
+                  >
+                    <option value="" disabled>— Choose a reason —</option>
+                    {CANCEL_REASONS.map(reason => (
+                      <option key={reason} value={reason}>{reason}</option>
+                    ))}
+                  </select>
+                  <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-slate-400">
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" /></svg>
+                  </span>
                 </div>
+                {cancelReason && cancelReason !== 'Other' && (
+                  <p className="text-[10px] font-semibold text-rose-500 flex items-center gap-1 pl-1">✓ Selected: {cancelReason}</p>
+                )}
               </div>
 
               {/* Step 2: Additional details */}
