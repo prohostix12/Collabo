@@ -201,7 +201,7 @@ export default function EcommerceMarketplace({ inlineMode = false, onBackToSelec
   const [showAddressForm, setShowAddressForm] = useState(false);
   const [editingAddressId, setEditingAddressId] = useState(null);
   const [addressFormData, setAddressFormData] = useState({
-    name: '', phone: '', street_address: '', city: '', state: '', postal_code: '', is_default: false
+    name: '', phone: '', street_address: '', city: '', district: '', state: '', postal_code: '', is_default: false
   });
   const [customerOrders, setCustomerOrders] = useState([]);
   const [sellerOrders, setSellerOrders] = useState([]);
@@ -209,31 +209,49 @@ export default function EcommerceMarketplace({ inlineMode = false, onBackToSelec
   const [createdOrderId, setCreatedOrderId] = useState('');
   const [placingOrder, setPlacingOrder] = useState(false);
   const [activeProfileModal, setActiveProfileModal] = useState(null); // 'username' | 'password' | 'delete' | null
+  const [cancelModal, setCancelModal] = useState(null); // order object or null
+  const [cancelReason, setCancelReason] = useState('');
+  const [cancelComment, setCancelComment] = useState('');
+  const [cancelFiles, setCancelFiles] = useState([]);
+  const [cancellingOrder, setCancellingOrder] = useState(false);
+  const CANCEL_REASONS = [
+    'Changed my mind',
+    'Ordered by mistake / Duplicate order',
+    'Found a better price elsewhere',
+    'Delivery is taking too long',
+    'Wrong item selected',
+    'Wrong delivery address entered',
+    'Item no longer needed',
+    'Payment issue / Want to repay',
+    'Other',
+  ];
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [selectedProduct, setSelectedProduct] = useState(null);
-  const [selectedCartItems, setSelectedCartItems] = useState([]);
+  // Initialize directly from localStorage so the save effect never fires with []
+  const [selectedCartItems, setSelectedCartItems] = useState(() => {
+    try { return JSON.parse(localStorage.getItem('cart_selected_items') || '[]'); } catch { return []; }
+  });
 
+  // Save selections to localStorage on every change
   useEffect(() => {
-    // Select all items by default when cart changes, only if currently empty or adding new items
-    setSelectedCartItems(prev => {
-      const currentIds = cart.map(i => i.id);
-      return prev.length === 0 ? currentIds : prev.filter(id => currentIds.includes(id)).concat(currentIds.filter(id => !prev.includes(id) && !cart.find(c => c.id === id && prev.includes(id)))); // Wait, safer to just keep existing selected and add any new ids
-    });
-  }, [cart]);
+    localStorage.setItem('cart_selected_items', JSON.stringify(selectedCartItems));
+  }, [selectedCartItems]);
 
-  // Simplify sync logic:
+  const cartInitializedRef = useRef(false);
   useEffect(() => {
+    const cartIds = cart.map(i => i.id);
+    if (!cartInitializedRef.current) {
+      if (cartIds.length === 0) return; // wait for cart to load from API
+      cartInitializedRef.current = true;
+      // Filter restored selection to only IDs still in cart (removes stale IDs from old sessions)
+      setSelectedCartItems(prev => prev.filter(id => cartIds.includes(id)));
+      return;
+    }
+    // After init: keep existing selections, remove deleted items, auto-select newly added items
     setSelectedCartItems(prev => {
-      const cartIds = cart.map(i => i.id);
-      if (prev.length === 0 && cartIds.length > 0) return cartIds;
-      // Remove ids no longer in cart
-      const validPrev = prev.filter(id => cartIds.includes(id));
-      // Add ids that are in cart but not in validPrev (meaning they were just added)
-      const newIds = cartIds.filter(id => !validPrev.includes(id) && cart.find(c => c.id === id && c.quantity > 0)); // Actually let's just make newly added items checked
-      // To keep it simple, let's just use validPrev and let the user check them manually if we don't know, BUT wait, we want all new items selected!
-      // Let's just do:
-      const previouslyUnseenIds = cartIds.filter(id => !prev.includes(id)); 
-      return [...validPrev, ...previouslyUnseenIds];
+      const valid = prev.filter(id => cartIds.includes(id));
+      const newlyAdded = cartIds.filter(id => !prev.includes(id));
+      return [...valid, ...newlyAdded];
     });
   }, [cart]);
   const [pincodeInput, setPincodeInput] = useState('');
@@ -437,7 +455,8 @@ export default function EcommerceMarketplace({ inlineMode = false, onBackToSelec
       window.scrollTo({ top: 0, behavior: 'instant' });
       const hashVal = currentView === 'details' && selectedProduct ? `details:${selectedProduct.id}` : currentView;
       if (window.history.state?.view !== currentView) {
-        window.history.pushState({ view: currentView, pid: selectedProduct?.id || null }, '', `#${hashVal}`);
+        const newUrl = currentView === 'home' ? window.location.pathname : `#${hashVal}`;
+        window.history.pushState({ view: currentView, pid: selectedProduct?.id || null }, '', newUrl);
       }
       prevViewRef.current = currentView;
     }
@@ -450,19 +469,19 @@ export default function EcommerceMarketplace({ inlineMode = false, onBackToSelec
     const [hashView, hashPid] = rawHash.includes(':') ? rawHash.split(':') : [rawHash, null];
     const validViews = ['home', 'listing', 'details', 'cart', 'checkout', 'success', 'wishlist', 'profile', 'tracking', 'orders', 'dashboard', 'auth', 'support'];
 
-    if (hashView && validViews.includes(hashView)) {
+    if (hashView && hashView !== 'home' && validViews.includes(hashView)) {
       setCurrentView(hashView);
       if (hashView === 'details' && hashPid) {
         setPendingSelectProductId(hashPid);
       }
       window.history.replaceState({ view: hashView, pid: hashPid || null }, '', `#${rawHash}`);
-    } else if (window.history.state?.view) {
+    } else if (window.history.state?.view && window.history.state.view !== 'home') {
       setCurrentView(window.history.state.view);
       if (window.history.state.view === 'details' && window.history.state.pid) {
         setPendingSelectProductId(window.history.state.pid);
       }
     } else {
-      window.history.replaceState({ view: currentView }, '', `#${currentView}`);
+      window.history.replaceState({ view: 'home' }, '', window.location.pathname);
     }
 
     const handlePopState = (event) => {
@@ -825,7 +844,7 @@ export default function EcommerceMarketplace({ inlineMode = false, onBackToSelec
       }
       setShowAddressForm(false);
       setEditingAddressId(null);
-      setAddressFormData({ name: '', phone: '', street_address: '', city: '', state: '', postal_code: '', is_default: false });
+      setAddressFormData({ name: '', phone: '', street_address: '', city: '', district: '', state: '', postal_code: '', is_default: false });
       fetchAddresses();
     } catch (err) {
       console.error("Error saving address:", err);
@@ -851,6 +870,7 @@ export default function EcommerceMarketplace({ inlineMode = false, onBackToSelec
       phone: addr.phone,
       street_address: addr.street_address,
       city: addr.city,
+      district: addr.district || '',
       state: addr.state,
       postal_code: addr.postal_code,
       is_default: addr.is_default
@@ -1352,6 +1372,42 @@ export default function EcommerceMarketplace({ inlineMode = false, onBackToSelec
     } catch (err) {
       console.error("Error updating order status:", err);
       toast.error(err.response?.data?.error || "Failed to update order status");
+    }
+  };
+
+  const handleCancelOrder = async () => {
+    if (!cancelModal || !cancelReason) {
+      toast.error('Please select a reason for cancellation');
+      return;
+    }
+    if (cancelReason === 'Other' && !cancelComment.trim()) {
+      toast.error('Please describe your reason');
+      return;
+    }
+    setCancellingOrder(true);
+    try {
+      const finalReason = cancelReason === 'Other' ? cancelComment.trim() : cancelReason;
+      const finalComment = cancelReason === 'Other' ? cancelComment.trim() : (cancelComment.trim() || cancelReason);
+      const formData = new FormData();
+      formData.append('reason', finalReason);
+      formData.append('comment', finalComment);
+      cancelFiles.forEach(f => formData.append('attachments', f));
+      await api.post(`/ecommerce/orders/${cancelModal.id}/cancel/`, formData, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+      });
+      toast.success('Order cancelled successfully');
+      setCancelModal(null);
+      setCancelReason('');
+      setCancelComment('');
+      setCancelFiles([]);
+      fetchCustomerOrders();
+      if (trackedOrder?.id === cancelModal.id) {
+        setTrackedOrder(prev => ({ ...prev, status: 'cancelled' }));
+      }
+    } catch (err) {
+      toast.error(err.response?.data?.error || 'Failed to cancel order');
+    } finally {
+      setCancellingOrder(false);
     }
   };
 
@@ -2392,7 +2448,7 @@ export default function EcommerceMarketplace({ inlineMode = false, onBackToSelec
           <div className="flex h-[calc(100vh-140px)] -mx-4 sm:-mx-6 -mt-4 bg-slate-50 dark:bg-slate-900 border-t border-slate-200 dark:border-slate-800">
             {/* Left Sidebar Menu */}
             <div className={`w-[84px] shrink-0 bg-white dark:bg-slate-950 overflow-y-auto border-r border-slate-200 dark:border-slate-800 hide-scrollbar pb-20 transition-all duration-300 ${showCategorySidebar ? 'ml-0' : '-ml-[84px]'}`}>
-              {['All', 'Home & Kitchen', 'Electronics', 'Mobile Accessories', 'Health & Personal Care', 'Laundry & Garment Care', 'Beauty & Personal Care'].filter(cat => cat === 'All' || productsList.some(p => (p.category || '').toLowerCase() === cat.toLowerCase())).map((cat, idx) => (
+              {['All', ...categoriesList.map(c => c.name)].filter(cat => cat === 'All' || productsList.some(p => (p.category || '').toLowerCase() === (cat || '').toLowerCase())).map((cat, idx) => (
                 <button
                   key={idx}
                   onClick={() => setFilterCategory(cat)}
@@ -3699,8 +3755,9 @@ export default function EcommerceMarketplace({ inlineMode = false, onBackToSelec
                         <input required type="text" placeholder="Phone Number" value={addressFormData.phone} onChange={e => setAddressFormData({...addressFormData, phone: e.target.value})} className="w-full text-xs font-bold bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2 outline-none" />
                       </div>
                       <input required type="text" placeholder="Street Address" value={addressFormData.street_address} onChange={e => setAddressFormData({...addressFormData, street_address: e.target.value})} className="w-full text-xs font-bold bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2 outline-none" />
-                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
                         <input required type="text" placeholder="City" value={addressFormData.city} onChange={e => setAddressFormData({...addressFormData, city: e.target.value})} className="w-full text-xs font-bold bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2 outline-none" />
+                        <input type="text" placeholder="District" value={addressFormData.district || ''} onChange={e => setAddressFormData({...addressFormData, district: e.target.value})} className="w-full text-xs font-bold bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2 outline-none" />
                         <input required type="text" placeholder="State" value={addressFormData.state} onChange={e => setAddressFormData({...addressFormData, state: e.target.value})} className="w-full text-xs font-bold bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2 outline-none" />
                         <input required type="text" placeholder="PIN Code" value={addressFormData.postal_code} onChange={e => setAddressFormData({...addressFormData, postal_code: e.target.value})} className="w-full text-xs font-bold bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2 outline-none" />
                       </div>
@@ -3708,7 +3765,7 @@ export default function EcommerceMarketplace({ inlineMode = false, onBackToSelec
                         <button type="submit" className="bg-orange-500 hover:bg-orange-600 text-white font-bold text-xs px-4 py-2 rounded-xl transition-colors">
                           {editingAddressId ? 'Update Address' : 'Save Address'}
                         </button>
-                        <button type="button" onClick={() => { setShowAddressForm(false); setEditingAddressId(null); setAddressFormData({name:'', phone:'', street_address:'', city:'', state:'', postal_code:'', is_default: false}); }} className="bg-slate-200 hover:bg-slate-300 text-slate-700 dark:bg-slate-700 dark:hover:bg-slate-600 dark:text-white font-bold text-xs px-4 py-2 rounded-xl transition-colors">
+                        <button type="button" onClick={() => { setShowAddressForm(false); setEditingAddressId(null); setAddressFormData({name:'', phone:'', street_address:'', city:'', district:'', state:'', postal_code:'', is_default: false}); }} className="bg-slate-200 hover:bg-slate-300 text-slate-700 dark:bg-slate-700 dark:hover:bg-slate-600 dark:text-white font-bold text-xs px-4 py-2 rounded-xl transition-colors">
                           Cancel
                         </button>
                       </div>
@@ -3731,7 +3788,7 @@ export default function EcommerceMarketplace({ inlineMode = false, onBackToSelec
                           </div>
                           <h4 className="font-extrabold text-xs dark:text-white mb-1">{addr.name}</h4>
                           <p className="text-[10px] text-slate-500 font-semibold leading-relaxed mb-2">
-                            {addr.street_address}, {addr.city}, {addr.state} - {addr.postal_code}
+                            {addr.street_address}, {addr.city}{addr.district ? `, ${addr.district}` : ''}, {addr.state} - {addr.postal_code}
                           </p>
                           <span className="text-[9px] text-slate-400 font-bold">{addr.phone}</span>
                         </div>
@@ -4325,7 +4382,16 @@ export default function EcommerceMarketplace({ inlineMode = false, onBackToSelec
               })()}
             </div>
 
-            <button 
+            {trackedOrder && ['pending', 'processing', 'shipped'].includes(trackedOrder.status) && (
+              <button
+                onClick={() => { setCancelModal(trackedOrder); setCancelComment(''); }}
+                className="w-full bg-rose-50 hover:bg-rose-100 dark:bg-rose-950/30 dark:hover:bg-rose-950/50 text-rose-600 dark:text-rose-400 font-bold text-xs py-3.5 rounded-2xl transition-all border border-rose-200 dark:border-rose-800"
+              >
+                Cancel Order
+              </button>
+            )}
+
+            <button
               onClick={() => setCurrentView('home')}
               className="w-full bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 text-slate-800 dark:text-white font-bold text-xs py-3.5 rounded-2xl transition-all text-center block"
             >
@@ -4471,14 +4537,19 @@ export default function EcommerceMarketplace({ inlineMode = false, onBackToSelec
                             <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Order ID: {ord.order_id}</span>
                             <h4 className="font-extrabold text-slate-800 dark:text-white line-clamp-1">{displayTitle}</h4>
                             <span className="text-[10px] text-slate-500 font-semibold">{orderDate} • <span className="text-slate-700 dark:text-slate-300">₹{Number(ord.final_amount).toLocaleString()}</span></span>
+                            {ord.payment_method === 'cod' && (
+                              <span className="text-[9px] font-black px-2 py-0.5 rounded-full bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-400 uppercase tracking-wider">
+                                Cash on Delivery {ord.payment_status === 'pending' ? '• Pay on arrival' : '• Paid'}
+                              </span>
+                            )}
                           </div>
                         </div>
                         
-                        <div className="flex items-center gap-3 sm:shrink-0 mt-2 sm:mt-0">
+                        <div className="flex items-center gap-3 sm:shrink-0 mt-2 sm:mt-0 flex-wrap">
                           <span className={`text-[9px] font-black px-2.5 py-1 rounded-md uppercase ${getStatusColor(ord.status)}`}>
                             {ord.status}
                           </span>
-                          <button 
+                          <button
                             onClick={() => {
                               setTrackedOrder(ord);
                               setCurrentView('tracking');
@@ -4487,6 +4558,14 @@ export default function EcommerceMarketplace({ inlineMode = false, onBackToSelec
                           >
                             Track Order
                           </button>
+                          {['pending', 'processing', 'shipped'].includes(ord.status) && (
+                            <button
+                              onClick={() => { setCancelModal(ord); setCancelComment(''); }}
+                              className="bg-rose-50 hover:bg-rose-100 dark:bg-rose-950/30 text-rose-600 dark:text-rose-400 border border-rose-200 dark:border-rose-800 px-4 py-2 rounded-xl text-xs font-bold transition-colors"
+                            >
+                              Cancel
+                            </button>
+                          )}
                         </div>
                       </div>
                     );
@@ -4500,7 +4579,7 @@ export default function EcommerceMarketplace({ inlineMode = false, onBackToSelec
 
         {/* VIEW: AUTH */}
         {currentView === 'auth' && (
-          <div className="bg-white dark:bg-slate-900 border border-slate-200/50 dark:border-slate-800/50 p-8 sm:p-10 rounded-[36px] max-w-md mx-auto space-y-6 shadow-2xl">
+          <div className="bg-white dark:bg-slate-900 border border-slate-200/50 dark:border-slate-800/50 p-8 sm:p-10 rounded-[36px] max-w-md mx-auto space-y-6 shadow-2xl mt-12 sm:mt-16">
             
             <div className="text-center space-y-1 relative">
               <button onClick={() => setCurrentView('home')} className="absolute -left-2 sm:-left-4 top-1 flex items-center justify-center w-8 h-8 rounded-full bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 transition-colors">
@@ -5527,6 +5606,11 @@ export default function EcommerceMarketplace({ inlineMode = false, onBackToSelec
                                 </span>
                               </div>
                               <p className="text-[11px] text-slate-500 font-semibold">{orderDate} • Customer: <span className="text-slate-800 dark:text-slate-200 font-extrabold">{ord.address_details?.name || ord.user_username}</span></p>
+                              {ord.payment_method === 'cod' && (
+                                <span className="inline-flex items-center gap-1 text-[9px] font-black px-2 py-0.5 rounded-full bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-400 uppercase tracking-wider mt-0.5">
+                                  💵 COD — Collect Cash on Delivery
+                                </span>
+                              )}
                             </div>
                             <div className="text-left sm:text-right">
                               <span className="text-[10px] text-slate-400 font-bold block uppercase tracking-wider">Seller Payout</span>
@@ -5557,8 +5641,52 @@ export default function EcommerceMarketplace({ inlineMode = false, onBackToSelec
                             </h5>
                             <p className="font-bold dark:text-white">{ord.address_details?.name} ({ord.address_details?.phone})</p>
                             <p>{ord.address_details?.street_address}</p>
-                            <p>{ord.address_details?.city}, {ord.address_details?.state} - {ord.address_details?.postal_code}</p>
+                            <p>{ord.address_details?.city}{ord.address_details?.district ? `, ${ord.address_details.district}` : ''}, {ord.address_details?.state} - {ord.address_details?.postal_code}</p>
                           </div>
+
+                          {/* Cancellation Details — shown to seller/admin when order is cancelled */}
+                          {ord.status === 'cancelled' && ord.cancel_reason && (
+                            <div className="bg-rose-50 dark:bg-rose-950/20 border border-rose-200 dark:border-rose-800/50 rounded-2xl p-4 space-y-2">
+                              <h5 className="text-[10px] font-black text-rose-600 dark:text-rose-400 uppercase tracking-widest flex items-center gap-1.5">
+                                <span>🚫</span> Cancellation Details
+                              </h5>
+                              <div className="space-y-1.5 text-xs">
+                                <div className="flex items-start gap-2">
+                                  <span className="text-[10px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-wide shrink-0 pt-0.5">Reason:</span>
+                                  <span className="font-bold text-slate-800 dark:text-white">{ord.cancel_reason}</span>
+                                </div>
+                                {ord.cancel_comment && ord.cancel_comment !== ord.cancel_reason && (
+                                  <div className="flex items-start gap-2">
+                                    <span className="text-[10px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-wide shrink-0 pt-0.5">Details:</span>
+                                    <span className="font-semibold text-slate-600 dark:text-slate-300">{ord.cancel_comment}</span>
+                                  </div>
+                                )}
+                                {ord.cancelled_at && (
+                                  <div className="flex items-start gap-2">
+                                    <span className="text-[10px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-wide shrink-0 pt-0.5">Cancelled at:</span>
+                                    <span className="font-semibold text-slate-600 dark:text-slate-300">{new Date(ord.cancelled_at).toLocaleString('en-IN', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })}</span>
+                                  </div>
+                                )}
+                                {Array.isArray(ord.cancel_attachments) && ord.cancel_attachments.length > 0 && (
+                                  <div className="space-y-1 pt-1">
+                                    <span className="text-[10px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-wide">Attachments ({ord.cancel_attachments.length}):</span>
+                                    <div className="flex flex-wrap gap-2 pt-1">
+                                      {ord.cancel_attachments.map((url, ai) => {
+                                        const fullUrl = url.startsWith('http') ? url : `${window.location.origin}${url}`;
+                                        const isVideo = typeof url === 'string' && (url.endsWith('.mp4') || url.endsWith('.mov') || url.endsWith('.webm'));
+                                        return (
+                                          <a key={ai} href={fullUrl} target="_blank" rel="noopener noreferrer"
+                                            className="flex items-center gap-1.5 bg-white dark:bg-slate-800 border border-rose-200 dark:border-rose-800/50 rounded-xl px-3 py-1.5 text-[10px] font-bold text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-900/20 transition-colors">
+                                            {isVideo ? '🎥' : '🖼️'} View {isVideo ? 'Video' : 'Image'} {ai + 1}
+                                          </a>
+                                        );
+                                      })}
+                                    </div>
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+                          )}
 
                           {/* Status Management Actions */}
                           <div className="space-y-3 pt-2">
@@ -5573,8 +5701,6 @@ export default function EcommerceMarketplace({ inlineMode = false, onBackToSelec
                                   <option value="pending">Pending</option>
                                   <option value="processing">Processing</option>
                                   <option value="shipped">Shipped</option>
-                                  <option value="in_transit">In Transit</option>
-                                  <option value="out_for_delivery">Out for Delivery</option>
                                   <option value="delivered">Delivered</option>
                                   <option value="cancelled">Cancelled</option>
                                   <option value="returned">Returned</option>
@@ -7038,6 +7164,112 @@ export default function EcommerceMarketplace({ inlineMode = false, onBackToSelec
               <button onClick={handleMediaUpload} disabled={mediaUploading || !mediaUploadFiles.length}
                 className="flex-1 py-2.5 text-xs font-bold text-white bg-violet-600 hover:bg-violet-700 rounded-xl transition-colors disabled:opacity-50 flex items-center justify-center gap-1.5">
                 {mediaUploading ? 'Uploading...' : <><Film className="w-3.5 h-3.5" /> Upload</>}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Cancel Order Modal */}
+      {cancelModal && (
+        <div className="fixed inset-0 z-[9999] bg-black/60 backdrop-blur-sm flex items-center justify-center p-4" onClick={() => { setCancelModal(null); setCancelReason(''); setCancelComment(''); setCancelFiles([]); }}>
+          <div className="bg-white dark:bg-slate-900 rounded-3xl shadow-2xl max-w-md w-full overflow-hidden" onClick={e => e.stopPropagation()}>
+
+            {/* Header */}
+            <div className="bg-rose-50 dark:bg-rose-950/30 px-6 pt-6 pb-4 text-center border-b border-rose-100 dark:border-rose-900/40">
+              <div className="w-12 h-12 bg-white dark:bg-slate-800 rounded-full flex items-center justify-center mx-auto mb-3 shadow-sm">
+                <span className="text-2xl">🚫</span>
+              </div>
+              <h3 className="font-black text-base dark:text-white">Cancel Order</h3>
+              <p className="text-[11px] text-slate-500 font-semibold mt-0.5">Order ID: <span className="font-black text-slate-700 dark:text-slate-300">{cancelModal.order_id}</span></p>
+            </div>
+
+            <div className="p-6 space-y-5 max-h-[70vh] overflow-y-auto">
+
+              {/* Step 1: Reason dropdown */}
+              <div className="space-y-2">
+                <label className="text-[10px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-widest flex items-center gap-1">
+                  <span className="w-4 h-4 bg-rose-500 text-white rounded-full text-[9px] flex items-center justify-center font-black">1</span>
+                  Select reason for cancellation *
+                </label>
+                <div className="relative">
+                  <select
+                    value={cancelReason}
+                    onChange={e => { setCancelReason(e.target.value); if (e.target.value !== 'Other') setCancelComment(''); }}
+                    className={`w-full appearance-none bg-slate-50 dark:bg-slate-800 border rounded-xl px-4 py-3 text-xs font-semibold outline-none transition-colors cursor-pointer pr-10 ${cancelReason ? 'border-rose-400 text-slate-800 dark:text-white' : 'border-slate-200 dark:border-slate-700 text-slate-400 dark:text-slate-500'} focus:border-rose-400`}
+                  >
+                    <option value="" disabled>— Choose a reason —</option>
+                    {CANCEL_REASONS.map(reason => (
+                      <option key={reason} value={reason}>{reason}</option>
+                    ))}
+                  </select>
+                  <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-slate-400">
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" /></svg>
+                  </span>
+                </div>
+                {cancelReason && cancelReason !== 'Other' && (
+                  <p className="text-[10px] font-semibold text-rose-500 flex items-center gap-1 pl-1">✓ Selected: {cancelReason}</p>
+                )}
+              </div>
+
+              {/* Step 2: Additional details */}
+              <div className="space-y-2">
+                <label className="text-[10px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-widest flex items-center gap-1">
+                  <span className="w-4 h-4 bg-slate-400 text-white rounded-full text-[9px] flex items-center justify-center font-black">2</span>
+                  {cancelReason === 'Other' ? 'Describe your reason *' : 'Additional comments (optional)'}
+                </label>
+                <textarea
+                  rows={3}
+                  placeholder={cancelReason === 'Other' ? 'Please describe your reason...' : 'Any additional details? (optional)'}
+                  value={cancelComment}
+                  onChange={e => setCancelComment(e.target.value)}
+                  className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2.5 text-xs font-semibold text-slate-800 dark:text-white outline-none focus:border-rose-400 resize-none transition-colors"
+                />
+              </div>
+
+              {/* Step 3: Attachments */}
+              <div className="space-y-2">
+                <label className="text-[10px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-widest flex items-center gap-1">
+                  <span className="w-4 h-4 bg-slate-400 text-white rounded-full text-[9px] flex items-center justify-center font-black">3</span>
+                  Attach proof — screenshots / images / videos (optional)
+                </label>
+                <label className="flex flex-col items-center justify-center gap-1.5 border-2 border-dashed border-slate-200 dark:border-slate-700 rounded-xl py-4 px-3 cursor-pointer hover:border-rose-300 dark:hover:border-rose-700 hover:bg-rose-50/40 dark:hover:bg-rose-950/10 transition-all">
+                  <span className="text-xl">📎</span>
+                  <span className="text-[11px] font-bold text-slate-500 dark:text-slate-400">Click to upload images or videos</span>
+                  <span className="text-[9px] text-slate-400">JPG, PNG, MP4, MOV — max 10MB each</span>
+                  <input type="file" multiple accept="image/*,video/*" className="hidden" onChange={e => setCancelFiles(prev => [...prev, ...Array.from(e.target.files)])} />
+                </label>
+                {cancelFiles.length > 0 && (
+                  <div className="space-y-1.5">
+                    {cancelFiles.map((f, i) => (
+                      <div key={i} className="flex items-center justify-between bg-slate-50 dark:bg-slate-800 rounded-xl px-3 py-2 border border-slate-100 dark:border-slate-700">
+                        <div className="flex items-center gap-2 min-w-0">
+                          <span className="text-sm shrink-0">{f.type.startsWith('video') ? '🎥' : '🖼️'}</span>
+                          <span className="text-[10px] font-semibold text-slate-600 dark:text-slate-300 truncate">{f.name}</span>
+                          <span className="text-[9px] text-slate-400 shrink-0">{(f.size / 1024 / 1024).toFixed(1)}MB</span>
+                        </div>
+                        <button onClick={() => setCancelFiles(prev => prev.filter((_, idx) => idx !== i))} className="text-slate-400 hover:text-rose-500 ml-2 font-black text-xs shrink-0 transition-colors">✕</button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Footer Buttons */}
+            <div className="flex gap-3 px-6 pb-6 pt-2">
+              <button
+                onClick={() => { setCancelModal(null); setCancelReason(''); setCancelComment(''); setCancelFiles([]); }}
+                className="flex-1 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-white font-bold text-xs py-3.5 rounded-xl transition-colors"
+              >
+                Keep Order
+              </button>
+              <button
+                onClick={handleCancelOrder}
+                disabled={cancellingOrder || !cancelReason || (cancelReason === 'Other' && !cancelComment.trim())}
+                className="flex-1 bg-rose-500 hover:bg-rose-600 disabled:opacity-40 disabled:cursor-not-allowed text-white font-bold text-xs py-3.5 rounded-xl transition-colors shadow-sm"
+              >
+                {cancellingOrder ? 'Cancelling...' : 'Yes, Cancel Order'}
               </button>
             </div>
           </div>
