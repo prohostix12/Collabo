@@ -169,11 +169,24 @@ from .tasks import notify_order_placed_async, notify_order_delivered_async
 @receiver(post_save, sender=Order)
 def order_post_save(sender, instance, created, **kwargs):
     """Trigger notifications on order creation and delivery."""
+    # Celery (async) — safe even if Redis is down
     try:
         if created:
             notify_order_placed_async.delay(instance.id)
         elif instance.status == 'delivered':
             notify_order_delivered_async.delay(instance.id)
+    except Exception:
+        pass
+
+    # Gupshup WhatsApp — direct, no Redis needed
+    try:
+        from .gupshup import notify_order_placed, notify_order_delivered, notify_order_shipped
+        if created:
+            notify_order_placed(instance)
+        elif instance.status == 'shipped':
+            notify_order_shipped(instance)
+        elif instance.status == 'delivered':
+            notify_order_delivered(instance)
     except Exception:
         pass
 

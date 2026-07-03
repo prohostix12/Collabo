@@ -290,3 +290,8 @@ else:
 
 # Frontend URL for password reset links, etc.
 FRONTEND_URL = config('FRONTEND_URL', default='http://localhost:3000')
+
+# Gupshup WhatsApp / SMS
+GUPSHUP_API_KEY = config('GUPSHUP_API_KEY', default='')
+GUPSHUP_SOURCE_NUMBER = config('GUPSHUP_SOURCE_NUMBER', default='')
+GUPSHUP_APP_NAME = config('GUPSHUP_APP_NAME', default='')

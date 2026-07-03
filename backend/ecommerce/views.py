@@ -709,6 +709,12 @@ class OrderViewSet(viewsets.ModelViewSet):
         order.cancel_attachments = attachment_urls
         order.cancelled_at = timezone.now()
         order.save()
+
+        try:
+            from .gupshup import notify_order_cancelled
+            notify_order_cancelled(order)
+        except Exception:
+            pass
         
         # Revert stock
         for item in order.items.all():
