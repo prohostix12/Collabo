@@ -441,7 +441,11 @@ export default function EcommerceMarketplace({ inlineMode = false, onBackToSelec
   const [authPhone, setAuthPhone] = useState('');
 
   // Dashboard state
-  const [adminView, setAdminView] = useState('overview'); // overview | products | orders | categories | brands | store-settings | affiliates | tickets
+  const [adminView, setAdminView] = useState('overview'); // overview | products | orders | categories | brands | store-settings | affiliates | tickets | broadcast
+  const [broadcastMessage, setBroadcastMessage] = useState('');
+  const [broadcastTarget, setBroadcastTarget] = useState('all'); // 'all' | 'buyers' | 'sellers'
+  const [broadcastSending, setBroadcastSending] = useState(false);
+  const [broadcastResult, setBroadcastResult] = useState(null);
   const [adminAffiliates, setAdminAffiliates] = useState([]);
   const [expandedRefId, setExpandedRefId] = useState(null);
 
@@ -4927,6 +4931,12 @@ export default function EcommerceMarketplace({ inlineMode = false, onBackToSelec
                     >
                       <Mail className="w-3.5 h-3.5" /> Tickets
                     </button>
+                    <button
+                      onClick={() => setAdminView('broadcast')}
+                      className={`px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 ${adminView === 'broadcast' ? 'bg-green-600 text-white' : 'bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-350'}`}
+                    >
+                      📢 Broadcast
+                    </button>
                   </>
                 )}
               </div>
@@ -6991,6 +7001,116 @@ export default function EcommerceMarketplace({ inlineMode = false, onBackToSelec
                       </tbody>
                     </table>
                   </div>
+                </div>
+              </div>
+            )}
+
+            {/* BROADCAST MESSAGES */}
+            {adminView === 'broadcast' && (user?.is_staff || user?.user_type === 'admin') && (
+              <div className="space-y-6 animate-fadeIn max-w-2xl">
+                <div>
+                  <h3 className="font-extrabold text-sm dark:text-white flex items-center gap-2">📢 Broadcast WhatsApp Message</h3>
+                  <p className="text-[11px] text-slate-500 mt-1">Send a message to all users or a specific group via Gupshup WhatsApp.</p>
+                </div>
+
+                <div className="bg-white dark:bg-slate-900 border border-slate-200/50 dark:border-slate-800/50 rounded-3xl p-6 space-y-5 shadow-sm">
+
+                  {/* Target audience */}
+                  <div className="space-y-2">
+                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Send To</label>
+                    <div className="flex gap-2 flex-wrap">
+                      {[
+                        { key: 'all', label: '👥 All Users' },
+                        { key: 'buyers', label: '🛒 Buyers Only' },
+                        { key: 'sellers', label: '🏪 Sellers Only' },
+                      ].map(opt => (
+                        <button key={opt.key} onClick={() => setBroadcastTarget(opt.key)}
+                          className={`px-4 py-2 rounded-xl text-xs font-bold border transition-all ${broadcastTarget === opt.key ? 'bg-green-600 text-white border-green-600' : 'bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:border-green-400'}`}>
+                          {opt.label}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Message templates */}
+                  <div className="space-y-2">
+                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Quick Templates</label>
+                    <div className="grid grid-cols-1 gap-2">
+                      {[
+                        { label: '🎉 Sale Offer', msg: `Hi! 🎉 Big Sale is LIVE on Collabo!\n\nGet up to 50% OFF on top products. Limited time only!\n\n👉 Shop now: collabo.co.in\n\nUse code *SALE50* at checkout.` },
+                        { label: '🆕 New Arrivals', msg: `Hi! 🆕 New products just dropped on Collabo!\n\nCheck out the latest arrivals — fresh styles, unbeatable prices.\n\n👉 collabo.co.in` },
+                        { label: '⏰ Flash Deal', msg: `⚡ FLASH DEAL ALERT!\n\nHurry! Exclusive deals for the next 24 hours only on Collabo.\n\nDon't miss out 👉 collabo.co.in` },
+                      ].map((t, i) => (
+                        <button key={i} onClick={() => setBroadcastMessage(t.msg)}
+                          className="text-left px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-xs font-semibold text-slate-700 dark:text-slate-300 hover:border-green-400 hover:bg-green-50/30 dark:hover:bg-green-900/10 transition-all">
+                          {t.label}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Message editor */}
+                  <div className="space-y-2">
+                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Message *</label>
+                    <textarea
+                      rows={7}
+                      value={broadcastMessage}
+                      onChange={e => setBroadcastMessage(e.target.value)}
+                      placeholder="Type your WhatsApp message here...&#10;&#10;Tip: Use *bold* for emphasis."
+                      className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl px-4 py-3 text-xs font-semibold text-slate-800 dark:text-white outline-none focus:border-green-400 resize-none transition-colors"
+                    />
+                    <p className="text-[10px] text-slate-400">{broadcastMessage.length} characters</p>
+                  </div>
+
+                  {/* Result */}
+                  {broadcastResult && (
+                    <div className={`rounded-2xl px-4 py-3 text-xs font-bold flex items-center gap-2 ${broadcastResult.error ? 'bg-rose-50 dark:bg-rose-950/20 text-rose-600' : 'bg-emerald-50 dark:bg-emerald-950/20 text-emerald-700 dark:text-emerald-400'}`}>
+                      {broadcastResult.error ? '❌' : '✅'} {broadcastResult.message || broadcastResult.error}
+                      {!broadcastResult.error && broadcastResult.sent !== undefined && (
+                        <span className="ml-auto text-slate-500 font-semibold">Sent: {broadcastResult.sent} | Failed: {broadcastResult.failed}</span>
+                      )}
+                    </div>
+                  )}
+
+                  {/* Send button */}
+                  <button
+                    onClick={async () => {
+                      if (!broadcastMessage.trim()) { toast.error('Please write a message first'); return; }
+                      if (!window.confirm(`Send this message to ${broadcastTarget === 'all' ? 'ALL users' : broadcastTarget === 'buyers' ? 'all buyers' : 'all sellers'}?`)) return;
+                      setBroadcastSending(true);
+                      setBroadcastResult(null);
+                      try {
+                        const res = await api.post('/ecommerce/admin/broadcast-offer/', {
+                          message: broadcastMessage,
+                          target: broadcastTarget,
+                        });
+                        setBroadcastResult(res.data);
+                        toast.success(`Sent to ${res.data.sent} users!`);
+                      } catch (err) {
+                        const errMsg = err.response?.data?.error || 'Failed to send broadcast';
+                        setBroadcastResult({ error: errMsg });
+                        toast.error(errMsg);
+                      } finally {
+                        setBroadcastSending(false);
+                      }
+                    }}
+                    disabled={broadcastSending || !broadcastMessage.trim()}
+                    className="w-full bg-green-600 hover:bg-green-700 disabled:opacity-40 disabled:cursor-not-allowed text-white font-black text-xs py-4 rounded-2xl transition-colors flex items-center justify-center gap-2"
+                  >
+                    {broadcastSending ? (
+                      <><span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" /> Sending...</>
+                    ) : (
+                      <>📤 Send WhatsApp Broadcast</>
+                    )}
+                  </button>
+                </div>
+
+                {/* Info box */}
+                <div className="bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-800/40 rounded-2xl p-4 text-xs font-semibold text-amber-700 dark:text-amber-400 space-y-1">
+                  <p className="font-black">⚠️ How this works</p>
+                  <p>• Messages are sent via Gupshup WhatsApp API to each user's registered phone number.</p>
+                  <p>• Only users who have a saved delivery address with a phone number will receive the message.</p>
+                  <p>• Sending to large lists takes a few seconds — wait for the result before closing.</p>
                 </div>
               </div>
             )}

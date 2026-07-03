@@ -1504,41 +1504,59 @@ def razorpay_webhook(request):
 
 class BroadcastOfferView(views.APIView):
     """
-    POST: Admin only.
-    Trigger a WhatsApp + SMS offer broadcast to all users (or a subset).
-
-    Body: { coupon_code, discount_percent, description, user_ids (optional list) }
+    POST: Admin only. Send a WhatsApp offer broadcast to all users or a subset.
+    Body: { message, user_ids (optional list of user IDs) }
     """
-    permission_classes = [permissions.IsAuthenticated, IsAdminOrReadOnly]
+    permission_classes = [permissions.IsAuthenticated]
 
     def post(self, request):
         if not (request.user.is_staff or request.user.user_type == 'admin'):
             return Response({'error': 'Unauthorized'}, status=status.HTTP_403_FORBIDDEN)
 
-        coupon_code  = request.data.get('coupon_code', '')
-        discount_pct = request.data.get('discount_percent', 10)
-        description  = request.data.get('description', '')
-        user_ids     = request.data.get('user_ids', None)
+        message = request.data.get('message', '').strip()
+        user_ids = request.data.get('user_ids', None)  # None = all users
 
-        if not coupon_code:
-            return Response({'error': 'coupon_code is required'}, status=status.HTTP_400_BAD_REQUEST)
+        if not message:
+            return Response({'error': 'message is required'}, status=status.HTTP_400_BAD_REQUEST)
 
-        try:
-            from .tasks import broadcast_offer
-            task = broadcast_offer.delay(
-                coupon_code=str(coupon_code).upper(),
-                discount_pct=int(discount_pct),
-                description=description,
-                user_ids=user_ids,
-            )
-            return Response({
-                'message': 'Offer broadcast queued successfully.',
-                'task_id': task.id,
-                'coupon_code': coupon_code,
-                'discount_percent': discount_pct,
-            })
-        except Exception as exc:
-            return Response({'error': str(exc)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        from django.contrib.auth import get_user_model
+        from .gupshup import _send_whatsapp
+        from .models import Address, Order
+
+        User = get_user_model()
+        target = request.data.get('target', 'all')
+
+        if user_ids:
+            users = User.objects.filter(id__in=user_ids, is_active=True)
+        elif target == 'buyers':
+            buyer_ids = Order.objects.values_list('user_id', flat=True).distinct()
+            users = User.objects.filter(id__in=buyer_ids, is_active=True)
+        elif target == 'sellers':
+            users = User.objects.filter(user_type='seller', is_active=True)
+        else:
+            users = User.objects.filter(is_active=True)
+
+        sent = 0
+        failed = 0
+        for user in users:
+            # Get phone from default address
+            addr = Address.objects.filter(user=user, is_default=True).first() \
+                   or Address.objects.filter(user=user).first()
+            phone = addr.phone if addr else getattr(user, 'phone', '')
+            if not phone:
+                failed += 1
+                continue
+            if _send_whatsapp(phone, message):
+                sent += 1
+            else:
+                failed += 1
+
+        return Response({
+            'message': f'Broadcast complete. Sent: {sent}, Failed/No phone: {failed}',
+            'sent': sent,
+            'failed': failed,
+            'total': sent + failed,
+        })
 
 
 # ── Influencer Media: admin upload / influencer view ──────────────────────────
