@@ -1120,9 +1120,9 @@ export default function EcommerceMarketplace({ inlineMode = false, onBackToSelec
     const value = e.target.value;
     setSearchQuery(value);
     if (value.trim()) {
-      const filtered = productsList.filter(p => 
-        p.name.toLowerCase().includes(value.toLowerCase()) || 
-        p.category.toLowerCase().includes(value.toLowerCase())
+      const filtered = productsList.filter(p =>
+        (p.name || '').toLowerCase().includes(value.toLowerCase()) ||
+        (p.category || '').toLowerCase().includes(value.toLowerCase())
       ).map(p => p.name).slice(0, 5);
       setSearchSuggestions(filtered);
       setShowSuggestions(true);
@@ -2392,7 +2392,7 @@ export default function EcommerceMarketplace({ inlineMode = false, onBackToSelec
           <div className="flex h-[calc(100vh-140px)] -mx-4 sm:-mx-6 -mt-4 bg-slate-50 dark:bg-slate-900 border-t border-slate-200 dark:border-slate-800">
             {/* Left Sidebar Menu */}
             <div className={`w-[84px] shrink-0 bg-white dark:bg-slate-950 overflow-y-auto border-r border-slate-200 dark:border-slate-800 hide-scrollbar pb-20 transition-all duration-300 ${showCategorySidebar ? 'ml-0' : '-ml-[84px]'}`}>
-              {['All', 'Home & Kitchen', 'Electronics', 'Mobile Accessories', 'Health & Personal Care', 'Laundry & Garment Care', 'Beauty & Personal Care'].filter(cat => productsList.some(p => (p.category || '').toLowerCase() === cat.name.toLowerCase())).map((cat, idx) => (
+              {['All', 'Home & Kitchen', 'Electronics', 'Mobile Accessories', 'Health & Personal Care', 'Laundry & Garment Care', 'Beauty & Personal Care'].filter(cat => cat === 'All' || productsList.some(p => (p.category || '').toLowerCase() === cat.toLowerCase())).map((cat, idx) => (
                 <button
                   key={idx}
                   onClick={() => setFilterCategory(cat)}
