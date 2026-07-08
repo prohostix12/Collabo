@@ -188,45 +188,20 @@ const CollabEarnBanner = ({ setCurrentView, setSupportSubject, setSupportCategor
             <div className="flex items-center gap-3 flex-wrap">
               <img src="/collabo-logo.png" alt="Collabo" className="h-14 object-contain drop-shadow" style={{filter:'brightness(0) invert(1)'}} />
               <div className="w-px h-5" style={{background:'rgba(255,255,255,0.25)'}} />
-              <span className="text-[11px] font-black uppercase tracking-widest px-3 py-1 rounded-full animate-pulse"
-                style={{background:'linear-gradient(90deg,#ff6b35,#f7931e)',color:'#fff',boxShadow:'0 2px 12px rgba(255,107,53,0.5)'}}>
+              <span className="text-[11px] font-black uppercase tracking-widest px-3 py-1 rounded-full"
+                style={{background:'linear-gradient(90deg,#ff6b35,#f7931e)',color:'#fff'}}>
                 🔥 Now Open — Apply Today
               </span>
             </div>
 
             {/* Headline */}
             <div className="space-y-3">
-              <style>{`
-                @keyframes unstoppableGlow {
-                  0%, 100% {
-                    text-shadow: 0 0 8px rgba(255, 255, 255, 0.15), 0 0 15px rgba(0, 235, 220, 0.15);
-                  }
-                  50% {
-                    text-shadow: 0 0 25px rgba(255, 255, 255, 0.7), 0 0 35px rgba(0, 235, 220, 0.75), 0 0 45px rgba(0, 200, 192, 0.45);
-                  }
-                }
-                @keyframes shareMoreMove {
-                  0%, 100% {
-                    transform: translateX(0);
-                  }
-                  50% {
-                    transform: translateX(12px);
-                  }
-                }
-                .unstoppable-text {
-                  animation: unstoppableGlow 3.5s ease-in-out infinite;
-                }
-                .share-more-animate {
-                  display: inline-block;
-                  animation: shareMoreMove 3s ease-in-out infinite;
-                }
-              `}</style>
               <p className="text-[18px] font-semibold italic leading-relaxed whitespace-nowrap" style={{color:'rgba(0,235,220,0.95)'}}>
                 "Why should buying only cost money? What if it could also earn you money?"
               </p>
-              <h2 className="font-black text-white leading-[1.05] tracking-tight unstoppable-text" style={{fontSize:'clamp(2.4rem,5vw,3.8rem)'}}>
+              <h2 className="font-black leading-[1.05] tracking-tight" style={{fontSize:'clamp(2.4rem,5vw,3.8rem)',color:'rgba(255,255,255,0.72)'}}>
                 Shop Smart<br/>
-                <span className="share-more-animate" style={{WebkitTextStroke:'1px rgba(255,255,255,0.4)',color:'transparent'}}>Share More</span><br/>
+                <span style={{WebkitTextStroke:'1px rgba(255,255,255,0.4)',color:'transparent'}}>Share More</span><br/>
                 Earn Forever
               </h2>
             </div>
