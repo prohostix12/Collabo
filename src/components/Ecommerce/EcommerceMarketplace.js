@@ -155,7 +155,7 @@ const CollabEarnBanner = ({ setCurrentView, setSupportSubject, setSupportCategor
 
   return (
     <>
-      <div className="w-full relative overflow-hidden rounded-[28px] my-8" style={{minHeight:'130px',boxShadow:'0 24px 70px rgba(0,90,120,0.45)'}}>
+      <div className="w-full relative overflow-hidden rounded-[28px] my-8" style={{minHeight:'335px',boxShadow:'0 24px 70px rgba(0,90,120,0.45)'}}>
 
         {/* ── BG: peacock blue gradient ── */}
         <div className="absolute inset-0" style={{background:'linear-gradient(115deg,#002136 0%,#004e6e 28%,#007a9a 55%,#00a4b4 78%,#00c8c0 100%)'}} />
@@ -179,15 +179,15 @@ const CollabEarnBanner = ({ setCurrentView, setSupportSubject, setSupportCategor
         />
 
         {/* ── MAIN CONTENT ── */}
-        <div className="relative z-10 flex flex-col lg:flex-row items-stretch" style={{minHeight:'145px'}}>
+        <div className="relative z-10 flex flex-col lg:flex-row items-stretch" style={{minHeight:'335px'}}>
 
           {/* LEFT: ad copy */}
-          <div className="flex-1 flex flex-col justify-start p-4 lg:pl-5 lg:pr-6 lg:pt-4 lg:pb-3 gap-2 lg:max-w-[72%]">
+          <div className="flex-1 flex flex-col justify-center pl-8 pr-8 pt-7 pb-7 gap-3.5 lg:max-w-[62%]">
 
             {/* Logo + urgency badge */}
             <div className="flex items-center gap-3 flex-wrap">
-              <img src="/collabo-logo.png" alt="Collabo" className="h-14 object-contain drop-shadow" style={{filter:'brightness(0) invert(1)'}} />
-              <div className="w-px h-5" style={{background:'rgba(255,255,255,0.25)'}} />
+              <img src="/collabo-logo.png" alt="Collabo" className="h-9 object-contain drop-shadow" style={{filter:'brightness(0) invert(1)'}} />
+              <div className="w-px h-4" style={{background:'rgba(255,255,255,0.25)'}} />
               <span className="text-[11px] font-black uppercase tracking-widest px-3 py-1 rounded-full animate-pulse"
                 style={{background:'linear-gradient(90deg,#ff6b35,#f7931e)',color:'#fff',boxShadow:'0 2px 12px rgba(255,107,53,0.5)'}}>
                 🔥 Now Open — Apply Today
@@ -209,7 +209,7 @@ const CollabEarnBanner = ({ setCurrentView, setSupportSubject, setSupportCategor
               <p className="text-[18px] font-semibold italic leading-relaxed whitespace-nowrap" style={{color:'rgba(0,235,220,0.95)'}}>
                 "Why should buying only cost money? What if it could also earn you money?"
               </p>
-              <h2 className="font-black leading-[0.95] tracking-tighter" style={{fontSize:'clamp(2.2rem,4.2vw,3.4rem)',color:'rgba(255,255,255,0.72)'}}>
+              <h2 className="font-black leading-[0.95] tracking-tighter unstoppable-text" style={{fontSize:'clamp(2.5rem,4.8vw,3.9rem)',color:'rgba(255,255,255,0.72)'}}>
                 Shop Smart<br/>
                 <span className="share-more-animate" style={{WebkitTextStroke:'1.5px rgba(255,255,255,0.35)',color:'transparent'}}>Share More</span><br/>
                 Earn Forever
@@ -242,13 +242,13 @@ const CollabEarnBanner = ({ setCurrentView, setSupportSubject, setSupportCategor
           </div>
 
           {/* RIGHT: floating glassmorphic stats — absolutely positioned to the left of the girl image */}
-          <div className="hidden lg:flex flex-col justify-center gap-2" style={{position:'absolute',right:'290px',top:'75%',transform:'translateY(-50%)',width:'150px',zIndex:20}}>
-            <div className="rounded-2xl p-3 space-y-2"
+          <div className="hidden lg:flex flex-col justify-center gap-2.5" style={{position:'absolute',right:'310px',top:'60%',transform:'translateY(-50%)',width:'180px',zIndex:20}}>
+            <div className="rounded-2xl p-4 space-y-3"
               style={{background:'rgba(255,255,255,0.1)',backdropFilter:'blur(28px)',WebkitBackdropFilter:'blur(28px)',border:'1px solid rgba(255,255,255,0.22)',boxShadow:'0 12px 40px rgba(0,0,0,0.25),inset 0 1px 0 rgba(255,255,255,0.2)'}}>
               {[['₹50K+','Paid Last Month'],['10%','Max Commission'],['24hrs','Approval Time']].map(([val,lbl]) => (
-                <div key={lbl} className="text-center py-1.5 rounded-xl" style={{background:'rgba(255,255,255,0.07)',border:'1px solid rgba(255,255,255,0.1)'}}>
-                  <div className="text-sm font-black text-white">{val}</div>
-                  <div className="text-[8px] font-bold uppercase tracking-wider mt-0.5" style={{color:'rgba(255,255,255,0.55)'}}>{lbl}</div>
+                <div key={lbl} className="text-center py-2.5 rounded-xl" style={{background:'rgba(255,255,255,0.07)',border:'1px solid rgba(255,255,255,0.1)'}}>
+                  <div className="text-base font-black text-white">{val}</div>
+                  <div className="text-[10px] font-bold uppercase tracking-wider mt-0.5" style={{color:'rgba(255,255,255,0.55)'}}>{lbl}</div>
                 </div>
               ))}
             </div>
