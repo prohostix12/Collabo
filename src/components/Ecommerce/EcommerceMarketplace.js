@@ -155,7 +155,7 @@ const CollabEarnBanner = ({ setCurrentView, setSupportSubject, setSupportCategor
 
   return (
     <>
-      <div className="w-full relative overflow-hidden rounded-[28px] my-8" style={{minHeight:'175px',boxShadow:'0 24px 70px rgba(0,90,120,0.45)'}}>
+      <div className="w-full relative overflow-hidden rounded-[28px] my-8" style={{minHeight:'130px',boxShadow:'0 24px 70px rgba(0,90,120,0.45)'}}>
 
         {/* ── BG: peacock blue gradient ── */}
         <div className="absolute inset-0" style={{background:'linear-gradient(115deg,#002136 0%,#004e6e 28%,#007a9a 55%,#00a4b4 78%,#00c8c0 100%)'}} />
@@ -179,10 +179,10 @@ const CollabEarnBanner = ({ setCurrentView, setSupportSubject, setSupportCategor
         />
 
         {/* ── MAIN CONTENT ── */}
-        <div className="relative z-10 flex flex-col lg:flex-row items-stretch" style={{minHeight:'190px'}}>
+        <div className="relative z-10 flex flex-col lg:flex-row items-stretch" style={{minHeight:'145px'}}>
 
           {/* LEFT: ad copy */}
-          <div className="flex-1 flex flex-col justify-between p-5 lg:pl-5 lg:pr-6 lg:py-7 gap-4 lg:max-w-[72%]">
+          <div className="flex-1 flex flex-col justify-between p-4 lg:pl-5 lg:pr-6 lg:py-4 gap-2 lg:max-w-[72%]">
 
             {/* Logo + urgency badge */}
             <div className="flex items-center gap-3 flex-wrap">
@@ -237,7 +237,7 @@ const CollabEarnBanner = ({ setCurrentView, setSupportSubject, setSupportCategor
             <div className="flex items-center">
               <button
                 onClick={() => setShowModal(true)}
-                className="px-8 py-3 rounded-lg font-semibold text-sm tracking-wide transition-all duration-200 hover:opacity-90 hover:shadow-xl"
+                className="px-5 py-2 rounded-lg font-semibold text-xs tracking-wide transition-all duration-200 hover:opacity-90 hover:shadow-xl"
                 style={{background:'#ffffff',color:'#004e6e',boxShadow:'0 4px 20px rgba(0,0,0,0.2)',letterSpacing:'0.04em'}}
               >
                 Know More &amp; Apply
