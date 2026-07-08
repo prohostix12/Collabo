@@ -10,7 +10,7 @@ import {
   LayoutGrid, Cpu, Smartphone, Shirt, ShoppingBasket, Home as HomeIcon,
   Armchair, Dumbbell, BookOpen, Gamepad2, Plug, Film, Download,
   Mail, Shield, Calendar, Headphones, HeartPulse, Droplets, Bath, Truck, Share2, Menu, ChevronLeft,
-  Baby
+  Baby, Flower2
 } from 'lucide-react';
 import api from '../../services/api';
 import { useAuth } from '../../contexts/AuthContext';
@@ -58,6 +58,7 @@ const CAT_ICON_MAP = {
   'Laundry & Garment Care': { Icon: Droplets, color: 'text-slate-900 dark:text-white', bg: 'bg-slate-100 dark:bg-slate-700' },
   'Beauty & Personal Care': { Icon: Bath, color: 'text-slate-900 dark:text-white', bg: 'bg-slate-100 dark:bg-slate-700' },
   'Kids':              { Icon: Baby,           color: 'text-slate-900 dark:text-white', bg: 'bg-slate-100 dark:bg-slate-700' },
+  'Korean Products':   { Icon: Flower2,        color: 'text-slate-900 dark:text-white', bg: 'bg-slate-100 dark:bg-slate-700' },
 };
 const getCatIcon = (name) => CAT_ICON_MAP[name] || { Icon: LayoutGrid, color: 'text-slate-900 dark:text-white', bg: 'bg-slate-100 dark:bg-slate-700' };
 
@@ -138,6 +139,237 @@ const CollaboAdBanner = ({ isLoggedIn, setCurrentView }) => {
         </div>
       </div>
     </div>
+  );
+};
+
+const CollabEarnBanner = ({ setCurrentView, setSupportSubject, setSupportCategory, setSupportMessage }) => {
+  const [showModal, setShowModal] = useState(false);
+
+  const handleApply = () => {
+    setShowModal(false);
+    setSupportSubject('Affiliate / Influencer Partnership Application');
+    setSupportCategory('general');
+    setSupportMessage('Hi Collabo Team,\n\nI would like to apply as an affiliate/influencer partner.\n\nName:\nSocial Media Profile(s):\nFollowers / Audience Size:\nNiche / Category:\nWhy I want to partner with Collabo:');
+    setCurrentView('support');
+  };
+
+  return (
+    <>
+      <div className="w-full relative overflow-hidden rounded-[28px] my-8" style={{minHeight:'175px',boxShadow:'0 24px 70px rgba(0,90,120,0.45)'}}>
+
+        {/* ── BG: peacock blue gradient ── */}
+        <div className="absolute inset-0" style={{background:'linear-gradient(115deg,#002136 0%,#004e6e 28%,#007a9a 55%,#00a4b4 78%,#00c8c0 100%)'}} />
+
+        {/* glow orbs */}
+        <div className="absolute" style={{top:'-100px',right:'30%',width:'420px',height:'420px',borderRadius:'50%',background:'rgba(0,200,192,0.15)',filter:'blur(80px)'}} />
+        <div className="absolute" style={{bottom:'-80px',left:'-80px',width:'380px',height:'380px',borderRadius:'50%',background:'rgba(0,60,100,0.4)',filter:'blur(70px)'}} />
+
+        {/* dot pattern */}
+        <div className="absolute inset-0" style={{opacity:0.04,backgroundImage:'radial-gradient(circle,#fff 1px,transparent 1px)',backgroundSize:'24px 24px'}} />
+
+        {/* image fade-in mask on the right */}
+        <div className="absolute inset-y-0 right-0 w-2/5 hidden lg:block" style={{background:'linear-gradient(to right,transparent 0%,rgba(0,40,70,0.15) 100%)'}} />
+
+        {/* ── MODEL IMAGE ── positioned right side, bottom-anchored */}
+        <img
+          src="/affiliate-girl.jpg"
+          alt="Collabo Partner"
+          className="absolute bottom-0 right-0 hidden lg:block object-cover select-none pointer-events-none"
+          style={{height:'105%',width:'340px',objectPosition:'center top',maskImage:'linear-gradient(to left,rgba(0,0,0,0.92) 45%,transparent 100%)',WebkitMaskImage:'linear-gradient(to left,rgba(0,0,0,0.92) 45%,transparent 100%)'}}
+        />
+
+        {/* ── MAIN CONTENT ── */}
+        <div className="relative z-10 flex flex-col lg:flex-row items-stretch" style={{minHeight:'190px'}}>
+
+          {/* LEFT: ad copy */}
+          <div className="flex-1 flex flex-col justify-between p-5 lg:pl-5 lg:pr-6 lg:py-7 gap-4 lg:max-w-[72%]">
+
+            {/* Logo + urgency badge */}
+            <div className="flex items-center gap-3 flex-wrap">
+              <img src="/collabo-logo.png" alt="Collabo" className="h-14 object-contain drop-shadow" style={{filter:'brightness(0) invert(1)'}} />
+              <div className="w-px h-5" style={{background:'rgba(255,255,255,0.25)'}} />
+              <span className="text-[11px] font-black uppercase tracking-widest px-3 py-1 rounded-full animate-pulse"
+                style={{background:'linear-gradient(90deg,#ff6b35,#f7931e)',color:'#fff',boxShadow:'0 2px 12px rgba(255,107,53,0.5)'}}>
+                🔥 Now Open — Apply Today
+              </span>
+            </div>
+
+            {/* Headline */}
+            <div className="space-y-3">
+              <style>{`
+                @keyframes unstoppableGlow {
+                  0%, 100% {
+                    text-shadow: 0 0 8px rgba(255, 255, 255, 0.15), 0 0 15px rgba(0, 235, 220, 0.15);
+                  }
+                  50% {
+                    text-shadow: 0 0 25px rgba(255, 255, 255, 0.7), 0 0 35px rgba(0, 235, 220, 0.75), 0 0 45px rgba(0, 200, 192, 0.45);
+                  }
+                }
+                @keyframes shareMoreMove {
+                  0%, 100% {
+                    transform: translateX(0);
+                  }
+                  50% {
+                    transform: translateX(12px);
+                  }
+                }
+                .unstoppable-text {
+                  animation: unstoppableGlow 3.5s ease-in-out infinite;
+                }
+                .share-more-animate {
+                  display: inline-block;
+                  animation: shareMoreMove 3s ease-in-out infinite;
+                }
+              `}</style>
+              <p className="text-[18px] font-semibold italic leading-relaxed whitespace-nowrap" style={{color:'rgba(0,235,220,0.95)'}}>
+                "Why should buying only cost money? What if it could also earn you money?"
+              </p>
+              <h2 className="font-black text-white leading-[1.05] tracking-tight unstoppable-text" style={{fontSize:'clamp(2.4rem,5vw,3.8rem)'}}>
+                Shop Smart<br/>
+                <span className="share-more-animate" style={{WebkitTextStroke:'1px rgba(255,255,255,0.4)',color:'transparent'}}>Share More</span><br/>
+                Earn Forever
+              </h2>
+            </div>
+
+            {/* Social proof */}
+            <div className="flex items-center gap-3">
+              <div className="flex -space-x-2">
+                {['bg-pink-400','bg-yellow-400','bg-blue-400','bg-green-400'].map((c,i) => (
+                  <div key={i} className={`w-8 h-8 rounded-full border-2 border-white/30 ${c} flex items-center justify-center text-[11px] font-black text-white`}>{['R','S','A','P'][i]}</div>
+                ))}
+              </div>
+              <p className="text-[14px] font-semibold" style={{color:'rgba(255,255,255,0.75)'}}>
+                <span className="text-white font-black">2,400+ creators</span> already earning with Collabo
+              </p>
+            </div>
+
+            {/* CTA */}
+            <div className="flex items-center">
+              <button
+                onClick={() => setShowModal(true)}
+                className="px-8 py-3 rounded-lg font-semibold text-sm tracking-wide transition-all duration-200 hover:opacity-90 hover:shadow-xl"
+                style={{background:'#ffffff',color:'#004e6e',boxShadow:'0 4px 20px rgba(0,0,0,0.2)',letterSpacing:'0.04em'}}
+              >
+                Know More &amp; Apply
+              </button>
+            </div>
+
+          </div>
+
+          {/* RIGHT: floating glassmorphic stats — absolutely positioned to the left of the girl image */}
+          <div className="hidden lg:flex flex-col justify-center gap-2" style={{position:'absolute',right:'290px',top:'75%',transform:'translateY(-50%)',width:'150px',zIndex:20}}>
+            <div className="rounded-2xl p-3 space-y-2"
+              style={{background:'rgba(255,255,255,0.1)',backdropFilter:'blur(28px)',WebkitBackdropFilter:'blur(28px)',border:'1px solid rgba(255,255,255,0.22)',boxShadow:'0 12px 40px rgba(0,0,0,0.25),inset 0 1px 0 rgba(255,255,255,0.2)'}}>
+              {[['₹50K+','Paid Last Month'],['10%','Max Commission'],['24hrs','Approval Time']].map(([val,lbl]) => (
+                <div key={lbl} className="text-center py-1.5 rounded-xl" style={{background:'rgba(255,255,255,0.07)',border:'1px solid rgba(255,255,255,0.1)'}}>
+                  <div className="text-sm font-black text-white">{val}</div>
+                  <div className="text-[8px] font-bold uppercase tracking-wider mt-0.5" style={{color:'rgba(255,255,255,0.55)'}}>{lbl}</div>
+                </div>
+              ))}
+            </div>
+          </div>
+
+        </div>
+      </div>
+
+      {showModal && (
+        <div className="fixed inset-0 bg-slate-950/40 backdrop-blur-sm z-50 flex items-center justify-center p-4" onClick={() => setShowModal(false)}>
+          <div className="bg-white dark:bg-slate-950 rounded-2xl max-w-3xl w-full max-h-[90vh] shadow-xl border border-slate-200/60 dark:border-slate-800 flex flex-col overflow-hidden animate-in fade-in zoom-in-95 duration-200" onClick={e => e.stopPropagation()}>
+            
+            {/* Header: Simple & Humble */}
+            <div className="relative p-6 sm:p-8 bg-slate-50/80 dark:bg-slate-900/60 border-b border-slate-100 dark:border-slate-800/80">
+              <button onClick={() => setShowModal(false)} className="absolute top-6 right-6 text-slate-400 hover:text-slate-600 dark:hover:text-white transition-colors">
+                <X className="w-5 h-5" />
+              </button>
+              <div className="text-[10px] font-bold text-violet-600 dark:text-violet-400 uppercase tracking-wider mb-1">Partner Program</div>
+              <h2 className="text-xl font-bold text-slate-900 dark:text-white">Collabo Affiliate Program</h2>
+              <p className="text-slate-500 dark:text-slate-400 text-xs mt-1">Earn commissions by sharing products you love with your audience.</p>
+            </div>
+
+            {/* Content Body: Two-Column Clean Layout */}
+            <div className="p-6 sm:p-8 space-y-6 overflow-y-auto flex-1">
+              
+              <div className="grid grid-cols-1 md:grid-cols-5 gap-6 sm:gap-8">
+                
+                {/* Left: How It Works */}
+                <div className="md:col-span-3 space-y-4">
+                  <h3 className="font-bold text-slate-900 dark:text-white text-xs uppercase tracking-wider">How It Works</h3>
+                  <div className="space-y-4">
+                    {[
+                      { step: '1', title: 'Apply & Get Approved', desc: 'Submit your request. We review and approve applications within 1–2 business days.' },
+                      { step: '2', title: 'Get Your Referral Link', desc: 'Create unique, trackable links for any product instantly from your dashboard.' },
+                      { step: '3', title: 'Share & Promote', desc: 'Recommend items to your audience. When they purchase, you earn a commission.' },
+                      { step: '4', title: 'Collect Payouts', desc: 'Track earnings in real-time. Withdraw directly to your account once you reach ₹500.' },
+                    ].map(({ step, title, desc }) => (
+                      <div key={step} className="flex gap-3 items-start">
+                        <div className="w-7 h-7 rounded-full border border-slate-200 dark:border-slate-700 flex items-center justify-center font-bold text-xs text-slate-500 dark:text-slate-400 flex-shrink-0 bg-white dark:bg-slate-900">
+                          {step}
+                        </div>
+                        <div className="space-y-0.5">
+                          <div className="font-semibold text-xs text-slate-900 dark:text-white">{title}</div>
+                          <div className="text-[11px] text-slate-500 dark:text-slate-400 leading-relaxed">{desc}</div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Right: Details & Eligibility */}
+                <div className="md:col-span-2 space-y-6">
+                  
+                  {/* Details Grid */}
+                  <div className="space-y-3">
+                    <h3 className="font-bold text-slate-900 dark:text-white text-xs uppercase tracking-wider">Program Details</h3>
+                    <div className="grid grid-cols-2 gap-2.5">
+                      {[
+                        { label: 'Commission', value: 'Up to 10%' },
+                        { label: 'Joining Fee', value: 'Free' },
+                        { label: 'Min. Payout', value: '₹500' },
+                        { label: 'Cycle', value: 'Monthly' },
+                      ].map(({ label, value }) => (
+                        <div key={label} className="p-3 border border-slate-100 dark:border-slate-800/80 rounded-xl bg-slate-50/50 dark:bg-slate-900/40 text-center">
+                          <div className="text-xs font-bold text-slate-900 dark:text-white">{value}</div>
+                          <div className="text-[9px] text-slate-400 uppercase tracking-wider mt-0.5">{label}</div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Who Can Join */}
+                  <div className="space-y-3">
+                    <h3 className="font-bold text-slate-900 dark:text-white text-xs uppercase tracking-wider">Eligibility</h3>
+                    <div className="space-y-2">
+                      {['Social Media Influencers','Content Creators','Bloggers & YouTubers','Sellers & Freelancers'].map(item => (
+                        <div key={item} className="flex items-center gap-2 text-[11px] text-slate-600 dark:text-slate-400">
+                          <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500 flex-shrink-0" />
+                          <span>{item}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                </div>
+
+              </div>
+
+              {/* Action Buttons */}
+              <div className="pt-5 border-t border-slate-100 dark:border-slate-800/80 flex flex-col items-center gap-2">
+                <button
+                  onClick={handleApply}
+                  className="w-full max-w-xs bg-slate-950 hover:bg-slate-900 dark:bg-white dark:hover:bg-slate-100 text-white dark:text-slate-950 font-bold text-xs py-3 rounded-xl transition-all uppercase tracking-wider text-center"
+                >
+                  Apply Now
+                </button>
+                <p className="text-[9px] text-slate-400 dark:text-slate-500">
+                  Application updates are sent via the support ticket system.
+                </p>
+              </div>
+
+            </div>
+          </div>
+        </div>
+      )}
+    </>
   );
 };
 
@@ -2331,6 +2563,13 @@ export default function EcommerceMarketplace({ inlineMode = false, onBackToSelec
             })()}
 
             <CollaboAdBanner isLoggedIn={isLoggedIn} setCurrentView={setCurrentView} />
+
+            <CollabEarnBanner
+              setCurrentView={setCurrentView}
+              setSupportSubject={setSupportSubject}
+              setSupportCategory={setSupportCategory}
+              setSupportMessage={setSupportMessage}
+            />
 
             {/* Shop By Category Grid + Side Ad */}
             {(() => {
