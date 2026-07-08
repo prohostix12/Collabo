@@ -653,6 +653,7 @@ export default function EcommerceMarketplace({ inlineMode = false, onBackToSelec
   const [authMode, setAuthMode] = useState('login'); // login | signup | otp
   const [postAuthView, setPostAuthView] = useState('home'); // view to return to after successful auth
   const [authEmail, setAuthEmail] = useState('');
+  const [authUsername, setAuthUsername] = useState('');
   const [authPassword, setAuthPassword] = useState('');
   const [showAuthPassword, setShowAuthPassword] = useState(false);
   const [authPhone, setAuthPhone] = useState('');
@@ -4862,6 +4863,22 @@ export default function EcommerceMarketplace({ inlineMode = false, onBackToSelec
 
                 {authMode === 'signup' && (
                   <div className="space-y-2">
+                    <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Full Name</label>
+                    <div className="relative">
+                      <input
+                        type="text"
+                        value={authUsername}
+                        onChange={(e) => setAuthUsername(e.target.value)}
+                        placeholder="Your name"
+                        className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl py-2.5 pl-10 text-xs font-bold focus:outline-none focus:ring-1 focus:ring-orange-500 dark:text-white"
+                      />
+                      <User className="absolute left-3.5 top-3 w-4 h-4 text-slate-400" />
+                    </div>
+                  </div>
+                )}
+
+                {authMode === 'signup' && (
+                  <div className="space-y-2">
                     <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Mobile Number</label>
                     <div className="flex">
                       <div className="flex items-center px-3 bg-slate-100 dark:bg-slate-700 border border-r-0 border-slate-200 dark:border-slate-700 rounded-l-xl">
@@ -4923,13 +4940,14 @@ export default function EcommerceMarketplace({ inlineMode = false, onBackToSelec
                 ) : (
                   <button
                     onClick={async () => {
+                      if (!authUsername.trim()) { toast.error('Please enter your name'); return; }
                       if (!authEmail || !authPassword) { toast.error('Please enter email and password'); return; }
                       if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(authEmail)) { toast.error('Please enter a valid email address'); return; }
                       if (authPhone && authPhone.length !== 10) { toast.error('Mobile number must be exactly 10 digits'); return; }
                       if (authPassword.length < 8) { toast.error('Password must be at least 8 characters'); return; }
                       const result = await register({
                         email: authEmail,
-                        username: authEmail.split('@')[0],
+                        username: authUsername.trim(),
                         password: authPassword,
                         password_confirm: authPassword,
                         phone: authPhone ? `+91${authPhone}` : '',
