@@ -76,6 +76,21 @@ def notify_order_delivered(order):
     _send_whatsapp(phone, msg)
 
 
+def notify_delivery_otp(order):
+    name = order.address.name if order.address else order.user.username
+    phone = order.address.phone if order.address else ''
+    if not phone or not order.delivery_otp:
+        return
+    msg = (
+        f"Hi {name}! 🚚 Your Collabo order *{order.order_id}* is out for delivery!\n\n"
+        f"Your delivery verification code is:\n\n"
+        f"*{order.delivery_otp}*\n\n"
+        f"Share this code with the delivery person to receive your package. "
+        f"Do NOT share this with anyone else. 🔒"
+    )
+    _send_whatsapp(phone, msg)
+
+
 def notify_order_cancelled(order):
     name = order.address.name if order.address else order.user.username
     phone = order.address.phone if order.address else ''

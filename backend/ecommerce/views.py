@@ -535,6 +535,8 @@ class OrderViewSet(viewsets.ModelViewSet):
             order.tracking_number = request.data.get('tracking_number', '') or order.tracking_number
             order.shipping_provider = request.data.get('shipping_provider', '') or order.shipping_provider
             order.shipped_at = timezone.now()
+            order.delivery_otp = str(random.randint(100000, 999999))
+            order.delivery_otp_sent_at = timezone.now()
 
         if request.data.get('tracking_number') and new_status in ('shipped', 'delivered'):
             order.tracking_number = request.data['tracking_number']
@@ -567,6 +569,14 @@ class OrderViewSet(viewsets.ModelViewSet):
 
         order.save()
 
+        # Send OTP via WhatsApp when marked as shipped
+        if new_status == 'shipped' and old_status != 'shipped':
+            try:
+                from .gupshup import notify_delivery_otp
+                notify_delivery_otp(order)
+            except Exception:
+                pass
+
         # Fire delivery notification when marked as delivered
         if new_status == 'delivered' and old_status != 'delivered':
             try:
@@ -577,6 +587,49 @@ class OrderViewSet(viewsets.ModelViewSet):
 
         serializer = OrderSerializer(order)
         return Response(serializer.data)
+
+    @action(detail=True, methods=['post'], url_path='verify-delivery')
+    @transaction.atomic
+    def verify_delivery(self, request, pk=None):
+        """Delivery person submits OTP to confirm delivery."""
+        order = get_object_or_404(Order, pk=pk)
+        user = request.user
+
+        is_order_seller = OrderItem.objects.filter(order=order, product__seller=user).exists()
+        is_admin = user.is_staff or user.user_type == 'admin'
+
+        if not (is_order_seller or is_admin):
+            return Response({'error': 'You do not have permission to confirm this delivery'}, status=status.HTTP_403_FORBIDDEN)
+
+        if order.status != 'shipped':
+            return Response({'error': 'Order must be in shipped status to verify delivery'}, status=status.HTTP_400_BAD_REQUEST)
+
+        entered_otp = str(request.data.get('otp', '')).strip()
+        if not entered_otp:
+            return Response({'error': 'OTP is required'}, status=status.HTTP_400_BAD_REQUEST)
+
+        if not order.delivery_otp:
+            return Response({'error': 'No OTP set for this order. Please re-ship the order to generate an OTP.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        if entered_otp != order.delivery_otp:
+            return Response({'error': 'Incorrect OTP. Please ask the customer for the correct code.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        # OTP matched — mark as delivered
+        order.status = 'delivered'
+        order.payment_status = 'completed'
+        order.delivery_otp = None  # Clear OTP after use
+        order.save()
+
+        AffiliateCommission.objects.filter(order=order, status='pending').update(status='completed')
+
+        try:
+            from .tasks import notify_order_delivered_async
+            notify_order_delivered_async.delay(order.id)
+        except Exception:
+            pass
+
+        serializer = OrderSerializer(order)
+        return Response({'message': 'Delivery confirmed successfully!', 'order': serializer.data})
 
     @action(detail=True, methods=['post'], url_path='toggle-partner-status')
     def toggle_partner_status(self, request, pk=None):

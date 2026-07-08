@@ -426,6 +426,9 @@ export default function EcommerceMarketplace({ inlineMode = false, onBackToSelec
   const [createdOrderId, setCreatedOrderId] = useState('');
   const [placingOrder, setPlacingOrder] = useState(false);
   const [activeProfileModal, setActiveProfileModal] = useState(null); // 'username' | 'password' | 'delete' | null
+  const [deliveryOtpModal, setDeliveryOtpModal] = useState(null); // order object or null
+  const [deliveryOtpInput, setDeliveryOtpInput] = useState('');
+  const [verifyingDelivery, setVerifyingDelivery] = useState(false);
   const [cancelModal, setCancelModal] = useState(null); // order object or null
   const [cancelReason, setCancelReason] = useState('');
   const [cancelComment, setCancelComment] = useState('');
@@ -1594,6 +1597,26 @@ export default function EcommerceMarketplace({ inlineMode = false, onBackToSelec
     } catch (err) {
       console.error("Error updating order status:", err);
       toast.error(err.response?.data?.error || "Failed to update order status");
+    }
+  };
+
+  const verifyDeliveryOtp = async () => {
+    if (!deliveryOtpModal || !deliveryOtpInput.trim()) {
+      toast.error('Please enter the OTP');
+      return;
+    }
+    setVerifyingDelivery(true);
+    try {
+      await api.post(`/ecommerce/orders/${deliveryOtpModal.id}/verify-delivery/`, { otp: deliveryOtpInput.trim() });
+      toast.success('Delivery confirmed successfully!');
+      setDeliveryOtpModal(null);
+      setDeliveryOtpInput('');
+      fetchSellerOrders();
+      fetchCustomerOrders();
+    } catch (err) {
+      toast.error(err.response?.data?.error || 'Invalid OTP. Please try again.');
+    } finally {
+      setVerifyingDelivery(false);
     }
   };
 
@@ -5975,10 +5998,10 @@ export default function EcommerceMarketplace({ inlineMode = false, onBackToSelec
                                 )}
                                 {ord.status === 'shipped' && (
                                   <button
-                                    onClick={() => updateOrderStatus(ord.id, 'delivered')}
+                                    onClick={() => { setDeliveryOtpModal(ord); setDeliveryOtpInput(''); }}
                                     className="bg-emerald-500 hover:bg-emerald-600 text-white font-extrabold text-[10px] uppercase tracking-wider px-4 py-2 rounded-xl shadow-sm transition-all flex items-center gap-1.5"
                                   >
-                                    <CheckCircle2 className="w-3.5 h-3.5" /> Mark as Delivered
+                                    <CheckCircle2 className="w-3.5 h-3.5" /> Confirm Delivery (OTP)
                                   </button>
                                 )}
                               </div>
@@ -7527,6 +7550,53 @@ export default function EcommerceMarketplace({ inlineMode = false, onBackToSelec
                 className="flex-1 py-2.5 text-xs font-bold text-white bg-violet-600 hover:bg-violet-700 rounded-xl transition-colors disabled:opacity-50 flex items-center justify-center gap-1.5">
                 {mediaUploading ? 'Uploading...' : <><Film className="w-3.5 h-3.5" /> Upload</>}
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Delivery OTP Modal */}
+      {deliveryOtpModal && (
+        <div className="fixed inset-0 z-[9999] bg-black/60 backdrop-blur-sm flex items-center justify-center p-4" onClick={() => { setDeliveryOtpModal(null); setDeliveryOtpInput(''); }}>
+          <div className="bg-white dark:bg-slate-900 rounded-3xl shadow-2xl max-w-sm w-full overflow-hidden" onClick={e => e.stopPropagation()}>
+            <div className="bg-emerald-50 dark:bg-emerald-950/30 px-6 pt-6 pb-4 text-center border-b border-emerald-100 dark:border-emerald-900/40">
+              <div className="w-14 h-14 bg-emerald-100 dark:bg-emerald-900/40 rounded-full flex items-center justify-center mx-auto mb-3">
+                <CheckCircle2 className="w-7 h-7 text-emerald-500" />
+              </div>
+              <h3 className="text-base font-black text-slate-800 dark:text-white">Confirm Delivery</h3>
+              <p className="text-[11px] text-slate-500 font-semibold mt-0.5">Order: <span className="font-black text-slate-700 dark:text-slate-300">{deliveryOtpModal.order_id}</span></p>
+            </div>
+            <div className="p-6 space-y-4">
+              <p className="text-xs text-slate-600 dark:text-slate-400 text-center leading-relaxed">
+                Ask the customer for the <span className="font-black text-emerald-600">6-digit OTP</span> sent to their WhatsApp. Enter it below to confirm delivery.
+              </p>
+              <div className="space-y-1.5">
+                <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Delivery OTP</label>
+                <input
+                  type="number"
+                  value={deliveryOtpInput}
+                  onChange={e => setDeliveryOtpInput(e.target.value.slice(0, 6))}
+                  placeholder="Enter 6-digit OTP"
+                  className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl py-3 px-4 text-lg font-black text-center tracking-[0.3em] text-slate-800 dark:text-white focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                  maxLength={6}
+                  autoFocus
+                />
+              </div>
+              <div className="flex gap-3 pt-1">
+                <button
+                  onClick={() => { setDeliveryOtpModal(null); setDeliveryOtpInput(''); }}
+                  className="flex-1 py-2.5 rounded-xl text-xs font-black uppercase tracking-wider border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800 transition-all"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={verifyDeliveryOtp}
+                  disabled={verifyingDelivery || deliveryOtpInput.trim().length < 4}
+                  className="flex-1 py-2.5 rounded-xl text-xs font-black uppercase tracking-wider bg-emerald-500 hover:bg-emerald-600 disabled:opacity-50 text-white transition-all flex items-center justify-center gap-1.5"
+                >
+                  {verifyingDelivery ? 'Verifying...' : <><CheckCircle2 className="w-3.5 h-3.5" /> Verify & Deliver</>}
+                </button>
+              </div>
             </div>
           </div>
         </div>
