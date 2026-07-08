@@ -214,7 +214,7 @@ const CollabEarnBanner = ({ setCurrentView, setSupportSubject, setSupportCategor
               <p className="text-[18px] font-semibold italic leading-relaxed whitespace-nowrap" style={{color:'rgba(0,235,220,0.95)'}}>
                 "Why should buying only cost money? What if it could also earn you money?"
               </p>
-              <h2 className="font-black leading-[1.05] tracking-tight headline-glow" style={{fontSize:'clamp(2.4rem,5vw,3.8rem)',color:'rgba(255,255,255,0.72)'}}>
+              <h2 className="font-black leading-[1.05] tracking-tight headline-glow ml-10" style={{fontSize:'clamp(2.4rem,5vw,3.8rem)',color:'rgba(255,255,255,0.72)'}}>
                 Shop Smart<br/>
                 <span className="share-more-animate" style={{WebkitTextStroke:'1px rgba(255,255,255,0.4)',color:'transparent'}}>Share More</span><br/>
                 Earn Forever
