@@ -10,24 +10,6 @@ class Migration(migrations.Migration):
     ]
 
     operations = [
-        migrations.RemoveField(
-            model_name='storesettings',
-            name='affiliate_benefits',
-        ),
-        migrations.RemoveField(
-            model_name='storesettings',
-            name='affiliate_headline',
-        ),
-        migrations.RemoveField(
-            model_name='storesettings',
-            name='affiliate_social_proof',
-        ),
-        migrations.RemoveField(
-            model_name='storesettings',
-            name='affiliate_stats',
-        ),
-        migrations.RemoveField(
-            model_name='storesettings',
-            name='affiliate_tagline',
-        ),
+        # Fields were never added to the live DB (migration 0032 was local-only),
+        # so no removal is needed here — this migration is intentionally empty.
     ]
