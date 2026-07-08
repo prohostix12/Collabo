@@ -182,7 +182,7 @@ const CollabEarnBanner = ({ setCurrentView, setSupportSubject, setSupportCategor
         <div className="relative z-10 flex flex-col lg:flex-row items-stretch" style={{minHeight:'145px'}}>
 
           {/* LEFT: ad copy */}
-          <div className="flex-1 flex flex-col justify-between p-4 lg:pl-5 lg:pr-6 lg:py-4 gap-2 lg:max-w-[72%]">
+          <div className="flex-1 flex flex-col justify-start p-4 lg:pl-5 lg:pr-6 lg:pt-4 lg:pb-3 gap-2 lg:max-w-[72%]">
 
             {/* Logo + urgency badge */}
             <div className="flex items-center gap-3 flex-wrap">
