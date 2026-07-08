@@ -6,7 +6,7 @@ from django.db import migrations
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('ecommerce', '0032_storesettings_affiliate_benefits_and_more'),
+        ('ecommerce', '0031_address_district'),
     ]
 
     operations = [
