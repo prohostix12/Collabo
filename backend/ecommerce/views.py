@@ -569,14 +569,6 @@ class OrderViewSet(viewsets.ModelViewSet):
 
         order.save()
 
-        # Send OTP via WhatsApp when marked as shipped
-        if new_status == 'shipped' and old_status != 'shipped':
-            try:
-                from .gupshup import notify_delivery_otp
-                notify_delivery_otp(order)
-            except Exception:
-                pass
-
         # Fire delivery notification when marked as delivered
         if new_status == 'delivered' and old_status != 'delivered':
             try:

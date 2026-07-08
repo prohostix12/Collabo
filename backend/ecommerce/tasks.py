@@ -38,6 +38,10 @@ def send_pre_delivery_reminders():
         try:
             delivery_str = tomorrow.strftime('%A, %d %B %Y')
             notify_pre_delivery_reminder(order, delivery_str)
+            # Also send delivery OTP the day before so customer is ready
+            if order.delivery_otp:
+                from .gupshup import notify_delivery_otp
+                notify_delivery_otp(order)
             order.pre_delivery_notified = True
             order.save(update_fields=['pre_delivery_notified'])
             count += 1
@@ -70,6 +74,10 @@ def send_delivery_day_messages():
     for order in orders:
         try:
             notify_delivery_day(order)
+            # Send delivery OTP on delivery day so customer can share it with the delivery person
+            if order.delivery_otp:
+                from .gupshup import notify_delivery_otp
+                notify_delivery_otp(order)
             order.delivery_day_notified = True
             order.save(update_fields=['delivery_day_notified'])
             count += 1
