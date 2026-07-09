@@ -155,10 +155,6 @@ class Order(models.Model):
     # Partner/Seller fulfillment tracking
     sent_to_partner = models.BooleanField(default=False, help_text="Indicates if order details were sent to partner/seller")
 
-    # Delivery OTP
-    delivery_otp = models.CharField(max_length=6, null=True, blank=True)
-    delivery_otp_sent_at = models.DateTimeField(null=True, blank=True)
-
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
