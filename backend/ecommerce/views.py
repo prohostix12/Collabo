@@ -2045,12 +2045,22 @@ class NewsletterBroadcastView(views.APIView):
     permission_classes = [permissions.IsAuthenticated]
 
     def get(self, request):
-        """Return active subscriber count."""
+        """Return subscriber list and count."""
         if not (request.user.is_staff or request.user.user_type == 'admin'):
             return Response({'error': 'Admin only'}, status=status.HTTP_403_FORBIDDEN)
         from .models import NewsletterSubscriber
-        count = NewsletterSubscriber.objects.filter(is_active=True).count()
-        return Response({'count': count})
+        subs = NewsletterSubscriber.objects.all().order_by('-subscribed_at')
+        data = [
+            {
+                'id': s.id,
+                'email': s.email,
+                'subscribed_at': s.subscribed_at.strftime('%d %b %Y, %I:%M %p'),
+                'is_active': s.is_active,
+            }
+            for s in subs
+        ]
+        active_count = sum(1 for s in data if s['is_active'])
+        return Response({'count': active_count, 'total': len(data), 'subscribers': data})
 
     def post(self, request):
         """Send bulk email to all active newsletter subscribers."""

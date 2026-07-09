@@ -669,6 +669,8 @@ export default function EcommerceMarketplace({ inlineMode = false, onBackToSelec
   const [emailSending, setEmailSending] = useState(false);
   const [emailResult, setEmailResult] = useState(null);
   const [subscriberCount, setSubscriberCount] = useState(null);
+  const [subscriberList, setSubscriberList] = useState([]);
+  const [subscriberListLoading, setSubscriberListLoading] = useState(false);
   const [adminAffiliates, setAdminAffiliates] = useState([]);
   const [expandedRefId, setExpandedRefId] = useState(null);
 
@@ -7375,20 +7377,66 @@ export default function EcommerceMarketplace({ inlineMode = false, onBackToSelec
 
                 <div className="bg-white dark:bg-slate-900 border border-slate-200/50 dark:border-slate-800/50 rounded-3xl p-6 space-y-5 shadow-sm">
 
-                  {/* Subscriber count */}
-                  <div className="flex items-center justify-between bg-blue-50 dark:bg-blue-950/20 border border-blue-100 dark:border-blue-900/30 rounded-2xl px-4 py-3">
-                    <span className="text-xs font-black text-blue-700 dark:text-blue-300">📧 Newsletter Subscribers</span>
-                    <button
-                      onClick={async () => {
-                        try {
-                          const res = await api.get('/ecommerce/newsletter/broadcast/');
-                          setSubscriberCount(res.data.count);
-                        } catch { setSubscriberCount(0); }
-                      }}
-                      className="text-[10px] font-black text-blue-600 hover:text-blue-800 underline"
-                    >
-                      {subscriberCount === null ? 'Check count →' : `${subscriberCount} active subscribers`}
-                    </button>
+                  {/* Subscriber list */}
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between">
+                      <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">
+                        📧 Subscribers
+                        {subscriberCount !== null && (
+                          <span className="ml-2 bg-blue-100 dark:bg-blue-900/40 text-blue-600 dark:text-blue-300 px-2 py-0.5 rounded-full text-[9px]">
+                            {subscriberCount} active
+                          </span>
+                        )}
+                      </label>
+                      <button
+                        onClick={async () => {
+                          setSubscriberListLoading(true);
+                          try {
+                            const res = await api.get('/ecommerce/newsletter/broadcast/');
+                            setSubscriberList(res.data.subscribers || []);
+                            setSubscriberCount(res.data.count);
+                          } catch { setSubscriberList([]); }
+                          finally { setSubscriberListLoading(false); }
+                        }}
+                        className="text-[10px] font-black text-blue-600 hover:text-blue-800 dark:text-blue-400 underline"
+                      >
+                        {subscriberListLoading ? 'Loading...' : subscriberList.length === 0 ? 'Load Subscribers →' : 'Refresh'}
+                      </button>
+                    </div>
+
+                    {subscriberList.length > 0 && (
+                      <div className="border border-slate-200 dark:border-slate-700 rounded-2xl overflow-hidden">
+                        <div className="max-h-56 overflow-y-auto">
+                          <table className="w-full text-xs">
+                            <thead className="sticky top-0 bg-slate-100 dark:bg-slate-800">
+                              <tr>
+                                <th className="text-left px-4 py-2.5 font-black text-slate-500 dark:text-slate-400 text-[10px] uppercase tracking-wider">#</th>
+                                <th className="text-left px-4 py-2.5 font-black text-slate-500 dark:text-slate-400 text-[10px] uppercase tracking-wider">Email</th>
+                                <th className="text-left px-4 py-2.5 font-black text-slate-500 dark:text-slate-400 text-[10px] uppercase tracking-wider">Subscribed</th>
+                                <th className="text-left px-4 py-2.5 font-black text-slate-500 dark:text-slate-400 text-[10px] uppercase tracking-wider">Status</th>
+                              </tr>
+                            </thead>
+                            <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
+                              {subscriberList.map((sub, i) => (
+                                <tr key={sub.id} className="bg-white dark:bg-slate-900 hover:bg-slate-50 dark:hover:bg-slate-800/50">
+                                  <td className="px-4 py-2.5 font-bold text-slate-400">{i + 1}</td>
+                                  <td className="px-4 py-2.5 font-semibold text-slate-700 dark:text-slate-300">{sub.email}</td>
+                                  <td className="px-4 py-2.5 font-semibold text-slate-400 whitespace-nowrap">{sub.subscribed_at}</td>
+                                  <td className="px-4 py-2.5">
+                                    <span className={`px-2 py-0.5 rounded-full text-[9px] font-black uppercase ${sub.is_active ? 'bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600' : 'bg-slate-100 dark:bg-slate-800 text-slate-400'}`}>
+                                      {sub.is_active ? 'Active' : 'Inactive'}
+                                    </span>
+                                  </td>
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        </div>
+                        <div className="bg-slate-50 dark:bg-slate-800 px-4 py-2 text-[10px] font-semibold text-slate-400 border-t border-slate-200 dark:border-slate-700">
+                          {subscriberList.length} total · {subscriberCount} active · emails will be sent to active subscribers only
+                        </div>
+                      </div>
+                    )}
                   </div>
 
                   {/* Quick email templates */}
