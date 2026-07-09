@@ -664,6 +664,11 @@ export default function EcommerceMarketplace({ inlineMode = false, onBackToSelec
   const [broadcastTarget, setBroadcastTarget] = useState('all'); // 'all' | 'buyers' | 'sellers'
   const [broadcastSending, setBroadcastSending] = useState(false);
   const [broadcastResult, setBroadcastResult] = useState(null);
+  const [emailSubject, setEmailSubject] = useState('');
+  const [emailMessage, setEmailMessage] = useState('');
+  const [emailSending, setEmailSending] = useState(false);
+  const [emailResult, setEmailResult] = useState(null);
+  const [subscriberCount, setSubscriberCount] = useState(null);
   const [adminAffiliates, setAdminAffiliates] = useState([]);
   const [expandedRefId, setExpandedRefId] = useState(null);
 
@@ -7353,6 +7358,131 @@ export default function EcommerceMarketplace({ inlineMode = false, onBackToSelec
                   <p>• Messages are sent via Gupshup WhatsApp API to each user's registered phone number.</p>
                   <p>• Only users who have a saved delivery address with a phone number will receive the message.</p>
                   <p>• Sending to large lists takes a few seconds — wait for the result before closing.</p>
+                </div>
+
+                {/* Divider */}
+                <div className="flex items-center gap-3 pt-2">
+                  <div className="flex-1 h-px bg-slate-200 dark:bg-slate-700" />
+                  <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">or</span>
+                  <div className="flex-1 h-px bg-slate-200 dark:bg-slate-700" />
+                </div>
+
+                {/* Email Newsletter Broadcast */}
+                <div>
+                  <h3 className="font-extrabold text-sm dark:text-white flex items-center gap-2">✉️ Email Newsletter Broadcast</h3>
+                  <p className="text-[11px] text-slate-500 mt-1">Send a promotional email to all newsletter subscribers.</p>
+                </div>
+
+                <div className="bg-white dark:bg-slate-900 border border-slate-200/50 dark:border-slate-800/50 rounded-3xl p-6 space-y-5 shadow-sm">
+
+                  {/* Subscriber count */}
+                  <div className="flex items-center justify-between bg-blue-50 dark:bg-blue-950/20 border border-blue-100 dark:border-blue-900/30 rounded-2xl px-4 py-3">
+                    <span className="text-xs font-black text-blue-700 dark:text-blue-300">📧 Newsletter Subscribers</span>
+                    <button
+                      onClick={async () => {
+                        try {
+                          const res = await api.get('/ecommerce/newsletter/broadcast/');
+                          setSubscriberCount(res.data.count);
+                        } catch { setSubscriberCount(0); }
+                      }}
+                      className="text-[10px] font-black text-blue-600 hover:text-blue-800 underline"
+                    >
+                      {subscriberCount === null ? 'Check count →' : `${subscriberCount} active subscribers`}
+                    </button>
+                  </div>
+
+                  {/* Quick email templates */}
+                  <div className="space-y-2">
+                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Quick Templates</label>
+                    <div className="grid grid-cols-1 gap-2">
+                      {[
+                        { label: '🎉 Sale Offer', subject: '🎉 Big Sale is LIVE on Collabo!', msg: `Hi there!\n\nBig Sale is LIVE on Collabo right now!\n\nGet up to 50% OFF on top products. Limited time only — don't miss out!\n\n👉 Shop now: https://collabo.co.in\n\nUse code SALE50 at checkout for extra savings.\n\nHappy Shopping,\nTeam Collabo` },
+                        { label: '🆕 New Arrivals', subject: '🆕 New Products Just Dropped on Collabo!', msg: `Hi there!\n\nExciting news — new products just dropped on Collabo!\n\nCheck out the latest arrivals — fresh styles, unbeatable prices.\n\n👉 Browse now: https://collabo.co.in\n\nBe the first to grab them before they sell out!\n\nHappy Shopping,\nTeam Collabo` },
+                        { label: '⚡ Flash Deal', subject: '⚡ Flash Deal Alert — 24 Hours Only!', msg: `Hi there!\n\nFLASH DEAL ALERT!\n\nExclusive deals available for the next 24 hours only on Collabo.\n\nHurry — stock is limited!\n\n👉 Shop now: https://collabo.co.in\n\nDon't miss out!\n\nTeam Collabo` },
+                      ].map((t, i) => (
+                        <button key={i} onClick={() => { setEmailSubject(t.subject); setEmailMessage(t.msg); }}
+                          className="text-left px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-xs font-semibold text-slate-700 dark:text-slate-300 hover:border-blue-400 hover:bg-blue-50/30 dark:hover:bg-blue-900/10 transition-all">
+                          {t.label}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Subject */}
+                  <div className="space-y-1.5">
+                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Subject *</label>
+                    <input
+                      type="text"
+                      value={emailSubject}
+                      onChange={e => setEmailSubject(e.target.value)}
+                      placeholder="e.g. Big Sale is LIVE on Collabo!"
+                      className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl px-4 py-3 text-xs font-semibold text-slate-800 dark:text-white outline-none focus:border-blue-400 transition-colors"
+                    />
+                  </div>
+
+                  {/* Message */}
+                  <div className="space-y-1.5">
+                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Message *</label>
+                    <textarea
+                      rows={8}
+                      value={emailMessage}
+                      onChange={e => setEmailMessage(e.target.value)}
+                      placeholder="Write your email message here..."
+                      className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl px-4 py-3 text-xs font-semibold text-slate-800 dark:text-white outline-none focus:border-blue-400 resize-none transition-colors"
+                    />
+                    <p className="text-[10px] text-slate-400">{emailMessage.length} characters</p>
+                  </div>
+
+                  {/* Result */}
+                  {emailResult && (
+                    <div className={`rounded-2xl px-4 py-3 text-xs font-bold flex items-center gap-2 ${emailResult.error ? 'bg-rose-50 dark:bg-rose-950/20 text-rose-600' : 'bg-emerald-50 dark:bg-emerald-950/20 text-emerald-700 dark:text-emerald-400'}`}>
+                      {emailResult.error ? '❌' : '✅'} {emailResult.message || emailResult.error}
+                      {!emailResult.error && emailResult.sent !== undefined && (
+                        <span className="ml-auto text-slate-500 font-semibold">Sent: {emailResult.sent} | Failed: {emailResult.failed}</span>
+                      )}
+                    </div>
+                  )}
+
+                  {/* Send button */}
+                  <button
+                    onClick={async () => {
+                      if (!emailSubject.trim()) { toast.error('Please enter a subject'); return; }
+                      if (!emailMessage.trim()) { toast.error('Please write a message'); return; }
+                      if (!window.confirm(`Send this email to all newsletter subscribers?`)) return;
+                      setEmailSending(true);
+                      setEmailResult(null);
+                      try {
+                        const res = await api.post('/ecommerce/newsletter/broadcast/', {
+                          subject: emailSubject.trim(),
+                          message: emailMessage.trim(),
+                        });
+                        setEmailResult(res.data);
+                        setSubscriberCount(null);
+                        toast.success(`Email sent to ${res.data.sent} subscribers!`);
+                      } catch (err) {
+                        const errMsg = err.response?.data?.error || 'Failed to send email';
+                        setEmailResult({ error: errMsg });
+                        toast.error(errMsg);
+                      } finally {
+                        setEmailSending(false);
+                      }
+                    }}
+                    disabled={emailSending || !emailSubject.trim() || !emailMessage.trim()}
+                    className="w-full bg-blue-600 hover:bg-blue-700 disabled:opacity-40 disabled:cursor-not-allowed text-white font-black text-xs py-4 rounded-2xl transition-colors flex items-center justify-center gap-2"
+                  >
+                    {emailSending ? (
+                      <><span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" /> Sending Emails...</>
+                    ) : (
+                      <>✉️ Send Email to All Subscribers</>
+                    )}
+                  </button>
+                </div>
+
+                <div className="bg-blue-50 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-800/40 rounded-2xl p-4 text-xs font-semibold text-blue-700 dark:text-blue-400 space-y-1">
+                  <p className="font-black">📧 How email broadcast works</p>
+                  <p>• Sends to all subscribers who signed up via the newsletter form in the footer.</p>
+                  <p>• Requires Gmail SMTP or Brevo SMTP configured in server settings.</p>
+                  <p>• Large lists may take 1-2 minutes — don't close the page until you see the result.</p>
                 </div>
               </div>
             )}

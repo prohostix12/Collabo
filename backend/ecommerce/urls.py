@@ -13,6 +13,7 @@ from .views import (
     SellerEarningsView, seller_withdraw, SellerPayoutHistoryView,
     AdminPayoutListView, admin_process_payout,
     NewsletterSubscribeView,
+    NewsletterBroadcastView,
 )
 
 router = DefaultRouter()
@@ -54,5 +55,6 @@ urlpatterns = [
     path('admin/seller-payouts/', AdminPayoutListView.as_view(), name='admin-seller-payouts'),
     path('admin/seller-payouts/<int:payout_id>/process/', admin_process_payout, name='admin-process-payout'),
     path('newsletter/subscribe/', NewsletterSubscribeView.as_view(), name='newsletter-subscribe'),
+    path('newsletter/broadcast/', NewsletterBroadcastView.as_view(), name='newsletter-broadcast'),
     path('', include(router.urls)),
 ]

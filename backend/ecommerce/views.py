@@ -2041,6 +2041,64 @@ def admin_process_payout(request, payout_id):
     return Response(SellerPayoutSerializer(payout).data)
 
 
+class NewsletterBroadcastView(views.APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request):
+        """Return active subscriber count."""
+        if not (request.user.is_staff or request.user.user_type == 'admin'):
+            return Response({'error': 'Admin only'}, status=status.HTTP_403_FORBIDDEN)
+        from .models import NewsletterSubscriber
+        count = NewsletterSubscriber.objects.filter(is_active=True).count()
+        return Response({'count': count})
+
+    def post(self, request):
+        """Send bulk email to all active newsletter subscribers."""
+        if not (request.user.is_staff or request.user.user_type == 'admin'):
+            return Response({'error': 'Admin only'}, status=status.HTTP_403_FORBIDDEN)
+
+        subject = request.data.get('subject', '').strip()
+        message = request.data.get('message', '').strip()
+
+        if not subject:
+            return Response({'error': 'Subject is required.'}, status=status.HTTP_400_BAD_REQUEST)
+        if not message:
+            return Response({'error': 'Message is required.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        from .models import NewsletterSubscriber
+        from django.core.mail import send_mail
+        from django.conf import settings as django_settings
+
+        subscribers = list(
+            NewsletterSubscriber.objects.filter(is_active=True).values_list('email', flat=True)
+        )
+
+        if not subscribers:
+            return Response({'error': 'No active subscribers found.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        sent = 0
+        failed = 0
+        for email in subscribers:
+            try:
+                send_mail(
+                    subject=subject,
+                    message=message,
+                    from_email=django_settings.DEFAULT_FROM_EMAIL or 'noreply@collabo.co.in',
+                    recipient_list=[email],
+                    fail_silently=False,
+                )
+                sent += 1
+            except Exception:
+                failed += 1
+
+        return Response({
+            'message': f'Email sent to {sent} subscriber{"s" if sent != 1 else ""}.',
+            'sent': sent,
+            'failed': failed,
+            'total': len(subscribers),
+        })
+
+
 class NewsletterSubscribeView(views.APIView):
     permission_classes = [permissions.AllowAny]
 
