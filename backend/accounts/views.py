@@ -44,6 +44,13 @@ class RegisterView(generics.CreateAPIView):
         user.reward_points = 10
         user.save(update_fields=['reward_points'])
 
+        # Send welcome WhatsApp message
+        try:
+            from ecommerce.gupshup import notify_welcome
+            notify_welcome(user)
+        except Exception:
+            pass
+
         # Generate tokens
         refresh = RefreshToken.for_user(user)
 

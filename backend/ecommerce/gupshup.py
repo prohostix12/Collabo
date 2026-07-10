@@ -36,6 +36,21 @@ def _send_whatsapp(phone: str, message: str) -> bool:
         return False
 
 
+def notify_welcome(user):
+    phone = getattr(user, 'phone', '') or ''
+    if not phone:
+        return
+    name = user.first_name or user.username
+    msg = (
+        f"Hi {name}! 👋 Welcome to *Collabo*!\n\n"
+        f"Your account is ready. Start shopping smart and earning rewards! 🛍️\n\n"
+        f"✅ You've received *10 reward points* as a welcome bonus.\n\n"
+        f"Visit us: collabo.co.in\n"
+        f"— Team Collabo 🎉"
+    )
+    _send_whatsapp(phone, msg)
+
+
 def notify_order_placed(order):
     name = order.address.name if order.address else order.user.username
     phone = order.address.phone if order.address else ''
