@@ -1805,7 +1805,8 @@ export default function EcommerceMarketplace({ inlineMode = false, onBackToSelec
                   </div>
                   <div>
                     <span className="text-xs font-bold text-slate-700 dark:text-slate-200">
-                      Welcome back, <span className="text-orange-500">{user.username || user.email}</span>! 👋
+                      {(() => { const isNew = localStorage.getItem('collabo_new_user') === '1'; if (isNew) localStorage.removeItem('collabo_new_user'); return isNew ? 'Welcome, ' : 'Welcome back, '; })()}
+                      <span className="text-orange-500">{user.username || user.email}</span>! 👋
                     </span>
                     <span className="hidden sm:inline text-[10px] text-slate-400 dark:text-slate-500 ml-2 font-medium">
                       {user.user_type === 'admin' ? '· Admin' : user.user_type === 'influencer' ? '· Influencer' : '· Happy shopping'}
@@ -4656,9 +4657,15 @@ export default function EcommerceMarketplace({ inlineMode = false, onBackToSelec
                     <div className="flex-1 min-w-0">
                       <h3 className="font-black text-base dark:text-white truncate">{user?.username}</h3>
                       <p className="text-[11px] text-slate-500 truncate">{user?.email}</p>
-                      <span className="inline-flex items-center gap-1 mt-1 text-[9px] font-black uppercase tracking-wider text-amber-700 bg-amber-100 dark:bg-amber-900/30 dark:text-amber-400 px-2 py-0.5 rounded-md">
-                        <Star className="w-2.5 h-2.5 fill-amber-500 text-amber-500" /> Gold Member
-                      </span>
+                      {user?.reward_points >= 500 ? (
+                        <span className="inline-flex items-center gap-1 mt-1 text-[9px] font-black uppercase tracking-wider text-amber-700 bg-amber-100 dark:bg-amber-900/30 dark:text-amber-400 px-2 py-0.5 rounded-md">
+                          <Star className="w-2.5 h-2.5 fill-amber-500 text-amber-500" /> Gold Member
+                        </span>
+                      ) : (
+                        <span className="inline-flex items-center gap-1 mt-1 text-[9px] font-black uppercase tracking-wider text-slate-500 bg-slate-100 dark:bg-slate-800 dark:text-slate-400 px-2 py-0.5 rounded-md">
+                          Member
+                        </span>
+                      )}
                     </div>
                   </div>
                 </div>
@@ -4961,6 +4968,7 @@ export default function EcommerceMarketplace({ inlineMode = false, onBackToSelec
                         user_type: 'buyer'
                       });
                       if (result.success) {
+                        localStorage.setItem('collabo_new_user', '1');
                         setCurrentView(postAuthView || 'home');
                         setPostAuthView('home');
                       } else {
