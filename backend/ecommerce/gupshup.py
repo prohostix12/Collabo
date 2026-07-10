@@ -20,7 +20,7 @@ def _send_whatsapp(phone: str, message: str) -> bool:
 
     try:
         resp = requests.post(
-            'https://api.gupshup.io/sm/api/v1/msg',
+            'https://api.gupshup.io/wa/api/v1/msg',
             headers={'apikey': api_key, 'Content-Type': 'application/x-www-form-urlencoded'},
             data={
                 'channel': 'whatsapp',
@@ -31,7 +31,7 @@ def _send_whatsapp(phone: str, message: str) -> bool:
             },
             timeout=10,
         )
-        return resp.status_code == 202
+        return resp.status_code in (200, 201, 202)
     except Exception:
         return False
 

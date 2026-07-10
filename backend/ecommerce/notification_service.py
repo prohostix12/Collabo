@@ -22,9 +22,9 @@ logger = logging.getLogger(__name__)
 
 # ── Gupshup config ────────────────────────────────────────────────────────────
 GUPSHUP_API_KEY   = config('GUPSHUP_API_KEY',    default='')
-GUPSHUP_SOURCE    = config('GUPSHUP_SOURCE',      default='')   # Your registered WA number e.g. 917834811114
+GUPSHUP_SOURCE    = config('GUPSHUP_SOURCE_NUMBER', default='')   # Your registered WA number e.g. 917834811114
 GUPSHUP_APP_NAME  = config('GUPSHUP_APP_NAME',    default='')   # App name in Gupshup dashboard
-GUPSHUP_MSG_URL   = 'https://api.gupshup.io/sm/api/v1/msg'
+GUPSHUP_MSG_URL   = 'https://api.gupshup.io/wa/api/v1/msg'
 
 
 def _e164(phone: str) -> str:
