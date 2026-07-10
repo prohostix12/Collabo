@@ -83,7 +83,7 @@ Team Collabo
         send_mail(
             subject=subject,
             message=message,
-            from_email=settings.DEFAULT_FROM_EMAIL or 'Collabo <prohostix12@gmail.com>',
+            from_email=settings.DEFAULT_FROM_EMAIL or 'Collabo <collaboproh@gmail.com>',
             recipient_list=[user.email],
             html_message=html_message,
             fail_silently=False,

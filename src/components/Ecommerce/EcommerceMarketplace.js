@@ -4970,6 +4970,7 @@ export default function EcommerceMarketplace({ inlineMode = false, onBackToSelec
                       if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(authEmail)) { toast.error('Please enter a valid email address'); return; }
                       if (authPhone && authPhone.length !== 10) { toast.error('Mobile number must be exactly 10 digits'); return; }
                       if (authPassword.length < 8) { toast.error('Password must be at least 8 characters'); return; }
+                      localStorage.setItem('collabo_new_user', '1');
                       const result = await register({
                         email: authEmail,
                         username: authUsername.trim(),
@@ -4979,10 +4980,10 @@ export default function EcommerceMarketplace({ inlineMode = false, onBackToSelec
                         user_type: 'buyer'
                       });
                       if (result.success) {
-                        localStorage.setItem('collabo_new_user', '1');
                         setCurrentView(postAuthView || 'home');
                         setPostAuthView('home');
                       } else {
+                        localStorage.removeItem('collabo_new_user');
                         toast.error(result.error || 'Registration failed');
                       }
                     }}
