@@ -75,7 +75,8 @@ def notify_welcome(user):
     if not phone:
         return False
     name = user.first_name or user.username
-    return _send_template(phone, 'welcome_new_user', [name])
+    # Gupshup template ID for welcome_new_user (Facebook ID: 2248049539363343)
+    return _send_template(phone, 'f894c8ea-4e75-4341-9d62-69845ef7325d', [name])
 
 
 def _order_phone(order) -> str:
