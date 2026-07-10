@@ -55,6 +55,7 @@ Team Collabo
 <body>
   <div class="container">
     <div class="header">
+      <img src="https://collabo.co.in/collabo-logo.png" alt="Collabo" style="height:54px;margin-bottom:14px;display:block;margin-left:auto;margin-right:auto;" />
       <h1>👋 Welcome to Collabo!</h1>
       <p>Your smart shopping journey starts here</p>
     </div>
