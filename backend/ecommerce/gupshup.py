@@ -78,27 +78,37 @@ def notify_welcome(user):
     return _send_template(phone, 'welcome_new_user_message', [name])
 
 
+def _order_phone(order) -> str:
+    phone = (order.address.phone if order.address else '') or ''
+    if not phone:
+        phone = getattr(order.user, 'phone', '') or ''
+    return phone
+
+
+def _order_name(order) -> str:
+    if order.address and getattr(order.address, 'name', None):
+        return order.address.name
+    return order.user.first_name or order.user.username
+
+
 def notify_order_placed(order):
-    name = order.address.name if order.address else order.user.username
-    phone = order.address.phone if order.address else ''
+    phone = _order_phone(order)
     if not phone:
         return
-    msg = (
-        f"Hi {name}! 🎉 Your order *{order.order_id}* has been placed successfully on Collabo.\n\n"
-        f"Total: ₹{order.final_amount}\n"
-        f"Payment: {'Cash on Delivery' if order.payment_method == 'cod' else 'Paid Online'}\n\n"
-        f"We'll notify you when it ships. Thank you for shopping! 🛍️"
-    )
-    _send_whatsapp(phone, msg)
+    name = _order_name(order)
+    items = ', '.join(
+        item.product.name for item in order.items.select_related('product').all()
+    ) or 'your items'
+    _send_template(phone, 'order_placed_confirmation', [name, str(order.order_id), items])
 
 
 def notify_order_shipped(order):
-    name = order.address.name if order.address else order.user.username
-    phone = order.address.phone if order.address else ''
+    phone = _order_phone(order)
     if not phone:
         return
-    tracking = f"\nTracking: {order.tracking_number}" if order.tracking_number else ''
-    provider = f" via {order.shipping_provider}" if order.shipping_provider else ''
+    name = _order_name(order)
+    tracking = f"\nTracking: {order.tracking_number}" if getattr(order, 'tracking_number', None) else ''
+    provider = f" via {order.shipping_provider}" if getattr(order, 'shipping_provider', None) else ''
     msg = (
         f"Hi {name}! 📦 Your Collabo order *{order.order_id}* has been shipped{provider}!{tracking}\n\n"
         f"We'll update you once it's out for delivery. 🚚"
@@ -107,25 +117,21 @@ def notify_order_shipped(order):
 
 
 def notify_order_delivered(order):
-    name = order.address.name if order.address else order.user.username
-    phone = order.address.phone if order.address else ''
+    phone = _order_phone(order)
     if not phone:
         return
-    msg = (
-        f"Hi {name}! ✅ Your Collabo order *{order.order_id}* has been delivered!\n\n"
-        f"We hope you love your purchase. Rate your experience at collabo.co.in 🌟"
-    )
-    _send_whatsapp(phone, msg)
+    name = _order_name(order)
+    _send_template(phone, 'order_delivered', [name, str(order.order_id)])
 
 
 def notify_order_cancelled(order):
-    name = order.address.name if order.address else order.user.username
-    phone = order.address.phone if order.address else ''
+    phone = _order_phone(order)
     if not phone:
         return
+    name = _order_name(order)
     msg = (
         f"Hi {name}, your Collabo order *{order.order_id}* has been cancelled.\n\n"
-        f"Reason: {order.cancel_reason or 'Not specified'}\n\n"
+        f"Reason: {getattr(order, 'cancel_reason', None) or 'Not specified'}\n\n"
         f"If you paid online, your refund will be processed in 5-7 business days. "
         f"Need help? Visit collabo.co.in"
     )

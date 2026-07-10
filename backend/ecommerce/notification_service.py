@@ -21,10 +21,11 @@ from decouple import config
 logger = logging.getLogger(__name__)
 
 # ── Gupshup config ────────────────────────────────────────────────────────────
-GUPSHUP_API_KEY   = config('GUPSHUP_API_KEY',    default='')
-GUPSHUP_SOURCE    = config('GUPSHUP_SOURCE_NUMBER', default='')   # Your registered WA number e.g. 917834811114
-GUPSHUP_APP_NAME  = config('GUPSHUP_APP_NAME',    default='')   # App name in Gupshup dashboard
-GUPSHUP_MSG_URL   = 'https://api.gupshup.io/wa/api/v1/msg'
+GUPSHUP_API_KEY      = config('GUPSHUP_API_KEY',    default='')
+GUPSHUP_SOURCE       = config('GUPSHUP_SOURCE_NUMBER', default='')   # Your registered WA number e.g. 917834811114
+GUPSHUP_APP_NAME     = config('GUPSHUP_APP_NAME',    default='')   # App name in Gupshup dashboard
+GUPSHUP_MSG_URL      = 'https://api.gupshup.io/wa/api/v1/msg'
+GUPSHUP_TEMPLATE_URL = 'https://api.gupshup.io/wa/api/v1/template/msg'
 
 
 def _e164(phone: str) -> str:
@@ -52,6 +53,42 @@ def _e164(phone: str) -> str:
 def _is_configured() -> bool:
     return bool(GUPSHUP_API_KEY and GUPSHUP_SOURCE and GUPSHUP_APP_NAME
                 and not GUPSHUP_API_KEY.startswith('your_'))
+
+
+def send_whatsapp_template(to_phone: str, template_name: str, params: list) -> bool:
+    """Send an approved WhatsApp template message via Gupshup."""
+    if not _is_configured():
+        logger.info(f"[GUPSHUP MOCK — Template] To: {to_phone} | {template_name} | {params}")
+        return False
+
+    dest = _e164(to_phone)
+    if not dest:
+        logger.warning(f"send_whatsapp_template: empty phone after normalization (raw={to_phone})")
+        return False
+
+    payload = {
+        'channel':     'whatsapp',
+        'source':      GUPSHUP_SOURCE,
+        'destination': dest,
+        'src.name':    GUPSHUP_APP_NAME,
+        'template':    json.dumps({'id': template_name, 'params': params}),
+    }
+    headers = {
+        'apikey':       GUPSHUP_API_KEY,
+        'Content-Type': 'application/x-www-form-urlencoded',
+    }
+    try:
+        resp = requests.post(GUPSHUP_TEMPLATE_URL, data=payload, headers=headers, timeout=10)
+        body = resp.json() if resp.content else {}
+        if resp.status_code in range(200, 300):
+            logger.info(f"Gupshup template sent ({template_name}) to {dest}: {body.get('messageId','')}")
+            return True
+        else:
+            logger.error(f"Gupshup template error {resp.status_code} to {dest}: {body}")
+            return False
+    except Exception as exc:
+        logger.error(f"Gupshup send_whatsapp_template exception ({dest}): {exc}")
+        return False
 
 
 def send_whatsapp(to_phone: str, text: str) -> bool:
@@ -102,26 +139,16 @@ def send_whatsapp(to_phone: str, text: str) -> bool:
 # ────────────────────────────────────────────────────────────────────────────
 
 def notify_order_placed(order, delivery_date_str: str):
-    """
-    Send order confirmation + expected delivery date immediately after order.
-    """
+    """Send order confirmation using approved template immediately after order."""
     phone = _get_order_phone(order)
     if not phone:
         return
 
     name  = order.user.first_name or order.user.username
-    items = _items_summary(order)
-
-    text = (
-        f"🛍️ *Order Confirmed!*\n\n"
-        f"Hi {name},\n"
-        f"Your order *{order.order_id}* has been placed successfully.\n\n"
-        f"📦 Items:\n{items}\n\n"
-        f"💰 Total: ₹{order.final_amount:,.2f}\n"
-        f"🚚 Expected Delivery: *{delivery_date_str}*\n\n"
-        f"We'll notify you before delivery. Thank you for shopping with CollaboCart! 🎉"
-    )
-    send_whatsapp(phone, text)
+    items = ', '.join(
+        item.product.name for item in order.items.select_related('product').all()
+    ) or 'your items'
+    send_whatsapp_template(phone, 'order_placed_confirmation', [name, str(order.order_id), items])
 
 
 def notify_pre_delivery_reminder(order, delivery_date_str: str):
@@ -162,70 +189,37 @@ def notify_delivery_day(order):
 
 
 def notify_order_delivered(order):
-    """Send confirmation once order status is marked delivered."""
+    """Send delivery confirmation using approved template."""
     phone = _get_order_phone(order)
     if not phone:
         return
 
     name = order.user.first_name or order.user.username
-    text = (
-        f"✅ *Order Delivered!*\n\n"
-        f"Hi {name},\n"
-        f"Your order *{order.order_id}* has been delivered successfully. 🎁\n\n"
-        f"Enjoy your purchase! We'd love your feedback.\n"
-        f"Please leave a review on CollaboCart.\n\n"
-        f"Shop again: {config('FRONTEND_URL', 'http://localhost:3000')}\n"
-        f"— CollaboCart 🛒"
-    )
-    send_whatsapp(phone, text)
+    send_whatsapp_template(phone, 'order_delivered', [name, str(order.order_id)])
 
 
 def notify_offer(user, coupon_code: str, discount_pct: int, description: str):
-    """Send a promotional offer / coupon notification to a single user."""
+    """Send a promotional offer / coupon notification using approved template."""
     phone = user.phone
     if not phone:
         return
 
     name = user.first_name or user.username
-    frontend_url = config('FRONTEND_URL', 'http://localhost:3000')
-    text = (
-        f"🏷️ *Exclusive Offer for You!*\n\n"
-        f"Hi {name},\n"
-        f"Use code *{coupon_code}* to get *{discount_pct}% OFF* on your next order!\n\n"
-        f"📝 {description}\n\n"
-        f"🛒 Shop now: {frontend_url}\n"
-        f"— CollaboCart"
-    )
-    send_whatsapp(phone, text)
+    send_whatsapp_template(phone, 'offer_informations', [name, coupon_code, str(discount_pct)])
 
 
 def notify_abandoned_cart(user, item_names: list, coupon_code: str = None, discount_pct: int = 10):
-    """Send an abandoned-cart reminder after user hasn't checked out."""
+    """Send an abandoned-cart reminder using approved template."""
     phone = user.phone
     if not phone:
         return
 
-    name       = user.first_name or user.username
-    items_str  = ', '.join(item_names[:3])
+    name      = user.first_name or user.username
+    items_str = ', '.join(item_names[:3])
     if len(item_names) > 3:
         items_str += f' and {len(item_names) - 3} more'
 
-    offer_line = ''
-    if coupon_code:
-        offer_line = f"\n💸 Use *{coupon_code}* for *{discount_pct}% OFF* — complete your order now!\n"
-
-    frontend_url = config('FRONTEND_URL', 'http://localhost:3000')
-    text = (
-        f"🛒 *You left something behind!*\n\n"
-        f"Hi {name},\n"
-        f"You still have items in your cart:\n"
-        f"📦 {items_str}\n"
-        f"{offer_line}\n"
-        f"Don't miss out — stock is limited!\n"
-        f"👉 {frontend_url}\n"
-        f"— CollaboCart"
-    )
-    send_whatsapp(phone, text)
+    send_whatsapp_template(phone, 'abandoned_cart', [name, items_str])
 
 
 # ── Internal helpers ──────────────────────────────────────────────────────────
