@@ -1,9 +1,19 @@
+import json
 import requests
 from django.conf import settings
 
 
+def _normalize_phone(phone: str) -> str:
+    phone = phone.strip().replace(' ', '').replace('-', '').replace('+', '')
+    if phone.startswith('0'):
+        phone = '91' + phone[1:]
+    elif len(phone) == 10:
+        phone = '91' + phone
+    return phone
+
+
 def _send_whatsapp(phone: str, message: str) -> bool:
-    """Send a WhatsApp message via Gupshup. Returns True on success."""
+    """Send a free-form WhatsApp message via Gupshup (session messages only)."""
     api_key = settings.GUPSHUP_API_KEY
     source = settings.GUPSHUP_SOURCE_NUMBER
     app_name = settings.GUPSHUP_APP_NAME
@@ -11,12 +21,7 @@ def _send_whatsapp(phone: str, message: str) -> bool:
     if not api_key or not source or not phone:
         return False
 
-    # Normalise phone: strip spaces/+, ensure country code
-    phone = phone.strip().replace(' ', '').replace('-', '').replace('+', '')
-    if phone.startswith('0'):
-        phone = '91' + phone[1:]
-    elif len(phone) == 10:
-        phone = '91' + phone
+    phone = _normalize_phone(phone)
 
     try:
         resp = requests.post(
@@ -36,19 +41,41 @@ def _send_whatsapp(phone: str, message: str) -> bool:
         return False
 
 
+def _send_template(phone: str, template_name: str, params: list) -> bool:
+    """Send an approved WhatsApp template message via Gupshup."""
+    api_key = settings.GUPSHUP_API_KEY
+    source = settings.GUPSHUP_SOURCE_NUMBER
+    app_name = settings.GUPSHUP_APP_NAME
+
+    if not api_key or not source or not phone:
+        return False
+
+    phone = _normalize_phone(phone)
+
+    try:
+        resp = requests.post(
+            'https://api.gupshup.io/wa/api/v1/template/msg',
+            headers={'apikey': api_key, 'Content-Type': 'application/x-www-form-urlencoded'},
+            data={
+                'channel': 'whatsapp',
+                'source': source,
+                'destination': phone,
+                'src.name': app_name,
+                'template': json.dumps({'id': template_name, 'params': params}),
+            },
+            timeout=10,
+        )
+        return resp.status_code in (200, 201, 202)
+    except Exception:
+        return False
+
+
 def notify_welcome(user):
     phone = getattr(user, 'phone', '') or ''
     if not phone:
         return False
     name = user.first_name or user.username
-    msg = (
-        f"Hi {name}! 👋 Welcome to *Collabo*!\n\n"
-        f"Your account is ready. Start shopping smart and earning rewards! 🛍️\n\n"
-        f"✅ You've received *10 reward points* as a welcome bonus.\n\n"
-        f"Visit us: collabo.co.in\n"
-        f"— Team Collabo 🎉"
-    )
-    return _send_whatsapp(phone, msg)
+    return _send_template(phone, 'welcome_new_user', [name])
 
 
 def notify_order_placed(order):
