@@ -39,7 +39,7 @@ def _send_whatsapp(phone: str, message: str) -> bool:
 def notify_welcome(user):
     phone = getattr(user, 'phone', '') or ''
     if not phone:
-        return
+        return False
     name = user.first_name or user.username
     msg = (
         f"Hi {name}! 👋 Welcome to *Collabo*!\n\n"
@@ -48,7 +48,7 @@ def notify_welcome(user):
         f"Visit us: collabo.co.in\n"
         f"— Team Collabo 🎉"
     )
-    _send_whatsapp(phone, msg)
+    return _send_whatsapp(phone, msg)
 
 
 def notify_order_placed(order):
