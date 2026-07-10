@@ -75,7 +75,7 @@ def notify_welcome(user):
     if not phone:
         return False
     name = user.first_name or user.username
-    return _send_template(phone, 'welcome_new_user_message', [name])
+    return _send_template(phone, 'welcome_new_user', [name])
 
 
 def _order_phone(order) -> str:
