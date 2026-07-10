@@ -9,6 +9,92 @@ import logging
 logger = logging.getLogger(__name__)
 
 
+def send_welcome_email(user):
+    """Send welcome email to a newly registered user."""
+    try:
+        name = user.first_name or user.username
+        subject = '👋 Welcome to Collabo!'
+        message = f"""
+Hi {name}!
+
+Welcome to Collabo — your one-stop marketplace for smart shopping and earning! 🎉
+
+Your account is now ready. Here's what you can do:
+✓ Browse thousands of products
+✓ Earn rewards on every purchase
+✓ Share products and earn commissions
+✓ Track your orders in real time
+
+You've received 10 reward points as a welcome bonus!
+
+Start shopping: https://collabo.co.in
+
+Happy Shopping,
+Team Collabo
+        """.strip()
+
+        html_message = f"""
+<!DOCTYPE html>
+<html>
+<head>
+  <style>
+    body {{ font-family: Arial, sans-serif; line-height: 1.6; color: #333; margin: 0; padding: 0; }}
+    .container {{ max-width: 600px; margin: 0 auto; padding: 20px; }}
+    .header {{ background: linear-gradient(135deg, #f97316 0%, #ea580c 100%); color: white; padding: 36px 30px; text-align: center; border-radius: 12px 12px 0 0; }}
+    .header h1 {{ margin: 0; font-size: 26px; }}
+    .header p {{ margin: 8px 0 0; opacity: 0.9; font-size: 14px; }}
+    .content {{ background: #fff; padding: 30px; border-radius: 0 0 12px 12px; border: 1px solid #f0f0f0; }}
+    .bonus {{ background: #fff7ed; border: 1px solid #fed7aa; padding: 14px 20px; border-radius: 10px; text-align: center; margin: 20px 0; font-weight: bold; color: #c2410c; }}
+    .features {{ background: #f9fafb; padding: 20px; border-radius: 10px; margin: 20px 0; }}
+    .feature {{ padding: 7px 0; color: #374151; }}
+    .feature::before {{ content: "✓"; color: #f97316; font-weight: bold; margin-right: 10px; }}
+    .btn {{ display: inline-block; padding: 14px 36px; background: linear-gradient(135deg, #f97316 0%, #ea580c 100%); color: white !important; text-decoration: none; border-radius: 8px; font-weight: bold; font-size: 15px; margin: 20px 0; }}
+    .footer {{ text-align: center; color: #9ca3af; font-size: 12px; margin-top: 24px; }}
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <h1>👋 Welcome to Collabo!</h1>
+      <p>Your smart shopping journey starts here</p>
+    </div>
+    <div class="content">
+      <p>Hi <strong>{name}</strong>!</p>
+      <p>We're thrilled to have you on board. Your account is ready and waiting for you.</p>
+      <div class="bonus">🎁 You've received <strong>10 Reward Points</strong> as a welcome bonus!</div>
+      <div class="features">
+        <div class="feature">Browse thousands of quality products</div>
+        <div class="feature">Earn rewards on every purchase</div>
+        <div class="feature">Share products and earn commissions</div>
+        <div class="feature">Track your orders in real time</div>
+      </div>
+      <center><a href="https://collabo.co.in" class="btn">Start Shopping Now</a></center>
+      <p>Questions? We're always here at <a href="mailto:support@collabo.co.in">support@collabo.co.in</a></p>
+      <div class="footer">
+        <p>Best regards,<br><strong>Team Collabo</strong></p>
+        <p>© 2026 Collabo Marketplace. All rights reserved.</p>
+      </div>
+    </div>
+  </div>
+</body>
+</html>
+        """.strip()
+
+        send_mail(
+            subject=subject,
+            message=message,
+            from_email=settings.DEFAULT_FROM_EMAIL or 'Collabo <prohostix12@gmail.com>',
+            recipient_list=[user.email],
+            html_message=html_message,
+            fail_silently=False,
+        )
+        logger.info(f"Welcome email sent to {user.email}")
+        return True
+    except Exception as e:
+        logger.error(f"Failed to send welcome email to {user.email}: {str(e)}")
+        return False
+
+
 class ApprovalEmailService:
     """Service for sending approval-related emails"""
     

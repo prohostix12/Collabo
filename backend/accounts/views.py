@@ -44,12 +44,21 @@ class RegisterView(generics.CreateAPIView):
         user.reward_points = 10
         user.save(update_fields=['reward_points'])
 
+        # Send welcome email
+        try:
+            from .email_service import send_welcome_email
+            send_welcome_email(user)
+        except Exception as e:
+            import logging
+            logging.getLogger(__name__).error(f"Welcome email failed for {user.email}: {e}")
+
         # Send welcome WhatsApp message
         try:
             from ecommerce.gupshup import notify_welcome
             notify_welcome(user)
-        except Exception:
-            pass
+        except Exception as e:
+            import logging
+            logging.getLogger(__name__).error(f"Welcome WhatsApp failed for {user.phone}: {e}")
 
         # Generate tokens
         refresh = RefreshToken.for_user(user)
