@@ -2138,9 +2138,9 @@ _whatsapp_logger = _logging.getLogger('gupshup.webhook')
 @permission_classes([permissions.AllowAny])
 def gupshup_webhook(request):
     """
-    Receives delivery status callbacks from Gupshup/Meta.
-    Configure this URL in Gupshup → Webhooks → Add Webhook:
-    https://collabo.co.in/api/ecommerce/gupshup/webhook/
+    Receives Meta format (v3) delivery status callbacks from Gupshup/Meta Cloud API.
+    Configured in Gupshup → Webhooks → Payload Format: Meta format (v3)
+    URL: https://collabo.co.in/api/ecommerce/gupshup/webhook/
     """
     if request.method == 'GET':
         return Response({'status': 'ok'})
@@ -2150,20 +2150,47 @@ def gupshup_webhook(request):
     except Exception:
         payload = {}
 
-    event_type = payload.get('type', '')
-    msg_id = payload.get('messageId', payload.get('id', ''))
-    phone = payload.get('destination', payload.get('mobile', ''))
-    status_val = payload.get('status', '')
-    error = payload.get('error', '')
+    _whatsapp_logger.info(f"Gupshup raw payload: {payload}")
 
-    _whatsapp_logger.info(
-        f"Gupshup webhook | type={event_type} | status={status_val} | "
-        f"msgId={msg_id} | phone={phone} | error={error} | full={payload}"
-    )
+    # Parse Meta format (v3) — WhatsApp Cloud API webhook structure
+    try:
+        entries = payload.get('entry', [])
+        for entry in entries:
+            for change in entry.get('changes', []):
+                value = change.get('value', {})
 
-    if status_val in ('failed', 'undelivered') or error:
-        _whatsapp_logger.error(
-            f"WhatsApp delivery FAILED | phone={phone} | msgId={msg_id} | error={error}"
-        )
+                # Delivery status updates
+                for status_obj in value.get('statuses', []):
+                    msg_id = status_obj.get('id', '')
+                    status_val = status_obj.get('status', '')  # sent / delivered / read / failed
+                    phone = status_obj.get('recipient_id', '')
+                    timestamp = status_obj.get('timestamp', '')
+                    errors = status_obj.get('errors', [])
+
+                    if status_val == 'failed':
+                        error_detail = errors[0] if errors else {}
+                        error_code = error_detail.get('code', '')
+                        error_msg = error_detail.get('message', error_detail.get('title', ''))
+                        _whatsapp_logger.error(
+                            f"WhatsApp FAILED | phone={phone} | msgId={msg_id} "
+                            f"| code={error_code} | reason={error_msg}"
+                        )
+                    else:
+                        _whatsapp_logger.info(
+                            f"WhatsApp {status_val.upper()} | phone={phone} "
+                            f"| msgId={msg_id} | ts={timestamp}"
+                        )
+
+                # Incoming messages (users replying to you)
+                for msg in value.get('messages', []):
+                    from_phone = msg.get('from', '')
+                    msg_type = msg.get('type', '')
+                    text = msg.get('text', {}).get('body', '') if msg_type == 'text' else f'[{msg_type}]'
+                    _whatsapp_logger.info(
+                        f"Incoming WhatsApp | from={from_phone} | type={msg_type} | text={text}"
+                    )
+
+    except Exception as e:
+        _whatsapp_logger.error(f"Webhook parse error: {e} | payload={payload}")
 
     return Response({'status': 'received'}, status=status.HTTP_200_OK)
