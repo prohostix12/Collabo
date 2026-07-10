@@ -495,14 +495,6 @@ class OrderViewSet(viewsets.ModelViewSet):
         # Clear cart
         cart_items.delete()
 
-        # Fire async notification (WhatsApp + SMS) — non-blocking
-        try:
-            from .tasks import notify_order_placed_async
-            import threading
-            threading.Thread(target=lambda: notify_order_placed_async.delay(order.id)).start()
-        except Exception:
-            pass  # Never block order completion due to notification failure
-
         serializer = OrderSerializer(order)
         return Response(serializer.data, status=status.HTTP_201_CREATED)
 
@@ -566,14 +558,6 @@ class OrderViewSet(viewsets.ModelViewSet):
             order.return_comment = f"{order.return_comment or ''}\n[Rejected: {rejection_reason}]".strip()
 
         order.save()
-
-        # Fire delivery notification when marked as delivered
-        if new_status == 'delivered' and old_status != 'delivered':
-            try:
-                from .tasks import notify_order_delivered_async
-                notify_order_delivered_async.delay(order.id)
-            except Exception:
-                pass
 
         serializer = OrderSerializer(order)
         return Response(serializer.data)

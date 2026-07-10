@@ -164,28 +164,31 @@ class Order(models.Model):
 # Signal handling for WhatsApp notifications
 from django.db.models.signals import post_save, pre_save
 from django.dispatch import receiver
-from .tasks import notify_order_placed_async, notify_order_delivered_async
+
+
+@receiver(pre_save, sender=Order)
+def order_pre_save(sender, instance, **kwargs):
+    """Capture previous status so post_save can detect transitions."""
+    if instance.pk:
+        try:
+            instance._old_status = Order.objects.values_list('status', flat=True).get(pk=instance.pk)
+        except Order.DoesNotExist:
+            instance._old_status = None
+    else:
+        instance._old_status = None
+
 
 @receiver(post_save, sender=Order)
 def order_post_save(sender, instance, created, **kwargs):
-    """Trigger notifications on order creation and delivery."""
-    # Celery (async) — safe even if Redis is down
-    try:
-        if created:
-            notify_order_placed_async.delay(instance.id)
-        elif instance.status == 'delivered':
-            notify_order_delivered_async.delay(instance.id)
-    except Exception:
-        pass
-
-    # Gupshup WhatsApp — direct, no Redis needed
+    """Send WhatsApp notification on order creation and status transitions (fires exactly once per event)."""
+    old = getattr(instance, '_old_status', None)
     try:
         from .gupshup import notify_order_placed, notify_order_delivered, notify_order_shipped
         if created:
             notify_order_placed(instance)
-        elif instance.status == 'shipped':
+        elif instance.status == 'shipped' and old != 'shipped':
             notify_order_shipped(instance)
-        elif instance.status == 'delivered':
+        elif instance.status == 'delivered' and old != 'delivered':
             notify_order_delivered(instance)
     except Exception:
         pass
