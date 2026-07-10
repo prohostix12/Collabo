@@ -219,7 +219,8 @@ def notify_abandoned_cart(user, item_names: list, coupon_code: str = None, disco
     if len(item_names) > 3:
         items_str += f' and {len(item_names) - 3} more'
 
-    send_whatsapp_template(phone, 'abandoned_cart', [name, items_str])
+    # Gupshup template ID for abandoned_cart (Facebook ID: 1385651606806303)
+    send_whatsapp_template(phone, '3b02b92b-5962-45b9-8676-059e3be7f65f', [name, items_str])
 
 
 # ── Internal helpers ──────────────────────────────────────────────────────────
