@@ -2129,3 +2129,41 @@ class NewsletterSubscribeView(views.APIView):
             serializer.save()
             return Response({'message': 'Successfully subscribed!'}, status=status.HTTP_201_CREATED)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+
+import logging as _logging
+_whatsapp_logger = _logging.getLogger('gupshup.webhook')
+
+@api_view(['POST', 'GET'])
+@permission_classes([permissions.AllowAny])
+def gupshup_webhook(request):
+    """
+    Receives delivery status callbacks from Gupshup/Meta.
+    Configure this URL in Gupshup → Webhooks → Add Webhook:
+    https://collabo.co.in/api/ecommerce/gupshup/webhook/
+    """
+    if request.method == 'GET':
+        return Response({'status': 'ok'})
+
+    try:
+        payload = request.data if isinstance(request.data, dict) else json.loads(request.body)
+    except Exception:
+        payload = {}
+
+    event_type = payload.get('type', '')
+    msg_id = payload.get('messageId', payload.get('id', ''))
+    phone = payload.get('destination', payload.get('mobile', ''))
+    status_val = payload.get('status', '')
+    error = payload.get('error', '')
+
+    _whatsapp_logger.info(
+        f"Gupshup webhook | type={event_type} | status={status_val} | "
+        f"msgId={msg_id} | phone={phone} | error={error} | full={payload}"
+    )
+
+    if status_val in ('failed', 'undelivered') or error:
+        _whatsapp_logger.error(
+            f"WhatsApp delivery FAILED | phone={phone} | msgId={msg_id} | error={error}"
+        )
+
+    return Response({'status': 'received'}, status=status.HTTP_200_OK)

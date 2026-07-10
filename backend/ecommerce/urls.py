@@ -14,6 +14,7 @@ from .views import (
     AdminPayoutListView, admin_process_payout,
     NewsletterSubscribeView,
     NewsletterBroadcastView,
+    gupshup_webhook,
 )
 
 router = DefaultRouter()
@@ -56,5 +57,6 @@ urlpatterns = [
     path('admin/seller-payouts/<int:payout_id>/process/', admin_process_payout, name='admin-process-payout'),
     path('newsletter/subscribe/', NewsletterSubscribeView.as_view(), name='newsletter-subscribe'),
     path('newsletter/broadcast/', NewsletterBroadcastView.as_view(), name='newsletter-broadcast'),
+    path('gupshup/webhook/', gupshup_webhook, name='gupshup-webhook'),
     path('', include(router.urls)),
 ]
