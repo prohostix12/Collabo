@@ -380,6 +380,16 @@ export default function EcommerceMarketplace({ inlineMode = false, onBackToSelec
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
 
+  useEffect(() => {
+    if (isLoggedIn) {
+      const flag = localStorage.getItem('collabo_new_user') === '1';
+      setIsNewUser(flag);
+      if (flag) localStorage.removeItem('collabo_new_user');
+    } else {
+      setIsNewUser(false);
+    }
+  }, [isLoggedIn]);
+
   const [dealTimeLeft, setDealTimeLeft] = useState(4 * 3600 + 18 * 60 + 52);
 
   useEffect(() => {
@@ -612,6 +622,7 @@ export default function EcommerceMarketplace({ inlineMode = false, onBackToSelec
   const [couponDiscount, setCouponDiscount] = useState(0);
   const [redeemPoints, setRedeemPoints] = useState(false);
   const [showRewardModal, setShowRewardModal] = useState(false);
+  const [isNewUser, setIsNewUser] = useState(false);
   const [supportTickets, setSupportTickets] = useState([]);
   const [supportSubject, setSupportSubject] = useState('');
   const [supportCategory, setSupportCategory] = useState('technical');
@@ -1805,7 +1816,7 @@ export default function EcommerceMarketplace({ inlineMode = false, onBackToSelec
                   </div>
                   <div>
                     <span className="text-xs font-bold text-slate-700 dark:text-slate-200">
-                      {(() => { const isNew = localStorage.getItem('collabo_new_user') === '1'; if (isNew) localStorage.removeItem('collabo_new_user'); return isNew ? 'Welcome, ' : 'Welcome back, '; })()}
+                      {isNewUser ? 'Welcome, ' : 'Welcome back, '}
                       <span className="text-orange-500">{user.username || user.email}</span>! 👋
                     </span>
                     <span className="hidden sm:inline text-[10px] text-slate-400 dark:text-slate-500 ml-2 font-medium">
