@@ -1897,6 +1897,23 @@ export default function EcommerceMarketplace({ inlineMode = false, onBackToSelec
             </div>
           </div>
 
+          {/* Referral scrolling ticker */}
+          <div className={`w-full overflow-hidden transition-all duration-300 bg-gradient-to-r from-[#0a5c61] via-[#0f8a76] to-[#0a5c61] ${isCategorySticky ? 'max-h-0' : 'max-h-10'}`}>
+            <style>{`@keyframes ref-ticker{0%{transform:translateX(0)}100%{transform:translateX(-50%)}}.ref-ticker-track{animation:ref-ticker 26s linear infinite;display:flex;width:max-content}.ref-ticker-track:hover{animation-play-state:paused}`}</style>
+            <div className="ref-ticker-track">
+              {[0, 1].map(n => (
+                <div key={n} className="flex items-center gap-10 py-1.5 px-10 whitespace-nowrap text-white text-[11px] font-bold">
+                  <span>🎁 Login and earn upto 30% made by your friend</span>
+                  <span className="opacity-40">◆</span>
+                  <span>💳 Referral &nbsp;·&nbsp; Wallet &nbsp;·&nbsp; Re-referral</span>
+                  <span className="opacity-40">◆</span>
+                  <span>✨ Referral and Redeem</span>
+                  <span className="opacity-40">◆</span>
+                </div>
+              ))}
+            </div>
+          </div>
+
           {/* Sticky Category Bar - text only, appears below navbar after scroll */}
           {currentView === 'home' && isCategorySticky && categoriesLoaded && (
             <div className="w-full bg-white dark:bg-slate-950 border-b border-slate-200 dark:border-slate-800 shadow-sm">
