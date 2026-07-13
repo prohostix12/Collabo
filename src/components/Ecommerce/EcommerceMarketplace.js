@@ -521,7 +521,7 @@ export default function EcommerceMarketplace({ inlineMode = false, onBackToSelec
         localStorage.setItem('recently_viewed', JSON.stringify(updated));
         return updated;
       });
-      if (currentView === 'details' && !inlineMode) {
+      if (currentView === 'details' && !inlineMode && window.location.hash.startsWith('#details')) {
         window.history.replaceState({ view: 'details', pid: selectedProduct.id }, '', `#details:${selectedProduct.id}`);
       }
     }
