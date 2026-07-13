@@ -725,12 +725,10 @@ export default function EcommerceMarketplace({ inlineMode = false, onBackToSelec
       setCurrentView(hashView);
       if (hashView === 'details' && hashPid) {
         setPendingSelectProductId(hashPid);
-        // Insert a home entry so browser back goes to marketplace home, not out of the site
-        window.history.replaceState({ view: 'home' }, '', window.location.pathname + window.location.search);
-        window.history.pushState({ view: 'details', pid: hashPid }, '', `#${rawHash}`);
-      } else {
-        window.history.replaceState({ view: hashView, pid: hashPid || null }, '', `#${rawHash}`);
       }
+      // Always insert a clean home entry first so browser back → marketplace home, not out of the SPA
+      window.history.replaceState({ view: 'home' }, '', window.location.pathname + window.location.search);
+      window.history.pushState({ view: hashView, pid: hashPid || null }, '', `#${rawHash}`);
     } else if (window.history.state?.view && window.history.state.view !== 'home') {
       setCurrentView(window.history.state.view);
       if (window.history.state.view === 'details' && window.history.state.pid) {
@@ -3007,7 +3005,7 @@ export default function EcommerceMarketplace({ inlineMode = false, onBackToSelec
               <div className="bg-white dark:bg-slate-900 border border-slate-200/50 dark:border-slate-800/50 rounded-[24px] flex flex-col shadow-sm overflow-hidden mb-2">
                 <div className="flex items-center justify-between p-3.5 sm:px-6 sm:py-3.5 border-b border-slate-100 dark:border-slate-800">
                   <button
-                    onClick={() => setCurrentView('home')}
+                    onClick={() => window.history.back()}
                     className="flex items-center gap-1.5 text-xs font-bold text-slate-500 hover:text-orange-500 transition-colors shrink-0"
                   >
                     <ChevronRight className="w-3.5 h-3.5 rotate-180" />Back
@@ -3761,7 +3759,7 @@ export default function EcommerceMarketplace({ inlineMode = false, onBackToSelec
         {currentView === 'cart' && (
           <div className="space-y-8">
             <div className="flex items-center gap-3">
-              <button onClick={() => setCurrentView('home')} className="flex items-center justify-center w-8 h-8 rounded-full bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 transition-colors">
+              <button onClick={() => window.history.back()} className="flex items-center justify-center w-8 h-8 rounded-full bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 transition-colors">
                 <ChevronLeft className="w-5 h-5 text-slate-600 dark:text-slate-300" />
               </button>
               <h1 className="text-2xl font-black tracking-tight dark:text-white">Shopping Cart</h1>
@@ -4057,7 +4055,7 @@ export default function EcommerceMarketplace({ inlineMode = false, onBackToSelec
         {currentView === 'checkout' && (
           <div className="space-y-8">
             <div className="flex items-center gap-3">
-              <button onClick={() => setCurrentView('cart')} className="flex items-center justify-center w-8 h-8 rounded-full bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 transition-colors">
+              <button onClick={() => window.history.back()} className="flex items-center justify-center w-8 h-8 rounded-full bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 transition-colors">
                 <ChevronLeft className="w-5 h-5 text-slate-600 dark:text-slate-300" />
               </button>
               <h1 className="text-2xl font-black tracking-tight dark:text-white">Secure Checkout</h1>
@@ -4466,7 +4464,7 @@ export default function EcommerceMarketplace({ inlineMode = false, onBackToSelec
           <div className="space-y-6 animate-fade-in-up pb-12">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-4">
-                <button onClick={() => setCurrentView('profile')} className="flex shrink-0 items-center justify-center w-10 h-10 rounded-full bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 transition-colors">
+                <button onClick={() => window.history.back()} className="flex shrink-0 items-center justify-center w-10 h-10 rounded-full bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 transition-colors">
                   <ChevronLeft className="w-6 h-6 text-slate-600 dark:text-slate-300" />
                 </button>
                 <div>
@@ -4566,7 +4564,7 @@ export default function EcommerceMarketplace({ inlineMode = false, onBackToSelec
         {currentView === 'wishlist' && (
           <div className="space-y-8">
             <div className="flex items-center gap-3">
-              <button onClick={() => setCurrentView('profile')} className="flex items-center justify-center w-8 h-8 rounded-full bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 transition-colors">
+              <button onClick={() => window.history.back()} className="flex items-center justify-center w-8 h-8 rounded-full bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 transition-colors">
                 <ChevronLeft className="w-5 h-5 text-slate-600 dark:text-slate-300" />
               </button>
               <h1 className="text-2xl font-black tracking-tight dark:text-white">My Wishlist</h1>
@@ -4644,7 +4642,7 @@ export default function EcommerceMarketplace({ inlineMode = false, onBackToSelec
           <div className="bg-white dark:bg-slate-900 border border-slate-200/50 dark:border-slate-800/50 p-6 sm:p-10 rounded-[36px] max-w-xl mx-auto space-y-8 shadow-sm">
             <div className="flex justify-between items-center border-b border-slate-100 dark:border-slate-800 pb-4">
               <div className="flex items-center gap-4">
-                <button onClick={() => setCurrentView('orders')} className="flex items-center justify-center w-8 h-8 rounded-full bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 transition-colors">
+                <button onClick={() => window.history.back()} className="flex items-center justify-center w-8 h-8 rounded-full bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 transition-colors">
                   <ChevronLeft className="w-5 h-5 text-slate-600 dark:text-slate-300" />
                 </button>
                 <div className="space-y-1">
@@ -4738,7 +4736,7 @@ export default function EcommerceMarketplace({ inlineMode = false, onBackToSelec
         {currentView === 'profile' && (
           <div className="space-y-8">
             <div className="flex items-center gap-3">
-              <button onClick={() => setCurrentView('home')} className="flex items-center justify-center w-8 h-8 rounded-full bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 transition-colors">
+              <button onClick={() => window.history.back()} className="flex items-center justify-center w-8 h-8 rounded-full bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 transition-colors">
                 <ChevronLeft className="w-5 h-5 text-slate-600 dark:text-slate-300" />
               </button>
               <h1 className="text-2xl font-black tracking-tight dark:text-white">My Profile</h1>
@@ -4922,7 +4920,7 @@ export default function EcommerceMarketplace({ inlineMode = false, onBackToSelec
           <div className="bg-white dark:bg-slate-900 border border-slate-200/50 dark:border-slate-800/50 p-8 sm:p-10 rounded-[36px] max-w-md mx-auto space-y-6 shadow-2xl mt-12 sm:mt-16">
             
             <div className="text-center space-y-1 relative">
-              <button onClick={() => setCurrentView('home')} className="absolute -left-2 sm:-left-4 top-1 flex items-center justify-center w-8 h-8 rounded-full bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 transition-colors">
+              <button onClick={() => window.history.back()} className="absolute -left-2 sm:-left-4 top-1 flex items-center justify-center w-8 h-8 rounded-full bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 transition-colors">
                 <ChevronLeft className="w-5 h-5 text-slate-600 dark:text-slate-300" />
               </button>
               <h2 className="text-2xl font-black tracking-tight dark:text-white">
@@ -5101,7 +5099,7 @@ export default function EcommerceMarketplace({ inlineMode = false, onBackToSelec
         {currentView === 'support' && (
           <div className="space-y-8">
             <div className="flex items-center gap-3">
-              <button onClick={() => { window.history.length > 1 ? window.history.back() : setCurrentView('home'); }} className="flex items-center justify-center w-8 h-8 rounded-full bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 transition-colors">
+              <button onClick={() => window.history.back()} className="flex items-center justify-center w-8 h-8 rounded-full bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 transition-colors">
                 <ChevronLeft className="w-5 h-5 text-slate-600 dark:text-slate-300" />
               </button>
               <h1 className="text-2xl font-black tracking-tight dark:text-white">Contact Support</h1>
@@ -5217,7 +5215,7 @@ export default function EcommerceMarketplace({ inlineMode = false, onBackToSelec
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-200 dark:border-slate-800 pb-5">
               <div className="flex items-center gap-4">
                 {!inlineMode && (
-                  <button onClick={() => setCurrentView('home')} className="flex shrink-0 items-center justify-center w-10 h-10 rounded-full bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 transition-colors">
+                  <button onClick={() => window.history.back()} className="flex shrink-0 items-center justify-center w-10 h-10 rounded-full bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 transition-colors">
                     <ChevronLeft className="w-6 h-6 text-slate-600 dark:text-slate-300" />
                   </button>
                 )}
