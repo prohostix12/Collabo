@@ -21,9 +21,10 @@ const Register = () => {
   const navigate = useNavigate();
   const location = useLocation();
 
-  // Parse type from query params
+  // Parse type and affiliate code from query params
   const queryParams = new URLSearchParams(location.search);
   const initialType = queryParams.get('type') === 'company' ? 'company' : 'influencer';
+  const affiliateCode = queryParams.get('affiliate') || '';
 
   const [formData, setFormData] = useState({
     email: '',
@@ -67,6 +68,9 @@ const Register = () => {
     const dataToSubmit = { ...formData };
     if (dataToSubmit.phone && dataToSubmit.phone.trim() !== '') {
       dataToSubmit.phone = `${countryCode}${dataToSubmit.phone.replace(/^0+/, '')}`;
+    }
+    if (affiliateCode) {
+      dataToSubmit.referred_by_code = affiliateCode.toUpperCase();
     }
 
     const result = await register(dataToSubmit);
@@ -120,6 +124,12 @@ const Register = () => {
           <p className="mt-2 text-gray-600 dark:text-gray-300">
             Join thousands of brands and influencers
           </p>
+          {affiliateCode && (
+            <div className="mt-3 inline-flex items-center gap-2 bg-emerald-50 border border-emerald-200 text-emerald-700 text-xs font-semibold px-3 py-1.5 rounded-full">
+              <CheckCircle className="w-3.5 h-3.5" />
+              You were invited by a Collabo member
+            </div>
+          )}
         </div>
 
         {/* Register Form */}

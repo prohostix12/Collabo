@@ -229,6 +229,7 @@ class AffiliateCommission(models.Model):
     product = models.ForeignKey(Product, on_delete=models.CASCADE)
     amount = models.DecimalField(max_digits=12, decimal_places=2)
     status = models.CharField(max_length=20, default='completed')
+    level = models.PositiveSmallIntegerField(default=1, help_text="1=direct referrer, 2=upline (their recruiter)")
     created_at = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):

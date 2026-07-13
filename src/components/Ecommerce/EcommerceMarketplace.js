@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, lazy, Suspense } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   Search, ShoppingBag, Heart, User, Star, ArrowRight, ShieldCheck,
@@ -20,7 +20,7 @@ import ChangePasswordModal from '../Layout/ChangePasswordModal';
 import ChangeUsernameModal from '../Layout/ChangeUsernameModal';
 import DeleteAccountModal from '../Layout/DeleteAccountModal';
 
-
+const InfluencerHub = lazy(() => import('../Dashboard/InfluencerDashboard'));
 
 const CATEGORIES = [
   { name: 'All', icon: '🌟' },
@@ -361,8 +361,13 @@ const CollabEarnBanner = ({ setCurrentView, setSupportSubject, setSupportCategor
 export default function EcommerceMarketplace({ inlineMode = false, onBackToSelect = null }) {
   const navigate = useNavigate();
 
+  // Capture referral URL params immediately at render time (before any history effects strip the query string)
+  const [initialRefCode] = useState(() => new URLSearchParams(window.location.search).get('ref') || '');
+  const [initialPidParam] = useState(() => new URLSearchParams(window.location.search).get('pid') || '');
+
   // Navigation State
   const [currentView, setCurrentView] = useState(inlineMode ? 'dashboard' : 'home'); // home | listing | details | cart | checkout | success | wishlist | profile | tracking | dashboard | auth
+  const [showHub, setShowHub] = useState(() => window.location.hash === '#hub');
   
   // App Core State
   const { user, login, logout, register } = useAuth();
@@ -523,6 +528,8 @@ export default function EcommerceMarketplace({ inlineMode = false, onBackToSelec
   }, [selectedProduct, currentView, inlineMode]);
 
   const [pendingSelectProductId, setPendingSelectProductId] = useState(null);
+  const [activeReferral, setActiveReferral] = useState(null); // { product_id, referral_code, discount_percent, custom_price }
+
   const autoApplyCouponCode = (code) => {
     if (!isLoggedIn) {
       toast.error('Please login to apply coupon');
@@ -706,32 +713,50 @@ export default function EcommerceMarketplace({ inlineMode = false, onBackToSelec
     if (inlineMode) return;
 
     const rawHash = window.location.hash.replace('#', '');
+    // #hub opens the influencer hub overlay — handle before anything else
+    if (rawHash === 'hub') {
+      setShowHub(true);
+      window.history.replaceState({ view: 'hub' }, '', '#hub');
+    }
     const [hashView, hashPid] = rawHash.includes(':') ? rawHash.split(':') : [rawHash, null];
     const validViews = ['home', 'listing', 'details', 'cart', 'checkout', 'success', 'wishlist', 'profile', 'tracking', 'orders', 'dashboard', 'auth', 'support'];
 
-    if (hashView && hashView !== 'home' && validViews.includes(hashView)) {
+    if (rawHash !== 'hub' && hashView && hashView !== 'home' && validViews.includes(hashView)) {
       setCurrentView(hashView);
       if (hashView === 'details' && hashPid) {
         setPendingSelectProductId(hashPid);
+        // Insert a home entry so browser back goes to marketplace home, not out of the site
+        window.history.replaceState({ view: 'home' }, '', window.location.pathname + window.location.search);
+        window.history.pushState({ view: 'details', pid: hashPid }, '', `#${rawHash}`);
+      } else {
+        window.history.replaceState({ view: hashView, pid: hashPid || null }, '', `#${rawHash}`);
       }
-      window.history.replaceState({ view: hashView, pid: hashPid || null }, '', `#${rawHash}`);
     } else if (window.history.state?.view && window.history.state.view !== 'home') {
       setCurrentView(window.history.state.view);
       if (window.history.state.view === 'details' && window.history.state.pid) {
         setPendingSelectProductId(window.history.state.pid);
       }
     } else {
-      window.history.replaceState({ view: 'home' }, '', window.location.pathname);
+      // Preserve query string so referral params (?ref=&pid=) are still readable by the referral effect
+      window.history.replaceState({ view: 'home' }, '', window.location.pathname + window.location.search);
     }
 
     const handlePopState = (event) => {
+      const currentHash = window.location.hash.replace('#', '');
+      // Handle hub overlay open/close via back/forward
+      if (currentHash === 'hub') {
+        setShowHub(true);
+        return;
+      }
+      setShowHub(false);
+
       if (event.state && event.state.view) {
         setCurrentView(event.state.view);
         if (event.state.view === 'details' && event.state.pid) {
           setPendingSelectProductId(event.state.pid);
         }
       } else {
-        const fb = window.location.hash.replace('#', '');
+        const fb = currentHash;
         const [fbView, fbPid] = fb.includes(':') ? fb.split(':') : [fb, null];
         if (fbView && validViews.includes(fbView)) {
           setCurrentView(fbView);
@@ -949,7 +974,12 @@ export default function EcommerceMarketplace({ inlineMode = false, onBackToSelec
   useEffect(() => {
     if (selectedProduct) {
       setActiveDetailImage(selectedProduct.image);
+      // Clear referral state if the newly selected product doesn't match the active referral
+      if (activeReferral && String(activeReferral.product_id) !== String(selectedProduct.id)) {
+        setActiveReferral(null);
+      }
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedProduct]);
 
   // Sync / fetch products
@@ -1180,9 +1210,8 @@ export default function EcommerceMarketplace({ inlineMode = false, onBackToSelec
 
   // Capture referral code from URL query parameter
   useEffect(() => {
-    const params = new URLSearchParams(window.location.search);
-    const ref = params.get('ref');
-    const pid = params.get('pid');
+    const ref = initialRefCode;
+    const pid = initialPidParam;
 
     if (ref) {
       // -- Real Click Tracking --------------------------------------
@@ -1229,25 +1258,42 @@ export default function EcommerceMarketplace({ inlineMode = false, onBackToSelec
             delete customPriceMap[resolvedProductId];
           }
           localStorage.setItem('referral_price_map', JSON.stringify(customPriceMap));
-          
+
           // Legacy support (still set global referral code)
           localStorage.setItem('referral_code', ref);
-          
-          console.log('Referral resolved and saved:', resolvedProductId, ref);
+
+          // Store active referral in React state for immediate reliable re-render
+          setActiveReferral({
+            product_id: resolvedProductId,
+            referral_code: ref,
+            discount_percent: (data.discount_percent != null && data.discount_percent > 0) ? data.discount_percent : 0,
+            custom_price: (data.custom_price != null) ? Number(data.custom_price) : null,
+            influencer: data.influencer || '',
+          });
+
+          const hasOffer = data.custom_price != null || (data.discount_percent != null && data.discount_percent > 0);
           showToast(
-            data.custom_price !== null && data.custom_price !== undefined
+            data.custom_price != null
               ? `✨ Special price ₹${Number(data.custom_price).toLocaleString()} applied for ${resolvedProductName}!`
-              : `✨ Referral discount applied! ${data.discount_percent || 10}% off on ${resolvedProductName}.`
+              : hasOffer
+                ? `✨ ${data.discount_percent}% off applied for ${resolvedProductName}!`
+                : `✨ Affiliate link active for ${resolvedProductName}. Your purchase supports the creator!`
           );
 
-          // Set pending select to auto-navigate to this product page
+          // Clean referral params and insert home entry so browser back → marketplace home
+          window.history.replaceState({ view: 'home' }, '', window.location.pathname);
+          window.history.pushState({ view: 'details', pid: resolvedProductId }, '', `#details:${resolvedProductId}`);
+
+          // Navigate to the product details page
           setPendingSelectProductId(resolvedProductId);
           setCurrentView('details');
         })
         .catch(err => {
           console.error('Failed to resolve referral code:', err);
-          // Fallback if the resolve fails but we had a pid in the URL
+          // Fallback if resolve fails but we had a pid in the URL
           if (pid) {
+            window.history.replaceState({ view: 'home' }, '', window.location.pathname);
+            window.history.pushState({ view: 'details', pid }, '', `#details:${pid}`);
             setPendingSelectProductId(pid);
             setCurrentView('details');
           }
@@ -1257,7 +1303,7 @@ export default function EcommerceMarketplace({ inlineMode = false, onBackToSelec
       setCurrentView('details');
     }
 
-    const view = params.get('view');
+    const view = new URLSearchParams(window.location.search).get('view');
     if (view) {
       setCurrentView(view);
     }
@@ -1763,8 +1809,8 @@ export default function EcommerceMarketplace({ inlineMode = false, onBackToSelec
                     {isLoggedIn ? "My Account" : "Login"}
                   </button>
 
-                  {isLoggedIn && (user?.user_type === 'influencer' || user?.user_type === 'admin' || user?.is_staff) && (
-                    <button onClick={() => navigate('/collab')} className="hidden sm:flex bg-[#1B5E6B] hover:bg-[#164E5A] dark:bg-[#1B5E6B] dark:hover:bg-[#164E5A] text-white py-1.5 px-3.5 rounded-xl shadow-md transition-all items-center gap-1.5 border border-[#164E5A]">
+                  {isLoggedIn && user?.user_type === 'influencer' && (
+                    <button onClick={() => { setShowHub(true); window.history.pushState({ view: 'hub' }, '', '#hub'); }} className="hidden sm:flex bg-[#1B5E6B] hover:bg-[#164E5A] dark:bg-[#1B5E6B] dark:hover:bg-[#164E5A] text-white py-1.5 px-3.5 rounded-xl shadow-md transition-all items-center gap-1.5 border border-[#164E5A]">
                       <Award className="w-3.5 h-3.5 text-white" />
                       <span className="text-[10px] font-black uppercase tracking-wider">Collab Hub</span>
                     </button>
@@ -1799,8 +1845,8 @@ export default function EcommerceMarketplace({ inlineMode = false, onBackToSelec
                   {(user?.is_staff || user?.user_type === 'admin') && (
                     <button onClick={() => { navigate('/dashboard'); setMobileMenuOpen(false); }} className="w-full text-left px-3 py-2.5 rounded-xl hover:bg-slate-50 dark:hover:bg-slate-800 text-sm font-bold text-slate-700 dark:text-slate-200 flex items-center gap-3"><LayoutDashboard className="w-4 h-4 text-orange-500" />Admin Dashboard</button>
                   )}
-                  {isLoggedIn && (user?.user_type === 'influencer' || user?.user_type === 'admin' || user?.is_staff) && (
-                    <button onClick={() => { navigate('/collab'); setMobileMenuOpen(false); }} className="w-full text-left px-3 py-2.5 rounded-xl bg-[#1B5E6B]/5 hover:bg-[#1B5E6B]/10 text-sm font-bold text-[#1B5E6B] flex items-center gap-3"><Award className="w-4 h-4" />Collab Hub</button>
+                  {isLoggedIn && user?.user_type === 'influencer' && (
+                    <button onClick={() => { setShowHub(true); window.history.pushState({ view: 'hub' }, '', '#hub'); setMobileMenuOpen(false); }} className="w-full text-left px-3 py-2.5 rounded-xl bg-[#1B5E6B]/5 hover:bg-[#1B5E6B]/10 text-sm font-bold text-[#1B5E6B] flex items-center gap-3"><Award className="w-4 h-4" />Collab Hub</button>
                   )}
                 </div>
               )}
@@ -3257,25 +3303,65 @@ export default function EcommerceMarketplace({ inlineMode = false, onBackToSelec
 
                   {/* Pricing */}
                   {(() => {
-                    const refMap = JSON.parse(localStorage.getItem('referral_map') || '{}');
-                    const discountMap = JSON.parse(localStorage.getItem('referral_discount_map') || '{}');
-                    const customPriceMap = JSON.parse(localStorage.getItem('referral_price_map') || '{}');
-                    const isReferred = !!refMap[selectedProduct.id] || !!refMap[String(selectedProduct.id)];
-                    const customPrice = isReferred ? (customPriceMap[selectedProduct.id] || customPriceMap[String(selectedProduct.id)] || null) : null;
-                    const refDiscountPct = isReferred ? (discountMap[selectedProduct.id] !== undefined ? discountMap[selectedProduct.id] : (discountMap[String(selectedProduct.id)] !== undefined ? discountMap[String(selectedProduct.id)] : 10)) : 0;
-                    const refDiscountPrice = isReferred ? Math.round(selectedProduct.discountPrice * (1 - refDiscountPct / 100)) : selectedProduct.discountPrice;
+                    // Prefer React state (set when referral link resolves); fall back to localStorage for page-refresh persistence
+                    const pid = selectedProduct.id;
+                    const stateMatch = activeReferral && (String(activeReferral.product_id) === String(pid));
+                    let isReferred = stateMatch;
+                    let customPrice = stateMatch ? activeReferral.custom_price : null;
+                    let refDiscountPct = stateMatch ? activeReferral.discount_percent : 0;
+
+                    if (!isReferred) {
+                      // fallback: check localStorage (persists across page refreshes)
+                      const refMap = JSON.parse(localStorage.getItem('referral_map') || '{}');
+                      const discountMap = JSON.parse(localStorage.getItem('referral_discount_map') || '{}');
+                      const customPriceMap = JSON.parse(localStorage.getItem('referral_price_map') || '{}');
+                      isReferred = !!refMap[pid] || !!refMap[String(pid)];
+                      if (isReferred) {
+                        customPrice = customPriceMap[pid] ?? customPriceMap[String(pid)] ?? null;
+                        const storedPct = discountMap[pid] !== undefined ? discountMap[pid] : discountMap[String(pid)];
+                        refDiscountPct = storedPct !== undefined ? storedPct : 0;
+                      }
+                    }
+
+                    // Custom price set by influencer
                     if (isReferred && customPrice !== null) return (
                       <div className="space-y-1">
                         <div className="flex items-center gap-1.5 text-xs text-purple-600 bg-purple-50 dark:bg-purple-950/20 p-2 rounded-xl"><Sparkles className="w-3.5 h-3.5" /><span className="font-bold">Special Influencer Price!</span></div>
-                        <div className="flex items-baseline gap-2"><span className="text-2xl font-black dark:text-white">₹{Number(customPrice).toLocaleString()}</span><span className="text-slate-400 line-through text-sm">₹{selectedProduct.discountPrice.toLocaleString()}</span></div>
+                        <div className="flex items-baseline gap-2">
+                          <span className="text-2xl font-black dark:text-white">₹{Number(customPrice).toLocaleString()}</span>
+                          <span className="text-slate-400 line-through text-sm">₹{selectedProduct.discountPrice.toLocaleString()}</span>
+                          <span className="text-xs font-bold text-emerald-600">Exclusive Deal</span>
+                        </div>
                       </div>
                     );
+
+                    // Percentage discount via referral link
+                    if (isReferred && refDiscountPct > 0) {
+                      const refDiscountPrice = Math.round(selectedProduct.discountPrice * (1 - refDiscountPct / 100));
+                      return (
+                        <div className="space-y-1">
+                          <div className="flex items-center gap-1.5 text-xs text-orange-600 bg-orange-50 dark:bg-orange-950/20 p-2 rounded-xl"><Sparkles className="w-3.5 h-3.5" /><span className="font-bold">{refDiscountPct}% Referral Discount!</span></div>
+                          <div className="flex items-baseline gap-2">
+                            <span className="text-2xl font-black dark:text-white">₹{refDiscountPrice.toLocaleString()}</span>
+                            <span className="text-slate-400 line-through text-sm">₹{selectedProduct.discountPrice.toLocaleString()}</span>
+                            <span className="text-xs font-bold text-emerald-600">Extra {refDiscountPct}% OFF</span>
+                          </div>
+                        </div>
+                      );
+                    }
+
+                    // Referral link active but no special price — show affiliate badge + normal price
                     if (isReferred) return (
                       <div className="space-y-1">
-                        <div className="flex items-center gap-1.5 text-xs text-orange-600 bg-orange-50 dark:bg-orange-950/20 p-2 rounded-xl"><Sparkles className="w-3.5 h-3.5" /><span className="font-bold">{refDiscountPct}% Referral Discount!</span></div>
-                        <div className="flex items-baseline gap-2"><span className="text-2xl font-black dark:text-white">₹{refDiscountPrice.toLocaleString()}</span><span className="text-slate-400 line-through text-sm">₹{selectedProduct.discountPrice.toLocaleString()}</span><span className="text-xs font-bold text-emerald-600">Extra {refDiscountPct}% OFF</span></div>
+                        <div className="flex items-center gap-1.5 text-xs text-teal-600 bg-teal-50 dark:bg-teal-950/20 p-2 rounded-xl"><Sparkles className="w-3.5 h-3.5" /><span className="font-bold">Affiliate Link Active — your purchase supports the creator!</span></div>
+                        <div className="flex items-baseline gap-2">
+                          <span className="text-2xl font-black dark:text-white">₹{selectedProduct.discountPrice.toLocaleString()}</span>
+                          {selectedProduct.price > selectedProduct.discountPrice && (<><span className="text-slate-400 line-through text-sm">₹{selectedProduct.price.toLocaleString()}</span><span className="text-xs font-black text-orange-500 bg-orange-50 dark:bg-orange-950/20 px-2 py-0.5 rounded">-{selectedProduct.discountPercent}% OFF</span></>)}
+                        </div>
                       </div>
                     );
+
+                    // Normal price (no referral)
                     return (
                       <div className="flex items-baseline gap-2">
                         <span className="text-2xl font-black dark:text-white">₹{selectedProduct.discountPrice.toLocaleString()}</span>
@@ -8036,6 +8122,15 @@ export default function EcommerceMarketplace({ inlineMode = false, onBackToSelec
             <User className="w-5 h-5" />
             <span className="text-[10px] font-bold">Account</span>
           </button>
+        </div>
+      )}
+
+      {/* Influencer Collab Hub Overlay — shown via "Collab Hub" button, closed by browser back */}
+      {showHub && user?.user_type === 'influencer' && (
+        <div className="fixed inset-0 z-[200] bg-white overflow-auto">
+          <Suspense fallback={<div className="flex items-center justify-center h-screen text-sm text-gray-500">Loading...</div>}>
+            <InfluencerHub onClose={() => { setShowHub(false); window.history.back(); }} />
+          </Suspense>
         </div>
       )}
 

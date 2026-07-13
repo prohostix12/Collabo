@@ -29,14 +29,21 @@ class User(AbstractUser):
     rejection_reason = models.TextField(blank=True, help_text="Reason for rejection (if applicable)")
     approval_shown = models.BooleanField(default=False, help_text="Whether approval popup has been shown to user")
     reward_points = models.IntegerField(default=0, help_text="Accumulated customer reward points")
-    
+    affiliate_code = models.CharField(max_length=12, unique=True, null=True, blank=True, help_text="Unique code for recruiting other affiliates")
+    referred_by = models.ForeignKey('self', null=True, blank=True, on_delete=models.SET_NULL, related_name='downline', help_text="Who recruited this user as an affiliate")
+
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
     USERNAME_FIELD = 'email'
     REQUIRED_FIELDS = ['username', 'user_type']
-    
+
     def save(self, *args, **kwargs):
+        # Auto-generate affiliate_code for new users
+        if not self.affiliate_code:
+            import uuid
+            self.affiliate_code = uuid.uuid4().hex[:8].upper()
+
         # Auto-set approval status for non-influencers
         if self.user_type != 'influencer':
             self.is_approved = True
@@ -45,7 +52,7 @@ class User(AbstractUser):
             # New influencer registration - set to pending
             self.is_approved = False
             self.approval_status = 'pending'
-        
+
         super().save(*args, **kwargs)
 
 

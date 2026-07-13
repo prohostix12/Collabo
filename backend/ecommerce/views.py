@@ -489,8 +489,21 @@ class OrderViewSet(viewsets.ModelViewSet):
                         order=order,
                         product=item.product,
                         amount=commission_amount,
-                        status=commission_status
+                        status=commission_status,
+                        level=1,
                     )
+                    # Level 2: upline (the person who recruited the direct referrer) gets 50%
+                    upline = getattr(review.influencer, 'referred_by', None)
+                    if upline:
+                        upline_amount = (commission_amount * Decimal('0.5')).quantize(Decimal('0.01'))
+                        AffiliateCommission.objects.create(
+                            influencer=upline,
+                            order=order,
+                            product=item.product,
+                            amount=upline_amount,
+                            status=commission_status,
+                            level=2,
+                        )
 
         # Clear cart
         cart_items.delete()
@@ -884,14 +897,23 @@ class ProductReviewViewSet(viewsets.ModelViewSet):
         total_clicks = 0
         
         for r in reviews:
-            commissions = AffiliateCommission.objects.filter(influencer=user, product=r.product)
-            conversions = commissions.count()
-            earned_commission = commissions.aggregate(total=Sum('amount'))['total'] or Decimal('0')
-            # Real click count from the database
+            # Only level=1 (direct), exclude cancelled
+            link_commissions = AffiliateCommission.objects.filter(
+                influencer=user, product=r.product, level=1
+            ).exclude(status='cancelled')
+            conversions = link_commissions.values('order').distinct().count()
+            completed_commission = (
+                link_commissions.filter(status='completed')
+                .aggregate(total=Sum('amount'))['total'] or Decimal('0')
+            )
+            pending_commission = (
+                link_commissions.filter(status='pending')
+                .aggregate(total=Sum('amount'))['total'] or Decimal('0')
+            )
             clicks = ReferralClick.objects.filter(referral_code=r.referral_code).count()
-            
+
             referral_link = f"http://localhost:3000/?ref={r.referral_code}&pid={r.product.id}"
-            
+
             referral_list.append({
                 'id': r.id,
                 'product_id': r.product.id,
@@ -903,7 +925,8 @@ class ProductReviewViewSet(viewsets.ModelViewSet):
                 'referral_link': referral_link,
                 'clicks': clicks,
                 'conversions': conversions,
-                'earned_commission': float(earned_commission),
+                'earned_commission': float(completed_commission),
+                'pending_commission': float(pending_commission),
                 'custom_discount_percent': r.custom_discount_percent,
                 'custom_commission_rate': r.custom_commission_rate,
                 'link_discount_percent': r.product.link_discount_percent,
@@ -911,19 +934,27 @@ class ProductReviewViewSet(viewsets.ModelViewSet):
             })
             total_clicks += clicks
 
-        total_commissions_count = AffiliateCommission.objects.filter(influencer=user).count()
-        total_commissions_earned = (
-            AffiliateCommission.objects.filter(influencer=user)
-            .aggregate(total=Sum('amount'))['total'] or Decimal('0')
-        )
-        
+        base_qs = AffiliateCommission.objects.filter(influencer=user).exclude(status='cancelled')
+        total_orders = base_qs.filter(level=1).values('order').distinct().count()
+        direct_earned = base_qs.filter(level=1, status='completed').aggregate(total=Sum('amount'))['total'] or Decimal('0')
+        direct_pending = base_qs.filter(level=1, status='pending').aggregate(total=Sum('amount'))['total'] or Decimal('0')
+        upline_earned = base_qs.filter(level=2, status='completed').aggregate(total=Sum('amount'))['total'] or Decimal('0')
+        upline_pending = base_qs.filter(level=2, status='pending').aggregate(total=Sum('amount'))['total'] or Decimal('0')
+        downline_count = user.downline.count()
+
         return Response({
             'referrals': referral_list,
+            'affiliate_code': user.affiliate_code,
+            'downline_count': downline_count,
             'summary': {
                 'total_referrals': reviews.count(),
                 'total_clicks': total_clicks,
-                'total_conversions': total_commissions_count,
-                'total_earned': float(total_commissions_earned)
+                'total_conversions': total_orders,
+                'total_earned': float(direct_earned),
+                'direct_pending': float(direct_pending),
+                'upline_earned': float(upline_earned),
+                'upline_pending': float(upline_pending),
+                'total_combined': float(direct_earned + upline_earned),
             }
         })
 

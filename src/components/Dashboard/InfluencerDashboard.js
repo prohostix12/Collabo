@@ -13,7 +13,7 @@ import ApprovalSuccessModal from './ApprovalSuccessModal';
 import MySupportTickets from '../Support/MySupportTickets';
 import { useAuth } from '../../contexts/AuthContext';
 
-const InfluencerDashboard = () => {
+const InfluencerDashboard = ({ onClose } = {}) => {
   const [activeTab, setActiveTab] = useState('overview');
   const [showApprovalModal, setShowApprovalModal] = useState(false);
   const { user } = useAuth();
@@ -22,7 +22,9 @@ const InfluencerDashboard = () => {
   // Affiliate Marketing States
   const [referralsData, setReferralsData] = useState({
     referrals: [],
-    summary: { total_referrals: 0, total_clicks: 0, total_conversions: 0, total_earned: 0 }
+    affiliate_code: '',
+    downline_count: 0,
+    summary: { total_referrals: 0, total_clicks: 0, total_conversions: 0, total_earned: 0, direct_pending: 0, upline_earned: 0, upline_pending: 0, total_combined: 0 }
   });
   const [pollIntervalId, setPollIntervalId] = useState(null);
   const [products, setProducts] = useState([]);
@@ -51,6 +53,8 @@ const InfluencerDashboard = () => {
       });
       setReferralsData({
         referrals: sorted,
+        affiliate_code: res.data.affiliate_code || '',
+        downline_count: res.data.downline_count || 0,
         summary: res.data.summary || {}
       });
     } catch (err) {
@@ -212,17 +216,10 @@ const InfluencerDashboard = () => {
     return matchesCategory && matchesSearch;
   });
 
-  const handleBuy = async (product) => {
-    try {
-      await api.post('/ecommerce/cart/add/', {
-        product: product.id,
-        quantity: 1
-      });
-      window.location.href = '/?view=cart';
-    } catch (err) {
-      console.error('Error adding to cart:', err);
-      window.location.href = '/?view=cart';
-    }
+  const handleBuy = (product) => {
+    // Open the product details page in the marketplace, replacing the dashboard in browser history
+    // so the back button returns to wherever the user was before the dashboard (not back here)
+    window.location.replace(`/?pid=${product.id}`);
   };
 
   const renderCatalog = () => (
@@ -257,7 +254,7 @@ const InfluencerDashboard = () => {
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
         {filteredProducts.map((p) => (
-          <div key={p.id} className="bg-white rounded-2xl border border-gray-200 overflow-hidden flex flex-col shadow-sm hover:shadow-md transition-shadow group">
+          <div key={p.id} className="bg-white rounded-2xl border border-gray-200 overflow-hidden flex flex-col shadow-sm hover:shadow-md transition-shadow group cursor-pointer" onClick={() => window.location.replace(`/?pid=${p.id}`)}>
             <div className="aspect-[4/3] bg-gray-100 relative overflow-hidden">
               <img src={p.image} alt={p.name} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" />
               <div className="absolute top-2 right-2 bg-white/90 backdrop-blur-sm px-2 py-1 rounded-lg text-[10px] font-black text-violet-650 shadow-sm">
@@ -278,7 +275,7 @@ const InfluencerDashboard = () => {
                     <span className="text-sm font-black text-gray-900">₹{parseFloat(p.price).toLocaleString()}</span>
                   )}
                 </div>
-                <div className="flex gap-2">
+                <div className="flex gap-2" onClick={e => e.stopPropagation()}>
                   <button
                     onClick={() => handleBuy(p)}
                     className="bg-primary-600 hover:bg-primary-700 text-white font-bold text-[10px] px-3 py-1.5 rounded-lg flex items-center transition-colors"
@@ -379,19 +376,19 @@ const InfluencerDashboard = () => {
             {/* Right: Landing Page + CollaborCart */}
             <div className="flex items-center gap-2 flex-shrink-0">
               <button
-                onClick={() => navigate('/collab')}
+                onClick={() => window.open(`/influencer/${user?.id}`, '_blank')}
                 className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold text-gray-700 bg-white border border-gray-200 hover:bg-gray-50 transition-all shadow-sm"
               >
                 My Page
               </button>
-              <a
-                href="/"
+              <button
+                onClick={() => onClose ? onClose() : navigate('/', { replace: true })}
                 className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold text-white transition-all hover:opacity-90 shadow-sm"
                 style={{ background: 'linear-gradient(135deg,#f97316,#ea580c)' }}
               >
                 <ShoppingBag className="w-3.5 h-3.5" />
                 <span className="hidden sm:inline">CollaborCart</span>
-              </a>
+              </button>
             </div>
           </div>
         </div>
@@ -631,19 +628,61 @@ const InfluencerDashboard = () => {
                 </div>
               </div>
 
+              {/* Recruit Link Banner */}
+              {referralsData.affiliate_code && (
+                <div className="mb-6 p-4 bg-gradient-to-r from-emerald-50 to-teal-50 border border-emerald-200 rounded-xl">
+                  <div className="flex items-center gap-2 mb-2">
+                    <Users className="w-4 h-4 text-emerald-600" />
+                    <span className="text-sm font-bold text-emerald-800">Your Affiliate Recruitment Link</span>
+                    <span className="text-[10px] bg-emerald-100 text-emerald-700 px-2 py-0.5 rounded-full font-bold">{referralsData.downline_count} recruited</span>
+                  </div>
+                  <p className="text-xs text-emerald-700 mb-2">Share this link. When someone you recruit makes a sale, you earn 50% of their commission.</p>
+                  <div className="flex items-center gap-2 bg-white border border-emerald-200 px-3 py-1.5 rounded-lg">
+                    <span className="text-[11px] font-mono text-gray-600 truncate flex-1">
+                      {window.location.origin}/register?affiliate={referralsData.affiliate_code}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        navigator.clipboard.writeText(`${window.location.origin}/register?affiliate=${referralsData.affiliate_code}`);
+                        toast.success('Recruitment link copied!');
+                      }}
+                      className="text-[10px] font-black text-emerald-600 hover:underline uppercase shrink-0"
+                    >
+                      Copy
+                    </button>
+                  </div>
+                </div>
+              )}
+
               {/* Stats Cards */}
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
                 <div className="bg-gradient-to-br from-primary-50 to-primary-100 rounded-lg p-4 border border-primary-200">
-                  <div className="text-sm text-gray-705 mb-1">Total Clicks</div>
+                  <div className="text-sm text-gray-600 mb-1">Total Clicks</div>
                   <div className="text-3xl font-bold text-gray-900">{referralsData.summary?.total_clicks || 0}</div>
                 </div>
                 <div className="bg-gradient-to-br from-gray-50 to-gray-100 rounded-lg p-4 border border-gray-200">
-                  <div className="text-sm text-gray-705 mb-1">Conversions</div>
+                  <div className="text-sm text-gray-600 mb-1">Orders</div>
                   <div className="text-3xl font-bold text-gray-900">{referralsData.summary?.total_conversions || 0}</div>
                 </div>
                 <div className="bg-gradient-to-br from-primary-50 to-primary-100 rounded-lg p-4 border border-primary-200">
-                  <div className="text-sm text-gray-705 mb-1">Commission Earned</div>
+                  <div className="text-sm text-gray-600 mb-1">Direct Earnings</div>
                   <div className="text-3xl font-bold text-gray-900">₹{(referralsData.summary?.total_earned || 0).toLocaleString()}</div>
+                  {(referralsData.summary?.direct_pending || 0) > 0 && (
+                    <div className="text-[11px] text-amber-600 font-semibold mt-1">
+                      + ₹{(referralsData.summary.direct_pending).toLocaleString()} pending
+                    </div>
+                  )}
+                </div>
+                <div className="bg-gradient-to-br from-emerald-50 to-teal-50 rounded-lg p-4 border border-emerald-200">
+                  <div className="text-sm text-emerald-700 mb-1">Upline Bonus</div>
+                  <div className="text-3xl font-bold text-emerald-700">₹{(referralsData.summary?.upline_earned || 0).toLocaleString()}</div>
+                  {(referralsData.summary?.upline_pending || 0) > 0 && (
+                    <div className="text-[11px] text-amber-600 font-semibold mt-1">
+                      + ₹{(referralsData.summary.upline_pending).toLocaleString()} pending
+                    </div>
+                  )}
+                  <div className="text-[10px] text-emerald-600 mt-0.5">From your recruits' sales</div>
                 </div>
               </div>
 
@@ -677,7 +716,7 @@ const InfluencerDashboard = () => {
                           <div className="flex flex-wrap items-center gap-2">
                             <span className="text-[10px] text-gray-700 bg-gray-200 px-2 py-0.5 rounded-full font-bold">Clicks: {ref.clicks}</span>
                             <span className="text-[10px] text-emerald-700 bg-emerald-105 px-2 py-0.5 rounded-full font-bold">Sales: {ref.conversions}</span>
-                            <span className="text-[10px] text-primary-700 bg-primary-50 px-2 py-0.5 rounded-full font-bold">Earned: ₹{(ref.earned_commission || 0).toLocaleString()}</span>
+                            <span className="text-[10px] text-primary-700 bg-primary-50 px-2 py-0.5 rounded-full font-bold">Earned: ₹{(ref.earned_commission || 0).toLocaleString()}{(ref.pending_commission || 0) > 0 ? ` + ₹${Number(ref.pending_commission).toLocaleString()} pending` : ''}</span>
                           </div>
                           <div className="flex items-center gap-2 bg-white border border-gray-200 px-3 py-1.5 rounded-xl justify-between w-full md:w-80 shadow-sm">
                             <span className="text-[10px] font-mono text-gray-600 truncate w-52">{ref.referral_link}</span>

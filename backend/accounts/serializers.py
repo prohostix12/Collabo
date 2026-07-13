@@ -5,21 +5,30 @@ from .models import User, InfluencerProfile, CompanyProfile, SellerProfile
 class UserRegistrationSerializer(serializers.ModelSerializer):
     password = serializers.CharField(write_only=True, min_length=8)
     password_confirm = serializers.CharField(write_only=True)
-    
+    referred_by_code = serializers.CharField(write_only=True, required=False, allow_blank=True)
+
     class Meta:
         model = User
-        fields = ('email', 'username', 'password', 'password_confirm', 'user_type', 'phone')
-    
+        fields = ('email', 'username', 'password', 'password_confirm', 'user_type', 'phone', 'referred_by_code')
+
     def validate(self, attrs):
         if attrs['password'] != attrs['password_confirm']:
             raise serializers.ValidationError("Passwords don't match")
         return attrs
-    
+
     def create(self, validated_data):
         validated_data.pop('password_confirm')
+        referred_by_code = validated_data.pop('referred_by_code', '').strip().upper()
         password = validated_data.pop('password')
         user = User.objects.create_user(**validated_data)
         user.set_password(password)
+        if referred_by_code:
+            try:
+                recruiter = User.objects.get(affiliate_code=referred_by_code)
+                if recruiter.pk != user.pk:
+                    user.referred_by = recruiter
+            except User.DoesNotExist:
+                pass
         user.save()
         return user
 
@@ -146,11 +155,12 @@ class UserSerializer(serializers.ModelSerializer):
     
     class Meta:
         model = User
-        fields = ('id', 'email', 'username', 'user_type', 'phone', 'is_verified', 
+        fields = ('id', 'email', 'username', 'user_type', 'phone', 'is_verified',
                  'created_at', 'influencer_profile', 'company_profile', 'seller_profile',
-                 'approval_status', 'is_approved', 'rejection_reason', 'approval_shown', 'reward_points')
-        read_only_fields = ('id', 'created_at', 'approval_status', 'is_approved', 
-                           'rejection_reason', 'approval_shown', 'user_type')
+                 'approval_status', 'is_approved', 'rejection_reason', 'approval_shown',
+                 'reward_points', 'affiliate_code')
+        read_only_fields = ('id', 'created_at', 'approval_status', 'is_approved',
+                           'rejection_reason', 'approval_shown', 'user_type', 'affiliate_code')
 
 
 class ChangePasswordSerializer(serializers.Serializer):

@@ -7,7 +7,6 @@ import ToastContainer from './components/Notifications/ToastContainer';
 import Login from './components/Auth/Login';
 import Register from './components/Auth/Register';
 import ForgotPassword from './components/Auth/ForgotPassword';
-import InfluencerDashboard from './components/Dashboard/InfluencerDashboard';
 import CompanyDashboard from './components/Dashboard/CompanyDashboard';
 import AdminDashboard from './components/Dashboard/AdminDashboard';
 import Layout from './components/Layout/Layout';
@@ -51,7 +50,7 @@ function AppRoutes() {
       {/* Public Routes */}
       <Route path="/" element={<EcommerceMarketplace />} />
       <Route path="/sell" element={<SellOnCollabo />} />
-      <Route path="/collab" element={user?.user_type === 'company' ? <CollabHub /> : <LandingPage />} />
+      <Route path="/collab" element={user?.user_type === 'company' ? <CollabHub /> : user?.user_type === 'influencer' ? <Navigate to="/" replace /> : <LandingPage />} />
       <Route path="/about" element={<AboutPage />} />
       <Route path="/services" element={<ServicesPage />} />
       <Route path="/creators" element={<CreatorsPage />} />
@@ -76,9 +75,10 @@ function AppRoutes() {
         <ProtectedRoute>
           {user?.user_type === 'buyer' ? (
             <Navigate to="/" replace />
+          ) : user?.user_type === 'influencer' ? (
+            <Navigate to="/#hub" replace />
           ) : (
             <Layout>
-              {user?.user_type === 'influencer' && <InfluencerDashboard />}
               {user?.user_type === 'company' && <CompanyDashboard />}
               {user?.user_type === 'admin' && <AdminDashboard />}
             </Layout>
@@ -88,9 +88,7 @@ function AppRoutes() {
       
       <Route path="/influencer/*" element={
         <ProtectedRoute allowedUserTypes={['influencer']}>
-          <Layout>
-            <InfluencerDashboard />
-          </Layout>
+          <Navigate to="/#hub" replace />
         </ProtectedRoute>
       } />
       
