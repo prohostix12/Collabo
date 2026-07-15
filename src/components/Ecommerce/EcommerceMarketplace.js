@@ -2108,7 +2108,15 @@ export default function EcommerceMarketplace({ inlineMode = false, onBackToSelec
                     )}
                   </span>
                 ) : (
-                  <span className="truncate">{tickerExtraMessages[tickerMsgIndex - 1]}</span>
+                  <span className="truncate flex items-center gap-2">
+                    <span className="truncate">{tickerExtraMessages[tickerMsgIndex - 1]}</span>
+                    <button
+                      onClick={handleInviteFriendsClick}
+                      className="hidden sm:inline-flex items-center gap-1 bg-orange-500 hover:bg-orange-600 text-white px-2.5 py-1 rounded-md font-black text-[10px] uppercase tracking-wide flex-shrink-0 transition-colors"
+                    >
+                      <Gift className="w-3 h-3" /> Invite Friends
+                    </button>
+                  </span>
                 )}
               </div>
               <ChevronRight className="w-4 h-4 flex-shrink-0" />
