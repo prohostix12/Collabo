@@ -1147,6 +1147,16 @@ class CustomerReferralLinkViewSet(viewsets.ModelViewSet):
             if referred_via and referred_via.pk == request.user.pk:
                 referred_via = None  # can't be your own upline
 
+        # Fall back to the account-level recruiter (whoever's signup invite link this
+        # user joined through) when there's no product-specific referral active. Without
+        # this, a user who joined via someone's "Invite Friends" link — rather than by
+        # clicking a specific product link — would generate their own referral links with
+        # no upline at all, and their recruiter would never earn anything from them.
+        if not referred_via:
+            account_referrer = getattr(request.user, 'referred_by', None)
+            if account_referrer and account_referrer.pk != request.user.pk:
+                referred_via = account_referrer
+
         link, created = CustomerReferralLink.objects.get_or_create(
             user=request.user, product=product, defaults={'referred_via': referred_via}
         )
