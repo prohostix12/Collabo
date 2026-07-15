@@ -573,10 +573,16 @@ export default function EcommerceMarketplace({ inlineMode = false, onBackToSelec
   }, [selectedCartItems]);
 
   const cartInitializedRef = useRef(false);
+  const cartFetchedOnceRef = useRef(false);
   useEffect(() => {
     const cartIds = cart.map(i => i.id);
     if (!cartInitializedRef.current) {
-      if (cartIds.length === 0) return; // wait for cart to load from API
+      // Wait for the real initial fetchCart() API call to resolve — not just for
+      // cartIds to be non-empty, since an empty cart is a valid initial state too
+      // (e.g. a first-time "Buy Now" adds the very first item right after this
+      // resolves, and that item must be treated as newly-added, not as part of
+      // session restore).
+      if (!cartFetchedOnceRef.current) return;
       cartInitializedRef.current = true;
       // Filter restored selection to only IDs still in cart (removes stale IDs from old sessions)
       setSelectedCartItems(prev => prev.filter(id => cartIds.includes(id)));
@@ -1212,6 +1218,8 @@ export default function EcommerceMarketplace({ inlineMode = false, onBackToSelec
       setCart(formatted);
     } catch (err) {
       console.error("Error fetching cart:", err);
+    } finally {
+      cartFetchedOnceRef.current = true;
     }
   };
 
