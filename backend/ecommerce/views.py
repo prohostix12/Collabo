@@ -504,12 +504,17 @@ def create_order_for_user(user, data):
         item.product.stock -= item.quantity
         item.product.save()
 
-        # Process referral commission for this product if it has a valid referral
+        # Process referral commission for this product if it has a valid referral.
+        # product_link_reward_paid tracks whether THIS item already paid out via a
+        # specific product/referral link, so the signup-referral fallback below never
+        # double-pays the same upline for the same purchase.
         product_id_str = str(item.product.id)
         ref_code_for_item = valid_referral_map.get(product_id_str)
+        product_link_reward_paid = False
         if ref_code_for_item:
             review = ProductReview.objects.filter(referral_code=ref_code_for_item, product=item.product).first()
             if review:
+                product_link_reward_paid = True
                 if review.custom_commission_rate is not None:
                     rate = review.custom_commission_rate
                 else:
@@ -559,6 +564,7 @@ def create_order_for_user(user, data):
                 # Not an influencer link — check for a customer-generated referral link
                 cref_link = CustomerReferralLink.objects.filter(referral_code=ref_code_for_item, product=item.product).first()
                 if cref_link:
+                    product_link_reward_paid = True
                     item_total = Decimal(str(order_item.price * order_item.quantity))
                     discount_pct = item.product.link_discount_percent
                     item_referral_discount = item_total * Decimal(str(discount_pct)) / Decimal('100')
@@ -593,10 +599,13 @@ def create_order_for_user(user, data):
         # signup via the "Affiliate Recruitment Link") earns on EVERY order the buyer
         # places for the rest of their time on the platform — not just orders that go
         # through a specific product/referral link. Their own recruiter gets half of
-        # that, 2 levels deep. This runs independently of (and stacks with) whatever
-        # product-link referral reward was processed above for this same item.
+        # that, 2 levels deep. Only fires when this item did NOT already pay out via a
+        # specific product/referral link above — otherwise the same upline could get
+        # paid twice for the same purchase (once per mechanism) if, e.g., the buyer's
+        # signup recruiter and their active product-link referrer happen to be the
+        # same person, which silently doubled their reward.
         signup_referrer = getattr(user, 'referred_by', None)
-        if signup_referrer:
+        if signup_referrer and not product_link_reward_paid:
             item_total_signup = Decimal(str(order_item.price * order_item.quantity))
             signup_reward = (item_total_signup * Decimal(str(item.product.link_discount_percent)) / Decimal('100')).quantize(Decimal('0.01'))
             if signup_reward > 0:
