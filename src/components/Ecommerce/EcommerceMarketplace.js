@@ -4563,8 +4563,18 @@ export default function EcommerceMarketplace({ inlineMode = false, onBackToSelec
                           }
                         }, 50);
                       } else {
-                        // Razorpay Payment (Card / UPI)
+                        // Razorpay Payment (Card / UPI) — load the SDK on demand, only when
+                        // actually needed, instead of on every single page load
                         try {
+                          if (!window.Razorpay) {
+                            await new Promise((resolve) => {
+                              const script = document.createElement('script');
+                              script.src = 'https://checkout.razorpay.com/v1/checkout.js';
+                              script.onload = () => resolve(true);
+                              script.onerror = () => resolve(false);
+                              document.body.appendChild(script);
+                            });
+                          }
                           const amountAfterPoints = redeemPoints ? Math.max(0, cartTotal - Math.min(user?.reward_points || 0, cartTotal)) : cartTotal;
                           const finalAmount = redeemWallet ? Math.max(0, amountAfterPoints - Math.min(walletData?.balance || 0, amountAfterPoints)) : amountAfterPoints;
                           const orderRes = await api.post('/ecommerce/razorpay/create-order/', {

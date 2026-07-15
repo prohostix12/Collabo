@@ -47,8 +47,8 @@ const UserManagement = () => {
         await api.delete(`/auth/admin/delete-influencer/${userId}/`);
         toast.success('User deleted');
         fetchUsers();
-      } catch {
-        toast.error('Failed to delete user');
+      } catch (err) {
+        toast.error(err.response?.data?.error || 'Failed to delete user');
       }
     }, "Delete");
   };

@@ -742,20 +742,28 @@ def bulk_approve_influencers(request):
 @permission_classes([IsAdminUser])
 def delete_influencer(request, user_id):
     """
-    Delete an influencer account (usually for rejected accounts)
+    Delete any user account. Despite the name (originally built just for
+    rejected influencer applications), this is now the general-purpose
+    delete action behind the admin User Management page, which lists and
+    deletes users of every type — so it must not be restricted to influencers.
     """
     try:
-        user = User.objects.get(id=user_id, user_type='influencer')
+        user = User.objects.get(id=user_id)
     except User.DoesNotExist:
         return Response({
-            'error': 'Influencer not found'
+            'error': 'User not found'
         }, status=status.HTTP_404_NOT_FOUND)
-    
+
+    if user.id == request.user.id:
+        return Response({
+            'error': 'You cannot delete your own account'
+        }, status=status.HTTP_400_BAD_REQUEST)
+
     username = user.username
     user.delete()
-    
+
     return Response({
-        'message': f'Influencer {username} deleted successfully'
+        'message': f'User {username} deleted successfully'
     }, status=status.HTTP_200_OK)
 
 
