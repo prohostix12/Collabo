@@ -1067,10 +1067,8 @@ export default function EcommerceMarketplace({ inlineMode = false, onBackToSelec
       
       const brandResponse = await api.get('/ecommerce/brands/?page_size=1000');
       const brandData = Array.isArray(brandResponse.data) ? brandResponse.data : (brandResponse.data.results || []);
-      if (brandData.length > 0) {
-        setBrandsList(brandData);
-        setDynamicBrands(brandData.map(b => b.name));
-      }
+      setBrandsList(brandData);
+      setDynamicBrands(brandData.map(b => b.name));
     } catch (err) {
       console.error("Error fetching categories and brands:", err);
     }
@@ -1168,6 +1166,30 @@ export default function EcommerceMarketplace({ inlineMode = false, onBackToSelec
     } catch (err) {
       console.error("Error fetching seller products:", err);
     }
+  };
+
+  const handleEditProduct = (p) => {
+    setEditingProduct(p);
+    setEditProdName(p.name);
+    setEditProdCategory(p.category);
+    setEditProdBrand(p.brand);
+    setEditProdPrice(p.price);
+    setEditProdDiscountPrice(p.discount_price || p.price);
+    setEditProdRating(p.rating || '4.5');
+    setEditProdReviewsCount(p.reviewsCount || '10');
+    setEditProdImage(p.image);
+    setEditProdImages(Array.isArray(p.images) ? [...p.images] : []);
+    setEditProdDescription(p.description || '');
+    setEditProdStock(p.stock || '10');
+    setEditProdShippingCharge(p.product_shipping_charge || '49');
+    setEditProdDelivery(p.delivery || 'Free delivery by Tomorrow');
+    setEditProdCommissionRate(p.commission_rate || '10');
+    setEditProdLinkDiscount(p.link_discount_percent ?? '0');
+    setEditProdSellerInfo(p.seller_info || '');
+    setEditProdHighlights(Array.isArray(p.highlights) ? p.highlights.join('\n') : (p.highlights || ''));
+    setEditProdOffers(Array.isArray(p.offers) ? p.offers.join('\n') : (p.offers || ''));
+    setEditProdSpecifications(typeof p.specifications === 'string' ? p.specifications : JSON.stringify(p.specifications || {}));
+    setEditProdQaSection(typeof p.qa_section === 'string' ? p.qa_section : JSON.stringify(p.qa_section || []));
   };
 
   // Sync / fetch cart
@@ -2572,9 +2594,8 @@ export default function EcommerceMarketplace({ inlineMode = false, onBackToSelec
                         <img src="/collabo-logo.png" alt="Collabo" className="h-7 sm:h-8 object-contain scale-[1.8] origin-left" />
                       </div>
                       <p className="text-sm font-black text-slate-900 dark:text-white leading-tight mb-0.5">10% Instant Discount</p>
-                      <p className="text-xs font-semibold text-slate-600 dark:text-slate-400 line-clamp-1">On HDFC Bank Credit Cards</p>
+                      <p className="text-xs font-semibold text-slate-600 dark:text-slate-400 line-clamp-1">On First Order</p>
                     </div>
-                    <div className="absolute bottom-2 right-2 bg-slate-200/80 dark:bg-slate-800/80 px-1.5 py-0.5 rounded text-[8px] font-bold text-slate-500 dark:text-slate-400 z-20 backdrop-blur-sm shadow-sm">AD</div>
                  </div>
                  <div className="relative overflow-hidden hidden sm:flex items-center gap-4 bg-[#fdfbf6] dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-4 sm:p-5 shadow-[0_4px_12px_rgba(0,0,0,0.05)] hover:shadow-md transition-shadow group">
                     <div className="absolute -right-4 -bottom-4 w-24 h-24 bg-blue-400 dark:bg-blue-500 rounded-full blur-2xl opacity-20 pointer-events-none transition-opacity group-hover:opacity-30" />
@@ -2586,7 +2607,6 @@ export default function EcommerceMarketplace({ inlineMode = false, onBackToSelec
                       <p className="text-sm font-black text-slate-900 dark:text-white leading-tight mb-0.5">Free Fast Delivery</p>
                       <p className="text-xs font-semibold text-slate-600 dark:text-slate-400 line-clamp-1">On all orders over ₹499</p>
                     </div>
-                    <div className="absolute bottom-2 right-2 bg-slate-200/80 dark:bg-slate-800/80 px-1.5 py-0.5 rounded text-[8px] font-bold text-slate-500 dark:text-slate-400 z-20 backdrop-blur-sm shadow-sm">AD</div>
                  </div>
                  <div className="relative overflow-hidden hidden sm:flex items-center gap-4 bg-[#fdfbf6] dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-4 sm:p-5 shadow-[0_4px_12px_rgba(0,0,0,0.05)] hover:shadow-md transition-shadow group">
                     <div className="absolute -right-4 -bottom-4 w-24 h-24 bg-emerald-400 dark:bg-emerald-500 rounded-full blur-2xl opacity-20 pointer-events-none transition-opacity group-hover:opacity-30" />
@@ -2598,7 +2618,6 @@ export default function EcommerceMarketplace({ inlineMode = false, onBackToSelec
                       <p className="text-sm font-black text-slate-900 dark:text-white leading-tight mb-0.5">Secure Payments</p>
                       <p className="text-xs font-semibold text-slate-600 dark:text-slate-400 line-clamp-1">100% Protected Transactions</p>
                     </div>
-                    <div className="absolute bottom-2 right-2 bg-slate-200/80 dark:bg-slate-800/80 px-1.5 py-0.5 rounded text-[8px] font-bold text-slate-500 dark:text-slate-400 z-20 backdrop-blur-sm shadow-sm">AD</div>
                  </div>
               </div>
 
@@ -5511,133 +5530,115 @@ export default function EcommerceMarketplace({ inlineMode = false, onBackToSelec
 
         {/* VIEW: SELLER PORTAL */}
         {currentView === 'dashboard' && (
-          <div className="space-y-8">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-200 dark:border-slate-800 pb-5">
-              <div className="flex items-center gap-4">
+          <div className="space-y-3">
+            {/* Header */}
+            <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl py-1 px-4 sm:py-1.5 sm:px-5 flex flex-col sm:flex-row sm:items-center justify-between gap-2 shadow-sm">
+              <div className="flex items-center gap-3">
                 {!inlineMode && (
-                  <button onClick={() => window.history.back()} className="flex shrink-0 items-center justify-center w-10 h-10 rounded-full bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 transition-colors">
-                    <ChevronLeft className="w-6 h-6 text-slate-600 dark:text-slate-300" />
+                  <button onClick={() => window.history.back()} className="flex shrink-0 items-center justify-center w-8 h-8 rounded-full bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 transition-colors">
+                    <ChevronLeft className="w-5 h-5 text-slate-600 dark:text-slate-300" />
                   </button>
                 )}
-                <div className="space-y-1">
-                  {inlineMode && onBackToSelect && (
-                    <button 
-                      onClick={onBackToSelect}
-                      className="mb-2 px-3 py-1.5 bg-slate-900 text-white dark:bg-white dark:text-slate-950 font-black text-[10px] uppercase tracking-wider rounded-xl shadow-md transition-all hover:bg-slate-850 dark:hover:bg-slate-100 flex items-center gap-1.5"
-                    >
-                      <span>← Back to Portals</span>
-                    </button>
-                  )}
-                  <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest block">SaaS Admin Dashboard</span>
-                  <h1 className="text-2xl font-black tracking-tight dark:text-white">Admin Console</h1>
+                <div>
+                  <h1 className="text-lg font-bold tracking-tight text-slate-900 dark:text-white">Collabo Store Portal</h1>
                 </div>
               </div>
-              <div className="flex items-center gap-3">
-                <button 
-                  onClick={() => setAdminView('overview')}
-                  className={`px-4 py-2 rounded-xl text-xs font-bold transition-all ${adminView === 'overview' ? 'bg-slate-950 text-white' : 'bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-350'}`}
-                >
-                  Metrics
-                </button>
-                <button 
-                  onClick={() => setAdminView('products')}
-                  className={`px-4 py-2 rounded-xl text-xs font-bold transition-all ${adminView === 'products' ? 'bg-slate-950 text-white' : 'bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-350'}`}
-                >
-                  Inventories
-                </button>
-                <button 
-                  onClick={() => setAdminView('orders')}
-                  className={`px-4 py-2 rounded-xl text-xs font-bold transition-all ${adminView === 'orders' ? 'bg-slate-950 text-white' : 'bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-350'}`}
-                >
-                  Orders
-                </button>
-                {(user?.is_staff || user?.user_type === 'admin') && (
-                  <>
-                    <button 
-                      onClick={() => setAdminView('categories')}
-                      className={`px-4 py-2 rounded-xl text-xs font-bold transition-all ${adminView === 'categories' ? 'bg-slate-950 text-white' : 'bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-350'}`}
-                    >
-                      Categories
-                    </button>
-                    <button 
-                      onClick={() => setAdminView('brands')}
-                      className={`px-4 py-2 rounded-xl text-xs font-bold transition-all ${adminView === 'brands' ? 'bg-slate-950 text-white' : 'bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-350'}`}
-                    >
-                      Brands
-                    </button>
-                    <button 
-                      onClick={() => { setAdminView('store-settings'); if (!editSettings) setEditSettings(storeSettings); }}
-                      className={`px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 ${adminView === 'store-settings' ? 'bg-orange-500 text-white' : 'bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-350'}`}
-                    >
-                      <Settings className="w-3.5 h-3.5" />
-                      Store Settings
-                    </button>
-                    <button
-                      onClick={() => setAdminView('affiliates')}
-                      className={`px-4 py-2 rounded-xl text-xs font-bold transition-all ${adminView === 'affiliates' ? 'bg-slate-950 text-white' : 'bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-350'}`}
-                    >
-                      Affiliates
-                    </button>
-                    <button
-                      onClick={() => setAdminView('wallets')}
-                      className={`px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 ${adminView === 'wallets' ? 'bg-violet-600 text-white' : 'bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-350'}`}
-                    >
-                      <Gift className="w-3.5 h-3.5" /> Referral Wallets
-                    </button>
-                    <button
-                      onClick={() => { setAdminView('tickets'); fetchSupportTickets(); }}
-                      className={`px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 ${adminView === 'tickets' ? 'bg-rose-500 text-white' : 'bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-350'}`}
-                    >
-                      <Mail className="w-3.5 h-3.5" /> Tickets
-                    </button>
-                    <button
-                      onClick={() => setAdminView('broadcast')}
-                      className={`px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 ${adminView === 'broadcast' ? 'bg-green-600 text-white' : 'bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-350'}`}
-                    >
-                      📢 Broadcast
-                    </button>
-                  </>
+              <div className="flex items-center gap-2.5">
+                {inlineMode && onBackToSelect && (
+                  <button 
+                    onClick={onBackToSelect}
+                    className="text-[11px] font-medium text-slate-650 dark:text-slate-300 hover:text-slate-950 dark:hover:text-white px-3 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors flex items-center gap-1"
+                  >
+                    <span>← Back to Portals</span>
+                  </button>
                 )}
+                <div className="bg-slate-950 dark:bg-slate-800 text-white px-3 py-1.5 rounded-lg text-[11px] font-semibold flex items-center gap-1.5 shadow-sm">
+                  <Shield className="w-3.5 h-3.5 text-orange-500" /> Store Admin
+                </div>
               </div>
             </div>
 
+            {/* Tab Navigation */}
+            <nav className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-1.5 sticky top-0 z-10 shadow-sm">
+              <div className="flex items-center gap-0.5 overflow-x-auto no-scrollbar">
+                {[
+                  { id: 'overview', label: 'Metrics', icon: BarChart3 },
+                  { id: 'products', label: 'Inventories', icon: Package },
+                  { id: 'orders', label: 'Orders', icon: ShoppingBag },
+                  ...(user?.is_staff || user?.user_type === 'admin' ? [
+                    { id: 'categories', label: 'Categories', icon: Tag },
+                    { id: 'brands', label: 'Brands', icon: Award },
+                    { id: 'store-settings', label: 'Store Settings', icon: Settings },
+                    { id: 'affiliates', label: 'Affiliates', icon: Users },
+                    { id: 'wallets', label: 'Referral Wallets', icon: Gift },
+                    { id: 'tickets', label: 'Tickets', icon: Mail },
+                    { id: 'broadcast', label: 'Broadcast', icon: Sparkles }
+                  ] : [])
+                ].map((tab) => {
+                  const Icon = tab.icon;
+                  const isActive = adminView === tab.id;
+                  return (
+                    <button
+                      key={tab.id}
+                      onClick={() => {
+                        if (tab.id === 'store-settings') {
+                          if (!editSettings) setEditSettings(storeSettings);
+                        } else if (tab.id === 'tickets') {
+                          fetchSupportTickets();
+                        }
+                        setAdminView(tab.id);
+                      }}
+                      className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[11px] font-medium transition-colors whitespace-nowrap ${
+                        isActive
+                          ? 'bg-slate-950 text-white dark:bg-slate-800 dark:text-white shadow-sm'
+                          : 'text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800'
+                      }`}
+                    >
+                      <Icon className="w-3.5 h-3.5" />
+                      {tab.label}
+                    </button>
+                  );
+                })}
+              </div>
+            </nav>
+
             {/* OVERVIEW METRICS */}
             {adminView === 'overview' && (
-              <div className="space-y-8">
+              <div className="space-y-6">
                 
                 {/* Stats */}
-                <div className="grid grid-cols-3 sm:grid-cols-3 lg:grid-cols-4 gap-2 sm:gap-6">
+                <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
                   {[
                     { title: 'Revenue Earned', value: `₹${sellerRevenue.toLocaleString()}`, change: 'Real-time sales revenue', icon: TrendingUp, color: 'text-orange-500' },
                     { title: 'Merchant Orders', value: sellerOrders.length.toString(), change: 'Total orders received', icon: Package, color: 'text-indigo-500' },
                     { title: 'Active Listings', value: sellerProducts.length.toString(), change: 'Products in catalog', icon: Users, color: 'text-cyan-500' },
                     { title: 'Low Inventory Alert', value: `${lowStockCount} items warning`, change: lowStockCount > 0 ? 'Requires attention' : 'All items well stocked', icon: Info, color: 'text-rose-500' }
                   ].map((stat, idx) => (
-                    <div key={idx} className="bg-white dark:bg-slate-900 border border-slate-200/50 dark:border-slate-800/50 p-5 rounded-[24px] space-y-3 shadow-sm hover:shadow-md transition-all">
+                    <div key={idx} className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-3.5 rounded-xl space-y-2.5 shadow-sm hover:shadow-md transition-all">
                       <div className="flex justify-between items-center">
-                        <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest">{stat.title}</span>
-                        <stat.icon className={`w-4 h-4 ${stat.color}`} />
+                        <span className="text-[10px] font-semibold text-slate-400 dark:text-slate-500 uppercase tracking-widest">{stat.title}</span>
+                        <stat.icon className={`w-3.5 h-3.5 ${stat.color}`} />
                       </div>
                       <div className="space-y-0.5">
-                        <h3 className="text-xl font-black dark:text-white">{stat.value}</h3>
-                        <p className="text-[9px] text-slate-400 font-bold">{stat.change}</p>
+                        <h3 className="text-lg font-bold dark:text-white">{stat.value}</h3>
+                        <p className="text-[10px] text-slate-500 dark:text-slate-400 font-medium">{stat.change}</p>
                       </div>
                     </div>
                   ))}
                 </div>
 
                 {/* Sales Chart using orange/coral themes */}
-                <div className="bg-white dark:bg-slate-900 border border-slate-200/50 dark:border-slate-800/50 p-6 rounded-[32px] space-y-4 shadow-sm">
-                  <h3 className="font-extrabold text-xs dark:text-white flex items-center gap-1.5 uppercase tracking-wider text-slate-400">
+                <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-4 sm:p-5 rounded-xl space-y-4 shadow-sm">
+                  <h3 className="font-semibold text-xs dark:text-white flex items-center gap-1.5 uppercase tracking-wider text-slate-450">
                     <BarChart3 className="w-4 h-4 text-orange-500" />
                     <span>Monthly Revenue Statistics (Last 6 Months)</span>
                   </h3>
                   
-                  <div className="w-full aspect-[4/1] bg-[#FFFDF9] dark:bg-slate-850 rounded-2xl p-4 flex items-end justify-between gap-3 border border-orange-200/10">
+                  <div className="w-full aspect-[4/1] bg-[#FFFDF9] dark:bg-slate-850 rounded-xl p-4 flex items-end justify-between gap-3 border border-orange-200/10">
                     {monthlyRevenueData.map((bar, idx) => (
                       <div key={idx} className="flex-1 flex flex-col items-center gap-2 h-full justify-end">
                         <div 
-                          className="w-full bg-gradient-to-t from-orange-500 to-amber-500 rounded-t-xl transition-all duration-1000"
+                          className="w-full bg-gradient-to-t from-orange-500 to-amber-500 rounded-t-lg transition-all duration-1000"
                           style={{ height: `${bar.val}%` }}
                           title={`₹${bar.revenue.toLocaleString()}`}
                         />
@@ -6139,15 +6140,20 @@ export default function EcommerceMarketplace({ inlineMode = false, onBackToSelec
                       [...sellerProducts].sort((a, b) => a.id - b.id).filter(p => !catalogSearch || p.name?.toLowerCase().includes(catalogSearch.toLowerCase()) || p.category?.toLowerCase().includes(catalogSearch.toLowerCase()) || String(p.id).includes(catalogSearch)).map((p, idx) => ( // eslint-disable-line no-undef
                         <div key={idx} className="p-3.5 bg-slate-50 dark:bg-slate-800/60 rounded-2xl flex items-center justify-between border border-slate-100 dark:border-slate-700/50 text-xs">
                           <div className="flex items-center gap-3">
-                            <span className="text-[10px] font-black text-slate-400 dark:text-slate-500 w-5 text-center shrink-0">#{idx + 1}</span>
+                            <span className="text-[10px] font-bold text-slate-400 dark:text-slate-500 w-12 text-center shrink-0">ID: {p.id}</span>
                             <div
                               className="w-10 h-10 bg-slate-200 rounded-xl overflow-hidden shrink-0 flex items-center justify-center cursor-pointer hover:ring-2 hover:ring-orange-400 transition-all"
                               onClick={() => setLightboxImage(p.image)}
                             >
                               <img src={p.image} className="max-h-full object-cover" alt="prod" />
                             </div>
-                            <div className="space-y-0.5 font-bold">
-                              <h4 className="font-extrabold text-slate-800 dark:text-white line-clamp-1 text-xs">{p.name}</h4>
+                            <div className="space-y-0.5 font-bold flex-1 min-w-0">
+                              <h4 
+                                onClick={() => handleEditProduct(p)}
+                                className="font-extrabold text-slate-800 dark:text-white line-clamp-1 text-xs hover:text-orange-500 cursor-pointer transition-colors"
+                              >
+                                {p.name}
+                              </h4>
                               <span className="text-[10px] text-slate-400 font-semibold">{p.brand} • {p.category} • stock: {p.stock}</span>
                             </div>
                           </div>
@@ -6163,29 +6169,7 @@ export default function EcommerceMarketplace({ inlineMode = false, onBackToSelec
                             </button>
 
                             <button
-                              onClick={() => {
-                                setEditingProduct(p);
-                                setEditProdName(p.name);
-                                setEditProdCategory(p.category);
-                                setEditProdBrand(p.brand);
-                                setEditProdPrice(p.price);
-                                setEditProdDiscountPrice(p.discount_price || p.price);
-                                setEditProdRating(p.rating || '4.5');
-                                setEditProdReviewsCount(p.reviewsCount || '10');
-                                setEditProdImage(p.image);
-                                setEditProdImages(Array.isArray(p.images) ? [...p.images] : []);
-                                setEditProdDescription(p.description || '');
-                                setEditProdStock(p.stock || '10');
-                                setEditProdShippingCharge(p.product_shipping_charge || '49');
-                                setEditProdDelivery(p.delivery || 'Free delivery by Tomorrow');
-                                setEditProdCommissionRate(p.commission_rate || '10');
-                                setEditProdLinkDiscount(p.link_discount_percent ?? '0');
-                                setEditProdSellerInfo(p.seller_info || '');
-                                setEditProdHighlights(Array.isArray(p.highlights) ? p.highlights.join('\n') : (p.highlights || ''));
-                                setEditProdOffers(Array.isArray(p.offers) ? p.offers.join('\n') : (p.offers || ''));
-                                setEditProdSpecifications(typeof p.specifications === 'string' ? p.specifications : JSON.stringify(p.specifications || {}));
-                                setEditProdQaSection(typeof p.qa_section === 'string' ? p.qa_section : JSON.stringify(p.qa_section || []));
-                              }}
+                              onClick={() => handleEditProduct(p)}
                               className="p-1.5 text-blue-500 hover:bg-blue-50 dark:hover:bg-blue-950/20 rounded-lg border border-blue-100 dark:border-blue-900/30"
                               title="Edit Product"
                             >
@@ -6284,6 +6268,11 @@ export default function EcommerceMarketplace({ inlineMode = false, onBackToSelec
                             <div className="text-left sm:text-right">
                               <span className="text-[10px] text-slate-400 font-bold block uppercase tracking-wider">Seller Payout</span>
                               <span className="font-black text-sm text-slate-900 dark:text-white">₹{sellerSubtotal.toLocaleString()}</span>
+                              {Number(ord.discount_amount) > 0 && (
+                                <p className="text-[9px] text-emerald-500 font-bold mt-0.5">
+                                  Buyer paid ₹{Number(ord.final_amount).toLocaleString()} (₹{Number(ord.discount_amount).toLocaleString()} referral/coupon discount)
+                                </p>
+                              )}
                             </div>
                           </div>
 
