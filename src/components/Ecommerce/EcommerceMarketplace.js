@@ -5409,7 +5409,10 @@ export default function EcommerceMarketplace({ inlineMode = false, onBackToSelec
                         password_confirm: authPassword,
                         phone: authPhone ? `+91${authPhone}` : '',
                         user_type: 'buyer',
-                        referred_by_code: signupAffiliateCode
+                        // Prefer a personal "Invite Friends" code; fall back to whatever
+                        // product referral link brought this visitor here, so a brand-new
+                        // signup via either link type binds to whoever sent it.
+                        referred_by_code: signupAffiliateCode || localStorage.getItem('referral_code') || ''
                       });
                       if (result.success) {
                         localStorage.removeItem('signup_affiliate_code');

@@ -560,48 +560,14 @@ def create_order_for_user(user, data):
                         status=commission_status,
                         level=2,
                     )
-            else:
-                # Not an influencer link — check for a customer-generated referral link
-                cref_link = CustomerReferralLink.objects.filter(referral_code=ref_code_for_item, product=item.product).first()
-                if cref_link:
-                    product_link_reward_paid = True
-                    item_total = Decimal(str(order_item.price * order_item.quantity))
-                    discount_pct = item.product.link_discount_percent
-                    item_referral_discount = item_total * Decimal(str(discount_pct)) / Decimal('100')
-                    reward_amount = item_referral_discount.quantize(Decimal('0.01'))
-
-                    tx_status = 'completed' if order.payment_status == 'completed' else 'pending'
-                    WalletTransaction.objects.create(
-                        user=cref_link.user,
-                        order=order,
-                        product=item.product,
-                        amount=reward_amount,
-                        status=tx_status,
-                        level=1,
-                        reason=f'Referral reward for {item.product.name}',
-                    )
-                    # Upline: whoever's link cref_link.user came through for THIS product
-                    # (captured at link-creation time), not their account signup recruiter.
-                    upline = cref_link.referred_via
-                    if upline:
-                        upline_amount = (reward_amount * Decimal('0.5')).quantize(Decimal('0.01'))
-                        WalletTransaction.objects.create(
-                            user=upline,
-                            order=order,
-                            product=item.product,
-                            amount=upline_amount,
-                            status=tx_status,
-                            level=2,
-                            reason=f'Referral upline bonus for {item.product.name}',
-                        )
-
-                    # Bind this buyer to the referrer permanently (like an account-level
-                    # signup referral) the first time they buy through this link, so the
-                    # referrer — and their own upline — keep earning on EVERY future order
-                    # this buyer places, not just ones that reuse a referral link.
-                    if not getattr(user, 'referred_by', None) and cref_link.user.pk != user.pk:
-                        user.referred_by = cref_link.user
-                        user.save(update_fields=['referred_by'])
+            # Note: a customer-generated referral link (CustomerReferralLink) intentionally
+            # pays no commission here. The discount for using one is still applied above
+            # (see valid_referral_map / referral_discount). Commission for that referrer only
+            # exists if this buyer's account is actually bound to them via User.referred_by —
+            # which only happens if the buyer *registered* through that link (see
+            # UserRegistrationSerializer). That binding is what the signup-referral block
+            # below pays out, on every order, forever — an existing account clicking someone
+            # else's product link for a one-off discount earns that link's owner nothing.
 
         # Signup referral: whoever recruited THIS buyer (User.referred_by, set once at
         # signup via the "Affiliate Recruitment Link") earns on EVERY order the buyer

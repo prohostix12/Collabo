@@ -71,6 +71,11 @@ const Register = () => {
     }
     if (affiliateCode) {
       dataToSubmit.referred_by_code = affiliateCode.toUpperCase();
+    } else {
+      const productLinkCode = localStorage.getItem('referral_code');
+      if (productLinkCode) {
+        dataToSubmit.referred_by_code = productLinkCode;
+      }
     }
 
     const result = await register(dataToSubmit);

@@ -18,17 +18,27 @@ class UserRegistrationSerializer(serializers.ModelSerializer):
 
     def create(self, validated_data):
         validated_data.pop('password_confirm')
-        referred_by_code = validated_data.pop('referred_by_code', '').strip().upper()
+        referred_by_code = validated_data.pop('referred_by_code', '').strip()
         password = validated_data.pop('password')
         user = User.objects.create_user(**validated_data)
         user.set_password(password)
         if referred_by_code:
-            try:
-                recruiter = User.objects.get(affiliate_code=referred_by_code)
-                if recruiter.pk != user.pk:
-                    user.referred_by = recruiter
-            except User.DoesNotExist:
-                pass
+            recruiter = User.objects.filter(affiliate_code=referred_by_code.upper()).first()
+            if not recruiter:
+                # Not a personal "Invite Friends" code — check if it's a product
+                # referral link code instead (influencer review or customer
+                # "Refer & Earn" link), so signing up via either link type binds
+                # the new account to whoever sent it.
+                from ecommerce.models import ProductReview, CustomerReferralLink
+                review = ProductReview.objects.filter(referral_code=referred_by_code).first()
+                if review:
+                    recruiter = review.influencer
+                else:
+                    link = CustomerReferralLink.objects.filter(referral_code=referred_by_code).first()
+                    if link:
+                        recruiter = link.user
+            if recruiter and recruiter.pk != user.pk:
+                user.referred_by = recruiter
         user.save()
         return user
 
