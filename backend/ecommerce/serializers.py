@@ -1,4 +1,5 @@
 from rest_framework import serializers
+from django.conf import settings
 from .models import Product, Cart, CartItem, Address, Order, OrderItem, Category, Brand, ProductReview, AffiliateCommission, StoreSettings, CustomerReview, ProductInfluencerMedia, SellerReview, SellerPayout, NewsletterSubscriber, Wishlist, CustomerReferralLink, WalletTransaction, WalletPayout
 
 class CategorySerializer(serializers.ModelSerializer):
@@ -101,7 +102,7 @@ class ProductReviewSerializer(serializers.ModelSerializer):
         read_only_fields = ['influencer', 'referral_code', 'referral_link']
 
     def get_referral_link(self, obj):
-        return f"http://localhost:3000/?ref={obj.referral_code}&pid={obj.product.id}"
+        return f"{settings.FRONTEND_URL}/?ref={obj.referral_code}&pid={obj.product.id}"
 
 class CustomerReferralLinkSerializer(serializers.ModelSerializer):
     username = serializers.ReadOnlyField(source='user.username')
@@ -117,7 +118,7 @@ class CustomerReferralLinkSerializer(serializers.ModelSerializer):
         read_only_fields = ['user', 'referral_code', 'referral_link', 'referred_via_username']
 
     def get_referral_link(self, obj):
-        return f"http://localhost:3000/?ref={obj.referral_code}&pid={obj.product.id}"
+        return f"{settings.FRONTEND_URL}/?ref={obj.referral_code}&pid={obj.product.id}"
 
 class WalletTransactionSerializer(serializers.ModelSerializer):
     product_name = serializers.ReadOnlyField(source='product.name')

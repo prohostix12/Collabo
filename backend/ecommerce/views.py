@@ -1059,7 +1059,7 @@ class ProductReviewViewSet(viewsets.ModelViewSet):
             )
             clicks = ReferralClick.objects.filter(referral_code=r.referral_code).count()
 
-            referral_link = f"http://localhost:3000/?ref={r.referral_code}&pid={r.product.id}"
+            referral_link = f"{settings.FRONTEND_URL}/?ref={r.referral_code}&pid={r.product.id}"
 
             referral_list.append({
                 'id': r.id,
