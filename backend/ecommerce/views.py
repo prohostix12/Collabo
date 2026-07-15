@@ -595,6 +595,14 @@ def create_order_for_user(user, data):
                             reason=f'Referral upline bonus for {item.product.name}',
                         )
 
+                    # Bind this buyer to the referrer permanently (like an account-level
+                    # signup referral) the first time they buy through this link, so the
+                    # referrer — and their own upline — keep earning on EVERY future order
+                    # this buyer places, not just ones that reuse a referral link.
+                    if not getattr(user, 'referred_by', None) and cref_link.user.pk != user.pk:
+                        user.referred_by = cref_link.user
+                        user.save(update_fields=['referred_by'])
+
         # Signup referral: whoever recruited THIS buyer (User.referred_by, set once at
         # signup via the "Affiliate Recruitment Link") earns on EVERY order the buyer
         # places for the rest of their time on the platform — not just orders that go
