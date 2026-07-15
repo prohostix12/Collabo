@@ -786,8 +786,14 @@ export default function EcommerceMarketplace({ inlineMode = false, onBackToSelec
   const [showAuthPassword, setShowAuthPassword] = useState(false);
   const [authPhone, setAuthPhone] = useState('');
 
-  // Dashboard state
-  const [adminView, setAdminView] = useState('overview'); // overview | products | orders | categories | brands | store-settings | affiliates | tickets | broadcast
+  // Dashboard state — restore the last-viewed admin tab so a page reload doesn't
+  // dump the admin back on the overview tab.
+  const [adminView, setAdminView] = useState(() => {
+    try { return localStorage.getItem('admin_view_tab') || 'overview'; } catch { return 'overview'; }
+  }); // overview | products | orders | categories | brands | store-settings | affiliates | tickets | broadcast
+  useEffect(() => {
+    try { localStorage.setItem('admin_view_tab', adminView); } catch { /* ignore */ }
+  }, [adminView]);
   const [broadcastMessage, setBroadcastMessage] = useState('');
   const [broadcastTarget, setBroadcastTarget] = useState('all'); // 'all' | 'buyers' | 'sellers'
   const [broadcastSending, setBroadcastSending] = useState(false);

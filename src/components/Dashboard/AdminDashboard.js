@@ -1,4 +1,4 @@
-﻿import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
   Users, UserCheck, UserX, Clock, TrendingUp, 
@@ -23,7 +23,14 @@ import StoreContentEditor from './StoreContentEditor';
 
 const AdminDashboard = () => {
   const { user } = useAuth();
-  const [portalMode, setPortalMode] = useState('select'); // select | collabo | collabocart
+  // Restore the last portal the admin had open so a page reload stays put
+  // instead of dropping back to the portal-chooser screen.
+  const [portalMode, setPortalMode] = useState(() => {
+    try { return localStorage.getItem('admin_portal_mode') || 'select'; } catch { return 'select'; }
+  }); // select | collabo | collabocart
+  useEffect(() => {
+    try { localStorage.setItem('admin_portal_mode', portalMode); } catch { /* ignore */ }
+  }, [portalMode]);
   const [activeTab, setActiveTab] = useState('overview');
   const [influencers, setInfluencers] = useState([]);
   // New state for influencer creation modal
@@ -237,7 +244,7 @@ const AdminDashboard = () => {
                 </div>
                 <span className="text-[9px] font-semibold px-2 py-0.5 rounded-full bg-gray-100 text-gray-600 border border-gray-200">Store</span>
               </div>
-              <h3 className="text-sm font-semibold text-gray-900 mb-1">CollabStore</h3>
+              <h3 className="text-sm font-semibold text-gray-900 mb-1">Collabo Store</h3>
               <p className="text-[11px] text-gray-400 leading-relaxed mb-4">
                 Inventory, orders, sales metrics, categories & store configuration.
               </p>
