@@ -266,6 +266,95 @@ class ReferralClick(models.Model):
         return f"Click on {self.referral_code} from {self.ip_address} at {self.clicked_at}"
 
 
+class CustomerReferralLink(models.Model):
+    """A per-user, per-product referral link that ANY logged-in user (not just influencers)
+    can generate. Purchases made through it credit the referring user's wallet with the
+    product's admin-set link_discount_percent, and half of that to whoever referred them."""
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='referral_links')
+    product = models.ForeignKey(Product, on_delete=models.CASCADE, related_name='customer_referral_links')
+    referral_code = models.CharField(max_length=100, unique=True, blank=True)
+    referred_via = models.ForeignKey(
+        User, on_delete=models.SET_NULL, null=True, blank=True, related_name='downline_referral_links',
+        help_text="Whoever's referral link (influencer or customer) this user came through for THIS product — "
+                  "the upline that earns half the wallet reward when this link converts. Captured at link "
+                  "creation time from the active referral code, independent of the account-level referred_by."
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        unique_together = ('user', 'product')
+
+    def save(self, *args, **kwargs):
+        if not self.referral_code:
+            import uuid
+            self.referral_code = f"cref-{self.user.id}-{uuid.uuid4().hex[:8]}"
+        super().save(*args, **kwargs)
+
+    def __str__(self):
+        return f"Referral link by {self.user.username} for {self.product.name}"
+
+
+class WalletTransaction(models.Model):
+    """Ledger entry for the customer-referral wallet. Balance is computed on the fly
+    (sum of completed credits) rather than cached, matching the SellerPayout/SellerEarnings
+    pattern used elsewhere in this app."""
+    STATUS_CHOICES = (
+        ('pending', 'Pending'),
+        ('completed', 'Completed'),
+        ('cancelled', 'Cancelled'),
+    )
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='wallet_transactions')
+    order = models.ForeignKey(Order, on_delete=models.CASCADE, null=True, blank=True, related_name='wallet_transactions')
+    product = models.ForeignKey(Product, on_delete=models.SET_NULL, null=True, blank=True)
+    amount = models.DecimalField(max_digits=12, decimal_places=2)
+    level = models.PositiveSmallIntegerField(default=1, help_text="1=direct referrer, 2=upline (their recruiter)")
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='pending')
+    reason = models.CharField(max_length=255, blank=True, default='Referral reward')
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return f"Wallet tx: {self.user.username} +₹{self.amount} ({self.status})"
+
+
+class WalletPayout(models.Model):
+    """A real cash-withdrawal request against the referral wallet — mirrors SellerPayout,
+    plus the bank account the user wants paid out to (collected at request time so the
+    admin has what they need to actually send the money).
+    Requested by the user any time (not tied to checkout), reviewed and marked
+    completed/rejected by an admin. 'pending'/'processing'/'completed' all count as
+    already-claimed money for balance purposes; 'rejected' frees it back up."""
+    STATUS_CHOICES = (
+        ('pending', 'Pending'),
+        ('processing', 'Processing'),
+        ('completed', 'Completed'),
+        ('rejected', 'Rejected'),
+    )
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='wallet_payouts')
+    amount = models.DecimalField(max_digits=12, decimal_places=2)
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='pending')
+
+    # Bank details submitted by the user for THIS withdrawal request
+    # (blank=True/default='' so this migration doesn't break pre-existing payout rows;
+    # required at the API level — see wallet_withdraw — for all new requests)
+    account_holder_name = models.CharField(max_length=200, blank=True, default='')
+    account_number = models.CharField(max_length=30, blank=True, default='')
+    ifsc_code = models.CharField(max_length=15, blank=True, default='')
+
+    bank_reference = models.CharField(max_length=200, blank=True, help_text="Admin-entered transaction/UTR reference once paid")
+    admin_note = models.TextField(blank=True)
+    requested_at = models.DateTimeField(auto_now_add=True)
+    processed_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        ordering = ['-requested_at']
+
+    def __str__(self):
+        return f"Wallet Payout #{self.id}: {self.user.username} - INR {self.amount} ({self.status})"
+
+
 class StoreSettings(models.Model):
     """Singleton model — only one record (pk=1) should ever exist.
     Stores all admin-editable storefront content as structured JSON fields."""

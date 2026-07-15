@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useQuery } from 'react-query';
 import toast from 'react-hot-toast';
 import api from '../../services/api';
-import { DollarSign, Users, Calendar, Star, TrendingUp, Award, Heart, BarChart3, Link2, Headphones, X, Search, CheckCircle2, Copy, ShoppingBag, Globe, Download, Film, Image, Share2 } from 'lucide-react';
+import { DollarSign, Users, Calendar, Star, TrendingUp, Award, Heart, BarChart3, Link2, X, Search, CheckCircle2, Copy, ShoppingBag, Globe, Download, Film, Image, Share2 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import ProfileSetup from '../Profile/InfluencerProfile';
 import CollaborationList from '../Collaborations/CollaborationList';
@@ -10,7 +10,6 @@ import InfluencerAnalytics from '../Analytics/InfluencerAnalytics';
 import InfluencerHero from '../Influencer/InfluencerHero';
 import ApprovalStatusAlert from './ApprovalStatusAlert';
 import ApprovalSuccessModal from './ApprovalSuccessModal';
-import MySupportTickets from '../Support/MySupportTickets';
 import { useAuth } from '../../contexts/AuthContext';
 
 const InfluencerDashboard = ({ onClose } = {}) => {
@@ -163,11 +162,10 @@ const InfluencerDashboard = ({ onClose } = {}) => {
 
   const tabs = [
     { id: 'overview', label: 'Home', icon: TrendingUp },
+    { id: 'affiliate', label: 'Affiliated Marketing', icon: Link2 },
     { id: 'profile', label: 'Profile', icon: Users },
     { id: 'collaborations', label: 'My Collaborations', icon: Heart },
-    { id: 'affiliate', label: 'Affiliated Marketing', icon: Link2 },
     { id: 'analytics', label: 'Analytics', icon: BarChart3 },
-    { id: 'support', label: 'Support', icon: Headphones },
   ];
 
   const stats = [
@@ -375,12 +373,6 @@ const InfluencerDashboard = ({ onClose } = {}) => {
 
             {/* Right: Landing Page + CollaborCart */}
             <div className="flex items-center gap-2 flex-shrink-0">
-              <button
-                onClick={() => window.open(`/influencer/${user?.id}`, '_blank')}
-                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold text-gray-700 bg-white border border-gray-200 hover:bg-gray-50 transition-all shadow-sm"
-              >
-                My Page
-              </button>
               <button
                 onClick={() => onClose ? onClose() : navigate('/', { replace: true })}
                 className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold text-white transition-all hover:opacity-90 shadow-sm"
@@ -776,12 +768,6 @@ const InfluencerDashboard = ({ onClose } = {}) => {
               </div>
             </div>
           </div>
-        </div>
-      )}
-
-      {activeTab === 'support' && (
-        <div className="w-full px-4 sm:px-6 lg:px-12 xl:px-16 py-6 sm:py-8">
-          <MySupportTickets />
         </div>
       )}
 

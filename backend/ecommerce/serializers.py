@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import Product, Cart, CartItem, Address, Order, OrderItem, Category, Brand, ProductReview, AffiliateCommission, StoreSettings, CustomerReview, ProductInfluencerMedia, SellerReview, SellerPayout, NewsletterSubscriber, Wishlist
+from .models import Product, Cart, CartItem, Address, Order, OrderItem, Category, Brand, ProductReview, AffiliateCommission, StoreSettings, CustomerReview, ProductInfluencerMedia, SellerReview, SellerPayout, NewsletterSubscriber, Wishlist, CustomerReferralLink, WalletTransaction, WalletPayout
 
 class CategorySerializer(serializers.ModelSerializer):
     class Meta:
@@ -102,6 +102,38 @@ class ProductReviewSerializer(serializers.ModelSerializer):
 
     def get_referral_link(self, obj):
         return f"http://localhost:3000/?ref={obj.referral_code}&pid={obj.product.id}"
+
+class CustomerReferralLinkSerializer(serializers.ModelSerializer):
+    username = serializers.ReadOnlyField(source='user.username')
+    product_name = serializers.ReadOnlyField(source='product.name')
+    product_image = serializers.ReadOnlyField(source='product.image')
+    link_discount_percent = serializers.ReadOnlyField(source='product.link_discount_percent')
+    referred_via_username = serializers.ReadOnlyField(source='referred_via.username')
+    referral_link = serializers.SerializerMethodField()
+
+    class Meta:
+        model = CustomerReferralLink
+        fields = ['id', 'product', 'product_name', 'product_image', 'user', 'username', 'referral_code', 'referral_link', 'link_discount_percent', 'referred_via_username', 'created_at']
+        read_only_fields = ['user', 'referral_code', 'referral_link', 'referred_via_username']
+
+    def get_referral_link(self, obj):
+        return f"http://localhost:3000/?ref={obj.referral_code}&pid={obj.product.id}"
+
+class WalletTransactionSerializer(serializers.ModelSerializer):
+    product_name = serializers.ReadOnlyField(source='product.name')
+
+    class Meta:
+        model = WalletTransaction
+        fields = ['id', 'amount', 'level', 'status', 'reason', 'product', 'product_name', 'order', 'created_at']
+
+class WalletPayoutSerializer(serializers.ModelSerializer):
+    username = serializers.ReadOnlyField(source='user.username')
+
+    class Meta:
+        model = WalletPayout
+        fields = ['id', 'user', 'username', 'amount', 'status', 'account_holder_name', 'account_number',
+                  'ifsc_code', 'bank_reference', 'admin_note', 'requested_at', 'processed_at']
+        read_only_fields = ['user', 'status', 'bank_reference', 'admin_note', 'requested_at', 'processed_at']
 
 class CustomerReviewSerializer(serializers.ModelSerializer):
     username = serializers.ReadOnlyField(source='user.username')

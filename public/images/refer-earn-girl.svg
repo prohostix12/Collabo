@@ -1,0 +1,84 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 460" fill="none">
+  <defs>
+    <linearGradient id="hairGrad" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#2b1a3d"/>
+      <stop offset="100%" stop-color="#4a2c5e"/>
+    </linearGradient>
+    <linearGradient id="skinGrad" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#ffd9b3"/>
+      <stop offset="100%" stop-color="#f4b98a"/>
+    </linearGradient>
+    <linearGradient id="topGrad" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#ffffff"/>
+      <stop offset="100%" stop-color="#f2e9ff"/>
+    </linearGradient>
+    <radialGradient id="glow" cx="50%" cy="35%" r="60%">
+      <stop offset="0%" stop-color="#ffe27a" stop-opacity="0.55"/>
+      <stop offset="100%" stop-color="#ffe27a" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+
+  <!-- soft glow behind figure -->
+  <ellipse cx="205" cy="190" rx="190" ry="190" fill="url(#glow)"/>
+
+  <!-- sparkles -->
+  <g fill="#ffe27a">
+    <path d="M60 90 l6 16 16 6 -16 6 -6 16 -6 -16 -16 -6 16 -6 z"/>
+    <path d="M340 130 l5 13 13 5 -13 5 -5 13 -5 -13 -13 -5 13 -5 z"/>
+    <path d="M330 260 l4 10 10 4 -10 4 -4 10 -4 -10 -10 -4 10 -4 z"/>
+  </g>
+  <g fill="#ffffff" opacity="0.9">
+    <circle cx="90" cy="220" r="4"/>
+    <circle cx="320" cy="70" r="3.5"/>
+    <circle cx="45" cy="150" r="3"/>
+  </g>
+
+  <!-- hair back -->
+  <path d="M120 175 C110 100 150 45 205 45 C262 45 300 102 288 178 L288 300 C288 300 260 260 205 260 C150 260 118 300 118 300 Z" fill="url(#hairGrad)"/>
+
+  <!-- neck -->
+  <rect x="182" y="255" width="46" height="55" rx="18" fill="url(#skinGrad)"/>
+
+  <!-- shoulders / top -->
+  <path d="M110 460 C110 370 150 320 205 320 C260 320 300 370 300 460 Z" fill="url(#topGrad)"/>
+  <path d="M110 460 C110 385 140 335 178 322 C168 345 165 400 172 460 Z" fill="#e4d4ff"/>
+  <path d="M300 460 C300 385 270 335 232 322 C242 345 245 400 238 460 Z" fill="#e4d4ff"/>
+
+  <!-- left raised hand (near face, surprised) -->
+  <path d="M150 300 C118 288 96 258 92 224 C90 210 100 200 112 204 C122 207 126 220 128 232 C132 250 142 268 162 280 Z" fill="url(#skinGrad)"/>
+
+  <!-- right raised hand (near face, surprised) -->
+  <path d="M262 300 C296 290 320 258 326 224 C329 210 319 199 307 203 C297 206 292 220 289 232 C284 250 274 268 254 280 Z" fill="url(#skinGrad)"/>
+
+  <!-- face -->
+  <ellipse cx="205" cy="185" rx="72" ry="80" fill="url(#skinGrad)"/>
+
+  <!-- hair front / bangs -->
+  <path d="M133 175 C128 110 160 60 205 60 C252 60 282 112 277 178 C270 150 255 140 240 148 C230 130 215 122 205 122 C195 122 180 130 170 148 C155 140 140 150 133 175 Z" fill="url(#hairGrad)"/>
+  <path d="M118 260 C108 220 112 185 133 175 C140 210 132 245 140 270 C130 268 122 264 118 260 Z" fill="url(#hairGrad)"/>
+  <path d="M292 260 C302 220 298 185 277 178 C270 210 278 245 270 270 C280 268 288 264 292 260 Z" fill="url(#hairGrad)"/>
+
+  <!-- eyebrows (raised, surprised) -->
+  <path d="M168 158 C176 149 190 148 199 153" stroke="#3a2450" stroke-width="6" stroke-linecap="round" fill="none"/>
+  <path d="M242 158 C234 149 220 148 211 153" stroke="#3a2450" stroke-width="6" stroke-linecap="round" fill="none"/>
+
+  <!-- eyes -->
+  <circle cx="183" cy="180" r="9" fill="#3a2450"/>
+  <circle cx="227" cy="180" r="9" fill="#3a2450"/>
+  <circle cx="186" cy="177" r="2.5" fill="#fff"/>
+  <circle cx="230" cy="177" r="2.5" fill="#fff"/>
+
+  <!-- blush -->
+  <ellipse cx="163" cy="205" rx="12" ry="7" fill="#ff9d9d" opacity="0.55"/>
+  <ellipse cx="247" cy="205" rx="12" ry="7" fill="#ff9d9d" opacity="0.55"/>
+
+  <!-- open mouth (wow) -->
+  <ellipse cx="205" cy="222" rx="17" ry="20" fill="#7a3b3b"/>
+  <ellipse cx="205" cy="216" rx="14" ry="8" fill="#ffffff"/>
+
+  <!-- percent badge floating -->
+  <g transform="translate(300,40)">
+    <circle cx="0" cy="0" r="30" fill="#ffffff"/>
+    <text x="0" y="8" text-anchor="middle" font-family="Arial, sans-serif" font-weight="900" font-size="20" fill="#7c3aed">30%</text>
+  </g>
+</svg>

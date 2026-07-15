@@ -15,6 +15,8 @@ from .views import (
     NewsletterSubscribeView,
     NewsletterBroadcastView,
     gupshup_webhook,
+    CustomerReferralLinkViewSet, WalletView, AdminWalletsView,
+    wallet_withdraw, WalletPayoutHistoryView, AdminWalletPayoutListView, admin_process_wallet_payout,
 )
 
 router = DefaultRouter()
@@ -27,13 +29,20 @@ router.register('brands', BrandViewSet, basename='brands')
 router.register('reviews', ProductReviewViewSet, basename='reviews')
 router.register('customer-reviews', CustomerReviewViewSet, basename='customer-reviews')
 router.register('wishlist', WishlistViewSet, basename='wishlist')
+router.register('referral-links', CustomerReferralLinkViewSet, basename='referral-links')
 
 urlpatterns = [
+    path('wallet/', WalletView.as_view(), name='wallet'),
+    path('wallet/withdraw/', wallet_withdraw, name='wallet-withdraw'),
+    path('wallet/payouts/', WalletPayoutHistoryView.as_view(), name='wallet-payouts'),
+    path('admin/wallet-payouts/', AdminWalletPayoutListView.as_view(), name='admin-wallet-payouts'),
+    path('admin/wallet-payouts/<int:payout_id>/process/', admin_process_wallet_payout, name='admin-process-wallet-payout'),
     path('settings/', PlatformSettingsView.as_view(), name='platform-settings'),
     path('store-settings/', StoreSettingsView.as_view(), name='store-settings'),
     path('check-pincode/', check_pincode, name='check-pincode'),
     path('admin/affiliates/', AdminAffiliatesView.as_view(), name='admin-affiliates'),
     path('admin/affiliates/<int:pk>/rates/', AdminUpdateAffiliateRateView.as_view(), name='admin-affiliates-rates'),
+    path('admin/wallets/', AdminWalletsView.as_view(), name='admin-wallets'),
     path('track-click/', RecordReferralClickView.as_view(), name='track-referral-click'),
     path('resolve-referral/', ResolveReferralView.as_view(), name='resolve-referral'),
     path('admin/analytics/', AdminAnalyticsView.as_view(), name='admin-analytics'),

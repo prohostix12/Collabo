@@ -32,6 +32,12 @@ class User(AbstractUser):
     affiliate_code = models.CharField(max_length=12, unique=True, null=True, blank=True, help_text="Unique code for recruiting other affiliates")
     referred_by = models.ForeignKey('self', null=True, blank=True, on_delete=models.SET_NULL, related_name='downline', help_text="Who recruited this user as an affiliate")
 
+    # Saved bank details for referral wallet cash withdrawals — collected once on the
+    # first withdrawal request, then reused automatically for every request after that.
+    wallet_bank_account_name = models.CharField(max_length=200, blank=True)
+    wallet_bank_account_number = models.CharField(max_length=30, blank=True)
+    wallet_bank_ifsc = models.CharField(max_length=15, blank=True)
+
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 

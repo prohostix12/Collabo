@@ -1,5 +1,5 @@
 import React from 'react';
-import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { Toaster } from 'react-hot-toast';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { ToastProvider, useToast } from './contexts/ToastContext';
@@ -23,6 +23,13 @@ import ReturnPolicy from './components/Legal/ReturnPolicy';
 import PrivacyPolicy from './components/Legal/PrivacyPolicy';
 import TermsConditions from './components/Legal/TermsConditions';
 import CollabHub from './components/Collab/CollabHub';
+
+// Redirects to "/" while preserving the query string (e.g. /register?affiliate=CODE),
+// which plain <Navigate to="/" /> would otherwise silently drop.
+function RedirectHomeKeepingQuery() {
+  const location = useLocation();
+  return <Navigate to={`/${location.search}`} replace />;
+}
 
 function ProtectedRoute({ children, allowedUserTypes }) {
   const { user, loading } = useAuth();
@@ -59,9 +66,9 @@ function AppRoutes() {
       <Route path="/privacy" element={<PrivacyPolicy />} />
       <Route path="/terms" element={<TermsConditions />} />
       <Route path="/influencer/:id" element={<InfluencerDetailPage />} />
-      <Route path="/login" element={<Navigate to="/" replace />} />
-      <Route path="/register" element={<Navigate to="/" replace />} />
-      <Route path="/forgot-password" element={<Navigate to="/" replace />} />
+      <Route path="/login" element={<RedirectHomeKeepingQuery />} />
+      <Route path="/register" element={<RedirectHomeKeepingQuery />} />
+      <Route path="/forgot-password" element={<RedirectHomeKeepingQuery />} />
       
       {/* OAuth Callback Routes */}
       <Route path="/auth/:platform/callback" element={

@@ -10,7 +10,7 @@ import {
   LayoutGrid, Cpu, Smartphone, Shirt, ShoppingBasket, Home as HomeIcon,
   Armchair, Dumbbell, BookOpen, Gamepad2, Plug, Film, Download,
   Mail, Shield, Calendar, Headphones, HeartPulse, Droplets, Bath, Truck, Share2, Menu, ChevronLeft,
-  Baby, Flower2
+  Baby, Flower2, Gift
 } from 'lucide-react';
 import api from '../../services/api';
 import { useAuth } from '../../contexts/AuthContext';
@@ -364,6 +364,17 @@ export default function EcommerceMarketplace({ inlineMode = false, onBackToSelec
   // Capture referral URL params immediately at render time (before any history effects strip the query string)
   const [initialRefCode] = useState(() => new URLSearchParams(window.location.search).get('ref') || '');
   const [initialPidParam] = useState(() => new URLSearchParams(window.location.search).get('pid') || '');
+  // Signup/recruitment affiliate code from an "Invite Friends" link (?affiliate=CODE).
+  // Persisted to localStorage so it survives browsing around before the visitor actually
+  // registers (mirrors how referral_map persists for product referral links).
+  const [signupAffiliateCode] = useState(() => {
+    const fromUrl = new URLSearchParams(window.location.search).get('affiliate');
+    if (fromUrl) {
+      localStorage.setItem('signup_affiliate_code', fromUrl);
+      return fromUrl;
+    }
+    return localStorage.getItem('signup_affiliate_code') || '';
+  });
 
   // Navigation State
   const [currentView, setCurrentView] = useState(inlineMode ? 'dashboard' : 'home'); // home | listing | details | cart | checkout | success | wishlist | profile | tracking | dashboard | auth
@@ -383,6 +394,98 @@ export default function EcommerceMarketplace({ inlineMode = false, onBackToSelec
     };
     window.addEventListener('scroll', handleScroll, { passive: true });
     return () => window.removeEventListener('scroll', handleScroll);
+  }, []);
+
+  const tickerExtraMessages = [
+    'Login and earn upto 30% made by your friend.',
+    'Referral, wallet, re-referral — all in one place.',
+    'Referral and redeem — earn more, spend smart.',
+  ];
+  // Per-product "Refer & Earn" link generation (any logged-in user, any product)
+  const [referModalData, setReferModalData] = useState(null);
+  const [referLoading, setReferLoading] = useState(false);
+  const handleReferProduct = async (product) => {
+    if (!isLoggedIn) { setCurrentView('auth'); return; }
+    setReferLoading(true);
+    try {
+      // If this user themselves arrived at this product via someone else's referral link,
+      // pass that code along so the backend can record them as this new link's upline.
+      const refMap = JSON.parse(localStorage.getItem('referral_map') || '{}');
+      const incomingCode = refMap[String(product.id)] || localStorage.getItem('referral_code') || '';
+      const res = await api.post('/ecommerce/referral-links/generate/', { product: product.id, referral_code: incomingCode });
+      setReferModalData(res.data);
+    } catch (err) {
+      showToast(err.response?.data?.error || 'Failed to generate referral link');
+    } finally {
+      setReferLoading(false);
+    }
+  };
+  const [showInviteModal, setShowInviteModal] = useState(false);
+  const handleInviteFriendsClick = () => {
+    if (!isLoggedIn) { setCurrentView('auth'); return; }
+    setShowInviteModal(true);
+  };
+  const [walletData, setWalletData] = useState(null);
+  const [showWalletModal, setShowWalletModal] = useState(false);
+  const [walletPayouts, setWalletPayouts] = useState([]);
+  const [withdrawAmount, setWithdrawAmount] = useState('');
+  const [withdrawing, setWithdrawing] = useState(false);
+  const [showWithdrawForm, setShowWithdrawForm] = useState(false);
+  const [withdrawAccountName, setWithdrawAccountName] = useState('');
+  const [withdrawAccountNumber, setWithdrawAccountNumber] = useState('');
+  const [withdrawIfsc, setWithdrawIfsc] = useState('');
+  const [editBankDetails, setEditBankDetails] = useState(false);
+  const fetchWalletData = () => {
+    if (!isLoggedIn) return;
+    api.get('/ecommerce/wallet/').then(res => setWalletData(res.data)).catch(() => {});
+    api.get('/ecommerce/wallet/payouts/').then(res => setWalletPayouts(res.data.results || res.data || [])).catch(() => {});
+  };
+  useEffect(() => {
+    if ((currentView === 'profile' || currentView === 'checkout') && isLoggedIn) {
+      fetchWalletData();
+    }
+  }, [currentView, isLoggedIn]);
+  const handleWithdraw = async () => {
+    const amount = parseFloat(withdrawAmount);
+    if (!amount || amount <= 0) {
+      showToast('Enter a valid amount');
+      return;
+    }
+    const hasSavedBank = !!walletData?.bank_details;
+    const needsBankFields = !hasSavedBank || editBankDetails;
+    if (needsBankFields && (!withdrawAccountName.trim() || !withdrawAccountNumber.trim() || !withdrawIfsc.trim())) {
+      showToast('Bank account holder name, account number, and IFSC code are required');
+      return;
+    }
+    setWithdrawing(true);
+    try {
+      await api.post('/ecommerce/wallet/withdraw/', {
+        amount,
+        account_holder_name: needsBankFields ? withdrawAccountName.trim() : '',
+        account_number: needsBankFields ? withdrawAccountNumber.trim() : '',
+        ifsc_code: needsBankFields ? withdrawIfsc.trim() : '',
+      });
+      showToast('Withdrawal requested! Admin will process it shortly.');
+      setWithdrawAmount('');
+      setWithdrawAccountName('');
+      setWithdrawAccountNumber('');
+      setWithdrawIfsc('');
+      setEditBankDetails(false);
+      setShowWithdrawForm(false);
+      fetchWalletData();
+    } catch (err) {
+      showToast(err.response?.data?.error || 'Failed to request withdrawal');
+    } finally {
+      setWithdrawing(false);
+    }
+  };
+  const [tickerMsgIndex, setTickerMsgIndex] = useState(0);
+  useEffect(() => {
+    const total = 1 + tickerExtraMessages.length; // admin coupon slot + the extra messages
+    const id = setInterval(() => {
+      setTickerMsgIndex(prev => (prev + 1) % total);
+    }, 3000);
+    return () => clearInterval(id);
   }, []);
 
   useEffect(() => {
@@ -628,6 +731,7 @@ export default function EcommerceMarketplace({ inlineMode = false, onBackToSelec
   const [couponApplied, setCouponApplied] = useState(false);
   const [couponDiscount, setCouponDiscount] = useState(0);
   const [redeemPoints, setRedeemPoints] = useState(false);
+  const [redeemWallet, setRedeemWallet] = useState(false);
   const [showRewardModal, setShowRewardModal] = useState(false);
   const [isNewUser, setIsNewUser] = useState(false);
   const [supportTickets, setSupportTickets] = useState([]);
@@ -690,6 +794,10 @@ export default function EcommerceMarketplace({ inlineMode = false, onBackToSelec
   const [subscriberList, setSubscriberList] = useState([]);
   const [subscriberListLoading, setSubscriberListLoading] = useState(false);
   const [adminAffiliates, setAdminAffiliates] = useState([]);
+  const [adminWallets, setAdminWallets] = useState(null);
+  const [expandedWalletLinkId, setExpandedWalletLinkId] = useState(null);
+  const [adminWalletPayouts, setAdminWalletPayouts] = useState([]);
+  const [processingPayoutId, setProcessingPayoutId] = useState(null);
   const [expandedRefId, setExpandedRefId] = useState(null);
 
   // --- History API for Back Button Support ---
@@ -820,7 +928,7 @@ export default function EcommerceMarketplace({ inlineMode = false, onBackToSelec
   const [heroCardSlide, setHeroCardSlide] = useState(0);
   const carouselRef = React.useRef(null);
   useEffect(() => {
-    if (currentView !== 'home' || !storeSettings.coupon_codes?.length) return;
+    if (currentView !== 'home') return;
     const interval = setInterval(() => {
       if (carouselRef.current) {
         const { scrollLeft, scrollWidth, clientWidth } = carouselRef.current;
@@ -1191,6 +1299,68 @@ export default function EcommerceMarketplace({ inlineMode = false, onBackToSelec
       if (interval) clearInterval(interval);
     };
   }, [adminView, user]);
+
+  const fetchAdminWallets = async () => {
+    if (!user || (!user.is_staff && user.user_type !== 'admin')) return;
+    try {
+      const response = await api.get('/ecommerce/admin/wallets/');
+      setAdminWallets(response.data);
+    } catch (err) {
+      console.error("Error fetching admin wallets:", err);
+    }
+  };
+
+  // Poll admin wallets if the user is on the wallets tab
+  useEffect(() => {
+    let interval;
+    if (adminView === 'wallets' && user && (user.is_staff || user.user_type === 'admin')) {
+      fetchAdminWallets();
+      interval = setInterval(() => {
+        fetchAdminWallets();
+      }, 5000);
+    }
+    return () => {
+      if (interval) clearInterval(interval);
+    };
+  }, [adminView, user]);
+
+  const fetchAdminWalletPayouts = async () => {
+    if (!user || (!user.is_staff && user.user_type !== 'admin')) return;
+    try {
+      const response = await api.get('/ecommerce/admin/wallet-payouts/');
+      setAdminWalletPayouts(response.data.results || response.data || []);
+    } catch (err) {
+      console.error("Error fetching admin wallet payouts:", err);
+    }
+  };
+
+  useEffect(() => {
+    let interval;
+    if (adminView === 'wallets' && user && (user.is_staff || user.user_type === 'admin')) {
+      fetchAdminWalletPayouts();
+      interval = setInterval(() => {
+        fetchAdminWalletPayouts();
+      }, 5000);
+    }
+    return () => {
+      if (interval) clearInterval(interval);
+    };
+  }, [adminView, user]);
+
+  const processWalletPayout = async (payoutId, action) => {
+    setProcessingPayoutId(payoutId);
+    try {
+      const bank_reference = action === 'complete' ? (window.prompt('Bank reference / transaction ID (optional):') || '') : '';
+      await api.post(`/ecommerce/admin/wallet-payouts/${payoutId}/process/`, { action, bank_reference });
+      showToast(`Payout ${action === 'complete' ? 'completed' : 'rejected'}`);
+      fetchAdminWalletPayouts();
+      fetchAdminWallets();
+    } catch (err) {
+      showToast(err.response?.data?.error || 'Failed to process payout');
+    } finally {
+      setProcessingPayoutId(null);
+    }
+  };
 
   const saveAffiliateRates = async (reviewId) => {
     try {
@@ -1853,7 +2023,7 @@ export default function EcommerceMarketplace({ inlineMode = false, onBackToSelec
           {/* Ticker bar */}
           <div className={`w-full bg-slate-950 transition-all duration-300 overflow-hidden ${isCategorySticky ? 'lg:max-h-40 max-h-0' : 'max-h-40'}`}>
             {isLoggedIn && user && (
-              <div className={`bg-gradient-to-r from-orange-50 to-amber-50 dark:from-slate-800 dark:to-slate-800 border border-orange-100 dark:border-slate-700 rounded-none px-5 flex items-center justify-between transition-all duration-300 overflow-hidden ${isCategorySticky ? 'max-h-0 py-0 border-0' : 'max-h-20 py-2.5'}`}>
+              <div className={`bg-gradient-to-r from-orange-50 to-amber-50 dark:from-slate-800 dark:to-slate-800 border border-orange-100 dark:border-slate-700 rounded-none px-5 flex items-center justify-between transition-all duration-300 overflow-hidden ${isCategorySticky ? 'max-h-0 py-0 border-0' : 'max-h-20 py-1.5'}`}>
                 <div className="flex items-center gap-2.5">
                   <div className="w-7 h-7 rounded-full bg-orange-500 flex items-center justify-center text-white font-black text-xs flex-shrink-0">
                     {(user.username || user.email || '?')[0].toUpperCase()}
@@ -1875,44 +2045,39 @@ export default function EcommerceMarketplace({ inlineMode = false, onBackToSelec
                 </div>
               </div>
             )}
-            <div className="text-white py-2 px-4 flex items-center justify-between text-xs font-bold overflow-hidden shadow-inner max-w-7xl mx-auto w-full">
-              <div className="flex items-center gap-2">
-                <Tag className="w-3.5 h-3.5 text-orange-500" />
-                <span>
-                  {storeSettings.ticker_text?.replace(storeSettings.ticker_coupon_highlight, '')}
-                  {storeSettings.ticker_coupon_highlight && (
-                    <span className="bg-orange-500 text-white px-2 py-0.5 rounded-md font-black ml-1">{storeSettings.ticker_coupon_highlight}</span>
-                  )}
-                </span>
-                {storeSettings.ticker_coupon_highlight && (
-                  <button
-                    onClick={() => autoApplyCouponCode(storeSettings.ticker_coupon_highlight)}
-                    className="ml-2 p-1 hover:bg-white/10 rounded-md transition-colors" title="Copy & Apply"
-                  >
-                    <Copy className="w-3 h-3 text-white/70 hover:text-white" />
-                  </button>
+            <div className="text-white py-3 px-4 flex items-center justify-between text-sm font-bold overflow-hidden shadow-inner max-w-7xl mx-auto w-full">
+              <div key={tickerMsgIndex} className="flex items-center gap-2 min-w-0" style={{ animation: 'tickerFade 0.5s ease' }}>
+                <Tag className="w-3.5 h-3.5 text-orange-500 flex-shrink-0" />
+                {tickerMsgIndex === 0 ? (
+                  <span className="truncate flex items-center gap-2">
+                    <span>
+                      {storeSettings.ticker_text?.replace(storeSettings.ticker_coupon_highlight, '')}
+                      {storeSettings.ticker_coupon_highlight && (
+                        <span className="bg-orange-500 text-white px-2 py-0.5 rounded-md font-black ml-1">{storeSettings.ticker_coupon_highlight}</span>
+                      )}
+                    </span>
+                    {storeSettings.ticker_coupon_highlight && (
+                      <button
+                        onClick={() => autoApplyCouponCode(storeSettings.ticker_coupon_highlight)}
+                        className="p-1 hover:bg-white/10 rounded-md transition-colors flex-shrink-0" title="Copy & Apply"
+                      >
+                        <Copy className="w-3 h-3 text-white/70 hover:text-white" />
+                      </button>
+                    )}
+                  </span>
+                ) : (
+                  <span className="truncate">{tickerExtraMessages[tickerMsgIndex - 1]}</span>
                 )}
               </div>
-              <ChevronRight className="w-4 h-4" />
+              <ChevronRight className="w-4 h-4 flex-shrink-0" />
             </div>
           </div>
-
-          {/* Referral scrolling ticker */}
-          <div className={`w-full overflow-hidden transition-all duration-300 bg-gradient-to-r from-[#0a5c61] via-[#0f8a76] to-[#0a5c61] ${isCategorySticky ? 'max-h-0' : 'max-h-10'}`}>
-            <style>{`@keyframes ref-ticker{0%{transform:translateX(0)}100%{transform:translateX(-50%)}}.ref-ticker-track{animation:ref-ticker 26s linear infinite;display:flex;width:max-content}.ref-ticker-track:hover{animation-play-state:paused}`}</style>
-            <div className="ref-ticker-track">
-              {[0, 1].map(n => (
-                <div key={n} className="flex items-center gap-10 py-1.5 px-10 whitespace-nowrap text-white text-[11px] font-bold">
-                  <span>🎁 Login and earn upto 30% made by your friend</span>
-                  <span className="opacity-40">◆</span>
-                  <span>💳 Referral &nbsp;·&nbsp; Wallet &nbsp;·&nbsp; Re-referral</span>
-                  <span className="opacity-40">◆</span>
-                  <span>✨ Referral and Redeem</span>
-                  <span className="opacity-40">◆</span>
-                </div>
-              ))}
-            </div>
-          </div>
+          <style>{`
+            @keyframes tickerFade {
+              0% { opacity: 0; transform: translateY(6px); }
+              100% { opacity: 1; transform: translateY(0); }
+            }
+          `}</style>
 
           {/* Sticky Category Bar - text only, appears below navbar after scroll */}
           {currentView === 'home' && isCategorySticky && categoriesLoaded && (
@@ -2100,6 +2265,51 @@ export default function EcommerceMarketplace({ inlineMode = false, onBackToSelec
                         </div>
                     </div>
                   )}
+
+                  {/* Refer & Earn slide */}
+                  <div className="flex-none w-full h-full snap-center relative group overflow-hidden">
+                    <div className="absolute inset-0 bg-gradient-to-r from-violet-600 to-fuchsia-600" />
+                    <div className="relative flex flex-row h-full w-full">
+                      <div className="flex-1 flex flex-col items-start justify-center h-full text-white pl-6 sm:pl-16 space-y-2 z-10">
+                        <div className="inline-flex items-center gap-1.5 px-3 py-1 bg-white/20 backdrop-blur-sm rounded-full border border-white/30 text-[9px] font-bold uppercase tracking-wider mb-1">
+                          <Gift className="w-3 h-3 text-yellow-300" />
+                          Refer & Earn
+                        </div>
+                        <h2 className="text-4xl sm:text-5xl font-black tracking-tight uppercase drop-shadow-md leading-none">Earn Upto 30%</h2>
+                        <h3 key={tickerMsgIndex} className="text-sm sm:text-base font-extrabold text-white/95 drop-shadow-sm leading-tight max-w-xs truncate w-full" style={{ animation: 'tickerFade 0.5s ease' }}>
+                          {tickerExtraMessages[tickerMsgIndex % tickerExtraMessages.length]}
+                        </h3>
+                        <button
+                          onClick={handleInviteFriendsClick}
+                          className="sm:hidden mt-3 bg-white text-slate-900 px-6 py-2 rounded-full font-black text-xs uppercase tracking-widest shadow-xl hover:scale-105 transition-transform"
+                        >
+                          Invite Friends
+                        </button>
+                      </div>
+
+                      {/* Center: Frosted CTA Block (Visible on sm+) */}
+                      <div className="hidden sm:flex flex-col items-center justify-center z-10 space-y-3 px-4">
+                        <p className="text-[11px] lg:text-xs text-white/90 max-w-xs text-center font-medium drop-shadow-sm leading-relaxed line-clamp-2">
+                          Share your referral link, wallet & redeem rewards every time a friend shops.
+                        </p>
+                        <button
+                          onClick={handleInviteFriendsClick}
+                          className="bg-white text-slate-900 px-6 py-2.5 rounded-xl font-black text-xs uppercase tracking-widest shadow-lg hover:scale-105 transition-transform"
+                        >
+                          Invite Friends
+                        </button>
+                      </div>
+
+                      {/* Right side image */}
+                      <div className="flex-1 hidden sm:flex items-center justify-end pr-8 sm:pr-16 relative">
+                        <img
+                          src="/images/refer-earn-girl.svg"
+                          alt="Refer and Earn"
+                          className="h-[130%] absolute right-8 top-1/2 -translate-y-1/2 object-contain drop-shadow-2xl hover:scale-105 transition-transform duration-700"
+                        />
+                      </div>
+                    </div>
+                  </div>
                 </div>
               </div>
 
@@ -2113,10 +2323,10 @@ export default function EcommerceMarketplace({ inlineMode = false, onBackToSelec
                        { title: 'New Arrivals', subtitle: 'Extra 50% Off Top Brands', product_id: productsList[4]?.id || productsList[1]?.id }
                      ];
                    }
-                   
+
                    const scIndex = activeSidecarIndex % sidecars.length;
                    const sc = sidecars[scIndex];
-                   
+
                    let linkedProduct = null;
                    if (sc.product_id) {
                      linkedProduct = productsList.find(p => String(p.id) === String(sc.product_id));
@@ -2129,7 +2339,7 @@ export default function EcommerceMarketplace({ inlineMode = false, onBackToSelec
                         <div className="w-[55%] p-4 sm:p-6 flex flex-col justify-center z-10">
                           <h3 className="text-xl sm:text-2xl font-black mb-1 leading-tight text-slate-900 dark:text-white line-clamp-2">{title}</h3>
                           <p className="text-xs sm:text-sm font-semibold text-slate-600 dark:text-slate-400 mb-3 sm:mb-4 line-clamp-2">{subtitle}</p>
-                          
+
                           <div className="mt-auto border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-2 sm:px-3 py-1 sm:py-1.5 flex items-center gap-2 w-fit rounded shadow-sm">
                              <div className="flex flex-col">
                                <span className="text-[9px] sm:text-[10px] font-black text-blue-800 dark:text-blue-400">BANK OFFER</span>
@@ -2137,14 +2347,14 @@ export default function EcommerceMarketplace({ inlineMode = false, onBackToSelec
                              </div>
                           </div>
                         </div>
-                        
+
                         {/* Ad Banner Image & Shapes */}
                         <div className="w-[45%] relative z-0 flex items-center justify-center p-2 sm:p-4">
                           <div className="absolute -right-4 -bottom-4 w-32 h-32 bg-orange-400 dark:bg-orange-500 rounded-full blur-2xl opacity-20 pointer-events-none" />
                           <div className="absolute right-0 bottom-0 w-full h-full overflow-hidden pointer-events-none">
                             <div className="absolute -right-10 -bottom-10 w-40 h-40 bg-orange-500 rounded-full opacity-10" />
                           </div>
-                          
+
                           {linkedProduct && linkedProduct.image ? (
                              <img src={linkedProduct.image} className="w-full h-full max-w-[110px] sm:max-w-[160px] object-contain drop-shadow-xl group-hover:scale-105 transition-transform duration-500 relative z-10" />
                           ) : (
@@ -2153,7 +2363,7 @@ export default function EcommerceMarketplace({ inlineMode = false, onBackToSelec
                              </div>
                           )}
                         </div>
-                        
+
                         {/* AD Badge */}
                         <div className="absolute bottom-2 right-2 bg-slate-200/80 dark:bg-slate-800/80 px-1.5 py-0.5 rounded text-[8px] sm:text-[9px] font-bold text-slate-500 dark:text-slate-400 z-20 backdrop-blur-sm shadow-sm">
                           AD
@@ -3231,6 +3441,9 @@ export default function EcommerceMarketplace({ inlineMode = false, onBackToSelec
                       <button onClick={() => { if (navigator.share) { navigator.share({ title: selectedProduct.name, text: `Check out ${selectedProduct.name} on Collabo!`, url: window.location.href }); } else { navigator.clipboard.writeText(window.location.href); showToast('Link copied!'); } }} className="w-9 h-9 rounded-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 flex items-center justify-center shadow-sm hover:shadow-md transition-all" title="Share">
                         <Share2 className="w-4 h-4 text-slate-400" />
                       </button>
+                      <button onClick={() => handleReferProduct(selectedProduct)} disabled={referLoading} className="w-9 h-9 rounded-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 flex items-center justify-center shadow-sm hover:shadow-md transition-all disabled:opacity-50" title="Refer & Earn">
+                        <Gift className="w-4 h-4 text-violet-500" />
+                      </button>
                     </div>
                     <img src={activeDetailImage} alt={selectedProduct.name} className="max-h-full object-cover rounded-2xl" />
                   </div>
@@ -4258,10 +4471,43 @@ export default function EcommerceMarketplace({ inlineMode = false, onBackToSelec
                         </button>
                       </div>
                     )}
+                    {/* Referral Wallet Redemption — applied after reward points, on whatever remains */}
+                    {walletData?.balance > 0 && (() => {
+                      const amountAfterPoints = redeemPoints ? Math.max(0, cartTotal - Math.min(user?.reward_points || 0, cartTotal)) : cartTotal;
+                      const walletRedeemable = Math.min(walletData.balance, amountAfterPoints);
+                      return (
+                        <>
+                          <div className="flex items-center justify-between py-1">
+                            <span className="flex items-center gap-1.5 text-slate-600 dark:text-slate-400 text-xs font-semibold">
+                              <Gift className="w-3.5 h-3.5 text-violet-500" /> ₹{walletData.balance.toLocaleString()} Referral Wallet
+                              <button onClick={() => setShowWalletModal(true)} className="text-[9px] text-slate-400 hover:text-slate-600 hover:underline ml-1">
+                                <Info className="w-3 h-3" />
+                              </button>
+                            </span>
+                            <button
+                              onClick={() => setRedeemWallet(!redeemWallet)}
+                              className={`text-[10px] font-bold px-2.5 py-1 rounded-lg transition-colors ${redeemWallet ? 'bg-violet-600 text-white' : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200'}`}
+                            >
+                              {redeemWallet ? 'Applied ✓' : 'Redeem'}
+                            </button>
+                          </div>
+                          {redeemWallet && (
+                            <div className="flex justify-between text-emerald-600 dark:text-emerald-400 text-xs font-semibold">
+                              <span>Referral Wallet Discount</span>
+                              <span>-₹{walletRedeemable.toLocaleString()}</span>
+                            </div>
+                          )}
+                        </>
+                      );
+                    })()}
                     <hr className="border-slate-100 dark:border-slate-800" />
                     <div className="flex justify-between font-black text-sm text-slate-950 dark:text-white">
                       <span>Grand Total</span>
-                      <span>₹{(redeemPoints ? Math.max(0, cartTotal - Math.min(user?.reward_points || 0, cartTotal)) : cartTotal).toLocaleString()}</span>
+                      <span>₹{(() => {
+                        const amountAfterPoints = redeemPoints ? Math.max(0, cartTotal - Math.min(user?.reward_points || 0, cartTotal)) : cartTotal;
+                        const amountAfterWallet = redeemWallet ? Math.max(0, amountAfterPoints - Math.min(walletData?.balance || 0, amountAfterPoints)) : amountAfterPoints;
+                        return amountAfterWallet.toLocaleString();
+                      })()}</span>
                     </div>
                     {cartDiscount > 0 && (
                       <p className="text-[10px] text-emerald-500 font-bold text-right">You save ₹{cartDiscount.toLocaleString()} on this order!</p>
@@ -4299,7 +4545,8 @@ export default function EcommerceMarketplace({ inlineMode = false, onBackToSelec
                               referral_code: refCode,
                               referral_map: refMap,
                               selected_items: selectedCartItems,
-                              redeem_points: redeemPoints
+                              redeem_points: redeemPoints,
+                              redeem_wallet: redeemWallet
                             });
                             localStorage.removeItem('referral_discount_map');
                             setCreatedOrderId(response.data.order_id);
@@ -4318,7 +4565,8 @@ export default function EcommerceMarketplace({ inlineMode = false, onBackToSelec
                       } else {
                         // Razorpay Payment (Card / UPI)
                         try {
-                          const finalAmount = redeemPoints ? Math.max(0, cartTotal - Math.min(user?.reward_points || 0, cartTotal)) : cartTotal;
+                          const amountAfterPoints = redeemPoints ? Math.max(0, cartTotal - Math.min(user?.reward_points || 0, cartTotal)) : cartTotal;
+                          const finalAmount = redeemWallet ? Math.max(0, amountAfterPoints - Math.min(walletData?.balance || 0, amountAfterPoints)) : amountAfterPoints;
                           const orderRes = await api.post('/ecommerce/razorpay/create-order/', {
                             amount: finalAmount
                           });
@@ -4336,7 +4584,8 @@ export default function EcommerceMarketplace({ inlineMode = false, onBackToSelec
                                   referral_code: refCode,
                                   referral_map: refMap,
                                   selected_items: selectedCartItems,
-                                  redeem_points: redeemPoints
+                                  redeem_points: redeemPoints,
+                                  redeem_wallet: redeemWallet
                                 });
                                 localStorage.removeItem('referral_discount_map');
                                 setCreatedOrderId(verifyRes.data.order_id);
@@ -4371,7 +4620,8 @@ export default function EcommerceMarketplace({ inlineMode = false, onBackToSelec
                                     referral_code: refCode,
                                     referral_map: refMap,
                                     selected_items: selectedCartItems,
-                                    redeem_points: redeemPoints
+                                    redeem_points: redeemPoints,
+                                    redeem_wallet: redeemWallet
                                   });
                                   localStorage.removeItem('referral_discount_map');
                                   setCreatedOrderId(verifyRes.data.order_id);
@@ -4801,6 +5051,27 @@ export default function EcommerceMarketplace({ inlineMode = false, onBackToSelec
                   </button>
                 )}
 
+                {/* Referral Wallet Card */}
+                {walletData && (
+                  <button onClick={() => setShowWalletModal(true)} className="w-full bg-white dark:bg-slate-900 border border-slate-200/50 dark:border-slate-800/50 rounded-2xl p-4 hover:shadow-md transition-all text-left">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 bg-violet-100 dark:bg-violet-900/30 rounded-xl flex items-center justify-center">
+                          <Gift className="w-5 h-5 text-violet-600" />
+                        </div>
+                        <div>
+                          <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Referral Wallet</p>
+                          <p className="text-lg font-black text-slate-800 dark:text-white">₹{walletData.balance}</p>
+                        </div>
+                      </div>
+                      <ChevronRight className="w-4 h-4 text-slate-300" />
+                    </div>
+                    <p className="text-[9px] text-slate-400 mt-2">
+                      {walletData.pending > 0 ? `₹${walletData.pending} pending · ` : ''}Refer products you love and earn on every sale
+                    </p>
+                  </button>
+                )}
+
                 {/* Account Info */}
                 <div className="bg-white dark:bg-slate-900 border border-slate-200/50 dark:border-slate-800/50 rounded-2xl p-4 space-y-3">
                   <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Account Info</h4>
@@ -5078,9 +5349,11 @@ export default function EcommerceMarketplace({ inlineMode = false, onBackToSelec
                         password: authPassword,
                         password_confirm: authPassword,
                         phone: authPhone ? `+91${authPhone}` : '',
-                        user_type: 'buyer'
+                        user_type: 'buyer',
+                        referred_by_code: signupAffiliateCode
                       });
                       if (result.success) {
+                        localStorage.removeItem('signup_affiliate_code');
                         setCurrentView(postAuthView || 'home');
                         setPostAuthView('home');
                       } else {
@@ -5289,11 +5562,17 @@ export default function EcommerceMarketplace({ inlineMode = false, onBackToSelec
                       <Settings className="w-3.5 h-3.5" />
                       Store Settings
                     </button>
-                    <button 
+                    <button
                       onClick={() => setAdminView('affiliates')}
                       className={`px-4 py-2 rounded-xl text-xs font-bold transition-all ${adminView === 'affiliates' ? 'bg-slate-950 text-white' : 'bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-350'}`}
                     >
                       Affiliates
+                    </button>
+                    <button
+                      onClick={() => setAdminView('wallets')}
+                      className={`px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 ${adminView === 'wallets' ? 'bg-violet-600 text-white' : 'bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-350'}`}
+                    >
+                      <Gift className="w-3.5 h-3.5" /> Referral Wallets
                     </button>
                     <button
                       onClick={() => { setAdminView('tickets'); fetchSupportTickets(); }}
@@ -7375,6 +7654,273 @@ export default function EcommerceMarketplace({ inlineMode = false, onBackToSelec
               </div>
             )}
 
+            {adminView === 'wallets' && (user?.is_staff || user?.user_type === 'admin') && (
+              <div className="space-y-6 animate-fadeIn">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h3 className="font-black text-lg dark:text-white flex items-center gap-2">
+                      <Gift className="w-5 h-5 text-violet-500" />
+                      Customer Referral Wallets
+                    </h3>
+                    <p className="text-[10px] text-slate-400 font-semibold mt-1">
+                      Every customer-generated referral link, who referred whom, and every wallet reward paid out.
+                    </p>
+                  </div>
+                  <button
+                    onClick={fetchAdminWallets}
+                    className="bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 font-bold text-xs py-2 px-4 rounded-xl transition-all flex items-center gap-1.5"
+                  >
+                    <RefreshCw className="w-3.5 h-3.5" />
+                    Refresh
+                  </button>
+                </div>
+
+                {adminWallets && (
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                    <div className="bg-white dark:bg-slate-900 border border-slate-200/50 dark:border-slate-800/50 rounded-2xl p-4">
+                      <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Active Links</p>
+                      <p className="text-2xl font-black text-slate-900 dark:text-white mt-1">{adminWallets.summary.total_links}</p>
+                    </div>
+                    <div className="bg-white dark:bg-slate-900 border border-slate-200/50 dark:border-slate-800/50 rounded-2xl p-4">
+                      <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Total Paid Out</p>
+                      <p className="text-2xl font-black text-emerald-600 mt-1">₹{adminWallets.summary.total_paid.toLocaleString()}</p>
+                    </div>
+                    <div className="bg-white dark:bg-slate-900 border border-slate-200/50 dark:border-slate-800/50 rounded-2xl p-4">
+                      <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Pending</p>
+                      <p className="text-2xl font-black text-amber-500 mt-1">₹{adminWallets.summary.total_pending.toLocaleString()}</p>
+                    </div>
+                  </div>
+                )}
+
+                {/* Cash Withdrawal Requests */}
+                <div className="bg-white dark:bg-slate-900 border border-slate-200/50 dark:border-slate-800/50 rounded-3xl overflow-hidden shadow-sm">
+                  <div className="px-4 pt-4">
+                    <h4 className="font-black text-[11px] text-slate-800 dark:text-white uppercase tracking-wider">Cash Withdrawal Requests</h4>
+                    <p className="text-[9px] text-slate-400 font-semibold mt-0.5 mb-2">Users can request to withdraw their referral wallet balance any time — review and process each request below.</p>
+                  </div>
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-left border-collapse text-xs">
+                      <thead>
+                        <tr className="bg-slate-50 dark:bg-slate-800 text-slate-400 uppercase tracking-widest font-black text-[9px] border-b border-slate-100 dark:border-slate-800">
+                          <th className="py-3 px-4">User</th>
+                          <th className="py-3 px-4 text-right">Amount</th>
+                          <th className="py-3 px-4 text-center">Status</th>
+                          <th className="py-3 px-4 text-center">Requested</th>
+                          <th className="py-3 px-4">Bank Account (pay out to)</th>
+                          <th className="py-3 px-4 text-center">Actions</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-slate-100 dark:divide-slate-800 font-semibold text-slate-600 dark:text-slate-300">
+                        {adminWalletPayouts.length > 0 ? (
+                          adminWalletPayouts.map((p) => (
+                            <tr key={p.id} className="hover:bg-slate-50/50 dark:hover:bg-slate-800/50 transition-colors">
+                              <td className="py-2.5 px-4 font-bold text-slate-900 dark:text-white">@{p.username}</td>
+                              <td className="py-2.5 px-4 text-right font-black text-slate-900 dark:text-white">₹{Number(p.amount).toLocaleString()}</td>
+                              <td className="py-2.5 px-4 text-center">
+                                <span className={`text-[9px] font-black px-2 py-0.5 rounded-full ${p.status === 'completed' ? 'bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600' : p.status === 'rejected' ? 'bg-rose-100 dark:bg-rose-900/30 text-rose-500' : 'bg-amber-100 dark:bg-amber-900/30 text-amber-600'}`}>
+                                  {p.status}
+                                </span>
+                              </td>
+                              <td className="py-2.5 px-4 text-center text-[10px] text-slate-500 font-bold">{new Date(p.requested_at).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}</td>
+                              <td className="py-2.5 px-4 text-[10px]">
+                                {p.account_holder_name ? (
+                                  <div>
+                                    <p className="font-bold text-slate-700 dark:text-slate-200">{p.account_holder_name}</p>
+                                    <p className="text-slate-400 font-mono">{p.account_number} · {p.ifsc_code}</p>
+                                    {(p.bank_reference || p.admin_note) && (
+                                      <p className="text-slate-400 italic mt-0.5">{p.bank_reference || p.admin_note}</p>
+                                    )}
+                                  </div>
+                                ) : (
+                                  <span className="text-slate-400">— no bank details (legacy request)</span>
+                                )}
+                              </td>
+                              <td className="py-2.5 px-4 text-center">
+                                {p.status === 'pending' ? (
+                                  <div className="flex items-center justify-center gap-2">
+                                    <button
+                                      onClick={() => processWalletPayout(p.id, 'complete')}
+                                      disabled={processingPayoutId === p.id}
+                                      className="bg-emerald-500 hover:bg-emerald-600 disabled:opacity-50 text-white text-[10px] py-1.5 px-3 rounded-lg font-bold transition-all"
+                                    >
+                                      Complete
+                                    </button>
+                                    <button
+                                      onClick={() => processWalletPayout(p.id, 'reject')}
+                                      disabled={processingPayoutId === p.id}
+                                      className="bg-slate-200 hover:bg-slate-300 dark:bg-slate-700 dark:hover:bg-slate-600 disabled:opacity-50 text-slate-700 dark:text-slate-200 text-[10px] py-1.5 px-3 rounded-lg font-bold transition-all"
+                                    >
+                                      Reject
+                                    </button>
+                                  </div>
+                                ) : (
+                                  <span className="text-[10px] text-slate-400">—</span>
+                                )}
+                              </td>
+                            </tr>
+                          ))
+                        ) : (
+                          <tr>
+                            <td colSpan={6} className="py-8 text-center text-slate-400 italic">No withdrawal requests yet.</td>
+                          </tr>
+                        )}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+
+                {/* Referral Links table */}
+                <div className="bg-white dark:bg-slate-900 border border-slate-200/50 dark:border-slate-800/50 rounded-3xl overflow-hidden shadow-sm">
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-left border-collapse text-xs">
+                      <thead>
+                        <tr className="bg-slate-50 dark:bg-slate-800 text-slate-400 uppercase tracking-widest font-black text-[9px] border-b border-slate-100 dark:border-slate-800">
+                          <th className="py-4 px-4">Referrer</th>
+                          <th className="py-4 px-4">Referred By (Upline)</th>
+                          <th className="py-4 px-4">Product</th>
+                          <th className="py-4 px-4">Referral Code</th>
+                          <th className="py-4 px-4 text-center">Clicks</th>
+                          <th className="py-4 px-4 text-center">Conversions</th>
+                          <th className="py-4 px-4 text-center">Discount %</th>
+                          <th className="py-4 px-4 text-right">Paid</th>
+                          <th className="py-4 px-4 text-right">Pending</th>
+                          <th className="py-4 px-4 text-center">Created</th>
+                          <th className="py-4 px-4 text-center">Actions</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-slate-100 dark:divide-slate-800 font-semibold text-slate-600 dark:text-slate-300">
+                        {adminWallets && adminWallets.links.length > 0 ? (
+                          adminWallets.links.map((link) => {
+                            const isExpanded = expandedWalletLinkId === link.id;
+                            return (
+                              <React.Fragment key={link.id}>
+                                <tr className="hover:bg-slate-50/50 dark:hover:bg-slate-800/50 transition-colors">
+                                  <td className="py-3 px-4 font-bold text-slate-900 dark:text-white">@{link.referrer}</td>
+                                  <td className="py-3 px-4">
+                                    {link.referred_by ? (
+                                      <span className="font-bold text-violet-600">@{link.referred_by}</span>
+                                    ) : (
+                                      <span className="text-slate-400 text-[10px]">—</span>
+                                    )}
+                                  </td>
+                                  <td className="py-3 px-4 font-bold">{link.product_name}</td>
+                                  <td className="py-3 px-4 font-mono text-slate-500 text-[10px]">{link.referral_code}</td>
+                                  <td className="py-3 px-4 text-center">
+                                    <span className={`font-black text-sm ${link.clicks > 0 ? 'text-violet-600' : 'text-slate-400'}`}>{link.clicks}</span>
+                                  </td>
+                                  <td className="py-3 px-4 text-center font-black text-slate-900 dark:text-white">{link.conversions}</td>
+                                  <td className="py-3 px-4 text-center font-bold text-violet-500">{link.link_discount_percent}%</td>
+                                  <td className="py-3 px-4 text-right font-black text-emerald-600">₹{Number(link.total_paid).toLocaleString()}</td>
+                                  <td className="py-3 px-4 text-right font-black text-amber-500">₹{Number(link.pending).toLocaleString()}</td>
+                                  <td className="py-3 px-4 text-center text-[10px] text-slate-500 font-bold">{link.created_at}</td>
+                                  <td className="py-3 px-4 text-center">
+                                    <button
+                                      onClick={() => setExpandedWalletLinkId(isExpanded ? null : link.id)}
+                                      className="bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-[10px] py-1.5 px-3 rounded-lg font-bold transition-all text-slate-600 dark:text-slate-350"
+                                    >
+                                      {isExpanded ? 'Hide' : `Show (${link.buyers.length})`}
+                                    </button>
+                                  </td>
+                                </tr>
+                                {isExpanded && (
+                                  <tr className="bg-slate-50/30 dark:bg-slate-900/30">
+                                    <td colSpan={11} className="py-4 px-8 border-t border-b border-slate-100 dark:border-slate-800">
+                                      <div className="space-y-3">
+                                        <h4 className="font-black text-[9px] uppercase tracking-wider text-slate-400">Buyer Purchase Logs</h4>
+                                        {link.buyers.length > 0 ? (
+                                          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                                            {link.buyers.map((buyer, bIdx) => (
+                                              <div key={bIdx} className="bg-white dark:bg-slate-850 p-3.5 rounded-2xl border border-slate-200/50 dark:border-slate-800/50 flex flex-col gap-1 text-[11px]">
+                                                <div className="flex justify-between items-center">
+                                                  <span className="font-bold text-slate-900 dark:text-white">{buyer.username}</span>
+                                                  <span className="text-[10px] text-slate-400 font-bold">{buyer.date}</span>
+                                                </div>
+                                                <span className="text-slate-400 font-mono text-[10px]">{buyer.order_id}</span>
+                                                <div className="flex justify-between items-center mt-2 pt-2 border-t border-slate-100 dark:border-slate-800 font-bold">
+                                                  <span className="text-slate-400 font-bold">Order:</span>
+                                                  <span className="text-slate-900 dark:text-white font-bold">₹{buyer.order_amount.toLocaleString()}</span>
+                                                </div>
+                                                <div className="flex justify-between items-center font-bold">
+                                                  <span className="text-slate-400 font-bold">Reward:</span>
+                                                  <span className={`font-black ${buyer.status === 'completed' ? 'text-emerald-600' : 'text-amber-500'}`}>₹{buyer.reward.toLocaleString()} ({buyer.status})</span>
+                                                </div>
+                                              </div>
+                                            ))}
+                                          </div>
+                                        ) : (
+                                          <p className="text-slate-400 text-xs italic">No buyers have purchased using this link yet.</p>
+                                        )}
+                                      </div>
+                                    </td>
+                                  </tr>
+                                )}
+                              </React.Fragment>
+                            );
+                          })
+                        ) : (
+                          <tr>
+                            <td colSpan={11} className="py-12 text-center text-slate-400 italic">No customer referral links generated yet.</td>
+                          </tr>
+                        )}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+
+                {/* Full transaction ledger */}
+                <div className="bg-white dark:bg-slate-900 border border-slate-200/50 dark:border-slate-800/50 rounded-3xl overflow-hidden shadow-sm">
+                  <div className="px-4 pt-4">
+                    <h4 className="font-black text-[11px] text-slate-800 dark:text-white uppercase tracking-wider">Full Wallet Ledger</h4>
+                    <p className="text-[9px] text-slate-400 font-semibold mt-0.5 mb-2">Every credit — direct referrals and upline bonuses — across all users.</p>
+                  </div>
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-left border-collapse text-xs">
+                      <thead>
+                        <tr className="bg-slate-50 dark:bg-slate-800 text-slate-400 uppercase tracking-widest font-black text-[9px] border-b border-slate-100 dark:border-slate-800">
+                          <th className="py-3 px-4">User</th>
+                          <th className="py-3 px-4 text-center">Level</th>
+                          <th className="py-3 px-4">Product</th>
+                          <th className="py-3 px-4">Buyer</th>
+                          <th className="py-3 px-4">Order</th>
+                          <th className="py-3 px-4 text-right">Amount</th>
+                          <th className="py-3 px-4 text-center">Status</th>
+                          <th className="py-3 px-4 text-center">Date</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-slate-100 dark:divide-slate-800 font-semibold text-slate-600 dark:text-slate-300">
+                        {adminWallets && adminWallets.ledger.length > 0 ? (
+                          adminWallets.ledger.map((tx) => (
+                            <tr key={tx.id} className="hover:bg-slate-50/50 dark:hover:bg-slate-800/50 transition-colors">
+                              <td className="py-2.5 px-4 font-bold text-slate-900 dark:text-white">@{tx.user}</td>
+                              <td className="py-2.5 px-4 text-center">
+                                <span className={`text-[9px] font-black px-2 py-0.5 rounded-full ${tx.level === 2 ? 'bg-violet-100 dark:bg-violet-900/30 text-violet-600' : 'bg-slate-100 dark:bg-slate-800 text-slate-500'}`}>
+                                  {tx.level === 2 ? 'Upline' : 'Direct'}
+                                </span>
+                              </td>
+                              <td className="py-2.5 px-4">{tx.product_name || '—'}</td>
+                              <td className="py-2.5 px-4 text-slate-500">{tx.buyer ? `@${tx.buyer}` : '—'}</td>
+                              <td className="py-2.5 px-4 font-mono text-[10px] text-slate-500">{tx.order_id || '—'}</td>
+                              <td className="py-2.5 px-4 text-right font-black text-slate-900 dark:text-white">₹{Number(tx.amount).toLocaleString()}</td>
+                              <td className="py-2.5 px-4 text-center">
+                                <span className={`text-[9px] font-black px-2 py-0.5 rounded-full ${tx.status === 'completed' ? 'bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600' : tx.status === 'pending' ? 'bg-amber-100 dark:bg-amber-900/30 text-amber-600' : 'bg-rose-100 dark:bg-rose-900/30 text-rose-500'}`}>
+                                  {tx.status}
+                                </span>
+                              </td>
+                              <td className="py-2.5 px-4 text-center text-[10px] text-slate-500 font-bold">{tx.created_at}</td>
+                            </tr>
+                          ))
+                        ) : (
+                          <tr>
+                            <td colSpan={8} className="py-12 text-center text-slate-400 italic">No wallet transactions yet.</td>
+                          </tr>
+                        )}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              </div>
+            )}
+
             {/* BROADCAST MESSAGES */}
             {adminView === 'broadcast' && (user?.is_staff || user?.user_type === 'admin') && (
               <div className="space-y-6 animate-fadeIn max-w-2xl">
@@ -8083,6 +8629,267 @@ export default function EcommerceMarketplace({ inlineMode = false, onBackToSelec
               >
                 Shop & Earn More Points
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {referModalData && (
+        <div className="fixed inset-0 z-[9999] bg-black/50 backdrop-blur-sm flex items-center justify-center p-4" onClick={() => setReferModalData(null)}>
+          <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-2xl max-w-sm w-full overflow-hidden" onClick={e => e.stopPropagation()}>
+            <div className="bg-gradient-to-r from-violet-600 to-fuchsia-600 px-5 py-4 flex items-center gap-3 relative">
+              <button onClick={() => setReferModalData(null)} className="absolute top-3 right-3 text-white/70 hover:text-white"><X className="w-4 h-4" /></button>
+              <div className="w-10 h-10 bg-white/20 rounded-full flex items-center justify-center backdrop-blur-sm flex-shrink-0">
+                <Gift className="w-5 h-5 text-white" />
+              </div>
+              <div>
+                <h2 className="text-base font-black text-white leading-tight">Refer & Earn</h2>
+                <p className="text-[10px] text-white/70 font-semibold truncate max-w-[200px]">{referModalData.product_name}</p>
+              </div>
+            </div>
+            <div className="p-4 space-y-3">
+              <p className="text-[11px] text-slate-500 dark:text-slate-400 leading-relaxed">
+                Share this link. When someone buys <span className="font-bold text-slate-700 dark:text-slate-200">{referModalData.product_name}</span> through it, you earn a <span className="font-black text-violet-600">{referModalData.link_discount_percent}%</span> wallet reward — and if you were referred by someone, they get half of that too.
+              </p>
+              <div className="flex items-center gap-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2.5">
+                <span className="flex-1 text-[10px] font-mono text-slate-600 dark:text-slate-300 truncate">{referModalData.referral_link}</span>
+                <button
+                  onClick={() => { navigator.clipboard.writeText(referModalData.referral_link); showToast('Referral link copied!'); }}
+                  className="flex-shrink-0 p-1.5 rounded-lg bg-violet-600 hover:bg-violet-700 text-white transition-colors"
+                  title="Copy link"
+                >
+                  <Copy className="w-3.5 h-3.5" />
+                </button>
+              </div>
+              <button
+                onClick={() => {
+                  if (navigator.share) {
+                    navigator.share({
+                      title: `${referModalData.product_name} on Collabo`,
+                      text: `Check out ${referModalData.product_name} on Collabo! Use my link and we both benefit 🎁`,
+                      url: referModalData.referral_link,
+                    }).catch(() => {});
+                  } else {
+                    navigator.clipboard.writeText(referModalData.referral_link);
+                    showToast('Referral link copied!');
+                  }
+                  setReferModalData(null);
+                }}
+                className="w-full bg-gradient-to-r from-violet-600 to-fuchsia-600 text-white font-black text-[11px] py-2.5 rounded-xl hover:opacity-90 transition-opacity flex items-center justify-center gap-1.5"
+              >
+                <Share2 className="w-3.5 h-3.5" />
+                Copy & Share
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showInviteModal && user && (() => {
+        const inviteLink = `${window.location.origin}/register?affiliate=${user.affiliate_code}`;
+        return (
+          <div className="fixed inset-0 z-[9999] bg-black/50 backdrop-blur-sm flex items-center justify-center p-4" onClick={() => setShowInviteModal(false)}>
+            <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-2xl max-w-sm w-full overflow-hidden" onClick={e => e.stopPropagation()}>
+              <div className="bg-gradient-to-r from-violet-600 to-fuchsia-600 px-5 py-4 flex items-center gap-3 relative">
+                <button onClick={() => setShowInviteModal(false)} className="absolute top-3 right-3 text-white/70 hover:text-white"><X className="w-4 h-4" /></button>
+                <div className="w-10 h-10 bg-white/20 rounded-full flex items-center justify-center backdrop-blur-sm flex-shrink-0">
+                  <Users className="w-5 h-5 text-white" />
+                </div>
+                <div>
+                  <h2 className="text-base font-black text-white leading-tight">Invite Friends</h2>
+                  <p className="text-[10px] text-white/70 font-semibold">Your personal invite link</p>
+                </div>
+              </div>
+              <div className="p-4 space-y-3">
+                <p className="text-[11px] text-slate-500 dark:text-slate-400 leading-relaxed">
+                  Share this link with friends and contacts who don't have an account yet. When they sign up through it, you earn a wallet reward on <span className="font-bold text-slate-700 dark:text-slate-200">every order they ever place</span> — and if you were invited by someone, they earn half of that too. 2 levels deep.
+                </p>
+                <div className="flex items-center gap-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2.5">
+                  <span className="flex-1 text-[10px] font-mono text-slate-600 dark:text-slate-300 truncate">{inviteLink}</span>
+                  <button
+                    onClick={() => { navigator.clipboard.writeText(inviteLink); showToast('Invite link copied!'); }}
+                    className="flex-shrink-0 p-1.5 rounded-lg bg-violet-600 hover:bg-violet-700 text-white transition-colors"
+                    title="Copy link"
+                  >
+                    <Copy className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+                <button
+                  onClick={() => {
+                    if (navigator.share) {
+                      navigator.share({
+                        title: 'Join me on Collabo',
+                        text: 'Join Collabo using my invite link — sign up and start shopping!',
+                        url: inviteLink,
+                      }).catch(() => {});
+                    } else {
+                      navigator.clipboard.writeText(inviteLink);
+                      showToast('Invite link copied!');
+                    }
+                    setShowInviteModal(false);
+                  }}
+                  className="w-full bg-gradient-to-r from-violet-600 to-fuchsia-600 text-white font-black text-[11px] py-2.5 rounded-xl hover:opacity-90 transition-opacity flex items-center justify-center gap-1.5"
+                >
+                  <Share2 className="w-3.5 h-3.5" />
+                  Copy & Share
+                </button>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
+
+      {showWalletModal && walletData && (
+        <div className="fixed inset-0 z-[9999] bg-black/50 backdrop-blur-sm flex items-center justify-center p-4" onClick={() => setShowWalletModal(false)}>
+          <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-2xl max-w-sm w-full overflow-hidden max-h-[90vh] overflow-y-auto" style={{ scrollbarWidth: 'none' }} onClick={e => e.stopPropagation()}>
+            <div className="bg-gradient-to-r from-violet-600 to-fuchsia-600 px-5 py-4 flex items-center gap-3 relative">
+              <button onClick={() => setShowWalletModal(false)} className="absolute top-3 right-3 text-white/70 hover:text-white"><X className="w-4 h-4" /></button>
+              <div className="w-10 h-10 bg-white/20 rounded-full flex items-center justify-center backdrop-blur-sm flex-shrink-0">
+                <Gift className="w-5 h-5 text-white" />
+              </div>
+              <div>
+                <h2 className="text-xl font-black text-white leading-none">₹{walletData.balance}</h2>
+                <p className="text-[10px] text-white/70 font-semibold">Referral Wallet Balance{walletData.pending > 0 ? ` · ₹${walletData.pending} pending` : ''}</p>
+              </div>
+            </div>
+            <div className="p-4 space-y-3">
+              <div className="flex items-center gap-2.5 bg-slate-50 dark:bg-slate-800 rounded-lg p-2.5">
+                <div className="w-7 h-7 rounded-md bg-violet-100 dark:bg-violet-900/30 flex items-center justify-center flex-shrink-0">
+                  <Gift className="w-3.5 h-3.5 text-violet-600" />
+                </div>
+                <div className="flex-1">
+                  <p className="text-[11px] font-bold text-slate-800 dark:text-white">How it works</p>
+                  <p className="text-[9px] text-slate-500">Tap "Refer & Earn" on any product to get your link. When someone buys through it, you earn a wallet reward — and if you were referred by someone, they earn half of that too.</p>
+                </div>
+              </div>
+
+              {/* Withdraw as cash — redeemable any time, independent of checkout */}
+              <div className="border border-violet-200 dark:border-violet-800 bg-violet-50 dark:bg-violet-950/30 rounded-xl p-3 space-y-2">
+                <div className="flex items-center justify-between">
+                  <p className="text-[11px] font-bold text-violet-700 dark:text-violet-300">Withdraw as Cash</p>
+                  {walletData.balance > 0 && (
+                    <button
+                      onClick={() => {
+                        if (!showWithdrawForm) setWithdrawAmount(String(walletData.balance));
+                        setShowWithdrawForm(!showWithdrawForm);
+                      }}
+                      className="text-[10px] font-black text-violet-600 hover:underline"
+                    >
+                      {showWithdrawForm ? 'Cancel' : 'Withdraw'}
+                    </button>
+                  )}
+                </div>
+                {walletData.balance <= 0 ? (
+                  <p className="text-[9px] text-slate-500">You have ₹0 to withdraw right now — refer a product to start earning.</p>
+                ) : showWithdrawForm ? (
+                  <div className="space-y-2">
+                    <input
+                      type="number"
+                      min="0.01"
+                      step="0.01"
+                      max={walletData.balance}
+                      value={withdrawAmount}
+                      onChange={(e) => setWithdrawAmount(e.target.value)}
+                      placeholder={`Amount — up to ₹${walletData.balance}`}
+                      className="w-full text-xs bg-white dark:bg-slate-800 border border-violet-200 dark:border-violet-700 rounded-lg px-2.5 py-1.5 focus:outline-none focus:ring-1 focus:ring-violet-500 dark:text-white"
+                    />
+
+                    {walletData.bank_details && !editBankDetails ? (
+                      <div className="flex items-center justify-between bg-white dark:bg-slate-800 border border-violet-200 dark:border-violet-700 rounded-lg px-2.5 py-2">
+                        <div className="min-w-0">
+                          <p className="text-[10px] font-bold text-slate-700 dark:text-slate-200 truncate">{walletData.bank_details.account_holder_name}</p>
+                          <p className="text-[9px] text-slate-400 font-mono">••••{walletData.bank_details.account_number.slice(-4)} · {walletData.bank_details.ifsc_code}</p>
+                        </div>
+                        <button
+                          onClick={() => {
+                            setEditBankDetails(true);
+                            setWithdrawAccountName(walletData.bank_details.account_holder_name);
+                            setWithdrawAccountNumber(walletData.bank_details.account_number);
+                            setWithdrawIfsc(walletData.bank_details.ifsc_code);
+                          }}
+                          className="text-[9px] font-black text-violet-600 hover:underline flex-shrink-0 ml-2"
+                        >
+                          Change
+                        </button>
+                      </div>
+                    ) : (
+                      <>
+                        <input
+                          type="text"
+                          value={withdrawAccountName}
+                          onChange={(e) => setWithdrawAccountName(e.target.value)}
+                          placeholder="Account holder name"
+                          className="w-full text-xs bg-white dark:bg-slate-800 border border-violet-200 dark:border-violet-700 rounded-lg px-2.5 py-1.5 focus:outline-none focus:ring-1 focus:ring-violet-500 dark:text-white"
+                        />
+                        <input
+                          type="text"
+                          value={withdrawAccountNumber}
+                          onChange={(e) => setWithdrawAccountNumber(e.target.value.replace(/\D/g, ''))}
+                          placeholder="Bank account number"
+                          className="w-full text-xs bg-white dark:bg-slate-800 border border-violet-200 dark:border-violet-700 rounded-lg px-2.5 py-1.5 focus:outline-none focus:ring-1 focus:ring-violet-500 dark:text-white"
+                        />
+                        <input
+                          type="text"
+                          value={withdrawIfsc}
+                          onChange={(e) => setWithdrawIfsc(e.target.value.toUpperCase())}
+                          placeholder="IFSC code"
+                          className="w-full text-xs bg-white dark:bg-slate-800 border border-violet-200 dark:border-violet-700 rounded-lg px-2.5 py-1.5 focus:outline-none focus:ring-1 focus:ring-violet-500 dark:text-white uppercase"
+                        />
+                      </>
+                    )}
+
+                    <p className="text-[8px] text-slate-400">
+                      {walletData.bank_details ? "This is a one-time save — you won't be asked again unless you tap Change." : "Saved after your first request — you won't need to enter it again."}
+                    </p>
+
+                    <button
+                      onClick={handleWithdraw}
+                      disabled={withdrawing}
+                      className="w-full bg-violet-600 hover:bg-violet-700 disabled:opacity-50 text-white text-[10px] font-black px-3 py-2 rounded-lg transition-colors"
+                    >
+                      {withdrawing ? 'Requesting...' : 'Request Withdrawal'}
+                    </button>
+                  </div>
+                ) : (
+                  <p className="text-[9px] text-slate-500">Request a cash withdrawal any time — an admin reviews and processes it to your bank.</p>
+                )}
+              </div>
+
+              {walletPayouts.length > 0 && (
+                <>
+                  <h3 className="font-black text-[11px] text-slate-800 dark:text-white uppercase tracking-wider pt-1">Withdrawal Requests</h3>
+                  <div className="space-y-1.5">
+                    {walletPayouts.map(p => (
+                      <div key={p.id} className="flex items-center justify-between bg-slate-50 dark:bg-slate-800 rounded-lg p-2.5">
+                        <div>
+                          <p className="text-[10px] font-bold text-slate-700 dark:text-slate-200">₹{p.amount}</p>
+                          <p className="text-[9px] text-slate-400">{new Date(p.requested_at).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}</p>
+                        </div>
+                        <span className={`text-[9px] font-black px-2 py-0.5 rounded-full ${p.status === 'completed' ? 'bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600' : p.status === 'rejected' ? 'bg-rose-100 dark:bg-rose-900/30 text-rose-500' : 'bg-amber-100 dark:bg-amber-900/30 text-amber-600'}`}>
+                          {p.status}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                </>
+              )}
+
+              <h3 className="font-black text-[11px] text-slate-800 dark:text-white uppercase tracking-wider pt-1">Recent Activity</h3>
+              {walletData.transactions.length === 0 ? (
+                <p className="text-[10px] text-slate-400 text-center py-4">No referral earnings yet — start sharing product links!</p>
+              ) : (
+                <div className="space-y-1.5">
+                  {walletData.transactions.map(tx => (
+                    <div key={tx.id} className="flex items-center justify-between bg-slate-50 dark:bg-slate-800 rounded-lg p-2.5">
+                      <div className="min-w-0">
+                        <p className="text-[10px] font-bold text-slate-700 dark:text-slate-200 truncate">{tx.reason}</p>
+                        <p className="text-[9px] text-slate-400">{new Date(tx.created_at).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })} · {tx.level === 0 ? 'Redeemed' : tx.level === 2 ? 'Upline bonus' : 'Direct referral'}</p>
+                      </div>
+                      <span className={`text-[11px] font-black flex-shrink-0 ml-2 ${tx.amount < 0 ? 'text-rose-500' : tx.status === 'completed' ? 'text-emerald-600' : tx.status === 'pending' ? 'text-amber-500' : 'text-slate-400 line-through'}`}>{tx.amount < 0 ? '-' : '+'}₹{Math.abs(tx.amount)}</span>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
           </div>
         </div>

@@ -20,12 +20,13 @@ from rest_framework.decorators import action, api_view, permission_classes
 from rest_framework.permissions import IsAuthenticated
 from django.db import transaction
 from django.shortcuts import get_object_or_404
-from .models import Product, Cart, CartItem, Address, Order, OrderItem, Category, Brand, ProductReview, AffiliateCommission, StoreSettings, CustomerReview, ReferralClick, ProductInfluencerMedia, Wishlist
+from .models import Product, Cart, CartItem, Address, Order, OrderItem, Category, Brand, ProductReview, AffiliateCommission, StoreSettings, CustomerReview, ReferralClick, ProductInfluencerMedia, Wishlist, CustomerReferralLink, WalletTransaction, WalletPayout
 from .serializers import (
     ProductSerializer, CartSerializer, CartItemSerializer,
     AddressSerializer, OrderSerializer, OrderItemSerializer,
     CategorySerializer, BrandSerializer, ProductReviewSerializer, StoreSettingsSerializer, CustomerReviewSerializer,
-    ProductInfluencerMediaSerializer, WishlistSerializer
+    ProductInfluencerMediaSerializer, WishlistSerializer, CustomerReferralLinkSerializer, WalletTransactionSerializer,
+    WalletPayoutSerializer
 )
 
 DEFAULT_CATEGORIES = [
@@ -275,6 +276,358 @@ class AddressViewSet(viewsets.ModelViewSet):
     def perform_create(self, serializer):
         serializer.save(user=self.request.user)
 
+class OrderCreationError(Exception):
+    """Raised by create_order_for_user; carries an HTTP status so both callers
+    (OrderViewSet.create and verify_razorpay_payment) can turn it into a Response
+    the same way."""
+    def __init__(self, message, status_code=status.HTTP_400_BAD_REQUEST):
+        self.message = message
+        self.status_code = status_code
+        super().__init__(message)
+
+
+def get_wallet_balance(user):
+    """Combined spendable referral-wallet balance across BOTH reward sources —
+    WalletTransaction (customer referral links) and AffiliateCommission (influencer
+    links) — minus anything already claimed via a WalletPayout cash-withdrawal request
+    (pending/processing/completed all count as claimed; rejected frees it back up).
+    Returns (balance, pending) as Decimals. Shared by WalletView (what the user sees),
+    create_order_for_user (checkout redemption), and wallet_withdraw (cash-out), so
+    the same money can never be spent twice across the three paths."""
+    wallet_qs = WalletTransaction.objects.filter(user=user).exclude(status='cancelled')
+    wallet_balance = wallet_qs.filter(status='completed').aggregate(total=Sum('amount'))['total'] or Decimal('0')
+    wallet_pending = wallet_qs.filter(status='pending').aggregate(total=Sum('amount'))['total'] or Decimal('0')
+
+    comm_qs = AffiliateCommission.objects.filter(influencer=user).exclude(status='cancelled')
+    comm_balance = comm_qs.filter(status='completed').aggregate(total=Sum('amount'))['total'] or Decimal('0')
+    comm_pending = comm_qs.filter(status='pending').aggregate(total=Sum('amount'))['total'] or Decimal('0')
+
+    claimed = WalletPayout.objects.filter(
+        user=user, status__in=['pending', 'processing', 'completed']
+    ).aggregate(total=Sum('amount'))['total'] or Decimal('0')
+
+    balance = max(wallet_balance + comm_balance - claimed, Decimal('0'))
+    return balance, wallet_pending + comm_pending
+
+
+def create_order_for_user(user, data):
+    """Core order-creation logic, shared by OrderViewSet.create (COD) and
+    verify_razorpay_payment (UPI/Card) so referral discounts, affiliate commissions,
+    and wallet crediting/redemption behave identically regardless of payment method.
+    `data` is any dict-like object (DRF request.data works directly).
+    Raises OrderCreationError on validation failures. Returns the created Order."""
+    address_id = data.get('address')
+    coupon_code = data.get('coupon_code', '')
+    payment_method = data.get('payment_method', 'upi')
+    # Accept a per-product referral map: { "product_id": "referral_code", ... }
+    referral_map_raw = data.get('referral_map', {})
+    # Normalize keys to strings for consistency
+    referral_map = {str(k): str(v) for k, v in referral_map_raw.items()} if isinstance(referral_map_raw, dict) else {}
+    # Backward compat: single referral_code still accepted (applied to any matching product in cart)
+    single_referral_code = data.get('referral_code', None)
+
+    if not address_id:
+        raise OrderCreationError('Shipping address is required')
+
+    try:
+        address = Address.objects.get(id=address_id, user=user)
+    except Address.DoesNotExist:
+        raise OrderCreationError('Address not found', status.HTTP_404_NOT_FOUND)
+
+    # Get cart
+    cart, _ = Cart.objects.get_or_create(user=user)
+    cart_items = cart.items.all()
+    selected_items = data.get('selected_items')
+    if selected_items and isinstance(selected_items, list):
+        cart_items = cart_items.filter(id__in=selected_items)
+
+    if not cart_items.exists():
+        raise OrderCreationError('No items selected or cart is empty')
+
+    # Calculate pricing with per-product referral discounts
+    subtotal = 0
+    referral_discount = 0
+    valid_referral_map = {}  # only include codes that are verified valid
+
+    from ecommerce.models import ProductReview
+
+    for item in cart_items:
+        # Check stock
+        if item.product.stock < item.quantity:
+            raise OrderCreationError(f'Product {item.product.name} is out of stock or insufficient quantity')
+
+        item_subtotal = item.product.discount_price * item.quantity
+        subtotal += item_subtotal
+
+        # Look for referral code for this specific product
+        product_id_str = str(item.product.id)
+        ref_code_for_item = referral_map.get(product_id_str)
+
+        # Fallback: if no map entry, check single legacy referral_code
+        if not ref_code_for_item and single_referral_code:
+            ref_code_for_item = single_referral_code
+
+        if ref_code_for_item:
+            # Verify the referral code belongs to this exact product
+            review = ProductReview.objects.filter(referral_code=ref_code_for_item, product=item.product).first()
+            if review:
+                # If influencer set a custom price, use that as the unit price
+                effective_unit_price = review.custom_price if review.custom_price is not None else item.product.discount_price
+                effective_item_subtotal = effective_unit_price * item.quantity
+                # Adjust subtotal: replace default with custom-price subtotal
+                subtotal = subtotal - item_subtotal + int(effective_item_subtotal)
+                item_subtotal = int(effective_item_subtotal)
+
+                discount_pct = review.custom_discount_percent if review.custom_discount_percent is not None else item.product.link_discount_percent
+                # Only apply referral % discount if no custom_price is set
+                if review.custom_price is None:
+                    item_referral_discount = int(Decimal(str(item_subtotal)) * Decimal(str(discount_pct)) / Decimal('100'))
+                    referral_discount += item_referral_discount
+                valid_referral_map[product_id_str] = ref_code_for_item
+            else:
+                # Not an influencer link — check for a customer-generated referral link
+                cref_link = CustomerReferralLink.objects.filter(referral_code=ref_code_for_item, product=item.product).first()
+                if cref_link:
+                    discount_pct = item.product.link_discount_percent
+                    item_referral_discount = int(Decimal(str(item_subtotal)) * Decimal(str(discount_pct)) / Decimal('100'))
+                    referral_discount += item_referral_discount
+                    valid_referral_map[product_id_str] = ref_code_for_item
+
+    # Load admin-configured store settings once
+    store = StoreSettings.get_settings()
+
+    # Coupon Discount (applied to full subtotal) — uses admin-managed coupon list
+    discount = 0
+    if coupon_code:
+        code_upper = coupon_code.upper()
+        matched = next(
+            (c for c in (store.coupon_codes or []) if c.get('code', '').upper() == code_upper),
+            None
+        )
+        if matched:
+            discount = int(Decimal(str(subtotal)) * Decimal(str(matched['discount_percent'])) / Decimal('100'))
+
+    discount += referral_discount
+
+    # Delivery Charge — use admin-configured values
+    delivery_charge = 0 if subtotal > store.free_shipping_threshold else store.shipping_charge
+    final_amount = subtotal - discount + delivery_charge
+
+    # Points Redemption
+    redeem_points = data.get('redeem_points', False)
+    if user.reward_points is None:
+        user.reward_points = 0
+
+    if redeem_points and user.reward_points >= 100:
+        points_redeemed = min(user.reward_points, int(final_amount))
+        discount += points_redeemed
+        final_amount -= points_redeemed
+        user.reward_points -= points_redeemed
+
+    # Referral Wallet Redemption — applied after points, on whatever remains
+    redeem_wallet = data.get('redeem_wallet', False)
+    wallet_redeemed = Decimal('0')
+    if redeem_wallet:
+        wallet_balance, _ = get_wallet_balance(user)
+        if wallet_balance > 0 and final_amount > 0:
+            wallet_redeemed = min(wallet_balance, Decimal(str(final_amount))).quantize(Decimal('0.01'))
+            discount += wallet_redeemed
+            final_amount -= wallet_redeemed
+
+    # Calculate reward points earned from this purchase (spend 100rs = 1 point)
+    earned_points = int(final_amount // 100)
+    user.reward_points += earned_points
+    user.save()
+
+    # Unique Order ID
+    random_digits = ''.join(random.choices(string.digits, k=7))
+    order_id = f"ORD-{random_digits}"
+
+    # Expected delivery date — standard 3–5 business days
+    from datetime import date, timedelta
+    def add_business_days(start, days):
+        current = start
+        added = 0
+        while added < days:
+            current += timedelta(days=1)
+            if current.weekday() < 5:  # Mon–Fri
+                added += 1
+        return current
+    expected_delivery_date = add_business_days(date.today(), 5)
+
+    # Create Order — store valid_referral_map for per-product tracking
+    order = Order.objects.create(
+        user=user,
+        address=address,
+        total_amount=subtotal,
+        discount_amount=discount,
+        delivery_charge=delivery_charge,
+        final_amount=final_amount,
+        payment_method=payment_method,
+        payment_status='pending' if payment_method == 'cod' else 'completed',
+        expected_delivery_date=expected_delivery_date,
+        status='processing',
+        order_id=order_id,
+        referral_code=single_referral_code,  # backward compat
+        referral_map=valid_referral_map
+    )
+
+    if wallet_redeemed > 0:
+        WalletTransaction.objects.create(
+            user=user,
+            order=order,
+            product=None,
+            amount=-wallet_redeemed,
+            status='completed',
+            level=0,
+            reason=f'Redeemed at checkout ({order.order_id})',
+        )
+
+    # Create Order Items, decrease stock, and award commissions
+    for item in cart_items:
+        # Determine effective unit price (custom_price takes priority if referral used)
+        product_id_str = str(item.product.id)
+        ref_code_for_item = valid_referral_map.get(product_id_str)
+        effective_price = item.product.discount_price
+        if ref_code_for_item:
+            review_for_price = ProductReview.objects.filter(referral_code=ref_code_for_item, product=item.product).first()
+            if review_for_price and review_for_price.custom_price is not None:
+                effective_price = review_for_price.custom_price
+
+        order_item = OrderItem.objects.create(
+            order=order,
+            product=item.product,
+            price=effective_price,
+            quantity=item.quantity
+        )
+        # Decrease stock
+        item.product.stock -= item.quantity
+        item.product.save()
+
+        # Process referral commission for this product if it has a valid referral
+        product_id_str = str(item.product.id)
+        ref_code_for_item = valid_referral_map.get(product_id_str)
+        if ref_code_for_item:
+            review = ProductReview.objects.filter(referral_code=ref_code_for_item, product=item.product).first()
+            if review:
+                if review.custom_commission_rate is not None:
+                    rate = review.custom_commission_rate
+                else:
+                    rate = item.product.commission_rate
+
+                # Actual amount paid for this item
+                item_total = Decimal(str(order_item.price * order_item.quantity))
+                if review.custom_price is not None:
+                    # custom_price already bakes in the price — no extra referral discount
+                    item_referral_discount = Decimal('0')
+                else:
+                    discount_pct = review.custom_discount_percent if review.custom_discount_percent is not None else item.product.link_discount_percent
+                    item_referral_discount = item_total * Decimal(str(discount_pct)) / Decimal('100')
+                # Proportional coupon discount for this item
+                coupon_only = discount - referral_discount - wallet_redeemed
+                if subtotal > 0 and coupon_only > 0:
+                    item_coupon_discount = item_total * (Decimal(str(coupon_only)) / Decimal(str(subtotal)))
+                else:
+                    item_coupon_discount = Decimal('0')
+                actual_item_amount = item_total - item_referral_discount - item_coupon_discount
+
+                commission_amount = actual_item_amount * Decimal(str(rate)) / Decimal('100')
+                commission_amount = commission_amount.quantize(Decimal('0.01'))
+
+                commission_status = 'completed' if order.payment_status == 'completed' else 'pending'
+                AffiliateCommission.objects.create(
+                    influencer=review.influencer,
+                    order=order,
+                    product=item.product,
+                    amount=commission_amount,
+                    status=commission_status,
+                    level=1,
+                )
+                # Level 2: upline (the person who recruited the direct referrer) gets 50%
+                upline = getattr(review.influencer, 'referred_by', None)
+                if upline:
+                    upline_amount = (commission_amount * Decimal('0.5')).quantize(Decimal('0.01'))
+                    AffiliateCommission.objects.create(
+                        influencer=upline,
+                        order=order,
+                        product=item.product,
+                        amount=upline_amount,
+                        status=commission_status,
+                        level=2,
+                    )
+            else:
+                # Not an influencer link — check for a customer-generated referral link
+                cref_link = CustomerReferralLink.objects.filter(referral_code=ref_code_for_item, product=item.product).first()
+                if cref_link:
+                    item_total = Decimal(str(order_item.price * order_item.quantity))
+                    discount_pct = item.product.link_discount_percent
+                    item_referral_discount = item_total * Decimal(str(discount_pct)) / Decimal('100')
+                    reward_amount = item_referral_discount.quantize(Decimal('0.01'))
+
+                    tx_status = 'completed' if order.payment_status == 'completed' else 'pending'
+                    WalletTransaction.objects.create(
+                        user=cref_link.user,
+                        order=order,
+                        product=item.product,
+                        amount=reward_amount,
+                        status=tx_status,
+                        level=1,
+                        reason=f'Referral reward for {item.product.name}',
+                    )
+                    # Upline: whoever's link cref_link.user came through for THIS product
+                    # (captured at link-creation time), not their account signup recruiter.
+                    upline = cref_link.referred_via
+                    if upline:
+                        upline_amount = (reward_amount * Decimal('0.5')).quantize(Decimal('0.01'))
+                        WalletTransaction.objects.create(
+                            user=upline,
+                            order=order,
+                            product=item.product,
+                            amount=upline_amount,
+                            status=tx_status,
+                            level=2,
+                            reason=f'Referral upline bonus for {item.product.name}',
+                        )
+
+        # Signup referral: whoever recruited THIS buyer (User.referred_by, set once at
+        # signup via the "Affiliate Recruitment Link") earns on EVERY order the buyer
+        # places for the rest of their time on the platform — not just orders that go
+        # through a specific product/referral link. Their own recruiter gets half of
+        # that, 2 levels deep. This runs independently of (and stacks with) whatever
+        # product-link referral reward was processed above for this same item.
+        signup_referrer = getattr(user, 'referred_by', None)
+        if signup_referrer:
+            item_total_signup = Decimal(str(order_item.price * order_item.quantity))
+            signup_reward = (item_total_signup * Decimal(str(item.product.link_discount_percent)) / Decimal('100')).quantize(Decimal('0.01'))
+            if signup_reward > 0:
+                signup_tx_status = 'completed' if order.payment_status == 'completed' else 'pending'
+                WalletTransaction.objects.create(
+                    user=signup_referrer,
+                    order=order,
+                    product=item.product,
+                    amount=signup_reward,
+                    status=signup_tx_status,
+                    level=1,
+                    reason=f"Signup referral reward — {user.username}'s purchase of {item.product.name}",
+                )
+                upline_signup_referrer = getattr(signup_referrer, 'referred_by', None)
+                if upline_signup_referrer:
+                    upline_signup_reward = (signup_reward * Decimal('0.5')).quantize(Decimal('0.01'))
+                    WalletTransaction.objects.create(
+                        user=upline_signup_referrer,
+                        order=order,
+                        product=item.product,
+                        amount=upline_signup_reward,
+                        status=signup_tx_status,
+                        level=2,
+                        reason=f"Signup referral upline bonus — {user.username}'s purchase of {item.product.name}",
+                    )
+
+    # Clear cart
+    cart_items.delete()
+    return order
+
+
 class OrderViewSet(viewsets.ModelViewSet):
     serializer_class = OrderSerializer
     permission_classes = [permissions.IsAuthenticated]
@@ -282,232 +635,24 @@ class OrderViewSet(viewsets.ModelViewSet):
     def get_queryset(self):
         user = self.request.user
         role = self.request.query_params.get('role', None)
-        
+
         # If admin role
         if user.is_staff or user.user_type == 'admin':
             return Order.objects.all().order_by('-created_at')
-            
+
         # If requesting as a seller, return orders that contain the seller's products
         if role == 'seller':
             return Order.objects.filter(items__product__seller=user).distinct().order_by('-created_at')
-            
+
         # Otherwise return customer's own orders
         return Order.objects.filter(user=user).order_by('-created_at')
 
     @transaction.atomic
     def create(self, request):
-        user = request.user
-        address_id = request.data.get('address')
-        coupon_code = request.data.get('coupon_code', '')
-        payment_method = request.data.get('payment_method', 'upi')
-        # Accept a per-product referral map: { "product_id": "referral_code", ... }
-        referral_map_raw = request.data.get('referral_map', {})
-        # Normalize keys to strings for consistency
-        referral_map = {str(k): str(v) for k, v in referral_map_raw.items()} if isinstance(referral_map_raw, dict) else {}
-        # Backward compat: single referral_code still accepted (applied to any matching product in cart)
-        single_referral_code = request.data.get('referral_code', None)
-
-        if not address_id:
-            return Response({'error': 'Shipping address is required'}, status=status.HTTP_400_BAD_REQUEST)
-
-        address = get_object_or_404(Address, id=address_id, user=user)
-        
-        # Get cart
-        cart, _ = Cart.objects.get_or_create(user=user)
-        cart_items = cart.items.all()
-        selected_items = request.data.get('selected_items')
-        if selected_items and isinstance(selected_items, list):
-            cart_items = cart_items.filter(id__in=selected_items)
-            
-        if not cart_items.exists():
-            return Response({'error': 'No items selected or cart is empty'}, status=status.HTTP_400_BAD_REQUEST)
-
-        # Calculate pricing with per-product referral discounts
-        subtotal = 0
-        referral_discount = 0
-        valid_referral_map = {}  # only include codes that are verified valid
-
-        from ecommerce.models import ProductReview
-
-        for item in cart_items:
-            # Check stock
-            if item.product.stock < item.quantity:
-                return Response({'error': f'Product {item.product.name} is out of stock or insufficient quantity'}, status=status.HTTP_400_BAD_REQUEST)
-
-            item_subtotal = item.product.discount_price * item.quantity
-            subtotal += item_subtotal
-
-            # Look for referral code for this specific product
-            product_id_str = str(item.product.id)
-            ref_code_for_item = referral_map.get(product_id_str)
-
-            # Fallback: if no map entry, check single legacy referral_code
-            if not ref_code_for_item and single_referral_code:
-                ref_code_for_item = single_referral_code
-
-            if ref_code_for_item:
-                # Verify the referral code belongs to this exact product
-                review = ProductReview.objects.filter(referral_code=ref_code_for_item, product=item.product).first()
-                if review:
-                    # If influencer set a custom price, use that as the unit price
-                    effective_unit_price = review.custom_price if review.custom_price is not None else item.product.discount_price
-                    effective_item_subtotal = effective_unit_price * item.quantity
-                    # Adjust subtotal: replace default with custom-price subtotal
-                    subtotal = subtotal - item_subtotal + int(effective_item_subtotal)
-                    item_subtotal = int(effective_item_subtotal)
-
-                    discount_pct = review.custom_discount_percent if review.custom_discount_percent is not None else item.product.link_discount_percent
-                    # Only apply referral % discount if no custom_price is set
-                    if review.custom_price is None:
-                        item_referral_discount = int(Decimal(str(item_subtotal)) * Decimal(str(discount_pct)) / Decimal('100'))
-                        referral_discount += item_referral_discount
-                    valid_referral_map[product_id_str] = ref_code_for_item
-
-        # Load admin-configured store settings once
-        store = StoreSettings.get_settings()
-
-        # Coupon Discount (applied to full subtotal) — uses admin-managed coupon list
-        discount = 0
-        if coupon_code:
-            code_upper = coupon_code.upper()
-            matched = next(
-                (c for c in (store.coupon_codes or []) if c.get('code', '').upper() == code_upper),
-                None
-            )
-            if matched:
-                discount = int(Decimal(str(subtotal)) * Decimal(str(matched['discount_percent'])) / Decimal('100'))
-
-        discount += referral_discount
-
-        # Delivery Charge — use admin-configured values
-        delivery_charge = 0 if subtotal > store.free_shipping_threshold else store.shipping_charge
-        final_amount = subtotal - discount + delivery_charge
-
-        # Points Redemption
-        redeem_points = request.data.get('redeem_points', False)
-        if user.reward_points is None:
-            user.reward_points = 0
-            
-        if redeem_points and user.reward_points >= 100:
-            points_redeemed = min(user.reward_points, int(final_amount))
-            discount += points_redeemed
-            final_amount -= points_redeemed
-            user.reward_points -= points_redeemed
-
-        # Calculate reward points earned from this purchase (spend 100rs = 1 point)
-        earned_points = int(final_amount // 100)
-        user.reward_points += earned_points
-        user.save()
-
-        # Unique Order ID
-        random_digits = ''.join(random.choices(string.digits, k=7))
-        order_id = f"ORD-{random_digits}"
-
-        # Expected delivery date — standard 3–5 business days
-        from datetime import date, timedelta
-        def add_business_days(start, days):
-            current = start
-            added = 0
-            while added < days:
-                current += timedelta(days=1)
-                if current.weekday() < 5:  # Mon–Fri
-                    added += 1
-            return current
-        expected_delivery_date = add_business_days(date.today(), 5)
-
-        # Create Order — store valid_referral_map for per-product tracking
-        order = Order.objects.create(
-            user=user,
-            address=address,
-            total_amount=subtotal,
-            discount_amount=discount,
-            delivery_charge=delivery_charge,
-            final_amount=final_amount,
-            payment_method=payment_method,
-            payment_status='completed' if payment_method in ['upi', 'card'] else 'pending',
-            expected_delivery_date=expected_delivery_date,
-            status='processing',
-            order_id=order_id,
-            referral_code=single_referral_code,  # backward compat
-            referral_map=valid_referral_map
-        )
-
-        # Create Order Items, decrease stock, and award commissions
-        for item in cart_items:
-            # Determine effective unit price (custom_price takes priority if referral used)
-            product_id_str = str(item.product.id)
-            ref_code_for_item = valid_referral_map.get(product_id_str)
-            effective_price = item.product.discount_price
-            if ref_code_for_item:
-                review_for_price = ProductReview.objects.filter(referral_code=ref_code_for_item, product=item.product).first()
-                if review_for_price and review_for_price.custom_price is not None:
-                    effective_price = review_for_price.custom_price
-
-            order_item = OrderItem.objects.create(
-                order=order,
-                product=item.product,
-                price=effective_price,
-                quantity=item.quantity
-            )
-            # Decrease stock
-            item.product.stock -= item.quantity
-            item.product.save()
-
-            # Process referral commission for this product if it has a valid referral
-            product_id_str = str(item.product.id)
-            ref_code_for_item = valid_referral_map.get(product_id_str)
-            if ref_code_for_item:
-                review = ProductReview.objects.filter(referral_code=ref_code_for_item, product=item.product).first()
-                if review:
-                    if review.custom_commission_rate is not None:
-                        rate = review.custom_commission_rate
-                    else:
-                        rate = item.product.commission_rate
-
-                    # Actual amount paid for this item
-                    item_total = Decimal(str(order_item.price * order_item.quantity))
-                    if review.custom_price is not None:
-                        # custom_price already bakes in the price — no extra referral discount
-                        item_referral_discount = Decimal('0')
-                    else:
-                        discount_pct = review.custom_discount_percent if review.custom_discount_percent is not None else item.product.link_discount_percent
-                        item_referral_discount = item_total * Decimal(str(discount_pct)) / Decimal('100')
-                    # Proportional coupon discount for this item
-                    coupon_only = discount - referral_discount
-                    if subtotal > 0 and coupon_only > 0:
-                        item_coupon_discount = item_total * (Decimal(str(coupon_only)) / Decimal(str(subtotal)))
-                    else:
-                        item_coupon_discount = Decimal('0')
-                    actual_item_amount = item_total - item_referral_discount - item_coupon_discount
-
-                    commission_amount = actual_item_amount * Decimal(str(rate)) / Decimal('100')
-                    commission_amount = commission_amount.quantize(Decimal('0.01'))
-
-                    commission_status = 'completed' if order.payment_status == 'completed' else 'pending'
-                    AffiliateCommission.objects.create(
-                        influencer=review.influencer,
-                        order=order,
-                        product=item.product,
-                        amount=commission_amount,
-                        status=commission_status,
-                        level=1,
-                    )
-                    # Level 2: upline (the person who recruited the direct referrer) gets 50%
-                    upline = getattr(review.influencer, 'referred_by', None)
-                    if upline:
-                        upline_amount = (commission_amount * Decimal('0.5')).quantize(Decimal('0.01'))
-                        AffiliateCommission.objects.create(
-                            influencer=upline,
-                            order=order,
-                            product=item.product,
-                            amount=upline_amount,
-                            status=commission_status,
-                            level=2,
-                        )
-
-        # Clear cart
-        cart_items.delete()
-
+        try:
+            order = create_order_for_user(request.user, request.data)
+        except OrderCreationError as e:
+            return Response({'error': e.message}, status=e.status_code)
         serializer = OrderSerializer(order)
         return Response(serializer.data, status=status.HTTP_201_CREATED)
 
@@ -551,13 +696,15 @@ class OrderViewSet(viewsets.ModelViewSet):
             order.payment_status = 'completed'
             # Finalise any pending affiliate commissions for this order
             AffiliateCommission.objects.filter(order=order, status='pending').update(status='completed')
-            
+            WalletTransaction.objects.filter(order=order, status='pending').update(status='completed')
+
         # Revert stock and commissions if order gets cancelled, returned or refunded
         if new_status in ['cancelled', 'returned', 'refunded'] and old_status not in ['cancelled', 'returned', 'refunded']:
             for item in order.items.all():
                 item.product.stock += item.quantity
                 item.product.save()
             AffiliateCommission.objects.filter(order=order).update(status='cancelled')
+            WalletTransaction.objects.filter(order=order).update(status='cancelled')
 
             if new_status == 'cancelled' and not order.cancelled_at:
                 order.cancelled_at = timezone.now()
@@ -958,6 +1105,291 @@ class ProductReviewViewSet(viewsets.ModelViewSet):
             }
         })
 
+
+class CustomerReferralLinkViewSet(viewsets.ModelViewSet):
+    """Lets ANY logged-in user generate a referral link for ANY product.
+    Purchases made through the link credit the referrer's wallet (see WalletTransaction)."""
+    serializer_class = CustomerReferralLinkSerializer
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get_queryset(self):
+        return CustomerReferralLink.objects.filter(user=self.request.user).select_related('product')
+
+    @action(detail=False, methods=['post'], url_path='generate')
+    def generate(self, request):
+        product_id = request.data.get('product')
+        if not product_id:
+            return Response({'error': 'product is required'}, status=status.HTTP_400_BAD_REQUEST)
+        product = get_object_or_404(Product, pk=product_id)
+
+        # If the caller arrived at this product via someone else's referral link (influencer
+        # ProductReview or another customer's CustomerReferralLink), resolve who that was so
+        # they become this new link's upline — captured once, at first creation only.
+        referred_via = None
+        incoming_code = request.data.get('referral_code')
+        if incoming_code:
+            src_review = ProductReview.objects.filter(referral_code=incoming_code, product=product).first()
+            if src_review:
+                referred_via = src_review.influencer
+            else:
+                src_link = CustomerReferralLink.objects.filter(referral_code=incoming_code, product=product).first()
+                if src_link:
+                    referred_via = src_link.user
+            if referred_via and referred_via.pk == request.user.pk:
+                referred_via = None  # can't be your own upline
+
+        link, created = CustomerReferralLink.objects.get_or_create(
+            user=request.user, product=product, defaults={'referred_via': referred_via}
+        )
+        # Self-heal: a link created before referred_via existed (or without an active
+        # referral code at the time) can pick up its upline the next time the owner
+        # revisits with a valid code — but never overwrite an already-set upline.
+        if not created and link.referred_via is None and referred_via is not None:
+            link.referred_via = referred_via
+            link.save(update_fields=['referred_via'])
+
+        serializer = self.get_serializer(link)
+        return Response(serializer.data)
+
+
+class WalletView(views.APIView):
+    """GET: the current user's referral-wallet balance and transaction history.
+    Unifies BOTH reward sources into one wallet: WalletTransaction (customer referral
+    links — direct + upline bonuses) AND AffiliateCommission (influencer ProductReview
+    links — direct + upline). A user can earn from either or both mechanisms depending
+    on what kind of referral link led to the sale; this wallet is meant to be the single
+    place that reflects everything they've earned. Balance is computed on the fly from
+    completed rows in both tables — same pattern as SellerEarningsView, no cached field."""
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request):
+        user = request.user
+
+        balance, pending = get_wallet_balance(user)
+
+        wallet_txs = WalletTransaction.objects.filter(user=user).select_related('product', 'order').order_by('-created_at')[:50]
+        commissions = AffiliateCommission.objects.filter(influencer=user).select_related('product', 'order').order_by('-created_at')[:50]
+
+        combined = [{
+            'id': f'wt-{tx.id}',
+            'source': 'referral_link',
+            'amount': tx.amount,
+            'level': tx.level,
+            'status': tx.status,
+            'reason': tx.reason,
+            'product': tx.product_id,
+            'product_name': tx.product.name if tx.product else None,
+            'order': tx.order.order_id if tx.order else None,
+            'created_at': tx.created_at,
+        } for tx in wallet_txs] + [{
+            'id': f'ac-{c.id}',
+            'source': 'influencer_link',
+            'amount': c.amount,
+            'level': c.level,
+            'status': c.status,
+            'reason': f"{'Upline bonus' if c.level == 2 else 'Referral commission'} for {c.product.name}",
+            'product': c.product_id,
+            'product_name': c.product.name,
+            'order': c.order.order_id,
+            'created_at': c.created_at,
+        } for c in commissions]
+        combined.sort(key=lambda t: t['created_at'], reverse=True)
+        for t in combined[:50]:
+            t['amount'] = float(t['amount'])
+            t['created_at'] = t['created_at'].isoformat()
+
+        saved_bank_details = None
+        if user.wallet_bank_account_number:
+            saved_bank_details = {
+                'account_holder_name': user.wallet_bank_account_name,
+                'account_number': user.wallet_bank_account_number,
+                'ifsc_code': user.wallet_bank_ifsc,
+            }
+
+        return Response({
+            'balance': float(balance),
+            'pending': float(pending),
+            'transactions': combined[:50],
+            'bank_details': saved_bank_details,
+        })
+
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def wallet_withdraw(request):
+    """POST: any logged-in user can request a cash withdrawal of their referral wallet
+    balance at any time — not tied to checkout. No minimum (unlike reward points, which
+    require 100 points before they're redeemable at checkout).
+    Bank details are only required the FIRST time — once submitted they're saved on the
+    user's account (User.wallet_bank_*) and reused automatically for every request after
+    that, unless the caller explicitly sends new ones to update them."""
+    user = request.user
+    try:
+        amount = Decimal(str(request.data.get('amount', 0)))
+    except (InvalidOperation, TypeError):
+        return Response({'error': 'Invalid amount'}, status=status.HTTP_400_BAD_REQUEST)
+
+    if amount <= Decimal('0'):
+        return Response({'error': 'Amount must be greater than 0'}, status=status.HTTP_400_BAD_REQUEST)
+
+    account_holder_name = str(request.data.get('account_holder_name', '')).strip()
+    account_number = str(request.data.get('account_number', '')).strip()
+    ifsc_code = str(request.data.get('ifsc_code', '')).strip().upper()
+
+    # Fall back to previously saved bank details if this request doesn't provide new ones
+    if not (account_holder_name and account_number and ifsc_code):
+        account_holder_name = account_holder_name or user.wallet_bank_account_name
+        account_number = account_number or user.wallet_bank_account_number
+        ifsc_code = ifsc_code or user.wallet_bank_ifsc
+
+    if not account_holder_name or not account_number or not ifsc_code:
+        return Response({'error': 'Bank account holder name, account number, and IFSC code are all required'}, status=status.HTTP_400_BAD_REQUEST)
+
+    if not re.match(r'^[A-Z]{4}0[A-Z0-9]{6}$', ifsc_code):
+        return Response({'error': 'Invalid IFSC code format'}, status=status.HTTP_400_BAD_REQUEST)
+
+    if not account_number.isdigit() or not (9 <= len(account_number) <= 18):
+        return Response({'error': 'Account number must be 9-18 digits'}, status=status.HTTP_400_BAD_REQUEST)
+
+    # Save/update as the user's default for next time
+    if (user.wallet_bank_account_name, user.wallet_bank_account_number, user.wallet_bank_ifsc) != (account_holder_name, account_number, ifsc_code):
+        user.wallet_bank_account_name = account_holder_name
+        user.wallet_bank_account_number = account_number
+        user.wallet_bank_ifsc = ifsc_code
+        user.save(update_fields=['wallet_bank_account_name', 'wallet_bank_account_number', 'wallet_bank_ifsc'])
+
+    available, _ = get_wallet_balance(user)
+    if amount > available:
+        return Response({'error': f'Insufficient balance. Available: INR {available}'}, status=status.HTTP_400_BAD_REQUEST)
+
+    payout = WalletPayout.objects.create(
+        user=user, amount=amount,
+        account_holder_name=account_holder_name,
+        account_number=account_number,
+        ifsc_code=ifsc_code,
+    )
+    return Response(WalletPayoutSerializer(payout).data, status=status.HTTP_201_CREATED)
+
+
+class WalletPayoutHistoryView(generics.ListAPIView):
+    permission_classes = [permissions.IsAuthenticated]
+    serializer_class = WalletPayoutSerializer
+
+    def get_queryset(self):
+        return WalletPayout.objects.filter(user=self.request.user)
+
+
+class AdminWalletPayoutListView(generics.ListAPIView):
+    """GET: Admin only. List all wallet cash-withdrawal requests, optionally filtered by status."""
+    permission_classes = [permissions.IsAdminUser]
+    serializer_class = WalletPayoutSerializer
+
+    def get_queryset(self):
+        qs = WalletPayout.objects.select_related('user').all()
+        s = self.request.query_params.get('status')
+        if s:
+            qs = qs.filter(status=s)
+        return qs
+
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def admin_process_wallet_payout(request, payout_id):
+    """POST: Admin only. action='complete' (record bank_reference) or action='reject'."""
+    if not (request.user.is_staff or request.user.user_type == 'admin'):
+        return Response({'error': 'Admin only'}, status=status.HTTP_403_FORBIDDEN)
+
+    payout = get_object_or_404(WalletPayout, id=payout_id)
+    action = request.data.get('action')
+
+    if action == 'complete':
+        payout.status = 'completed'
+        payout.bank_reference = request.data.get('bank_reference', '')
+        payout.admin_note = request.data.get('admin_note', '')
+        payout.processed_at = timezone.now()
+        payout.save()
+    elif action == 'reject':
+        payout.status = 'rejected'
+        payout.admin_note = request.data.get('admin_note', 'Rejected by admin')
+        payout.processed_at = timezone.now()
+        payout.save()
+    else:
+        return Response({'error': 'Action must be "complete" or "reject"'}, status=status.HTTP_400_BAD_REQUEST)
+
+    return Response(WalletPayoutSerializer(payout).data)
+
+
+class AdminWalletsView(views.APIView):
+    """GET: Admin only. Full visibility into customer referral links, who referred whom,
+    and every wallet transaction (direct + upline) — the customer-referral analog of
+    AdminAffiliatesView."""
+    permission_classes = [permissions.IsAuthenticated, IsAdminOrReadOnly]
+
+    def get(self, request):
+        if not (request.user.is_staff or request.user.user_type == 'admin'):
+            return Response({'error': 'Unauthorized'}, status=status.HTTP_403_FORBIDDEN)
+
+        links_data = []
+        links = CustomerReferralLink.objects.select_related('user', 'referred_via', 'product').order_by('-created_at')
+
+        for link in links:
+            clicks = ReferralClick.objects.filter(referral_code=link.referral_code).count()
+            direct_txs = WalletTransaction.objects.filter(
+                user=link.user, product=link.product, level=1
+            ).exclude(status='cancelled').select_related('order__user')
+
+            total_paid = direct_txs.filter(status='completed').aggregate(total=Sum('amount'))['total'] or Decimal('0')
+            pending = direct_txs.filter(status='pending').aggregate(total=Sum('amount'))['total'] or Decimal('0')
+
+            buyers = [{
+                'username': tx.order.user.username,
+                'order_amount': float(tx.order.final_amount),
+                'reward': float(tx.amount),
+                'status': tx.status,
+                'date': tx.created_at.strftime('%Y-%m-%d'),
+                'order_id': tx.order.order_id,
+            } for tx in direct_txs if tx.order]
+
+            links_data.append({
+                'id': link.id,
+                'referrer': link.user.username,
+                'referred_by': link.referred_via.username if link.referred_via else None,
+                'product_name': link.product.name,
+                'product_id': link.product.id,
+                'referral_code': link.referral_code,
+                'link_discount_percent': link.product.link_discount_percent,
+                'clicks': clicks,
+                'conversions': direct_txs.count(),
+                'total_paid': float(total_paid),
+                'pending': float(pending),
+                'created_at': link.created_at.strftime('%Y-%m-%d'),
+                'buyers': buyers,
+            })
+
+        # Full ledger — both level 1 (direct) and level 2 (upline) rows, most recent first
+        all_txs = WalletTransaction.objects.select_related('user', 'product', 'order__user').order_by('-created_at')[:500]
+        ledger = [{
+            'id': tx.id,
+            'user': tx.user.username,
+            'level': tx.level,
+            'amount': float(tx.amount),
+            'status': tx.status,
+            'reason': tx.reason,
+            'product_name': tx.product.name if tx.product else None,
+            'order_id': tx.order.order_id if tx.order else None,
+            'buyer': tx.order.user.username if tx.order else None,
+            'created_at': tx.created_at.strftime('%Y-%m-%d %H:%M'),
+        } for tx in all_txs]
+
+        summary = {
+            'total_links': links.count(),
+            'total_paid': float(WalletTransaction.objects.filter(status='completed').aggregate(total=Sum('amount'))['total'] or Decimal('0')),
+            'total_pending': float(WalletTransaction.objects.filter(status='pending').aggregate(total=Sum('amount'))['total'] or Decimal('0')),
+        }
+
+        return Response({'links': links_data, 'ledger': ledger, 'summary': summary})
+
+
 class PlatformSettingsView(views.APIView):
     def get_permissions(self):
         if self.request.method in permissions.SAFE_METHODS:
@@ -1145,8 +1577,8 @@ class RecordReferralClickView(views.APIView):
         if not ref_code:
             return Response({'error': 'referral_code is required'}, status=status.HTTP_400_BAD_REQUEST)
 
-        # Validate referral code exists
-        if not ProductReview.objects.filter(referral_code=ref_code).exists():
+        # Validate referral code exists (influencer link or customer referral link)
+        if not ProductReview.objects.filter(referral_code=ref_code).exists() and not CustomerReferralLink.objects.filter(referral_code=ref_code).exists():
             return Response({'error': 'Invalid referral code'}, status=status.HTTP_404_NOT_FOUND)
 
         # Get client IP for deduplication
@@ -1182,22 +1614,38 @@ class ResolveReferralView(views.APIView):
             return Response({'error': 'ref query parameter is required'}, status=status.HTTP_400_BAD_REQUEST)
 
         review = ProductReview.objects.filter(referral_code=ref_code).select_related('product').first()
-        if not review:
-            return Response({'error': 'Invalid referral code'}, status=status.HTTP_404_NOT_FOUND)
+        if review:
+            product = review.product
+            return Response({
+                'referral_code': ref_code,
+                'product_id': product.id,
+                'product_name': product.name,
+                'product_brand': product.brand,
+                'product_image': product.image,
+                'product_price': float(product.price),
+                'product_discount_price': float(product.discount_price),
+                'discount_percent': review.custom_discount_percent if review.custom_discount_percent is not None else product.link_discount_percent,
+                'influencer': review.influencer.username,
+                'custom_price': float(review.custom_price) if review.custom_price is not None else None,
+            })
 
-        product = review.product
-        return Response({
-            'referral_code': ref_code,
-            'product_id': product.id,
-            'product_name': product.name,
-            'product_brand': product.brand,
-            'product_image': product.image,
-            'product_price': float(product.price),
-            'product_discount_price': float(product.discount_price),
-            'discount_percent': review.custom_discount_percent if review.custom_discount_percent is not None else product.link_discount_percent,
-            'influencer': review.influencer.username,
-            'custom_price': float(review.custom_price) if review.custom_price is not None else None,
-        })
+        cref_link = CustomerReferralLink.objects.filter(referral_code=ref_code).select_related('product', 'user').first()
+        if cref_link:
+            product = cref_link.product
+            return Response({
+                'referral_code': ref_code,
+                'product_id': product.id,
+                'product_name': product.name,
+                'product_brand': product.brand,
+                'product_image': product.image,
+                'product_price': float(product.price),
+                'product_discount_price': float(product.discount_price),
+                'discount_percent': product.link_discount_percent,
+                'influencer': cref_link.user.username,
+                'custom_price': None,
+            })
+
+        return Response({'error': 'Invalid referral code'}, status=status.HTTP_404_NOT_FOUND)
 
 
 class AdminAnalyticsView(views.APIView):
@@ -1372,104 +1820,17 @@ def verify_razorpay_payment(request):
         if expected != rzp_signature:
             return Response({'error': 'Payment verification failed. Invalid signature.'}, status=status.HTTP_400_BAD_REQUEST)
 
-    # Signature valid — place the actual order
-    address_id = request.data.get('address')
-    coupon_code = request.data.get('coupon_code', '')
-    referral_code = request.data.get('referral_code', '')
-    referral_map = request.data.get('referral_map', {})
-
-    # Delegate to order creation logic (reuse OrderViewSet internals)
-    from .models import Cart, CartItem, Address, AffiliateCommission
-    user = request.user
+    # Signature valid — place the actual order using the SAME logic as COD orders,
+    # so referral discounts, affiliate commissions, and wallet crediting/redemption
+    # all behave identically regardless of payment method.
+    order_data = {**request.data, 'payment_method': 'razorpay'}
     try:
-        cart = Cart.objects.get(user=user)
-        cart_items = CartItem.objects.filter(cart=cart).select_related('product')
-        if not cart_items.exists():
-            return Response({'error': 'Cart is empty'}, status=status.HTTP_400_BAD_REQUEST)
-
-        address = Address.objects.get(id=address_id, user=user)
-
-        total = sum(item.product.discount_price * item.quantity for item in cart_items)
-        delivery = 0 if total >= 500 else 40
-        discount = Decimal('0')
-
-        if coupon_code:
-            from .models import StoreSettings
-            try:
-                store = StoreSettings.objects.first()
-                coupons = store.coupon_codes if store else []
-                found = next((c for c in coupons if c.get('code', '').upper() == coupon_code.upper()), None)
-                if found:
-                    discount = total * Decimal(found['discount_percent']) / 100
-            except Exception:
-                pass
-
-        final = total - discount + delivery
-
-        # Points Redemption
-        redeem_points = request.data.get('redeem_points', False)
-        if user.reward_points is None:
-            user.reward_points = 0
-            
-        if redeem_points and user.reward_points >= 100:
-            points_redeemed = min(user.reward_points, int(final))
-            discount += points_redeemed
-            final -= points_redeemed
-            user.reward_points -= points_redeemed
-
-        # Calculate reward points earned from this purchase
-        earned_points = int(final // 100)
-        user.reward_points += earned_points
-        user.save()
-
         with transaction.atomic():
-            order_id = 'ORD-' + ''.join(random.choices(string.digits, k=7))
-            order = Order.objects.create(
-                user=user,
-                address=address,
-                total_amount=total,
-                discount_amount=discount,
-                delivery_charge=delivery,
-                final_amount=final,
-                payment_method='razorpay',
-                payment_status='completed',
-                status='processing',
-                order_id=order_id,
-                referral_code=referral_code,
-                referral_map=referral_map,
-            )
-            for item in cart_items:
-                OrderItem.objects.create(
-                    order=order,
-                    product=item.product,
-                    quantity=item.quantity,
-                    price=item.product.discount_price,
-                )
-                item.product.stock = max(0, item.product.stock - item.quantity)
-                item.product.save()
+            order = create_order_for_user(request.user, order_data)
+    except OrderCreationError as e:
+        return Response({'error': e.message}, status=e.status_code)
 
-                # Affiliate commission
-                prod_ref = referral_map.get(str(item.product.id)) or referral_code
-                if prod_ref:
-                    from .models import ProductReview
-                    review = ProductReview.objects.filter(referral_code=prod_ref, product=item.product).first()
-                    if review:
-                        commission_rate = Decimal('0.05')
-                        AffiliateCommission.objects.create(
-                            influencer=review.influencer,
-                            product=item.product,
-                            order=order,
-                            commission_amount=item.product.discount_price * item.quantity * commission_rate,
-                            status='pending',
-                        )
-
-            cart_items.delete()
-
-        return Response({'order_id': order.order_id, 'razorpay_payment_id': rzp_payment_id})
-    except Address.DoesNotExist:
-        return Response({'error': 'Address not found'}, status=status.HTTP_400_BAD_REQUEST)
-    except Exception as e:
-        return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+    return Response({'order_id': order.order_id, 'razorpay_payment_id': rzp_payment_id})
 
 
 @api_view(['POST'])

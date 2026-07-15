@@ -1,30 +1,20 @@
 import React, { useState, useEffect } from 'react';
 import { useQuery } from 'react-query';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion } from 'framer-motion';
 import api from '../../services/api';
 import toast from 'react-hot-toast';
 import {
-  Users, Heart, Eye, TrendingUp, TrendingDown,
-  ThumbsUp, MessageCircle, Share2, BarChart3,
-  Camera, Sun, RefreshCw, AlertCircle, DollarSign, Target,
-  Zap, Award, Activity, X, Link2
+  Eye, TrendingUp, TrendingDown,
+  ThumbsUp, MessageCircle, BarChart3,
+  RefreshCw, DollarSign, Target,
+  Zap, Award, Activity, Link2
 } from 'lucide-react';
-import ConnectAccounts from '../SocialMedia/ConnectAccounts';
 
 const InfluencerAnalytics = () => {
   const [isRefreshing, setIsRefreshing] = useState(false);
-  const [showConnectModal, setShowConnectModal] = useState(false);
   const [animatedValues, setAnimatedValues] = useState({
-    totalFollowers: 0,
-    engagementRate: 0,
     totalClicks: 0,
     totalEarnings: 0,
-  });
-
-  // Fetch influencer profile data
-  const { data: profile } = useQuery('influencer-profile', async () => {
-    const res = await api.get('/auth/influencer-profile/');
-    return res.data;
   });
 
   // Fetch collaborations data
@@ -34,7 +24,7 @@ const InfluencerAnalytics = () => {
   });
 
   // Fetch real affiliate/commission data
-  const { data: referralsData, refetch: refetchReferrals } = useQuery(
+  const { data: referralsData, isLoading: referralsLoading, refetch: refetchReferrals } = useQuery(
     'influencer-referrals-analytics',
     async () => {
       const res = await api.get('/ecommerce/reviews/my-referrals/');
@@ -43,64 +33,25 @@ const InfluencerAnalytics = () => {
     { refetchInterval: 60000, staleTime: 50000 }
   );
 
-  // Fetch real-time social analytics data
-  const {
-    data: analyticsData,
-    isLoading: analyticsLoading,
-    error: analyticsError,
-    refetch: refetchAnalytics,
-  } = useQuery(
-    'influencer-analytics-realtime',
-    async () => {
-      const res = await api.get('/social-media/analytics/influencer/');
-      return res.data;
-    },
-    {
-      refetchInterval: 300000,
-      refetchOnWindowFocus: true,
-      staleTime: 240000,
-      retry: 2,
-      onError: (err) => console.log('Analytics API error:', err?.response?.data || err.message),
-    }
-  );
-
-  const noAccountsConnected =
-    analyticsError?.response?.status === 404 &&
-    analyticsError?.response?.data?.error === 'No connected social media accounts found';
-
   const handleRefresh = async () => {
     setIsRefreshing(true);
     try {
-      await api.post('/social-media/analytics/refresh/');
-      toast.success('Refreshing analytics data...');
-      setTimeout(async () => {
-        await refetchAnalytics();
-        await refetchReferrals();
-        setIsRefreshing(false);
-        toast.success('Analytics data updated!');
-      }, 30000);
-    } catch {
       await refetchReferrals();
+      toast.success('Analytics data updated!');
+    } catch {
+      toast.error('Failed to refresh analytics data.');
+    } finally {
       setIsRefreshing(false);
-      toast.error('Social refresh failed — commission data updated.');
     }
   };
 
   const collaborations = collaborationsData?.results || [];
-  const realTimeData = analyticsData?.data;
   const summary = referralsData?.summary || {};
   const referrals = referralsData?.referrals || [];
 
-  // Real values — social data when available, profile fallback, then 0
-  const totalFollowers =
-    realTimeData?.kpi?.total_followers || parseFloat(profile?.followers_count) || 0;
-  const engagementRate =
-    realTimeData?.kpi?.engagement_rate || parseFloat(profile?.engagement_rate) || 0;
   const totalClicks = summary.total_clicks || 0;
   const totalEarnings = summary.total_earned || 0;
   const totalConversions = summary.total_conversions || 0;
-  const followersChange = realTimeData?.kpi?.follower_growth || null;
-  const engagementChange = realTimeData?.kpi?.engagement_change || null;
 
   // Build monthly earnings chart from real referral commission data
   const buildMonthlyEarnings = () => {
@@ -117,38 +68,19 @@ const InfluencerAnalytics = () => {
       .map(([month, earnings]) => ({ month, earnings, clicks: 0 }));
   };
 
-  // Use social growth trends when available, otherwise use earnings-based months
-  const growthData =
-    realTimeData?.growth_trends?.slice(-6).map(trend => ({
-      month: new Date(trend.date).toLocaleDateString('en-US', { month: 'short' }),
-      followers: trend.followers || 0,
-      engagement: parseFloat(trend.engagement_rate) || 0,
-    })) || [];
-
   const earningsChartData = buildMonthlyEarnings();
-  const hasGrowthData = growthData.length > 0;
   const hasEarningsData = earningsChartData.length > 0;
 
-  // Top content — social API when available, otherwise affiliate referrals
-  const topContent =
-    analyticsData?.top_content?.slice(0, 4).map((content, index) => ({
-      id: content.id || index + 1,
-      title: content.title || content.caption?.substring(0, 50) || 'Untitled Content',
-      type: content.media_type || 'Post',
-      icon: content.media_type === 'VIDEO' || content.media_type === 'REEL' ? Camera : Sun,
-      views: content.impressions || content.reach || 0,
-      likes: content.like_count || 0,
-      comments: content.comments_count || 0,
-    })) ||
-    referrals.slice(0, 4).map((r, i) => ({
-      id: r.id || i + 1,
-      title: r.product_name || 'Affiliate Product',
-      type: 'Affiliate Link',
-      icon: Link2,
-      views: r.clicks || 0,
-      likes: r.conversions || 0,
-      comments: 0,
-    }));
+  // Top content — affiliate referral links
+  const topContent = referrals.slice(0, 4).map((r, i) => ({
+    id: r.id || i + 1,
+    title: r.product_name || 'Affiliate Product',
+    type: 'Affiliate Link',
+    icon: Link2,
+    views: r.clicks || 0,
+    likes: r.conversions || 0,
+    comments: 0,
+  }));
 
   // Animate counters whenever the real values arrive
   useEffect(() => {
@@ -159,21 +91,19 @@ const InfluencerAnalytics = () => {
       step++;
       const p = step / steps;
       setAnimatedValues({
-        totalFollowers: Math.floor(totalFollowers * p),
-        engagementRate: parseFloat((engagementRate * p).toFixed(1)),
         totalClicks: Math.floor(totalClicks * p),
         totalEarnings: Math.floor(totalEarnings * p),
       });
       if (step >= steps) {
         clearInterval(timer);
-        setAnimatedValues({ totalFollowers, engagementRate, totalClicks, totalEarnings });
+        setAnimatedValues({ totalClicks, totalEarnings });
       }
     }, duration / steps);
     return () => clearInterval(timer);
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [totalFollowers, engagementRate, totalClicks, totalEarnings]);
+  }, [totalClicks, totalEarnings]);
 
-  if (analyticsLoading && !profile && !referralsData) {
+  if (referralsLoading && !referralsData) {
     return (
       <div className="flex items-center justify-center min-h-screen bg-gradient-to-br from-violet-50 via-cyan-50 to-lime-50">
         <div className="text-center">
@@ -196,9 +126,7 @@ const InfluencerAnalytics = () => {
           className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div>
             <h1 className="text-3xl font-bold text-neutral-800 mb-2">Analytics Dashboard</h1>
-            <p className="text-neutral-500">
-              {realTimeData ? 'Live data from connected accounts' : 'Affiliate & collaboration performance'}
-            </p>
+            <p className="text-neutral-500">Affiliate & collaboration performance</p>
           </div>
           <motion.button
             whileHover={{ scale: 1.02 }}
@@ -211,52 +139,12 @@ const InfluencerAnalytics = () => {
           </motion.button>
         </motion.div>
 
-        {/* No social accounts alert */}
-        {noAccountsConnected && (
-          <motion.div
-            initial={{ opacity: 0, y: -10 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="bg-orange-50 border-2 border-orange-300 rounded-xl p-5 flex items-start gap-4 shadow-sm">
-            <div className="flex-shrink-0 w-10 h-10 bg-orange-100 rounded-full flex items-center justify-center">
-              <AlertCircle className="w-6 h-6 text-orange-600" />
-            </div>
-            <div className="flex-1">
-              <h3 className="text-base font-bold text-orange-900 mb-1">Connect Your Social Media Accounts</h3>
-              <p className="text-sm text-orange-800 mb-4">
-                Connect Instagram or YouTube to unlock real-time follower analytics, engagement tracking, and reach insights.
-              </p>
-              <button
-                onClick={() => setShowConnectModal(true)}
-                className="inline-flex items-center gap-2 px-5 py-2.5 bg-gradient-to-r from-orange-600 to-orange-500 hover:from-orange-700 hover:to-orange-600 text-white text-sm font-semibold rounded-lg transition-all shadow-md">
-                <Share2 className="w-4 h-4" />
-                Connect Account Now
-              </button>
-            </div>
-          </motion.div>
-        )}
-
-        {/* KPI Cards — all real data */}
+        {/* KPI Cards — real affiliate data */}
         <motion.div
           initial="hidden"
           animate="visible"
           variants={{ visible: { transition: { staggerChildren: 0.1 } } }}
-          className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-          <KPICard
-            title="Total Followers"
-            value={totalFollowers > 0 ? animatedValues.totalFollowers.toLocaleString() : '—'}
-            change={followersChange}
-            icon={Users}
-            gradient="from-violet-600 to-cyan-500"
-            note={!totalFollowers ? 'Connect social account' : null}
-          />
-          <KPICard
-            title="Engagement Rate"
-            value={engagementRate > 0 ? `${animatedValues.engagementRate.toFixed(1)}%` : '—'}
-            change={engagementChange}
-            icon={Heart}
-            gradient="from-cyan-500 to-lime-500"
-            note={!engagementRate ? 'Connect social account' : null}
-          />
+          className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <KPICard
             title="Total Link Clicks"
             value={animatedValues.totalClicks.toLocaleString()}
@@ -307,48 +195,25 @@ const InfluencerAnalytics = () => {
           })}
         </motion.div>
 
-        {/* Charts row */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          {/* Follower Growth (social) or message */}
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.4 }}
-            className="bg-white rounded-2xl p-6 border border-neutral-200 shadow-sm">
-            <div className="flex items-center justify-between mb-4">
-              <div>
-                <h2 className="text-lg font-bold text-neutral-800">Follower Growth</h2>
-                <p className="text-xs text-neutral-500">From connected social accounts</p>
-              </div>
-              <BarChart3 className="w-5 h-5 text-violet-500" />
+        {/* Monthly Commission Earnings */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.4 }}
+          className="bg-white rounded-2xl p-6 border border-neutral-200 shadow-sm">
+          <div className="flex items-center justify-between mb-4">
+            <div>
+              <h2 className="text-lg font-bold text-neutral-800">Commission Earnings</h2>
+              <p className="text-xs text-neutral-500">By month from affiliate link sales</p>
             </div>
-            {hasGrowthData ? (
-              <GrowthChart data={growthData} valueKey="followers" label="followers" color="#7c3aed" />
-            ) : (
-              <EmptyChart message="Connect a social account to see follower growth" />
-            )}
-          </motion.div>
-
-          {/* Monthly Commission Earnings */}
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.45 }}
-            className="bg-white rounded-2xl p-6 border border-neutral-200 shadow-sm">
-            <div className="flex items-center justify-between mb-4">
-              <div>
-                <h2 className="text-lg font-bold text-neutral-800">Commission Earnings</h2>
-                <p className="text-xs text-neutral-500">By month from affiliate link sales</p>
-              </div>
-              <DollarSign className="w-5 h-5 text-orange-500" />
-            </div>
-            {hasEarningsData ? (
-              <EarningsChart data={earningsChartData} />
-            ) : (
-              <EmptyChart message="Generate affiliate links and make sales to see earnings over time" />
-            )}
-          </motion.div>
-        </div>
+            <DollarSign className="w-5 h-5 text-orange-500" />
+          </div>
+          {hasEarningsData ? (
+            <EarningsChart data={earningsChartData} />
+          ) : (
+            <EmptyChart message="Generate affiliate links and make sales to see earnings over time" />
+          )}
+        </motion.div>
 
         {/* Engagement Breakdown & Performance */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -420,12 +285,8 @@ const InfluencerAnalytics = () => {
           className="bg-white rounded-2xl p-6 border border-neutral-200 shadow-sm">
           <div className="flex items-center justify-between mb-6">
             <div>
-              <h3 className="text-lg font-bold text-neutral-800">
-                {analyticsData?.top_content ? 'Top Performing Content' : 'Top Affiliate Products'}
-              </h3>
-              <p className="text-sm text-neutral-500">
-                {analyticsData?.top_content ? 'Your best posts' : 'Products with the most clicks or conversions'}
-              </p>
+              <h3 className="text-lg font-bold text-neutral-800">Top Affiliate Products</h3>
+              <p className="text-sm text-neutral-500">Products with the most clicks or conversions</p>
             </div>
             <Target className="w-5 h-5 text-violet-600" />
           </div>
@@ -497,26 +358,12 @@ const InfluencerAnalytics = () => {
           </div>
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
             <div className="bg-white/10 backdrop-blur-sm rounded-xl p-4">
-              <p className="text-white/80 text-xs mb-1">Followers</p>
-              <p className="text-2xl font-bold">
-                {totalFollowers >= 1000 ? `${(totalFollowers / 1000).toFixed(1)}K` : totalFollowers || '—'}
-              </p>
-              {followersChange !== null && (
-                <p className="text-xs text-white/70 mt-1 flex items-center gap-1">
-                  {followersChange > 0 ? <TrendingUp className="w-3 h-3" /> : <TrendingDown className="w-3 h-3" />}
-                  {Math.abs(followersChange).toFixed(1)}%
-                </p>
-              )}
+              <p className="text-white/80 text-xs mb-1">Affiliate Links</p>
+              <p className="text-2xl font-bold">{referrals.length}</p>
             </div>
             <div className="bg-white/10 backdrop-blur-sm rounded-xl p-4">
-              <p className="text-white/80 text-xs mb-1">Engagement</p>
-              <p className="text-2xl font-bold">{engagementRate > 0 ? `${engagementRate.toFixed(1)}%` : '—'}</p>
-              {engagementChange !== null && (
-                <p className="text-xs text-white/70 mt-1 flex items-center gap-1">
-                  {engagementChange > 0 ? <TrendingUp className="w-3 h-3" /> : <TrendingDown className="w-3 h-3" />}
-                  {Math.abs(engagementChange).toFixed(1)}%
-                </p>
-              )}
+              <p className="text-white/80 text-xs mb-1">Active Collabs</p>
+              <p className="text-2xl font-bold">{collaborations.length}</p>
             </div>
             <div className="bg-white/10 backdrop-blur-sm rounded-xl p-4">
               <p className="text-white/80 text-xs mb-1">Total Clicks</p>
@@ -531,39 +378,6 @@ const InfluencerAnalytics = () => {
           </div>
         </motion.div>
       </div>
-
-      {/* Connect Accounts Modal */}
-      <AnimatePresence>
-        {showConnectModal && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4"
-            onClick={() => setShowConnectModal(false)}>
-            <motion.div
-              initial={{ scale: 0.9, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              exit={{ scale: 0.9, opacity: 0 }}
-              transition={{ type: 'spring', duration: 0.5 }}
-              className="bg-white rounded-2xl shadow-2xl max-w-5xl w-full max-h-[90vh] overflow-hidden"
-              onClick={e => e.stopPropagation()}>
-              <div className="flex items-center justify-between p-6 border-b border-neutral-200 bg-gradient-to-r from-violet-50 to-cyan-50">
-                <div>
-                  <h2 className="text-2xl font-bold text-neutral-800">Connect Social Accounts</h2>
-                  <p className="text-sm text-neutral-600 mt-1">Link your social media to track analytics</p>
-                </div>
-                <button onClick={() => setShowConnectModal(false)} className="p-2 hover:bg-neutral-100 rounded-lg transition-colors">
-                  <X className="w-6 h-6 text-neutral-600" />
-                </button>
-              </div>
-              <div className="overflow-y-auto max-h-[calc(90vh-88px)]">
-                <ConnectAccounts />
-              </div>
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
     </div>
   );
 };
@@ -599,52 +413,6 @@ const EmptyChart = ({ message }) => (
     <p className="text-sm text-center max-w-xs">{message}</p>
   </div>
 );
-
-const GrowthChart = ({ data, valueKey, label, color }) => {
-  const values = data.map(d => d[valueKey] || 0);
-  const maxValue = Math.max(...values, 1);
-  const minValue = Math.min(...values, 0);
-  const range = maxValue - minValue || 1;
-
-  const points = data.map((item, i) => ({
-    x: data.length > 1 ? (i / (data.length - 1)) * 100 : 50,
-    y: 100 - ((( item[valueKey] || 0) - minValue) / range) * 85,
-    ...item,
-  }));
-
-  return (
-    <div className="relative h-48">
-      <svg className="w-full h-full" viewBox="0 0 100 100" preserveAspectRatio="none">
-        <defs>
-          <linearGradient id={`grad-${valueKey}`} x1="0%" y1="0%" x2="0%" y2="100%">
-            <stop offset="0%" stopColor={color} stopOpacity="0.25" />
-            <stop offset="100%" stopColor={color} stopOpacity="0.03" />
-          </linearGradient>
-        </defs>
-        <motion.polygon
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ duration: 0.8 }}
-          points={`0,100 ${points.map(p => `${p.x},${p.y}`).join(' ')} 100,100`}
-          fill={`url(#grad-${valueKey})`}
-        />
-        <motion.polyline
-          initial={{ pathLength: 0 }}
-          animate={{ pathLength: 1 }}
-          transition={{ duration: 1.2 }}
-          points={points.map(p => `${p.x},${p.y}`).join(' ')}
-          fill="none"
-          stroke={color}
-          strokeWidth="2.5"
-          vectorEffect="non-scaling-stroke"
-        />
-      </svg>
-      <div className="absolute bottom-0 left-0 right-0 flex justify-between text-xs text-neutral-500 px-1">
-        {data.map((item, i) => <span key={i}>{item.month}</span>)}
-      </div>
-    </div>
-  );
-};
 
 const EarningsChart = ({ data }) => {
   const maxVal = Math.max(...data.map(d => d.earnings), 1);

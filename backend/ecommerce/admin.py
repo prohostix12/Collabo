@@ -1,5 +1,5 @@
 from django.contrib import admin
-from .models import Product, CustomerReview, ProductReview, SellerReview, Order
+from .models import Product, CustomerReview, ProductReview, SellerReview, Order, CustomerReferralLink, WalletTransaction, WalletPayout
 from .tasks import broadcast_offer
 
 @admin.register(CustomerReview)
@@ -21,6 +21,23 @@ class ProductReviewAdmin(admin.ModelAdmin):
 @admin.register(SellerReview)
 class SellerReviewAdmin(admin.ModelAdmin):
     list_display = ('seller', 'buyer', 'order', 'rating', 'created_at')
+
+@admin.register(CustomerReferralLink)
+class CustomerReferralLinkAdmin(admin.ModelAdmin):
+    list_display = ('user', 'product', 'referral_code', 'created_at')
+    search_fields = ('user__username', 'product__name', 'referral_code')
+
+@admin.register(WalletTransaction)
+class WalletTransactionAdmin(admin.ModelAdmin):
+    list_display = ('user', 'amount', 'level', 'status', 'reason', 'order', 'created_at')
+    list_filter = ('status', 'level')
+    search_fields = ('user__username', 'reason')
+
+@admin.register(WalletPayout)
+class WalletPayoutAdmin(admin.ModelAdmin):
+    list_display = ('user', 'amount', 'status', 'requested_at', 'processed_at')
+    list_filter = ('status',)
+    search_fields = ('user__username',)
 
 # New Order admin with bulk offer action
 @admin.action(description='Send bulk promotional offer to users of selected orders')
