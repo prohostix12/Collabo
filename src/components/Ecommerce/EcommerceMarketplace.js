@@ -1836,6 +1836,12 @@ export default function EcommerceMarketplace({ inlineMode = false, onBackToSelec
     }
   };
 
+  const removeCoupon = () => {
+    setCouponApplied(false);
+    setCouponCode('');
+    setCouponDiscount(0);
+  };
+
   const updateOrderStatus = async (orderId, newStatus, trackingNumber, shippingProvider) => {
     try {
       const payload = { status: newStatus };
@@ -4438,13 +4444,37 @@ export default function EcommerceMarketplace({ inlineMode = false, onBackToSelec
                       <span>Subtotal ({cart.filter(i => selectedCartItems.includes(i.id)).reduce((s, i) => s + i.quantity, 0)} items)</span>
                       <span>₹{cartSubtotal.toLocaleString()}</span>
                     </div>
-                    {couponApplied && (
-                      <div className="flex justify-between text-emerald-500">
+                    {couponApplied ? (
+                      <div className="flex justify-between items-center text-emerald-500">
                         <span className="flex items-center gap-1">
                           <Tag className="w-3 h-3" />
                           Coupon ({couponCode})
                         </span>
-                        <span>-₹{Math.round(cartSubtotal * couponDiscount).toLocaleString()}</span>
+                        <span className="flex items-center gap-2">
+                          -₹{Math.round(cartSubtotal * couponDiscount).toLocaleString()}
+                          <button
+                            onClick={removeCoupon}
+                            className="text-slate-400 hover:text-rose-500 underline text-[10px] font-bold"
+                          >
+                            Remove
+                          </button>
+                        </span>
+                      </div>
+                    ) : (
+                      <div className="flex gap-2">
+                        <input
+                          type="text"
+                          value={couponCode}
+                          onChange={(e) => setCouponCode(e.target.value)}
+                          placeholder="Have a coupon code?"
+                          className="flex-1 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl py-1.5 px-3 text-[10px] font-bold uppercase focus:outline-none focus:ring-1 focus:ring-orange-500 dark:text-white"
+                        />
+                        <button
+                          onClick={applyCoupon}
+                          className="bg-slate-950 text-white dark:bg-slate-800 hover:bg-slate-900 text-[10px] font-black px-3 rounded-xl transition-colors"
+                        >
+                          Apply
+                        </button>
                       </div>
                     )}
                     {referralDiscountAmount > 0 && (
