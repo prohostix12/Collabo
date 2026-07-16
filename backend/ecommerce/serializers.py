@@ -24,13 +24,15 @@ class ProductSerializer(serializers.ModelSerializer):
     class Meta:
         model = Product
         fields = [
-            'id', 'seller', 'seller_username', 'name', 'category', 'brand',
+            'id', 'seller', 'seller_username', 'status', 'rejection_reason', 'name', 'category', 'brand',
             'price', 'discount_price', 'discount_percent', 'rating', 'reviews_count',
             'image', 'images', 'description', 'stock', 'delivery', 'specifications',
             'highlights', 'offers', 'seller_info', 'qa_section',
             'product_shipping_charge', 'commission_rate', 'link_discount_percent', 'created_at', 'updated_at'
         ]
-        read_only_fields = ['seller', 'discount_percent']
+        # status/rejection_reason are admin-controlled only — set via the approve/reject
+        # actions on ProductViewSet, never directly through create/update payloads.
+        read_only_fields = ['seller', 'discount_percent', 'status', 'rejection_reason']
 
     def to_representation(self, instance):
         data = super().to_representation(instance)

@@ -9,6 +9,7 @@ import Register from './components/Auth/Register';
 import ForgotPassword from './components/Auth/ForgotPassword';
 import CompanyDashboard from './components/Dashboard/CompanyDashboard';
 import AdminDashboard from './components/Dashboard/AdminDashboard';
+import SellerDashboard from './components/Dashboard/SellerDashboard';
 import Layout from './components/Layout/Layout';
 import LandingPage from './components/Landing/LandingPage';
 import AboutPage from './components/Landing/AboutPage';
@@ -88,6 +89,7 @@ function AppRoutes() {
             <Layout>
               {user?.user_type === 'company' && <CompanyDashboard />}
               {user?.user_type === 'admin' && <AdminDashboard />}
+              {user?.user_type === 'seller' && <SellerDashboard />}
             </Layout>
           )}
         </ProtectedRoute>

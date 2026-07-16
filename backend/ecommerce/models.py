@@ -18,7 +18,19 @@ class Brand(models.Model):
         return self.name
 
 class Product(models.Model):
+    APPROVAL_STATUS = (
+        ('pending', 'Pending Review'),
+        ('approved', 'Approved'),
+        ('rejected', 'Rejected'),
+    )
+
     seller = models.ForeignKey(User, on_delete=models.CASCADE, related_name='products')
+    # Defaults to 'approved' so existing products and admin-added listings stay
+    # live as-is; seller-submitted products are explicitly set to 'pending' in
+    # ProductViewSet.perform_create and only appear to buyers once an admin
+    # approves them.
+    status = models.CharField(max_length=20, choices=APPROVAL_STATUS, default='approved')
+    rejection_reason = models.TextField(blank=True, default='')
     name = models.CharField(max_length=255)
     category = models.CharField(max_length=100)
     brand = models.CharField(max_length=100, blank=True, default='')

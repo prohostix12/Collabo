@@ -899,9 +899,29 @@ class PendingSellersListView(generics.ListAPIView):
     search_fields = ['store_name', 'user__email', 'user__username']
     ordering_fields = ['created_at', 'store_name']
     ordering = ['-created_at']
-    
+
     def get_queryset(self):
         return SellerProfile.objects.filter(verification_status='pending').select_related('user')
+
+
+class AllSellersListView(generics.ListAPIView):
+    """
+    List all seller accounts (pending, approved, rejected).
+    Only accessible by superadmin.
+    """
+    serializer_class = SellerProfileSerializer
+    permission_classes = [IsAdminUser]
+    filter_backends = [filters.SearchFilter, filters.OrderingFilter]
+    search_fields = ['store_name', 'user__email', 'user__username']
+    ordering_fields = ['created_at', 'store_name']
+    ordering = ['-created_at']
+
+    def get_queryset(self):
+        queryset = SellerProfile.objects.all().select_related('user')
+        status_filter = self.request.query_params.get('status', None)
+        if status_filter in ['pending', 'approved', 'rejected']:
+            queryset = queryset.filter(verification_status=status_filter)
+        return queryset
 
 
 @api_view(['POST'])

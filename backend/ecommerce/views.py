@@ -126,6 +126,8 @@ class ProductViewSet(viewsets.ModelViewSet):
     def get_permissions(self):
         if self.action in ['list', 'retrieve']:
             return [permissions.AllowAny()]
+        if self.action in ['approve', 'reject']:
+            return [permissions.IsAuthenticated(), permissions.IsAdminUser()]
         return [permissions.IsAuthenticated(), IsSellerOrReadOnly()]
 
     def get_queryset(self):
@@ -137,6 +139,7 @@ class ProductViewSet(viewsets.ModelViewSet):
         min_rating = self.request.query_params.get('min_rating', None)
         in_stock = self.request.query_params.get('in_stock', None)
         seller_id = self.request.query_params.get('seller', None)
+        status_param = self.request.query_params.get('status', None)
 
         if category and category != 'All':
             queryset = queryset.filter(category=category)
@@ -152,7 +155,25 @@ class ProductViewSet(viewsets.ModelViewSet):
             queryset = queryset.filter(stock__gt=0)
         if seller_id:
             queryset = queryset.filter(seller_id=seller_id)
-            
+
+        # Visibility: admins see everything (optionally filtered by ?status=).
+        # A seller looking at their own listings (?seller=<their own id>) sees
+        # all of their own products regardless of status. Everyone else —
+        # anonymous buyers browsing the marketplace, or a seller's public
+        # storefront viewed by someone who isn't them — only ever sees
+        # products an admin has approved.
+        user = self.request.user if self.request.user.is_authenticated else None
+        is_admin = bool(user and (user.is_staff or user.user_type == 'admin'))
+        is_own_listings = bool(user and seller_id and str(user.id) == str(seller_id))
+
+        if is_admin:
+            if status_param in ['pending', 'approved', 'rejected']:
+                queryset = queryset.filter(status=status_param)
+        elif is_own_listings:
+            pass
+        else:
+            queryset = queryset.filter(status='approved')
+
         return queryset
 
     def create(self, request, *args, **kwargs):
@@ -170,7 +191,27 @@ class ProductViewSet(viewsets.ModelViewSet):
             return Response({"error": str(e), "traceback": traceback.format_exc()}, status=400)
 
     def perform_create(self, serializer):
-        serializer.save(seller=self.request.user)
+        user = self.request.user
+        is_admin = user.is_staff or user.user_type == 'admin'
+        # Admin-added products go live immediately; a seller's own listings
+        # need admin approval before they're visible to buyers.
+        serializer.save(seller=user, status='approved' if is_admin else 'pending')
+
+    @action(detail=True, methods=['post'], url_path='approve')
+    def approve(self, request, pk=None):
+        product = self.get_object()
+        product.status = 'approved'
+        product.rejection_reason = ''
+        product.save(update_fields=['status', 'rejection_reason'])
+        return Response(ProductSerializer(product, context={'request': request}).data)
+
+    @action(detail=True, methods=['post'], url_path='reject')
+    def reject(self, request, pk=None):
+        product = self.get_object()
+        product.status = 'rejected'
+        product.rejection_reason = request.data.get('reason', '')
+        product.save(update_fields=['status', 'rejection_reason'])
+        return Response(ProductSerializer(product, context={'request': request}).data)
 
 class WishlistViewSet(viewsets.ModelViewSet):
     serializer_class = WishlistSerializer

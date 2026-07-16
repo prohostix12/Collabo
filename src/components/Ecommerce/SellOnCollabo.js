@@ -146,7 +146,7 @@ function SellerRegistrationWidget() {
           <p className="text-sm font-semibold text-emerald-800">Your seller account is active</p>
           <p className="text-[11px] text-emerald-600">You can now list products and manage orders</p>
         </div>
-        <a href="/" className="block w-full bg-orange-600 hover:bg-orange-700 text-white text-[12px] font-medium py-2.5 rounded-lg transition-colors text-center">
+        <a href="/dashboard" className="block w-full bg-orange-600 hover:bg-orange-700 text-white text-[12px] font-medium py-2.5 rounded-lg transition-colors text-center">
           Open Seller Dashboard
         </a>
       </div>

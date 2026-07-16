@@ -116,22 +116,32 @@ const ShopByCategoryAdCarousel = ({ setFilterCategory, setCurrentView, categoryP
   );
 };
 
-const CollaboAdBanner = ({ isLoggedIn, setCurrentView }) => {
+const CollaboAdBanner = ({ handleInviteFriendsClick }) => {
   return (
-    <div className="w-full relative group overflow-hidden rounded-[32px] my-12 shadow-sm h-[320px] md:h-[350px]">
-      <div className="absolute inset-0 bg-gradient-to-r from-orange-500 to-rose-500" />
+    <div className="w-full relative group overflow-hidden rounded-[32px] my-12 shadow-md h-[320px] md:h-[350px]">
+      {/* ── Background Gradients ── */}
+      <div className="absolute inset-0 bg-gradient-to-br from-orange-600 via-orange-500 to-rose-500" />
+      
+      {/* ── Glowing Mesh Orbs ── */}
+      <div className="absolute -top-24 -left-20 w-80 h-80 bg-yellow-400/25 rounded-full blur-3xl animate-pulse" />
+      <div className="absolute -bottom-24 right-1/4 w-96 h-96 bg-red-500/20 rounded-full blur-3xl" />
+      
+      {/* ── Grid Pattern Overlay ── */}
+      <div className="absolute inset-0 bg-[linear-gradient(to_right,#ffffff05_1px,transparent_1px),linear-gradient(to_bottom,#ffffff05_1px,transparent_1px)] bg-[size:24px_24px]" />
+
       <div className="absolute inset-0 flex flex-col md:flex-row w-full h-full p-8 md:p-12 z-10">
         <div className="flex-1 flex flex-col items-start justify-center text-white px-0 md:pl-8 space-y-4">
-          <h2 className="text-4xl sm:text-5xl lg:text-6xl font-black tracking-tight uppercase drop-shadow-sm leading-none">
-            Shop Smart<br/>Save Big
+          <h2 className="text-4xl sm:text-5xl lg:text-6xl font-black tracking-tighter uppercase drop-shadow-md leading-none">
+            Refer & Earn<br/>
+            <span className="text-yellow-200">Forever</span>
           </h2>
-          <p className="text-sm sm:text-xl md:text-2xl font-serif tracking-wide font-light italic opacity-95 drop-shadow-md max-w-xl leading-relaxed">
-            Thousands of products at unbeatable prices. Free delivery, secure payments & easy returns.
+          <p className="text-xs sm:text-sm md:text-base font-bold text-orange-50/90 max-w-xl leading-relaxed">
+            Invite your friends to shop and earn up to <span className="text-white font-extrabold">30% commission</span> on every order they place! Plus, your friends get instant discounts on sign up.
           </p>
           <button
-            onClick={() => isLoggedIn ? setCurrentView('listing') : setCurrentView('auth')}
-            className="bg-[#00a4b4] hover:bg-[#008593] text-white font-black text-xs sm:text-sm px-8 py-4 rounded-2xl transition-all shadow-xl hover:shadow-2xl hover:-translate-y-0.5 uppercase tracking-widest mt-2">
-            {isLoggedIn ? 'Shop Now' : 'Get Started'}
+            onClick={handleInviteFriendsClick}
+            className="bg-white text-orange-600 hover:bg-orange-50 font-black text-xs sm:text-sm px-8 py-4 rounded-2xl transition-all shadow-xl hover:shadow-2xl hover:-translate-y-0.5 uppercase tracking-widest mt-2 flex items-center gap-2">
+            <Gift className="w-4 h-4 text-orange-600 animate-bounce" /> Invite Friends Now
           </button>
         </div>
         <div className="flex-1 hidden md:flex items-center justify-end pr-4 md:pr-8 relative">
@@ -142,219 +152,190 @@ const CollaboAdBanner = ({ isLoggedIn, setCurrentView }) => {
   );
 };
 
-const CollabEarnBanner = ({ setCurrentView, setSupportSubject, setSupportCategory, setSupportMessage }) => {
-  const [showModal, setShowModal] = useState(false);
-
-  const handleApply = () => {
-    setShowModal(false);
-    setSupportSubject('Affiliate / Influencer Partnership Application');
-    setSupportCategory('general');
-    setSupportMessage('Hi Collabo Team,\n\nI would like to apply as an affiliate/influencer partner.\n\nName:\nSocial Media Profile(s):\nFollowers / Audience Size:\nNiche / Category:\nWhy I want to partner with Collabo:');
-    setCurrentView('support');
-  };
-
+const CollabEarnBanner = ({ handleInviteFriendsClick }) => {
   return (
-    <>
-      <div className="w-full relative overflow-hidden rounded-[28px] my-8" style={{minHeight:'335px',boxShadow:'0 24px 70px rgba(0,90,120,0.45)'}}>
+    <div className="w-full relative overflow-hidden rounded-[28px] my-8" style={{minHeight:'335px',boxShadow:'0 24px 70px rgba(0,90,120,0.45)'}}>
 
-        {/* ── BG: peacock blue gradient ── */}
-        <div className="absolute inset-0" style={{background:'linear-gradient(115deg,#002136 0%,#004e6e 28%,#007a9a 55%,#00a4b4 78%,#00c8c0 100%)'}} />
+      {/* ── BG: peacock blue gradient ── */}
+      <div className="absolute inset-0" style={{background:'linear-gradient(115deg,#002136 0%,#004e6e 28%,#007a9a 55%,#00a4b4 78%,#00c8c0 100%)'}} />
 
-        {/* glow orbs */}
-        <div className="absolute" style={{top:'-100px',right:'30%',width:'420px',height:'420px',borderRadius:'50%',background:'rgba(0,200,192,0.15)',filter:'blur(80px)'}} />
-        <div className="absolute" style={{bottom:'-80px',left:'-80px',width:'380px',height:'380px',borderRadius:'50%',background:'rgba(0,60,100,0.4)',filter:'blur(70px)'}} />
+      {/* glow orbs */}
+      <div className="absolute" style={{top:'-100px',right:'30%',width:'420px',height:'420px',borderRadius:'50%',background:'rgba(0,200,192,0.15)',filter:'blur(80px)'}} />
+      <div className="absolute" style={{bottom:'-80px',left:'-80px',width:'380px',height:'380px',borderRadius:'50%',background:'rgba(0,60,100,0.4)',filter:'blur(70px)'}} />
 
-        {/* dot pattern */}
-        <div className="absolute inset-0" style={{opacity:0.04,backgroundImage:'radial-gradient(circle,#fff 1px,transparent 1px)',backgroundSize:'24px 24px'}} />
+      {/* dot pattern */}
+      <div className="absolute inset-0" style={{opacity:0.04,backgroundImage:'radial-gradient(circle,#fff 1px,transparent 1px)',backgroundSize:'24px 24px'}} />
 
-        {/* image fade-in mask on the right */}
-        <div className="absolute inset-y-0 right-0 w-2/5 hidden lg:block" style={{background:'linear-gradient(to right,transparent 0%,rgba(0,40,70,0.15) 100%)'}} />
+      {/* image fade-in mask on the right */}
+      <div className="absolute inset-y-0 right-0 w-2/5 hidden lg:block" style={{background:'linear-gradient(to right,transparent 0%,rgba(0,40,70,0.15) 100%)'}} />
 
-        {/* ── MODEL IMAGE ── positioned right side, bottom-anchored */}
-        <img
-          src="/affiliate-girl.jpg"
-          alt="Collabo Partner"
-          className="absolute bottom-0 right-0 hidden lg:block object-cover select-none pointer-events-none"
-          style={{height:'105%',width:'340px',objectPosition:'center top',maskImage:'linear-gradient(to left,rgba(0,0,0,0.92) 45%,transparent 100%)',WebkitMaskImage:'linear-gradient(to left,rgba(0,0,0,0.92) 45%,transparent 100%)'}}
-        />
+      {/* ── MODEL IMAGE ── positioned right side, bottom-anchored */}
+      <img
+        src="/affiliate-girl.jpg"
+        alt="Collabo Partner"
+        className="absolute bottom-0 right-0 hidden lg:block object-cover select-none pointer-events-none"
+        style={{height:'105%',width:'340px',objectPosition:'center top',maskImage:'linear-gradient(to left,rgba(0,0,0,0.92) 45%,transparent 100%)',WebkitMaskImage:'linear-gradient(to left,rgba(0,0,0,0.92) 45%,transparent 100%)'}}
+      />
 
-        {/* ── MAIN CONTENT ── */}
-        <div className="relative z-10 flex flex-col lg:flex-row items-stretch" style={{minHeight:'335px'}}>
+      {/* ── MAIN CONTENT ── */}
+      <div className="relative z-10 flex flex-col lg:flex-row items-stretch" style={{minHeight:'335px'}}>
 
-          {/* LEFT: ad copy */}
-          <div className="flex-1 flex flex-col justify-center pl-8 pr-8 pt-7 pb-7 gap-3.5 lg:max-w-[62%]">
+        {/* LEFT: ad copy */}
+        <div className="flex-1 flex flex-col justify-center pl-8 pr-8 pt-7 pb-7 gap-3.5 lg:max-w-[62%]">
 
-            {/* Logo + urgency badge */}
-            <div className="flex items-center gap-3 flex-wrap">
-              <img src="/collabo-logo.png" alt="Collabo" className="h-9 object-contain drop-shadow" style={{filter:'brightness(0) invert(1)'}} />
-              <div className="w-px h-4" style={{background:'rgba(255,255,255,0.25)'}} />
-              <span className="text-[11px] font-black uppercase tracking-widest px-3 py-1 rounded-full animate-pulse"
-                style={{background:'linear-gradient(90deg,#ff6b35,#f7931e)',color:'#fff',boxShadow:'0 2px 12px rgba(255,107,53,0.5)'}}>
-                🔥 Now Open — Apply Today
-              </span>
-            </div>
-
-            {/* Headline */}
-            <div className="space-y-3">
-              <style>{`
-                @keyframes shareMoreMove {
-                  0%, 100% { transform: translateX(0); }
-                  50% { transform: translateX(12px); }
-                }
-                .share-more-animate {
-                  display: inline-block;
-                  animation: shareMoreMove 3s ease-in-out infinite;
-                }
-              `}</style>
-              <p className="text-[18px] font-semibold italic leading-relaxed whitespace-nowrap" style={{color:'rgba(0,235,220,0.95)'}}>
-                "Why should buying only cost money? What if it could also earn you money?"
-              </p>
-              <h2 className="font-black leading-[0.95] tracking-tighter unstoppable-text" style={{fontSize:'clamp(2.5rem,4.8vw,3.9rem)',color:'rgba(255,255,255,0.72)'}}>
-                Shop Smart<br/>
-                <span className="share-more-animate" style={{WebkitTextStroke:'1.5px rgba(255,255,255,0.35)',color:'transparent'}}>Share More</span><br/>
-                Earn Forever
-              </h2>
-            </div>
-
-            {/* Social proof */}
-            <div className="flex items-center gap-3">
-              <div className="flex -space-x-2">
-                {['bg-pink-400','bg-yellow-400','bg-blue-400','bg-green-400'].map((c,i) => (
-                  <div key={i} className={`w-8 h-8 rounded-full border-2 border-white/30 ${c} flex items-center justify-center text-[11px] font-black text-white`}>{['R','S','A','P'][i]}</div>
-                ))}
-              </div>
-              <p className="text-[14px] font-semibold" style={{color:'rgba(255,255,255,0.75)'}}>
-                <span className="text-white font-black">2,400+ creators</span> already earning with Collabo
-              </p>
-            </div>
-
-            {/* CTA */}
-            <div className="flex items-center">
-              <button
-                onClick={() => setShowModal(true)}
-                className="px-5 py-2 rounded-lg font-semibold text-xs tracking-wide transition-all duration-200 hover:opacity-90 hover:shadow-xl"
-                style={{background:'#ffffff',color:'#004e6e',boxShadow:'0 4px 20px rgba(0,0,0,0.2)',letterSpacing:'0.04em'}}
-              >
-                Know More &amp; Apply
-              </button>
-            </div>
-
+          {/* Logo + urgency badge */}
+          <div className="flex items-center gap-3 flex-wrap">
+            <img src="/collabo-logo.png" alt="Collabo" className="h-9 object-contain drop-shadow" style={{filter:'brightness(0) invert(1)'}} />
+            <div className="w-px h-4" style={{background:'rgba(255,255,255,0.25)'}} />
+            <span className="text-[11px] font-black uppercase tracking-widest px-3 py-1 rounded-full animate-pulse"
+              style={{background:'linear-gradient(90deg,#ff6b35,#f7931e)',color:'#fff',boxShadow:'0 2px 12px rgba(255,107,53,0.5)'}}>
+              🔥 Now Open — Apply Today
+            </span>
           </div>
 
-          {/* RIGHT: floating glassmorphic stats — absolutely positioned to the left of the girl image */}
-          <div className="hidden lg:flex flex-col justify-center gap-2.5" style={{position:'absolute',right:'310px',top:'60%',transform:'translateY(-50%)',width:'180px',zIndex:20}}>
-            <div className="rounded-2xl p-4 space-y-3"
-              style={{background:'rgba(255,255,255,0.1)',backdropFilter:'blur(28px)',WebkitBackdropFilter:'blur(28px)',border:'1px solid rgba(255,255,255,0.22)',boxShadow:'0 12px 40px rgba(0,0,0,0.25),inset 0 1px 0 rgba(255,255,255,0.2)'}}>
-              {[['₹50K+','Paid Last Month'],['10%','Max Commission'],['24hrs','Approval Time']].map(([val,lbl]) => (
-                <div key={lbl} className="text-center py-2.5 rounded-xl" style={{background:'rgba(255,255,255,0.07)',border:'1px solid rgba(255,255,255,0.1)'}}>
-                  <div className="text-base font-black text-white">{val}</div>
-                  <div className="text-[10px] font-bold uppercase tracking-wider mt-0.5" style={{color:'rgba(255,255,255,0.55)'}}>{lbl}</div>
-                </div>
+          {/* Headline */}
+          <div className="space-y-3">
+            <style>{`
+              @keyframes shareMoreMove {
+                0%, 100% { transform: translateX(0); }
+                50% { transform: translateX(12px); }
+              }
+              .share-more-animate {
+                display: inline-block;
+                animation: shareMoreMove 3s ease-in-out infinite;
+              }
+            `}</style>
+            <p className="text-[18px] font-semibold italic leading-relaxed whitespace-nowrap" style={{color:'rgba(0,235,220,0.95)'}}>
+              "Why should buying only cost money? What if it could also earn you money?"
+            </p>
+            <h2 className="font-black leading-[0.95] tracking-tighter unstoppable-text" style={{fontSize:'clamp(2.5rem,4.8vw,3.9rem)',color:'rgba(255,255,255,0.72)'}}>
+              Shop Smart<br/>
+              <span className="share-more-animate" style={{WebkitTextStroke:'1.5px rgba(255,255,255,0.35)',color:'transparent'}}>Share More</span><br/>
+              Earn Forever
+            </h2>
+          </div>
+
+          {/* Social proof */}
+          <div className="flex items-center gap-3">
+            <div className="flex -space-x-2">
+              {['bg-pink-400','bg-yellow-400','bg-blue-400','bg-green-400'].map((c,i) => (
+                <div key={i} className={`w-8 h-8 rounded-full border-2 border-white/30 ${c} flex items-center justify-center text-[11px] font-black text-white`}>{['R','S','A','P'][i]}</div>
               ))}
             </div>
+            <p className="text-[14px] font-semibold" style={{color:'rgba(255,255,255,0.75)'}}>
+              <span className="text-white font-black">2,400+ creators</span> already earning with Collabo
+            </p>
           </div>
 
+          {/* CTA */}
+          <div className="flex items-center">
+            <button
+              onClick={handleInviteFriendsClick}
+              className="px-6 py-3 rounded-xl font-black text-xs uppercase tracking-widest transition-all duration-300 hover:scale-[1.05] active:scale-[0.98] hover:shadow-2xl hover:shadow-orange-500/20 flex items-center gap-2 text-white"
+              style={{
+                background: 'linear-gradient(135deg, #ff6b35 0%, #f7931e 100%)',
+                boxShadow: '0 8px 30px rgba(247, 147, 30, 0.45)'
+              }}
+            >
+              <Gift className="w-4 h-4 text-white animate-bounce" /> Invite Friends
+            </button>
+          </div>
+
+        </div>
+
+        {/* RIGHT: floating glassmorphic stats — absolutely positioned to the left of the girl image */}
+        <div className="hidden lg:flex flex-col justify-center gap-2.5" style={{position:'absolute',right:'310px',top:'60%',transform:'translateY(-50%)',width:'180px',zIndex:20}}>
+          <div className="rounded-2xl p-4 space-y-3"
+            style={{background:'rgba(255,255,255,0.1)',backdropFilter:'blur(28px)',WebkitBackdropFilter:'blur(28px)',border:'1px solid rgba(255,255,255,0.22)',boxShadow:'0 12px 40px rgba(0,0,0,0.25),inset 0 1px 0 rgba(255,255,255,0.2)'}}>
+            {[['₹50K+','Paid Last Month'],['10%','Max Commission'],['24hrs','Approval Time']].map(([val,lbl]) => (
+              <div key={lbl} className="text-center py-2.5 rounded-xl" style={{background:'rgba(255,255,255,0.07)',border:'1px solid rgba(255,255,255,0.1)'}}>
+                <div className="text-base font-black text-white">{val}</div>
+                <div className="text-[10px] font-bold uppercase tracking-wider mt-0.5" style={{color:'rgba(255,255,255,0.55)'}}>{lbl}</div>
+              </div>
+            ))}
+          </div>
+        </div>
+
+      </div>
+    </div>
+  );
+};
+
+const KoreKartSection = ({ allProducts, setSelectedProduct, setCurrentView, setFilterCategory }) => {
+  const [adIndex, setAdIndex] = useState(0);
+  const koreanProducts = allProducts.filter(p => p.category === 'Korean Products');
+
+  useEffect(() => {
+    if (koreanProducts.length <= 4) return;
+    const timer = setInterval(() => {
+      setAdIndex(prev => (prev + 1) % Math.ceil(koreanProducts.length / 4));
+    }, 4000); // Rotate groups of 4 products every 4 seconds
+    return () => clearInterval(timer);
+  }, [koreanProducts.length]);
+
+  if (koreanProducts.length === 0) return null;
+
+  // Get current group of 4 products for the left side preview
+  const groupStart = adIndex * 4;
+  const adProducts = koreanProducts.slice(groupStart, groupStart + 4);
+  const favorites = koreanProducts.slice(0, 8); // Top 8 favorites on the right grid
+
+  return (
+    <div className="flex flex-col lg:flex-row gap-4 mt-12">
+      
+      {/* Left: Accent changing card (w-[400px]) */}
+      <div className="w-full lg:w-[400px] flex-shrink-0">
+        <div className="relative rounded-[32px] overflow-hidden shadow-md hover:shadow-lg transition-shadow h-full p-6 flex flex-col justify-between bg-gradient-to-br from-violet-500 via-purple-400 to-pink-400">
+          <div className="absolute -top-10 -left-10 w-40 h-40 bg-purple-300/30 rounded-full blur-2xl animate-pulse" />
+          <div className="absolute -bottom-10 -right-10 w-32 h-32 bg-pink-300/30 rounded-full blur-2xl animate-pulse" />
+          
+          <div className="relative z-10">
+            <span className="inline-block bg-white/20 backdrop-blur-sm text-white text-[9px] font-black tracking-widest uppercase px-2.5 py-1 rounded-full mb-3 animate-bounce">🌸 KoreKart Special</span>
+            <h3 className="text-xl sm:text-2xl font-black text-white leading-tight mb-1">Trending K-Beauty & Finds</h3>
+            <p className="text-[11px] text-white/80 font-medium">Handpicked pastel treats, kawaii aesthetics & viral skincare! ✨</p>
+          </div>
+
+          <div className="grid grid-cols-2 gap-3 my-4 flex-1 relative z-10">
+            {adProducts.map((product) => (
+              <div
+                key={product.id}
+                onClick={() => { setSelectedProduct(product); setCurrentView('details'); }}
+                className="bg-white rounded-2xl p-2 flex items-center justify-center shadow-lg hover:shadow-xl transition-all hover:scale-105 transform duration-350 cursor-pointer border border-white/60 aspect-square animate-in fade-in slide-in-from-bottom-2"
+              >
+                <img src={product.image} alt={product.name} className="max-h-full max-w-full object-contain rounded-lg p-1" />
+              </div>
+            ))}
+          </div>
         </div>
       </div>
 
-      {showModal && (
-        <div className="fixed inset-0 bg-slate-950/40 backdrop-blur-sm z-50 flex items-center justify-center p-4" onClick={() => setShowModal(false)}>
-          <div className="bg-white dark:bg-slate-950 rounded-2xl max-w-3xl w-full max-h-[90vh] shadow-xl border border-slate-200/60 dark:border-slate-800 flex flex-col overflow-hidden animate-in fade-in zoom-in-95 duration-200" onClick={e => e.stopPropagation()}>
-            
-            {/* Header: Simple & Humble */}
-            <div className="relative p-6 sm:p-8 bg-slate-50/80 dark:bg-slate-900/60 border-b border-slate-100 dark:border-slate-800/80">
-              <button onClick={() => setShowModal(false)} className="absolute top-6 right-6 text-slate-400 hover:text-slate-600 dark:hover:text-white transition-colors">
-                <X className="w-5 h-5" />
+      {/* Right: Products Grid (flex-1) */}
+      <div className="flex-1 min-w-0 space-y-5 lg:pl-4">
+        <div>
+          <span className="text-[10px] font-black tracking-widest text-purple-600 uppercase">Browse Collections</span>
+          <h2 className="text-2xl font-black tracking-tight text-slate-950 dark:text-white">Korean Favorites</h2>
+        </div>
+        
+        <div style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }} className="overflow-x-auto scrollbar-hide pb-2">
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+            {favorites.map((product) => (
+              <button
+                key={product.id}
+                onClick={() => { setSelectedProduct(product); setCurrentView('details'); }}
+                className="flex flex-col items-center group cursor-pointer"
+              >
+                <div className="w-[120px] h-[120px] sm:w-[135px] sm:h-[135px] rounded-2xl overflow-hidden bg-white dark:bg-slate-800 shadow-sm group-hover:shadow-lg transition-all group-hover:-translate-y-1 border border-slate-200 dark:border-slate-700 p-2.5 flex items-center justify-center">
+                  <img src={product.image} alt={product.name} className="max-h-full max-w-full object-contain group-hover:scale-110 transition-transform duration-300" />
+                </div>
+                <span className="mt-2 text-xs font-bold text-slate-700 dark:text-slate-300 group-hover:text-purple-600 transition-colors text-center leading-tight line-clamp-1 w-28">{product.name}</span>
+                <span className="text-xs font-black text-purple-600 mt-0.5">₹{product.discount_price || product.price}</span>
               </button>
-              <div className="text-[10px] font-bold text-violet-600 dark:text-violet-400 uppercase tracking-wider mb-1">Partner Program</div>
-              <h2 className="text-xl font-bold text-slate-900 dark:text-white">Collabo Affiliate Program</h2>
-              <p className="text-slate-500 dark:text-slate-400 text-xs mt-1">Earn commissions by sharing products you love with your audience.</p>
-            </div>
-
-            {/* Content Body: Two-Column Clean Layout */}
-            <div className="p-6 sm:p-8 space-y-6 overflow-y-auto flex-1">
-              
-              <div className="grid grid-cols-1 md:grid-cols-5 gap-6 sm:gap-8">
-                
-                {/* Left: How It Works */}
-                <div className="md:col-span-3 space-y-4">
-                  <h3 className="font-bold text-slate-900 dark:text-white text-xs uppercase tracking-wider">How It Works</h3>
-                  <div className="space-y-4">
-                    {[
-                      { step: '1', title: 'Apply & Get Approved', desc: 'Submit your request. We review and approve applications within 1–2 business days.' },
-                      { step: '2', title: 'Get Your Referral Link', desc: 'Create unique, trackable links for any product instantly from your dashboard.' },
-                      { step: '3', title: 'Share & Promote', desc: 'Recommend items to your audience. When they purchase, you earn a commission.' },
-                      { step: '4', title: 'Collect Payouts', desc: 'Track earnings in real-time. Withdraw directly to your account once you reach ₹500.' },
-                    ].map(({ step, title, desc }) => (
-                      <div key={step} className="flex gap-3 items-start">
-                        <div className="w-7 h-7 rounded-full border border-slate-200 dark:border-slate-700 flex items-center justify-center font-bold text-xs text-slate-500 dark:text-slate-400 flex-shrink-0 bg-white dark:bg-slate-900">
-                          {step}
-                        </div>
-                        <div className="space-y-0.5">
-                          <div className="font-semibold text-xs text-slate-900 dark:text-white">{title}</div>
-                          <div className="text-[11px] text-slate-500 dark:text-slate-400 leading-relaxed">{desc}</div>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-
-                {/* Right: Details & Eligibility */}
-                <div className="md:col-span-2 space-y-6">
-                  
-                  {/* Details Grid */}
-                  <div className="space-y-3">
-                    <h3 className="font-bold text-slate-900 dark:text-white text-xs uppercase tracking-wider">Program Details</h3>
-                    <div className="grid grid-cols-2 gap-2.5">
-                      {[
-                        { label: 'Commission', value: 'Up to 10%' },
-                        { label: 'Joining Fee', value: 'Free' },
-                        { label: 'Min. Payout', value: '₹500' },
-                        { label: 'Cycle', value: 'Monthly' },
-                      ].map(({ label, value }) => (
-                        <div key={label} className="p-3 border border-slate-100 dark:border-slate-800/80 rounded-xl bg-slate-50/50 dark:bg-slate-900/40 text-center">
-                          <div className="text-xs font-bold text-slate-900 dark:text-white">{value}</div>
-                          <div className="text-[9px] text-slate-400 uppercase tracking-wider mt-0.5">{label}</div>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-
-                  {/* Who Can Join */}
-                  <div className="space-y-3">
-                    <h3 className="font-bold text-slate-900 dark:text-white text-xs uppercase tracking-wider">Eligibility</h3>
-                    <div className="space-y-2">
-                      {['Social Media Influencers','Content Creators','Bloggers & YouTubers','Sellers & Freelancers'].map(item => (
-                        <div key={item} className="flex items-center gap-2 text-[11px] text-slate-600 dark:text-slate-400">
-                          <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500 flex-shrink-0" />
-                          <span>{item}</span>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-
-                </div>
-
-              </div>
-
-              {/* Action Buttons */}
-              <div className="pt-5 border-t border-slate-100 dark:border-slate-800/80 flex flex-col items-center gap-2">
-                <button
-                  onClick={handleApply}
-                  className="w-full max-w-xs bg-slate-950 hover:bg-slate-900 dark:bg-white dark:hover:bg-slate-100 text-white dark:text-slate-950 font-bold text-xs py-3 rounded-xl transition-all uppercase tracking-wider text-center"
-                >
-                  Apply Now
-                </button>
-                <p className="text-[9px] text-slate-400 dark:text-slate-500">
-                  Application updates are sent via the support ticket system.
-                </p>
-              </div>
-
-            </div>
+            ))}
           </div>
         </div>
-      )}
-    </>
+      </div>
+
+    </div>
   );
 };
 
@@ -2205,8 +2186,8 @@ export default function EcommerceMarketplace({ inlineMode = false, onBackToSelec
               {/* Promo Banners Layout */}
               <div className="flex flex-col lg:flex-row gap-4 items-stretch">
                 {/* 70% width Main Carousel */}
-                <div className="w-full lg:w-[70%] relative overflow-hidden bg-slate-100 flex-shrink-0 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-[0_4px_12px_rgba(0,0,0,0.05)]">
-                <div ref={carouselRef} style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }} className="flex overflow-x-auto snap-x snap-mandatory scrollbar-hide h-full min-h-[180px] sm:min-h-[240px]">
+                <div className="w-full lg:w-[70%] h-[180px] sm:h-[240px] relative overflow-hidden bg-slate-100 flex-shrink-0 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-[0_4px_12px_rgba(0,0,0,0.05)]">
+                <div ref={carouselRef} style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }} className="flex overflow-x-auto snap-x snap-mandatory scrollbar-hide h-full">
                   {storeSettings.coupon_codes && storeSettings.coupon_codes.length > 0 ? (
                     storeSettings.coupon_codes.map((coupon, i) => {
                       // Determine image: Custom image > Product image > fallback
@@ -2231,13 +2212,13 @@ export default function EcommerceMarketplace({ inlineMode = false, onBackToSelec
                         
                         {/* Split Layout: Left Text, Right Image */}
                         <div className="relative flex flex-row h-full w-full">
-                          <div className="flex-1 flex flex-col items-start justify-center h-full text-white pl-6 sm:pl-16 space-y-2 z-10">
-                            <div className="inline-flex items-center gap-1.5 px-3 py-1 bg-white/20 backdrop-blur-sm rounded-full border border-white/30 text-[9px] font-bold uppercase tracking-wider mb-1">
+                          <div className="flex-1 flex flex-col items-start justify-center h-full text-white pl-4 sm:pl-16 space-y-1.5 sm:space-y-2 z-10">
+                            <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 sm:px-3 sm:py-1 bg-white/20 backdrop-blur-sm rounded-full border border-white/30 text-[8px] sm:text-[9px] font-bold uppercase tracking-wider mb-1">
                               <Zap className="w-3 h-3 text-yellow-300" fill="currentColor" />
                               Mega Savings Festival
                             </div>
-                            <h2 className="text-5xl sm:text-6xl font-black tracking-tight uppercase drop-shadow-md leading-none">{coupon.discount_percent}% OFF</h2>
-                            <h3 className="text-lg sm:text-xl font-extrabold text-white/95 drop-shadow-sm leading-tight max-w-xs">
+                            <h2 className="text-3xl sm:text-5xl lg:text-6xl font-black tracking-tight uppercase drop-shadow-md leading-none">{coupon.discount_percent}% OFF</h2>
+                            <h3 className="text-xs sm:text-lg font-extrabold text-white/95 drop-shadow-sm leading-tight max-w-[150px] sm:max-w-xs">
                               Premium Collection
                             </h3>
                             <button 
@@ -2248,7 +2229,7 @@ export default function EcommerceMarketplace({ inlineMode = false, onBackToSelec
                                   setCurrentView('details');
                                 }
                               }} 
-                              className="sm:hidden mt-3 bg-white text-slate-900 px-6 py-2 rounded-full font-black text-xs uppercase tracking-widest shadow-xl"
+                              className="sm:hidden mt-2 bg-white text-slate-900 px-4 py-1.5 rounded-full font-black text-[10px] uppercase tracking-widest shadow-xl"
                             >
                               {linkedProduct ? 'Shop Now' : 'Apply Now'}
                             </button>
@@ -2280,12 +2261,12 @@ export default function EcommerceMarketplace({ inlineMode = false, onBackToSelec
                           </div>
                           
                           {/* Right side image */}
-                          <div className="flex-1 hidden sm:flex items-center justify-end pr-8 sm:pr-16 relative">
+                          <div className="flex items-center justify-end pr-3 sm:pr-16 relative w-32 sm:w-auto sm:flex-1 h-full z-0">
                              {finalImageUrl && (
                                <img 
                                  src={finalImageUrl} 
                                  alt="Promo" 
-                                 className={`h-[120%] absolute right-8 top-1/2 -translate-y-1/2 object-contain drop-shadow-2xl hover:scale-105 transition-transform duration-700`} 
+                                 className="max-h-[95%] sm:h-[120%] sm:absolute sm:right-8 sm:top-1/2 sm:-translate-y-1/2 object-contain drop-shadow-2xl hover:scale-105 transition-transform duration-700" 
                                />
                              )}
                           </div>
@@ -2296,14 +2277,14 @@ export default function EcommerceMarketplace({ inlineMode = false, onBackToSelec
                     <div className="flex-none w-full h-full snap-center relative group overflow-hidden">
                       <div className="absolute inset-0 bg-gradient-to-r from-orange-500 to-rose-500" />
                         <div className="relative flex flex-row h-full w-full">
-                          <div className="flex-1 flex flex-col items-start justify-center h-full text-white pl-6 sm:pl-16 space-y-2 z-10">
-                            <div className="inline-flex items-center gap-1.5 px-3 py-1 bg-white/20 backdrop-blur-sm rounded-full border border-white/30 text-[9px] font-bold uppercase tracking-wider mb-1">
+                          <div className="flex-1 flex flex-col items-start justify-center h-full text-white pl-4 sm:pl-16 space-y-1.5 sm:space-y-2 z-10">
+                            <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 sm:px-3 sm:py-1 bg-white/20 backdrop-blur-sm rounded-full border border-white/30 text-[8px] sm:text-[9px] font-bold uppercase tracking-wider mb-1">
                               <Sparkles className="w-3 h-3 text-yellow-300" fill="currentColor" />
                               Welcome Offer
                             </div>
-                            <h2 className="text-4xl sm:text-5xl font-black tracking-tight uppercase drop-shadow-sm leading-tight max-w-xl">{storeSettings.hero_headline}</h2>
-                            <h3 className="text-sm font-extrabold text-white/90 drop-shadow-sm leading-tight">Join today for benefits</h3>
-                            <button className="sm:hidden mt-3 bg-white text-slate-900 px-6 py-2 rounded-full font-black text-xs uppercase tracking-widest shadow-xl">Explore</button>
+                            <h2 className="text-xl sm:text-4xl lg:text-5xl font-black tracking-tight uppercase drop-shadow-sm leading-tight max-w-[150px] sm:max-w-xl">{storeSettings.hero_headline}</h2>
+                            <h3 className="text-[10px] sm:text-sm font-extrabold text-white/90 drop-shadow-sm leading-tight">Join today for benefits</h3>
+                            <button className="sm:hidden mt-2 bg-white text-slate-900 px-4 py-1.5 rounded-full font-black text-[10px] uppercase tracking-widest shadow-xl">Explore</button>
                           </div>
                           
                           <div className="hidden sm:flex flex-col items-center justify-center z-10 space-y-3 px-4">
@@ -2311,8 +2292,8 @@ export default function EcommerceMarketplace({ inlineMode = false, onBackToSelec
                             <button className="bg-white/10 backdrop-blur-md text-white border border-white/20 px-8 py-3 rounded-xl font-black text-xs uppercase tracking-widest shadow-xl hover:scale-105 transition-transform hover:bg-white hover:text-slate-900">Explore Catalog</button>
                           </div>
 
-                          <div className="flex-1 hidden sm:flex items-center justify-end pr-8 sm:pr-16 relative h-full z-0">
-                             <img src="/ecommerce_products_collage.png" alt="Tech" className="h-[130%] absolute right-8 top-1/2 -translate-y-1/2 object-contain drop-shadow-2xl hover:scale-105 transition-transform duration-700" />
+                          <div className="flex items-center justify-end pr-3 sm:pr-16 relative w-32 sm:w-auto sm:flex-1 h-full z-0">
+                             <img src="/ecommerce_products_collage.png" alt="Tech" className="max-h-[95%] sm:h-[130%] sm:absolute sm:right-8 sm:top-1/2 sm:-translate-y-1/2 object-contain drop-shadow-2xl hover:scale-105 transition-transform duration-700" />
                           </div>
                         </div>
                     </div>
@@ -2322,18 +2303,18 @@ export default function EcommerceMarketplace({ inlineMode = false, onBackToSelec
                   <div className="flex-none w-full h-full snap-center relative group overflow-hidden">
                     <div className="absolute inset-0 bg-gradient-to-r from-violet-600 to-fuchsia-600" />
                     <div className="relative flex flex-row h-full w-full">
-                      <div className="flex-1 flex flex-col items-start justify-center h-full text-white pl-6 sm:pl-16 space-y-2 z-10">
-                        <div className="inline-flex items-center gap-1.5 px-3 py-1 bg-white/20 backdrop-blur-sm rounded-full border border-white/30 text-[9px] font-bold uppercase tracking-wider mb-1">
+                      <div className="flex-1 flex flex-col items-start justify-center h-full text-white pl-4 sm:pl-16 space-y-1.5 sm:space-y-2 z-10">
+                        <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 sm:px-3 sm:py-1 bg-white/20 backdrop-blur-sm rounded-full border border-white/30 text-[8px] sm:text-[9px] font-bold uppercase tracking-wider mb-1">
                           <Gift className="w-3 h-3 text-yellow-300" />
                           Refer & Earn
                         </div>
-                        <h2 className="text-4xl sm:text-5xl font-black tracking-tight uppercase drop-shadow-md leading-none">Earn Upto 30%</h2>
-                        <h3 key={tickerMsgIndex} className="text-sm sm:text-base font-extrabold text-white/95 drop-shadow-sm leading-tight max-w-xs truncate w-full" style={{ animation: 'tickerFade 0.5s ease' }}>
+                        <h2 className="text-2xl sm:text-4xl lg:text-5xl font-black tracking-tight uppercase drop-shadow-sm leading-none">Earn Upto 30%</h2>
+                        <h3 key={tickerMsgIndex} className="text-[10px] sm:text-sm font-extrabold text-white/95 drop-shadow-sm leading-tight max-w-[150px] sm:max-w-xs truncate w-full" style={{ animation: 'tickerFade 0.5s ease' }}>
                           {tickerExtraMessages[tickerMsgIndex % tickerExtraMessages.length]}
                         </h3>
                         <button
                           onClick={handleInviteFriendsClick}
-                          className="sm:hidden mt-3 bg-white text-slate-900 px-6 py-2 rounded-full font-black text-xs uppercase tracking-widest shadow-xl hover:scale-105 transition-transform"
+                          className="sm:hidden mt-2 bg-white text-slate-900 px-4 py-1.5 rounded-full font-black text-[10px] uppercase tracking-widest shadow-xl hover:scale-105 transition-transform"
                         >
                           Invite Friends
                         </button>
@@ -2353,11 +2334,11 @@ export default function EcommerceMarketplace({ inlineMode = false, onBackToSelec
                       </div>
 
                       {/* Right side image */}
-                      <div className="flex-1 hidden sm:flex items-center justify-end pr-8 sm:pr-16 relative">
+                      <div className="flex items-center justify-end pr-3 sm:pr-16 relative w-32 sm:w-auto sm:flex-1 h-full z-0">
                         <img
                           src="/images/refer-earn-girl.svg"
                           alt="Refer and Earn"
-                          className="h-[130%] absolute right-8 top-1/2 -translate-y-1/2 object-contain drop-shadow-2xl hover:scale-105 transition-transform duration-700"
+                          className="max-h-[95%] sm:h-[130%] sm:absolute sm:right-8 sm:top-1/2 sm:-translate-y-1/2 object-contain drop-shadow-2xl hover:scale-105 transition-transform duration-700"
                         />
                       </div>
                     </div>
@@ -2893,13 +2874,18 @@ export default function EcommerceMarketplace({ inlineMode = false, onBackToSelec
               );
             })()}
 
-            <CollaboAdBanner isLoggedIn={isLoggedIn} setCurrentView={setCurrentView} />
+            {/* KoreKart Category Highlight Banner */}
+            <KoreKartSection
+              allProducts={allProducts}
+              setSelectedProduct={setSelectedProduct}
+              setCurrentView={setCurrentView}
+              setFilterCategory={setFilterCategory}
+            />
+
+            <CollaboAdBanner handleInviteFriendsClick={handleInviteFriendsClick} />
 
             <CollabEarnBanner
-              setCurrentView={setCurrentView}
-              setSupportSubject={setSupportSubject}
-              setSupportCategory={setSupportCategory}
-              setSupportMessage={setSupportMessage}
+              handleInviteFriendsClick={handleInviteFriendsClick}
             />
 
             {/* Shop By Category Grid + Side Ad */}

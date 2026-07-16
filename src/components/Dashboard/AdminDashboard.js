@@ -6,7 +6,7 @@ import {
   CheckCircle, XCircle, Search, Filter, Mail,
   // eslint-disable-next-line no-unused-vars
   Calendar, Eye, AlertCircle, Shield, Settings, 
-  BarChart3, Activity, DollarSign, Layout, ShoppingBag, Store
+  BarChart3, Activity, DollarSign, Layout, ShoppingBag, Store, Package
 } from 'lucide-react';
 import api from '../../services/api';
 import toast from 'react-hot-toast';
@@ -53,12 +53,20 @@ const AdminDashboard = () => {
   const [showConfirmModal, setShowConfirmModal] = useState(false);
   const [confirmAction, setConfirmAction] = useState(null);
   const [approvalTab, setApprovalTab] = useState('pending');
+  const [sellerTab, setSellerTab] = useState('all');
+  const [products, setProducts] = useState([]);
+  const [loadingProducts, setLoadingProducts] = useState(false);
+  const [productTab, setProductTab] = useState('pending');
+  const [selectedProductDetails, setSelectedProductDetails] = useState(null);
+  const [rejectingProduct, setRejectingProduct] = useState(null);
+  const [rejectReason, setRejectReason] = useState('');
 
   const tabs = [
     { id: 'overview', label: 'Overview', icon: BarChart3 },
     { id: 'users', label: 'User Management', icon: Users },
     { id: 'approvals', label: 'Influencer Approvals', icon: UserCheck },
     { id: 'seller-approvals', label: 'Seller Approvals', icon: Store },
+    { id: 'product-approvals', label: 'Product Approvals', icon: Package },
     { id: 'seller-payouts', label: 'Seller Payouts', icon: DollarSign },
     { id: 'landing', label: 'Landing Page', icon: Layout },
     { id: 'store', label: 'Store Content', icon: ShoppingBag },
@@ -94,9 +102,11 @@ const AdminDashboard = () => {
       fetchAnalytics();
       fetchInfluencers(approvalTab);
     } else if (activeTab === 'seller-approvals') {
-      fetchSellers();
+      fetchSellers(sellerTab);
+    } else if (activeTab === 'product-approvals') {
+      fetchProducts(productTab);
     }
-  }, [activeTab, approvalTab]);
+  }, [activeTab, approvalTab, sellerTab, productTab]);
 
   const fetchAnalytics = async () => {
     try {
@@ -149,15 +159,16 @@ const AdminDashboard = () => {
     }
   };
 
-  const fetchSellers = async () => {
+  const fetchSellers = async (status = 'all') => {
     setLoadingSellers(true);
     try {
-      const response = await api.get('/auth/admin/pending-sellers/');
+      const query = status && status !== 'all' ? `?status=${status}` : '';
+      const response = await api.get(`/auth/admin/all-sellers/${query}`);
       const data = response.data.results || response.data;
       setSellers(Array.isArray(data) ? data : []);
     } catch (error) {
-      console.error('Failed to fetch pending sellers:', error);
-      toast.error('Failed to load pending sellers');
+      console.error('Failed to fetch sellers:', error);
+      toast.error('Failed to load sellers');
       setSellers([]);
     } finally {
       setLoadingSellers(false);
@@ -168,7 +179,7 @@ const AdminDashboard = () => {
     try {
       await api.post(`/auth/admin/approve-seller/${userId}/`);
       toast.success('Seller approved successfully!');
-      fetchSellers();
+      fetchSellers(sellerTab);
       setShowConfirmModal(false);
     } catch (error) {
       console.error('Failed to approve seller:', error);
@@ -180,11 +191,52 @@ const AdminDashboard = () => {
     try {
       await api.post(`/auth/admin/reject-seller/${userId}/`, { rejection_reason: 'Rejected by admin' });
       toast.success('Seller rejected');
-      fetchSellers();
+      fetchSellers(sellerTab);
       setShowConfirmModal(false);
     } catch (error) {
       console.error('Failed to reject seller:', error);
       toast.error('Failed to reject seller');
+    }
+  };
+
+  const fetchProducts = async (statusFilter = 'pending') => {
+    setLoadingProducts(true);
+    try {
+      const query = statusFilter && statusFilter !== 'all' ? `&status=${statusFilter}` : '';
+      const response = await api.get(`/ecommerce/products/?page_size=200${query}`);
+      const data = response.data.results || response.data;
+      setProducts(Array.isArray(data) ? data : []);
+    } catch (error) {
+      console.error('Failed to fetch products:', error);
+      toast.error('Failed to load products');
+      setProducts([]);
+    } finally {
+      setLoadingProducts(false);
+    }
+  };
+
+  const handleApproveProduct = async (productId) => {
+    try {
+      await api.post(`/ecommerce/products/${productId}/approve/`);
+      toast.success('Product approved — now live in the store');
+      setSelectedProductDetails(null);
+      fetchProducts(productTab);
+    } catch (error) {
+      toast.error(error.response?.data?.error || 'Failed to approve product');
+    }
+  };
+
+  const submitRejectProduct = async () => {
+    if (!rejectingProduct) return;
+    try {
+      await api.post(`/ecommerce/products/${rejectingProduct.id}/reject/`, { reason: rejectReason });
+      toast.success('Product rejected');
+      setRejectingProduct(null);
+      setRejectReason('');
+      setSelectedProductDetails(null);
+      fetchProducts(productTab);
+    } catch (error) {
+      toast.error(error.response?.data?.error || 'Failed to reject product');
     }
   };
 
@@ -454,9 +506,16 @@ const AdminDashboard = () => {
         {activeTab === 'seller-approvals' && (
           <div className="space-y-3">
             <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 overflow-hidden">
-              <div className="px-4 py-3 border-b border-gray-100 dark:border-gray-700">
-                <h3 className="text-xs font-semibold text-gray-900 dark:text-white">Pending Seller Approvals</h3>
-                <p className="text-[10px] text-gray-500">{sellers.length} applications</p>
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 p-3 border-b border-gray-100 dark:border-gray-700">
+                <div className="flex items-center gap-1">
+                  {['all', 'pending', 'approved', 'rejected'].map((tab) => (
+                    <button key={tab} onClick={() => setSellerTab(tab)}
+                      className={`px-3 py-1.5 rounded-md text-[11px] font-medium transition-colors ${
+                        sellerTab === tab ? 'bg-gray-900 dark:bg-gray-600 text-white' : 'text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-700'
+                      }`}>{tab.charAt(0).toUpperCase() + tab.slice(1)}</button>
+                  ))}
+                </div>
+                <p className="text-[10px] text-gray-500">{sellers.length} seller{sellers.length === 1 ? '' : 's'}</p>
               </div>
 
               {loadingSellers ? (
@@ -467,7 +526,7 @@ const AdminDashboard = () => {
                 <div className="text-center py-12">
                   <Store className="w-16 h-16 text-gray-400 mx-auto mb-4" />
                   <p className="text-gray-600 dark:text-gray-400 text-lg">
-                    No pending sellers found
+                    No {sellerTab === 'all' ? '' : sellerTab + ' '}sellers found
                   </p>
                 </div>
               ) : (
@@ -490,6 +549,63 @@ const AdminDashboard = () => {
                             onViewDetails={() => setSelectedSellerDetails(seller)}
                             onApprove={() => openConfirmModal(seller, 'approve-seller')}
                             onReject={() => openConfirmModal(seller, 'reject-seller')}
+                          />
+                        ))}
+                      </AnimatePresence>
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
+        {activeTab === 'product-approvals' && (
+          <div className="space-y-3">
+            <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 overflow-hidden">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 p-3 border-b border-gray-100 dark:border-gray-700">
+                <div className="flex items-center gap-1">
+                  {['all', 'pending', 'approved', 'rejected'].map((tab) => (
+                    <button key={tab} onClick={() => setProductTab(tab)}
+                      className={`px-3 py-1.5 rounded-md text-[11px] font-medium transition-colors ${
+                        productTab === tab ? 'bg-gray-900 dark:bg-gray-600 text-white' : 'text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-700'
+                      }`}>{tab.charAt(0).toUpperCase() + tab.slice(1)}</button>
+                  ))}
+                </div>
+                <p className="text-[10px] text-gray-500">{products.length} product{products.length === 1 ? '' : 's'}</p>
+              </div>
+
+              {loadingProducts ? (
+                <div className="flex justify-center py-10">
+                  <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-violet-600"></div>
+                </div>
+              ) : products.length === 0 ? (
+                <div className="text-center py-12">
+                  <Package className="w-16 h-16 text-gray-400 mx-auto mb-4" />
+                  <p className="text-gray-600 dark:text-gray-400 text-lg">
+                    No {productTab === 'all' ? '' : productTab + ' '}products found
+                  </p>
+                </div>
+              ) : (
+                <div className="overflow-x-auto">
+                  <table className="w-full text-left">
+                    <thead>
+                      <tr className="border-b border-gray-100 dark:border-gray-700">
+                        {['Product', 'Seller', 'Category', 'Price', 'Status', 'Actions'].map(h => (
+                          <th key={h} className="px-4 py-2.5 text-[10px] font-medium text-gray-500 uppercase tracking-wider">{h}</th>
+                        ))}
+                      </tr>
+                    </thead>
+                    <tbody>
+                      <AnimatePresence>
+                        {products.map((product, index) => (
+                          <ProductApprovalRow
+                            key={product.id}
+                            product={product}
+                            index={index}
+                            onViewDetails={() => setSelectedProductDetails(product)}
+                            onApprove={() => handleApproveProduct(product.id)}
+                            onReject={() => { setRejectingProduct(product); setRejectReason(''); }}
                           />
                         ))}
                       </AnimatePresence>
@@ -569,6 +685,51 @@ const AdminDashboard = () => {
               openConfirmModal(seller, 'reject-seller');
             }}
           />
+        )}
+      </AnimatePresence>
+      {/* Product Details Modal */}
+      <AnimatePresence>
+        {selectedProductDetails && (
+          <ProductDetailsModal
+            product={selectedProductDetails}
+            onClose={() => setSelectedProductDetails(null)}
+            onApprove={() => handleApproveProduct(selectedProductDetails.id)}
+            onReject={() => { setRejectingProduct(selectedProductDetails); setRejectReason(''); }}
+          />
+        )}
+      </AnimatePresence>
+      {/* Reject Product Reason Modal */}
+      <AnimatePresence>
+        {rejectingProduct && (
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-[60] p-4"
+            onClick={() => setRejectingProduct(null)}>
+            <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.95 }}
+              onClick={(e) => e.stopPropagation()}
+              className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 max-w-sm w-full p-5">
+              <h3 className="text-sm font-semibold text-gray-900 dark:text-white mb-1">Reject Product</h3>
+              <p className="text-[11px] text-gray-500 mb-3">
+                {rejectingProduct.name} — let the seller know why so they can fix and resubmit.
+              </p>
+              <textarea
+                value={rejectReason}
+                onChange={(e) => setRejectReason(e.target.value)}
+                placeholder="Reason for rejection (optional)"
+                rows={3}
+                className="w-full border border-gray-200 dark:border-gray-700 rounded-lg px-3 py-2 text-[11px] bg-white dark:bg-gray-900 focus:outline-none focus:ring-1 focus:ring-gray-400 mb-3"
+              />
+              <div className="flex gap-2">
+                <button onClick={() => setRejectingProduct(null)}
+                  className="flex-1 py-2 text-[11px] font-medium text-gray-600 bg-gray-100 dark:bg-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-200 transition-colors">
+                  Cancel
+                </button>
+                <button onClick={submitRejectProduct}
+                  className="flex-1 py-2 text-[11px] font-medium text-white bg-red-600 hover:bg-red-700 rounded-lg transition-colors">
+                  Reject Product
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
         )}
       </AnimatePresence>
       {/* Create Influencer Modal */}
@@ -687,37 +848,181 @@ const ConfirmationModal = ({ influencer, action, onConfirm, onCancel }) => {
     </motion.div>
   );
 };
-const SellerRow = ({ seller, index, onApprove, onReject, onViewDetails }) => (
-  <motion.tr initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ delay: index * 0.03 }}
-    className="border-b border-gray-50 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700/30 transition-colors">
-    <td className="py-2.5 px-4">
-      <div className="flex items-center gap-2.5">
-        <div className="w-7 h-7 rounded-lg bg-gray-200 dark:bg-gray-700 flex items-center justify-center text-[10px] font-semibold text-gray-600 dark:text-gray-300">
-          {seller.store_name?.charAt(0).toUpperCase() || 'S'}
+const SellerRow = ({ seller, index, onApprove, onReject, onViewDetails }) => {
+  const status = seller.verification_status || 'pending';
+  return (
+    <motion.tr initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ delay: index * 0.03 }}
+      className="border-b border-gray-50 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700/30 transition-colors">
+      <td className="py-2.5 px-4">
+        <button onClick={onViewDetails} className="flex items-center gap-2.5 hover:underline text-left">
+          <div className="w-7 h-7 rounded-lg bg-gray-200 dark:bg-gray-700 flex items-center justify-center text-[10px] font-semibold text-gray-600 dark:text-gray-300 shrink-0">
+            {seller.store_name?.charAt(0).toUpperCase() || 'S'}
+          </div>
+          <p className="text-[11px] font-medium text-gray-900 dark:text-white">{seller.store_name || 'Unnamed'}</p>
+        </button>
+      </td>
+      <td className="py-2.5 px-4">
+        <p className="text-[11px] font-medium text-gray-700 dark:text-gray-300">{seller.username}</p>
+        <p className="text-[10px] text-gray-400">{seller.user_email}</p>
+      </td>
+      <td className="py-2.5 px-4 text-[10px] text-gray-500 font-mono">{seller.tax_id || 'N/A'}</td>
+      <td className="py-2.5 px-4 text-[10px] text-gray-500">{new Date(seller.created_at).toLocaleDateString()}</td>
+      <td className="py-2.5 px-4">
+        <span className={`inline-flex items-center gap-1 text-[10px] font-medium capitalize ${
+          status === 'approved' ? 'text-emerald-600' : status === 'rejected' ? 'text-red-500' : 'text-amber-600'
+        }`}>
+          <span className={`w-1.5 h-1.5 rounded-full ${
+            status === 'approved' ? 'bg-emerald-400' : status === 'rejected' ? 'bg-red-400' : 'bg-amber-400'
+          }`} /> {status}
+        </span>
+      </td>
+      <td className="py-2.5 px-4">
+        <div className="flex gap-1">
+          <button onClick={onViewDetails} className="px-2 py-1 text-[10px] font-medium text-gray-700 bg-gray-100 rounded-md hover:bg-gray-200 transition-colors">View</button>
+          {status === 'pending' && (
+            <>
+              <button onClick={onApprove} className="px-2 py-1 text-[10px] font-medium text-emerald-700 bg-emerald-50 rounded-md hover:bg-emerald-100 transition-colors">Approve</button>
+              <button onClick={onReject} className="px-2 py-1 text-[10px] font-medium text-red-600 bg-red-50 rounded-md hover:bg-red-100 transition-colors">Reject</button>
+            </>
+          )}
         </div>
-        <p className="text-[11px] font-medium text-gray-900 dark:text-white">{seller.store_name || 'Unnamed'}</p>
-      </div>
-    </td>
-    <td className="py-2.5 px-4">
-      <p className="text-[11px] font-medium text-gray-700 dark:text-gray-300">{seller.username}</p>
-      <p className="text-[10px] text-gray-400">{seller.user_email}</p>
-    </td>
-    <td className="py-2.5 px-4 text-[10px] text-gray-500 font-mono">{seller.tax_id || 'N/A'}</td>
-    <td className="py-2.5 px-4 text-[10px] text-gray-500">{new Date(seller.created_at).toLocaleDateString()}</td>
-    <td className="py-2.5 px-4">
-      <span className="inline-flex items-center gap-1 text-[10px] font-medium text-amber-600">
-        <span className="w-1.5 h-1.5 rounded-full bg-amber-400" /> Pending
+      </td>
+    </motion.tr>
+  );
+};
+
+const ProductApprovalRow = ({ product, index, onApprove, onReject, onViewDetails }) => {
+  const status = product.status || 'pending';
+  return (
+    <motion.tr initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ delay: index * 0.03 }}
+      className="border-b border-gray-50 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700/30 transition-colors">
+      <td className="py-2.5 px-4">
+        <button onClick={onViewDetails} className="flex items-center gap-2.5 hover:underline text-left">
+          <img src={product.image} alt={product.name} className="w-8 h-8 rounded-lg object-cover bg-gray-100 dark:bg-gray-700 shrink-0" />
+          <p className="text-[11px] font-medium text-gray-900 dark:text-white line-clamp-1 max-w-[220px]">{product.name}</p>
+        </button>
+      </td>
+      <td className="py-2.5 px-4 text-[11px] font-medium text-gray-700 dark:text-gray-300">{product.seller_username}</td>
+      <td className="py-2.5 px-4 text-[10px] text-gray-500">{product.category}</td>
+      <td className="py-2.5 px-4 text-[11px] font-medium text-gray-700 dark:text-gray-300">₹{product.discount_price || product.price}</td>
+      <td className="py-2.5 px-4">
+        <span className={`inline-flex items-center gap-1 text-[10px] font-medium capitalize ${
+          status === 'approved' ? 'text-emerald-600' : status === 'rejected' ? 'text-red-500' : 'text-amber-600'
+        }`}>
+          <span className={`w-1.5 h-1.5 rounded-full ${
+            status === 'approved' ? 'bg-emerald-400' : status === 'rejected' ? 'bg-red-400' : 'bg-amber-400'
+          }`} /> {status}
+        </span>
+      </td>
+      <td className="py-2.5 px-4">
+        <div className="flex gap-1">
+          <button onClick={onViewDetails} className="px-2 py-1 text-[10px] font-medium text-gray-700 bg-gray-100 rounded-md hover:bg-gray-200 transition-colors">View</button>
+          {status === 'pending' && (
+            <>
+              <button onClick={onApprove} className="px-2 py-1 text-[10px] font-medium text-emerald-700 bg-emerald-50 rounded-md hover:bg-emerald-100 transition-colors">Approve</button>
+              <button onClick={onReject} className="px-2 py-1 text-[10px] font-medium text-red-600 bg-red-50 rounded-md hover:bg-red-100 transition-colors">Reject</button>
+            </>
+          )}
+        </div>
+      </td>
+    </motion.tr>
+  );
+};
+
+const ProductDetailsModal = ({ product, onClose, onApprove, onReject }) => {
+  const status = product?.status || 'pending';
+  if (!product) return null;
+
+  const InfoRow = ({ label, value }) => (
+    <div className="flex items-start justify-between py-3 border-b border-gray-100 dark:border-gray-700/60 last:border-0 gap-4">
+      <span className="text-xs font-semibold text-gray-400 dark:text-gray-500 uppercase tracking-wide shrink-0 pt-0.5 w-32">
+        {label}
       </span>
-    </td>
-    <td className="py-2.5 px-4">
-      <div className="flex gap-1">
-        <button onClick={onViewDetails} className="px-2 py-1 text-[10px] font-medium text-gray-700 bg-gray-100 rounded-md hover:bg-gray-200 transition-colors">View</button>
-        <button onClick={onApprove} className="px-2 py-1 text-[10px] font-medium text-emerald-700 bg-emerald-50 rounded-md hover:bg-emerald-100 transition-colors">Approve</button>
-        <button onClick={onReject} className="px-2 py-1 text-[10px] font-medium text-red-600 bg-red-50 rounded-md hover:bg-red-100 transition-colors">Reject</button>
-      </div>
-    </td>
-  </motion.tr>
-);
+      <span className="text-sm font-medium text-gray-800 dark:text-gray-100 text-right break-words">
+        {value || <span className="text-gray-400 italic font-normal">N/A</span>}
+      </span>
+    </div>
+  );
+
+  return (
+    <motion.div
+      initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+      className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4"
+      onClick={onClose}
+    >
+      <motion.div
+        initial={{ scale: 0.94, opacity: 0, y: 20 }} animate={{ scale: 1, opacity: 1, y: 0 }} exit={{ scale: 0.94, opacity: 0, y: 20 }}
+        transition={{ type: 'spring', damping: 25, stiffness: 300 }}
+        onClick={(e) => e.stopPropagation()}
+        className="bg-gray-50 dark:bg-gray-900 rounded-3xl shadow-2xl max-w-2xl w-full max-h-[92vh] flex flex-col overflow-hidden"
+      >
+        <div className="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 px-6 py-4 rounded-t-3xl flex items-center justify-between shrink-0">
+          <div className="flex items-center gap-3.5 min-w-0">
+            <img src={product.image} alt={product.name} className="w-11 h-11 rounded-xl object-cover bg-gray-100 dark:bg-gray-700 shrink-0" />
+            <div className="min-w-0">
+              <h2 className="text-base font-extrabold text-gray-900 dark:text-white leading-tight truncate">{product.name}</h2>
+              <p className="text-xs text-gray-400 dark:text-gray-500 mt-0.5 flex items-center gap-1.5 capitalize">
+                <span className={`w-1.5 h-1.5 rounded-full inline-block ${
+                  status === 'approved' ? 'bg-emerald-400' : status === 'rejected' ? 'bg-red-400' : 'bg-orange-400'
+                }`} />
+                {status} &middot; by {product.seller_username}
+              </p>
+            </div>
+          </div>
+          <button onClick={onClose} className="w-8 h-8 rounded-full bg-gray-100 dark:bg-gray-700 flex items-center justify-center text-gray-500 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors shrink-0">
+            <XCircle className="w-4 h-4" />
+          </button>
+        </div>
+
+        <div className="overflow-y-auto flex-1 p-6 space-y-5">
+          {product.images?.length > 0 && (
+            <div className="flex gap-2 overflow-x-auto">
+              {product.images.map((img, i) => (
+                <img key={i} src={img} alt="" className="w-20 h-20 rounded-xl object-cover bg-gray-100 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 shrink-0" />
+              ))}
+            </div>
+          )}
+
+          <div className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 overflow-hidden shadow-sm">
+            <div className="px-5 py-1">
+              <InfoRow label="Category" value={product.category} />
+              <InfoRow label="Brand" value={product.brand} />
+              <InfoRow label="Price" value={`₹${product.price}${product.discount_price && product.discount_price !== product.price ? ` (sale ₹${product.discount_price})` : ''}`} />
+              <InfoRow label="Stock" value={product.stock} />
+              <InfoRow label="Seller" value={product.seller_username} />
+              {status === 'rejected' && product.rejection_reason && (
+                <InfoRow label="Rejection Reason" value={product.rejection_reason} />
+              )}
+            </div>
+          </div>
+
+          <div className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 overflow-hidden shadow-sm">
+            <div className="px-5 py-3 bg-blue-50 dark:bg-blue-900/20 border-b border-gray-200 dark:border-gray-700">
+              <span className="text-xs font-bold text-gray-600 dark:text-gray-300 uppercase tracking-wide">Description</span>
+            </div>
+            <p className="px-5 py-4 text-sm text-gray-700 dark:text-gray-300 whitespace-pre-line">{product.description}</p>
+          </div>
+        </div>
+
+        {status === 'pending' && (
+          <div className="bg-white dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700 px-6 py-4 rounded-b-3xl flex items-center justify-between gap-3 shrink-0">
+            <button onClick={onClose} className="px-5 py-2 rounded-xl bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 text-sm font-semibold hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors">
+              Close
+            </button>
+            <div className="flex gap-3">
+              <button onClick={onReject} className="px-5 py-2 rounded-xl bg-red-50 dark:bg-red-900/30 text-red-600 dark:text-red-400 border border-red-200 dark:border-red-700 text-sm font-semibold hover:bg-red-100 dark:hover:bg-red-900/50 transition-colors flex items-center gap-1.5">
+                <XCircle className="w-4 h-4" /> Reject
+              </button>
+              <button onClick={onApprove} className="px-5 py-2 rounded-xl bg-green-600 hover:bg-green-700 text-white text-sm font-semibold transition-colors flex items-center gap-1.5 shadow-sm">
+                <CheckCircle className="w-4 h-4" /> Approve Product
+              </button>
+            </div>
+          </div>
+        )}
+      </motion.div>
+    </motion.div>
+  );
+};
 
 const AdminSellerPayouts = () => {
   const [payouts, setPayouts] = React.useState([]);
@@ -798,6 +1103,9 @@ const AdminSellerPayouts = () => {
 
 const SellerDetailsModal = ({ seller, onClose, onApprove, onReject }) => {
   const [auditLogs, setAuditLogs] = React.useState([]);
+  const status = seller?.verification_status || 'pending';
+  const statusDot = status === 'approved' ? 'bg-emerald-400' : status === 'rejected' ? 'bg-red-400' : 'bg-orange-400';
+  const statusLabel = status === 'approved' ? 'Approved' : status === 'rejected' ? 'Rejected' : 'Pending Approval';
 
   React.useEffect(() => {
     if (seller?.user) {
@@ -847,8 +1155,8 @@ const SellerDetailsModal = ({ seller, onClose, onApprove, onReject }) => {
                 {seller.store_name}
               </h2>
               <p className="text-xs text-gray-400 dark:text-gray-500 mt-0.5 flex items-center gap-1.5">
-                <span className="w-1.5 h-1.5 rounded-full bg-orange-400 inline-block" />
-                Pending Approval &middot; Seller Verification
+                <span className={`w-1.5 h-1.5 rounded-full inline-block ${statusDot}`} />
+                {statusLabel} &middot; Seller Verification
               </p>
             </div>
           </div>
@@ -927,9 +1235,15 @@ const SellerDetailsModal = ({ seller, onClose, onApprove, onReject }) => {
                             </a>
                           </div>
                         ) : (
-                          <div className="w-full h-44 bg-gray-100 dark:bg-gray-800 flex items-center justify-center overflow-hidden">
+                          <a href={src} target="_blank" rel="noopener noreferrer" title="Open full-size in a new tab"
+                            className="group relative block w-full h-44 bg-gray-100 dark:bg-gray-800 overflow-hidden cursor-zoom-in">
                             <img src={src} alt={label} className="w-full h-full object-contain" />
-                          </div>
+                            <div className="absolute inset-0 bg-black/0 group-hover:bg-black/40 transition-colors flex items-center justify-center">
+                              <span className="opacity-0 group-hover:opacity-100 transition-opacity bg-violet-600 text-white text-xs font-bold px-4 py-1.5 rounded-lg">
+                                Open &amp; View
+                              </span>
+                            </div>
+                          </a>
                         )
                       ) : (
                         <div className="w-full h-44 bg-gray-50 dark:bg-gray-800 flex flex-col items-center justify-center gap-2">
@@ -976,20 +1290,22 @@ const SellerDetailsModal = ({ seller, onClose, onApprove, onReject }) => {
           >
             Close
           </button>
-          <div className="flex gap-3">
-            <button
-              onClick={() => onReject(seller)}
-              className="px-5 py-2 rounded-xl bg-red-50 dark:bg-red-900/30 text-red-600 dark:text-red-400 border border-red-200 dark:border-red-700 text-sm font-semibold hover:bg-red-100 dark:hover:bg-red-900/50 transition-colors flex items-center gap-1.5"
-            >
-              <XCircle className="w-4 h-4" /> Reject
-            </button>
-            <button
-              onClick={() => onApprove(seller)}
-              className="px-5 py-2 rounded-xl bg-green-600 hover:bg-green-700 text-white text-sm font-semibold transition-colors flex items-center gap-1.5 shadow-sm"
-            >
-              <CheckCircle className="w-4 h-4" /> Approve Seller
-            </button>
-          </div>
+          {status === 'pending' && (
+            <div className="flex gap-3">
+              <button
+                onClick={() => onReject(seller)}
+                className="px-5 py-2 rounded-xl bg-red-50 dark:bg-red-900/30 text-red-600 dark:text-red-400 border border-red-200 dark:border-red-700 text-sm font-semibold hover:bg-red-100 dark:hover:bg-red-900/50 transition-colors flex items-center gap-1.5"
+              >
+                <XCircle className="w-4 h-4" /> Reject
+              </button>
+              <button
+                onClick={() => onApprove(seller)}
+                className="px-5 py-2 rounded-xl bg-green-600 hover:bg-green-700 text-white text-sm font-semibold transition-colors flex items-center gap-1.5 shadow-sm"
+              >
+                <CheckCircle className="w-4 h-4" /> Approve Seller
+              </button>
+            </div>
+          )}
         </div>
       </motion.div>
     </motion.div>
