@@ -386,19 +386,23 @@ export default function EcommerceMarketplace({ inlineMode = false, onBackToSelec
 
   const [cart, setCart] = useState([]);
   const [isCategorySticky, setIsCategorySticky] = useState(false);
+  // Shrinks the mobile Categories-page top strip once it's pinned under scroll,
+  // Flipkart-app style — icons/text get smaller, not just stuck in place.
+  const [isCatPageStripCompact, setIsCatPageStripCompact] = useState(false);
 
   useEffect(() => {
     const handleScroll = () => {
       const y = window.scrollY;
       setIsCategorySticky(prev => prev ? y > 150 : y > 300);
+      setIsCatPageStripCompact(prev => prev ? y > 20 : y > 60);
     };
     window.addEventListener('scroll', handleScroll, { passive: true });
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
 
   const tickerExtraMessages = [
-    'Login and earn upto 30% made by your friend.',
-    'Referral, wallet, re-referral — all in one place.',
+    'Login and earn upto 10% made by your friend.',
+    'Refer, Re-Refer & Earn — Manage all in one place.',
     'Referral and redeem — earn more, spend smart.',
   ];
   // Per-product "Refer & Earn" link generation (any logged-in user, any product)
@@ -728,8 +732,7 @@ export default function EcommerceMarketplace({ inlineMode = false, onBackToSelec
   const [filterFreeDelivery, setFilterFreeDelivery] = useState(false);
   const [sortBy, setSortBy] = useState('trending');
   const [showMobileFilter, setShowMobileFilter] = useState(false);
-  const [showCategorySidebar, setShowCategorySidebar] = useState(true);
-  
+
   // Checkout & Interactive Timeline States
   const [selectedAddress, setSelectedAddress] = useState(0);
   const [selectedPayment, setSelectedPayment] = useState('upi');
@@ -2119,7 +2122,6 @@ export default function EcommerceMarketplace({ inlineMode = false, onBackToSelec
                   </span>
                 )}
               </div>
-              <ChevronRight className="w-4 h-4 flex-shrink-0" />
             </div>
           </div>
           <style>{`
@@ -2614,15 +2616,21 @@ export default function EcommerceMarketplace({ inlineMode = false, onBackToSelec
 
               {/* Micro-Section: Trust Badges / Bank Offers */}
               <div className="w-full grid grid-cols-1 sm:grid-cols-3 gap-4 mb-2">
-                 <div className="relative overflow-hidden flex items-center gap-4 bg-[#fdfbf6] dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-4 sm:p-5 shadow-[0_4px_12px_rgba(0,0,0,0.05)] hover:shadow-md transition-shadow group">
+                 <div
+                    onClick={handleInviteFriendsClick}
+                    role="button"
+                    tabIndex={0}
+                    onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') handleInviteFriendsClick(); }}
+                    className="relative overflow-hidden flex items-center gap-4 bg-[#fdfbf6] dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-4 sm:p-5 shadow-[0_4px_12px_rgba(0,0,0,0.05)] hover:shadow-md transition-shadow group cursor-pointer"
+                  >
                     <div className="absolute -right-4 -bottom-4 w-24 h-24 bg-orange-400 dark:bg-orange-500 rounded-full blur-2xl opacity-20 pointer-events-none transition-opacity group-hover:opacity-30" />
-                    <div className="text-3xl sm:text-4xl flex-shrink-0 drop-shadow-sm z-10 relative group-hover:scale-110 transition-transform">💳</div>
+                    <div className="text-3xl sm:text-4xl flex-shrink-0 drop-shadow-sm z-10 relative group-hover:scale-110 transition-transform">🎁</div>
                     <div className="z-10 relative flex flex-col justify-center">
                       <div className="flex items-center gap-1 mb-1">
                         <img src="/collabo-logo.png" alt="Collabo" className="h-7 sm:h-8 object-contain scale-[1.8] origin-left" />
                       </div>
-                      <p className="text-sm font-black text-slate-900 dark:text-white leading-tight mb-0.5">10% Instant Discount</p>
-                      <p className="text-xs font-semibold text-slate-600 dark:text-slate-400 line-clamp-1">On First Order</p>
+                      <p className="text-sm font-black text-slate-900 dark:text-white leading-tight mb-0.5">Refer & Earn</p>
+                      <p className="text-xs font-semibold text-slate-600 dark:text-slate-400 line-clamp-1">Invite Friends, Get Rewards</p>
                     </div>
                  </div>
                  <div className="relative overflow-hidden hidden sm:flex items-center gap-4 bg-[#fdfbf6] dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-4 sm:p-5 shadow-[0_4px_12px_rgba(0,0,0,0.05)] hover:shadow-md transition-shadow group">
@@ -3011,36 +3019,32 @@ export default function EcommerceMarketplace({ inlineMode = false, onBackToSelec
 
         {/* VIEW: CATEGORIES (Mobile Flipkart-style layout) */}
         {currentView === 'categories' && (
-          <div className="flex h-[calc(100vh-140px)] -mx-4 sm:-mx-6 -mt-4 bg-slate-50 dark:bg-slate-900 border-t border-slate-200 dark:border-slate-800">
-            {/* Left Sidebar Menu */}
-            <div className={`w-[84px] shrink-0 bg-white dark:bg-slate-950 overflow-y-auto border-r border-slate-200 dark:border-slate-800 hide-scrollbar pb-20 transition-all duration-300 ${showCategorySidebar ? 'ml-0' : '-ml-[84px]'}`}>
-              {['All', ...categoriesList.map(c => c.name)].filter(cat => cat === 'All' || productsList.some(p => (p.category || '').toLowerCase() === (cat || '').toLowerCase())).map((cat, idx) => (
-                <button
-                  key={idx}
-                  onClick={() => setFilterCategory(cat)}
-                  className={`w-full flex flex-col items-center gap-2 p-3 border-b border-slate-100 dark:border-slate-800 transition-colors ${filterCategory === cat ? 'bg-orange-50 dark:bg-slate-800/50 border-l-[3px] border-l-orange-500' : 'border-l-[3px] border-l-transparent'}`}
-                >
-                  <div className={`w-10 h-10 rounded-full flex items-center justify-center transition-colors ${filterCategory === cat ? 'bg-orange-500 text-white' : 'bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400'}`}>
-                    <LayoutGrid className="w-4 h-4" />
-                  </div>
-                  <span className={`text-[8px] text-center font-bold leading-tight ${filterCategory === cat ? 'text-orange-600 dark:text-orange-400' : 'text-slate-500 dark:text-slate-400'}`}>
-                    {cat}
-                  </span>
-                </button>
-              ))}
+          <div className="flex flex-col min-h-[calc(100vh-140px)] -mx-4 sm:-mx-6 -mt-4 bg-slate-50 dark:bg-slate-900 border-t border-slate-200 dark:border-slate-800">
+            {/* Top Category Strip (Flipkart-style) — shrinks once pinned by scroll */}
+            <div className="sticky top-0 z-20 shrink-0 bg-white dark:bg-slate-950 border-b border-slate-200 dark:border-slate-800 shadow-sm">
+              <div className={`flex overflow-x-auto hide-scrollbar transition-all duration-200 ${isCatPageStripCompact ? 'gap-2 px-3 py-1.5' : 'gap-3 px-3 py-2.5'}`}>
+                {['All', ...categoriesList.map(c => c.name)].filter(cat => cat === 'All' || productsList.some(p => (p.category || '').toLowerCase() === (cat || '').toLowerCase())).map((cat, idx) => {
+                  const { Icon } = getCatIcon(cat);
+                  return (
+                    <button
+                      key={idx}
+                      onClick={() => setFilterCategory(cat)}
+                      className={`flex flex-col items-center shrink-0 transition-all duration-200 ${isCatPageStripCompact ? 'gap-0.5 w-10' : 'gap-1 w-14'}`}
+                    >
+                      <div className={`rounded-full flex items-center justify-center transition-all duration-200 ${isCatPageStripCompact ? 'w-7 h-7' : 'w-11 h-11'} ${filterCategory === cat ? 'bg-orange-500 text-white' : 'bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400'}`}>
+                        <Icon className={`transition-all duration-200 ${isCatPageStripCompact ? 'w-3.5 h-3.5' : 'w-5 h-5'}`} />
+                      </div>
+                      <span className={`text-center font-bold leading-tight line-clamp-2 transition-all duration-200 ${isCatPageStripCompact ? 'text-[6px]' : 'text-[8px]'} ${filterCategory === cat ? 'text-orange-600 dark:text-orange-400' : 'text-slate-500 dark:text-slate-400'}`}>
+                        {cat}
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
             </div>
 
-            {/* Right Content Area */}
-            <div className="flex-1 overflow-y-auto hide-scrollbar pb-24 flex flex-col relative">
-              <div className="sticky top-0 z-20 bg-white/80 dark:bg-slate-900/80 backdrop-blur-md border-b border-slate-200/50 dark:border-slate-800/50 p-2 flex justify-start shadow-sm">
-                <button 
-                  onClick={() => setShowCategorySidebar(!showCategorySidebar)} 
-                  className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-white rounded-xl text-[10px] font-bold transition-colors"
-                >
-                  <LayoutGrid className="w-3.5 h-3.5" /> 
-                  {showCategorySidebar ? 'Hide Categories' : 'Show Categories'}
-                </button>
-              </div>
+            {/* Product Grid */}
+            <div className="flex-1 overflow-y-auto hide-scrollbar pb-24">
               <div className="grid grid-cols-2 gap-2 sm:gap-3 p-3">
                  {productsList.filter(p => filterCategory === 'All' || p.category === filterCategory).map(prod => (
                     <div 
@@ -3480,7 +3484,7 @@ export default function EcommerceMarketplace({ inlineMode = false, onBackToSelec
                       ))}
                     </div>
                   )}
-                  <div className="flex-1 relative bg-white dark:bg-slate-900 border border-slate-200/50 dark:border-slate-800/50 rounded-[32px] overflow-hidden aspect-square flex items-center justify-center p-6 shadow-sm">
+                  <div className="flex-1 relative bg-white dark:bg-slate-900 border border-slate-200/50 dark:border-slate-800/50 rounded-[32px] overflow-hidden aspect-[5/4] flex items-center justify-center p-6 shadow-sm">
                     <div className="absolute top-4 right-4 flex flex-col gap-2 z-10">
                       <button onClick={() => toggleWishlist(selectedProduct)} className="w-9 h-9 rounded-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 flex items-center justify-center shadow-sm hover:shadow-md transition-all" title="Add to Wishlist">
                         <Heart className={`w-4 h-4 ${wishlist.includes(selectedProduct.id) ? 'fill-rose-500 text-rose-500' : 'text-slate-400'}`} />
@@ -3488,10 +3492,10 @@ export default function EcommerceMarketplace({ inlineMode = false, onBackToSelec
                       <button onClick={() => { if (navigator.share) { navigator.share({ title: selectedProduct.name, text: `Check out ${selectedProduct.name} on Collabo!`, url: window.location.href }); } else { navigator.clipboard.writeText(window.location.href); showToast('Link copied!'); } }} className="w-9 h-9 rounded-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 flex items-center justify-center shadow-sm hover:shadow-md transition-all" title="Share">
                         <Share2 className="w-4 h-4 text-slate-400" />
                       </button>
-                      <button onClick={() => handleReferProduct(selectedProduct)} disabled={referLoading} className="w-9 h-9 rounded-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 flex items-center justify-center shadow-sm hover:shadow-md transition-all disabled:opacity-50" title="Refer & Earn">
-                        <Gift className="w-4 h-4 text-violet-500" />
-                      </button>
                     </div>
+                    <button onClick={() => handleReferProduct(selectedProduct)} disabled={referLoading} className="absolute bottom-4 right-4 z-10 flex items-center gap-1.5 bg-violet-600 hover:bg-violet-700 disabled:opacity-50 text-white text-xs font-black px-4 py-2 rounded-full shadow-sm hover:shadow-md transition-all" title="Refer & Earn">
+                      <Gift className="w-3.5 h-3.5" /> Refer
+                    </button>
                     <img src={activeDetailImage} alt={selectedProduct.name} className="max-h-full object-cover rounded-2xl" />
                   </div>
                 </div>
@@ -8743,29 +8747,29 @@ export default function EcommerceMarketplace({ inlineMode = false, onBackToSelec
         const inviteLink = `${window.location.origin}/register?affiliate=${user.affiliate_code}`;
         return (
           <div className="fixed inset-0 z-[9999] bg-black/50 backdrop-blur-sm flex items-center justify-center p-4" onClick={() => setShowInviteModal(false)}>
-            <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-2xl max-w-sm w-full overflow-hidden" onClick={e => e.stopPropagation()}>
-              <div className="bg-gradient-to-r from-violet-600 to-fuchsia-600 px-5 py-4 flex items-center gap-3 relative">
-                <button onClick={() => setShowInviteModal(false)} className="absolute top-3 right-3 text-white/70 hover:text-white"><X className="w-4 h-4" /></button>
-                <div className="w-10 h-10 bg-white/20 rounded-full flex items-center justify-center backdrop-blur-sm flex-shrink-0">
-                  <Users className="w-5 h-5 text-white" />
+            <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-2xl max-w-lg w-full overflow-hidden" onClick={e => e.stopPropagation()}>
+              <div className="bg-gradient-to-r from-violet-600 to-fuchsia-600 px-7 py-6 flex items-center gap-4 relative">
+                <button onClick={() => setShowInviteModal(false)} className="absolute top-4 right-4 text-white/70 hover:text-white"><X className="w-5 h-5" /></button>
+                <div className="w-14 h-14 bg-white/20 rounded-full flex items-center justify-center backdrop-blur-sm flex-shrink-0">
+                  <Users className="w-7 h-7 text-white" />
                 </div>
                 <div>
-                  <h2 className="text-base font-black text-white leading-tight">Invite Friends</h2>
-                  <p className="text-[10px] text-white/70 font-semibold">Your personal invite link</p>
+                  <h2 className="text-2xl font-black text-white leading-tight">Invite Friends</h2>
+                  <p className="text-sm text-white/70 font-semibold">Your personal invite link</p>
                 </div>
               </div>
-              <div className="p-4 space-y-3">
-                <p className="text-[11px] text-slate-500 dark:text-slate-400 leading-relaxed">
+              <div className="p-7 space-y-5">
+                <p className="text-sm text-slate-500 dark:text-slate-400 leading-relaxed">
                   Share this link with friends and contacts who don't have an account yet. When they sign up through it, you earn a wallet reward on <span className="font-bold text-slate-700 dark:text-slate-200">every order they ever place</span> — and if you were invited by someone, they earn half of that too. 2 levels deep.
                 </p>
-                <div className="flex items-center gap-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2.5">
-                  <span className="flex-1 text-[10px] font-mono text-slate-600 dark:text-slate-300 truncate">{inviteLink}</span>
+                <div className="flex items-center gap-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-4">
+                  <span className="flex-1 text-sm font-mono text-slate-600 dark:text-slate-300 truncate">{inviteLink}</span>
                   <button
                     onClick={() => { navigator.clipboard.writeText(inviteLink); showToast('Invite link copied!'); }}
-                    className="flex-shrink-0 p-1.5 rounded-lg bg-violet-600 hover:bg-violet-700 text-white transition-colors"
+                    className="flex-shrink-0 p-2.5 rounded-lg bg-violet-600 hover:bg-violet-700 text-white transition-colors"
                     title="Copy link"
                   >
-                    <Copy className="w-3.5 h-3.5" />
+                    <Copy className="w-5 h-5" />
                   </button>
                 </div>
                 <button
@@ -8782,9 +8786,9 @@ export default function EcommerceMarketplace({ inlineMode = false, onBackToSelec
                     }
                     setShowInviteModal(false);
                   }}
-                  className="w-full bg-gradient-to-r from-violet-600 to-fuchsia-600 text-white font-black text-[11px] py-2.5 rounded-xl hover:opacity-90 transition-opacity flex items-center justify-center gap-1.5"
+                  className="w-full bg-gradient-to-r from-violet-600 to-fuchsia-600 text-white font-black text-sm py-3.5 rounded-xl hover:opacity-90 transition-opacity flex items-center justify-center gap-2"
                 >
-                  <Share2 className="w-3.5 h-3.5" />
+                  <Share2 className="w-5 h-5" />
                   Copy & Share
                 </button>
               </div>
@@ -8795,48 +8799,48 @@ export default function EcommerceMarketplace({ inlineMode = false, onBackToSelec
 
       {showWalletModal && walletData && (
         <div className="fixed inset-0 z-[9999] bg-black/50 backdrop-blur-sm flex items-center justify-center p-4" onClick={() => setShowWalletModal(false)}>
-          <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-2xl max-w-sm w-full overflow-hidden max-h-[90vh] overflow-y-auto" style={{ scrollbarWidth: 'none' }} onClick={e => e.stopPropagation()}>
-            <div className="bg-gradient-to-r from-violet-600 to-fuchsia-600 px-5 py-4 flex items-center gap-3 relative">
-              <button onClick={() => setShowWalletModal(false)} className="absolute top-3 right-3 text-white/70 hover:text-white"><X className="w-4 h-4" /></button>
-              <div className="w-10 h-10 bg-white/20 rounded-full flex items-center justify-center backdrop-blur-sm flex-shrink-0">
-                <Gift className="w-5 h-5 text-white" />
+          <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-2xl max-w-lg w-full overflow-hidden max-h-[90vh] overflow-y-auto" style={{ scrollbarWidth: 'none' }} onClick={e => e.stopPropagation()}>
+            <div className="bg-gradient-to-r from-violet-600 to-fuchsia-600 px-7 py-6 flex items-center gap-4 relative">
+              <button onClick={() => setShowWalletModal(false)} className="absolute top-4 right-4 text-white/70 hover:text-white"><X className="w-5 h-5" /></button>
+              <div className="w-14 h-14 bg-white/20 rounded-full flex items-center justify-center backdrop-blur-sm flex-shrink-0">
+                <Gift className="w-7 h-7 text-white" />
               </div>
               <div>
-                <h2 className="text-xl font-black text-white leading-none">₹{walletData.balance}</h2>
-                <p className="text-[10px] text-white/70 font-semibold">Referral Wallet Balance{walletData.pending > 0 ? ` · ₹${walletData.pending} pending` : ''}</p>
+                <h2 className="text-3xl font-black text-white leading-none">₹{walletData.balance}</h2>
+                <p className="text-sm text-white/70 font-semibold">Referral Wallet Balance{walletData.pending > 0 ? ` · ₹${walletData.pending} pending` : ''}</p>
               </div>
             </div>
-            <div className="p-4 space-y-3">
-              <div className="flex items-center gap-2.5 bg-slate-50 dark:bg-slate-800 rounded-lg p-2.5">
-                <div className="w-7 h-7 rounded-md bg-violet-100 dark:bg-violet-900/30 flex items-center justify-center flex-shrink-0">
-                  <Gift className="w-3.5 h-3.5 text-violet-600" />
+            <div className="p-7 space-y-5">
+              <div className="flex items-center gap-3.5 bg-slate-50 dark:bg-slate-800 rounded-lg p-4">
+                <div className="w-9 h-9 rounded-md bg-violet-100 dark:bg-violet-900/30 flex items-center justify-center flex-shrink-0">
+                  <Gift className="w-4.5 h-4.5 text-violet-600" />
                 </div>
                 <div className="flex-1">
-                  <p className="text-[11px] font-bold text-slate-800 dark:text-white">How it works</p>
-                  <p className="text-[9px] text-slate-500">Tap "Refer & Earn" on any product to get your link. When someone buys through it, you earn a wallet reward — and if you were referred by someone, they earn half of that too.</p>
+                  <p className="text-sm font-bold text-slate-800 dark:text-white">How it works</p>
+                  <p className="text-xs text-slate-500">Tap "Refer & Earn" on any product to get your link. When someone buys through it, you earn a wallet reward — and if you were referred by someone, they earn half of that too.</p>
                 </div>
               </div>
 
               {/* Withdraw as cash — redeemable any time, independent of checkout */}
-              <div className="border border-violet-200 dark:border-violet-800 bg-violet-50 dark:bg-violet-950/30 rounded-xl p-3 space-y-2">
+              <div className="border border-violet-200 dark:border-violet-800 bg-violet-50 dark:bg-violet-950/30 rounded-xl p-4 space-y-3">
                 <div className="flex items-center justify-between">
-                  <p className="text-[11px] font-bold text-violet-700 dark:text-violet-300">Withdraw as Cash</p>
+                  <p className="text-sm font-bold text-violet-700 dark:text-violet-300">Withdraw as Cash</p>
                   {walletData.balance > 0 && (
                     <button
                       onClick={() => {
                         if (!showWithdrawForm) setWithdrawAmount(String(walletData.balance));
                         setShowWithdrawForm(!showWithdrawForm);
                       }}
-                      className="text-[10px] font-black text-violet-600 hover:underline"
+                      className="text-xs font-black text-violet-600 hover:underline"
                     >
-                      {showWithdrawForm ? 'Cancel' : 'Withdraw'}
+                      {showWithdrawForm ? 'Cancel' : 'Claim'}
                     </button>
                   )}
                 </div>
                 {walletData.balance <= 0 ? (
-                  <p className="text-[9px] text-slate-500">You have ₹0 to withdraw right now — refer a product to start earning.</p>
+                  <p className="text-xs text-slate-500">You have ₹0 to withdraw right now — refer a product to start earning.</p>
                 ) : showWithdrawForm ? (
-                  <div className="space-y-2">
+                  <div className="space-y-3">
                     <input
                       type="number"
                       min="0.01"
@@ -8845,14 +8849,14 @@ export default function EcommerceMarketplace({ inlineMode = false, onBackToSelec
                       value={withdrawAmount}
                       onChange={(e) => setWithdrawAmount(e.target.value)}
                       placeholder={`Amount — up to ₹${walletData.balance}`}
-                      className="w-full text-xs bg-white dark:bg-slate-800 border border-violet-200 dark:border-violet-700 rounded-lg px-2.5 py-1.5 focus:outline-none focus:ring-1 focus:ring-violet-500 dark:text-white"
+                      className="w-full text-sm bg-white dark:bg-slate-800 border border-violet-200 dark:border-violet-700 rounded-lg px-3.5 py-2.5 focus:outline-none focus:ring-1 focus:ring-violet-500 dark:text-white"
                     />
 
                     {walletData.bank_details && !editBankDetails ? (
-                      <div className="flex items-center justify-between bg-white dark:bg-slate-800 border border-violet-200 dark:border-violet-700 rounded-lg px-2.5 py-2">
+                      <div className="flex items-center justify-between bg-white dark:bg-slate-800 border border-violet-200 dark:border-violet-700 rounded-lg px-3.5 py-3">
                         <div className="min-w-0">
-                          <p className="text-[10px] font-bold text-slate-700 dark:text-slate-200 truncate">{walletData.bank_details.account_holder_name}</p>
-                          <p className="text-[9px] text-slate-400 font-mono">••••{walletData.bank_details.account_number.slice(-4)} · {walletData.bank_details.ifsc_code}</p>
+                          <p className="text-sm font-bold text-slate-700 dark:text-slate-200 truncate">{walletData.bank_details.account_holder_name}</p>
+                          <p className="text-xs text-slate-400 font-mono">••••{walletData.bank_details.account_number.slice(-4)} · {walletData.bank_details.ifsc_code}</p>
                         </div>
                         <button
                           onClick={() => {
@@ -8861,7 +8865,7 @@ export default function EcommerceMarketplace({ inlineMode = false, onBackToSelec
                             setWithdrawAccountNumber(walletData.bank_details.account_number);
                             setWithdrawIfsc(walletData.bank_details.ifsc_code);
                           }}
-                          className="text-[9px] font-black text-violet-600 hover:underline flex-shrink-0 ml-2"
+                          className="text-xs font-black text-violet-600 hover:underline flex-shrink-0 ml-2"
                         >
                           Change
                         </button>
@@ -8873,53 +8877,53 @@ export default function EcommerceMarketplace({ inlineMode = false, onBackToSelec
                           value={withdrawAccountName}
                           onChange={(e) => setWithdrawAccountName(e.target.value)}
                           placeholder="Account holder name"
-                          className="w-full text-xs bg-white dark:bg-slate-800 border border-violet-200 dark:border-violet-700 rounded-lg px-2.5 py-1.5 focus:outline-none focus:ring-1 focus:ring-violet-500 dark:text-white"
+                          className="w-full text-sm bg-white dark:bg-slate-800 border border-violet-200 dark:border-violet-700 rounded-lg px-3.5 py-2.5 focus:outline-none focus:ring-1 focus:ring-violet-500 dark:text-white"
                         />
                         <input
                           type="text"
                           value={withdrawAccountNumber}
                           onChange={(e) => setWithdrawAccountNumber(e.target.value.replace(/\D/g, ''))}
                           placeholder="Bank account number"
-                          className="w-full text-xs bg-white dark:bg-slate-800 border border-violet-200 dark:border-violet-700 rounded-lg px-2.5 py-1.5 focus:outline-none focus:ring-1 focus:ring-violet-500 dark:text-white"
+                          className="w-full text-sm bg-white dark:bg-slate-800 border border-violet-200 dark:border-violet-700 rounded-lg px-3.5 py-2.5 focus:outline-none focus:ring-1 focus:ring-violet-500 dark:text-white"
                         />
                         <input
                           type="text"
                           value={withdrawIfsc}
                           onChange={(e) => setWithdrawIfsc(e.target.value.toUpperCase())}
                           placeholder="IFSC code"
-                          className="w-full text-xs bg-white dark:bg-slate-800 border border-violet-200 dark:border-violet-700 rounded-lg px-2.5 py-1.5 focus:outline-none focus:ring-1 focus:ring-violet-500 dark:text-white uppercase"
+                          className="w-full text-sm bg-white dark:bg-slate-800 border border-violet-200 dark:border-violet-700 rounded-lg px-3.5 py-2.5 focus:outline-none focus:ring-1 focus:ring-violet-500 dark:text-white uppercase"
                         />
                       </>
                     )}
 
-                    <p className="text-[8px] text-slate-400">
+                    <p className="text-xs text-slate-400">
                       {walletData.bank_details ? "This is a one-time save — you won't be asked again unless you tap Change." : "Saved after your first request — you won't need to enter it again."}
                     </p>
 
                     <button
                       onClick={handleWithdraw}
                       disabled={withdrawing}
-                      className="w-full bg-violet-600 hover:bg-violet-700 disabled:opacity-50 text-white text-[10px] font-black px-3 py-2 rounded-lg transition-colors"
+                      className="w-full bg-violet-600 hover:bg-violet-700 disabled:opacity-50 text-white text-sm font-black px-4 py-3 rounded-lg transition-colors"
                     >
                       {withdrawing ? 'Requesting...' : 'Request Withdrawal'}
                     </button>
                   </div>
                 ) : (
-                  <p className="text-[9px] text-slate-500">Request a cash withdrawal any time — an admin reviews and processes it to your bank.</p>
+                  <p className="text-xs text-slate-500">Request a cash withdrawal any time — an admin reviews and processes it to your bank.</p>
                 )}
               </div>
 
               {walletPayouts.length > 0 && (
                 <>
-                  <h3 className="font-black text-[11px] text-slate-800 dark:text-white uppercase tracking-wider pt-1">Withdrawal Requests</h3>
-                  <div className="space-y-1.5">
+                  <h3 className="font-black text-sm text-slate-800 dark:text-white uppercase tracking-wider pt-1">Withdrawal Requests</h3>
+                  <div className="space-y-2">
                     {walletPayouts.map(p => (
-                      <div key={p.id} className="flex items-center justify-between bg-slate-50 dark:bg-slate-800 rounded-lg p-2.5">
+                      <div key={p.id} className="flex items-center justify-between bg-slate-50 dark:bg-slate-800 rounded-lg p-3.5">
                         <div>
-                          <p className="text-[10px] font-bold text-slate-700 dark:text-slate-200">₹{p.amount}</p>
-                          <p className="text-[9px] text-slate-400">{new Date(p.requested_at).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}</p>
+                          <p className="text-sm font-bold text-slate-700 dark:text-slate-200">₹{p.amount}</p>
+                          <p className="text-xs text-slate-400">{new Date(p.requested_at).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}</p>
                         </div>
-                        <span className={`text-[9px] font-black px-2 py-0.5 rounded-full ${p.status === 'completed' ? 'bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600' : p.status === 'rejected' ? 'bg-rose-100 dark:bg-rose-900/30 text-rose-500' : 'bg-amber-100 dark:bg-amber-900/30 text-amber-600'}`}>
+                        <span className={`text-xs font-black px-2.5 py-1 rounded-full ${p.status === 'completed' ? 'bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600' : p.status === 'rejected' ? 'bg-rose-100 dark:bg-rose-900/30 text-rose-500' : 'bg-amber-100 dark:bg-amber-900/30 text-amber-600'}`}>
                           {p.status}
                         </span>
                       </div>
@@ -8928,18 +8932,18 @@ export default function EcommerceMarketplace({ inlineMode = false, onBackToSelec
                 </>
               )}
 
-              <h3 className="font-black text-[11px] text-slate-800 dark:text-white uppercase tracking-wider pt-1">Recent Activity</h3>
+              <h3 className="font-black text-sm text-slate-800 dark:text-white uppercase tracking-wider pt-1">Recent Activity</h3>
               {walletData.transactions.length === 0 ? (
-                <p className="text-[10px] text-slate-400 text-center py-4">No referral earnings yet — start sharing product links!</p>
+                <p className="text-sm text-slate-400 text-center py-4">No referral earnings yet — start sharing product links!</p>
               ) : (
-                <div className="space-y-1.5">
+                <div className="space-y-2">
                   {walletData.transactions.map(tx => (
-                    <div key={tx.id} className="flex items-center justify-between bg-slate-50 dark:bg-slate-800 rounded-lg p-2.5">
+                    <div key={tx.id} className="flex items-center justify-between bg-slate-50 dark:bg-slate-800 rounded-lg p-3.5">
                       <div className="min-w-0">
-                        <p className="text-[10px] font-bold text-slate-700 dark:text-slate-200 truncate">{tx.reason}</p>
-                        <p className="text-[9px] text-slate-400">{new Date(tx.created_at).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })} · {tx.level === 0 ? 'Redeemed' : tx.level === 2 ? 'Upline bonus' : 'Direct referral'}</p>
+                        <p className="text-sm font-bold text-slate-700 dark:text-slate-200 truncate">{tx.reason}</p>
+                        <p className="text-xs text-slate-400">{new Date(tx.created_at).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })} · {tx.level === 0 ? 'Redeemed' : tx.level === 2 ? 'Upline bonus' : 'Direct referral'}</p>
                       </div>
-                      <span className={`text-[11px] font-black flex-shrink-0 ml-2 ${tx.amount < 0 ? 'text-rose-500' : tx.status === 'completed' ? 'text-emerald-600' : tx.status === 'pending' ? 'text-amber-500' : 'text-slate-400 line-through'}`}>{tx.amount < 0 ? '-' : '+'}₹{Math.abs(tx.amount)}</span>
+                      <span className={`text-sm font-black flex-shrink-0 ml-2 ${tx.amount < 0 ? 'text-rose-500' : tx.status === 'completed' ? 'text-emerald-600' : tx.status === 'pending' ? 'text-amber-500' : 'text-slate-400 line-through'}`}>{tx.amount < 0 ? '-' : '+'}₹{Math.abs(tx.amount)}</span>
                     </div>
                   ))}
                 </div>

@@ -511,63 +511,75 @@ def create_order_for_user(user, data):
         product_id_str = str(item.product.id)
         ref_code_for_item = valid_referral_map.get(product_id_str)
         product_link_reward_paid = False
+
+        # Amount actually paid for this item, after both its own referral discount
+        # and its proportional share of the coupon discount — every reward below
+        # (affiliate commission and signup referral alike) is a percentage of THIS,
+        # not of the pre-discount item total, so referrers earn on what the buyer
+        # actually paid rather than the sticker price.
+        item_total = Decimal(str(order_item.price * order_item.quantity))
+        coupon_only = discount - referral_discount - wallet_redeemed
+        if subtotal > 0 and coupon_only > 0:
+            item_coupon_discount = item_total * (Decimal(str(coupon_only)) / Decimal(str(subtotal)))
+        else:
+            item_coupon_discount = Decimal('0')
+
+        item_referral_discount = Decimal('0')
+        review = None
         if ref_code_for_item:
             review = ProductReview.objects.filter(referral_code=ref_code_for_item, product=item.product).first()
             if review:
-                product_link_reward_paid = True
-                if review.custom_commission_rate is not None:
-                    rate = review.custom_commission_rate
-                else:
-                    rate = item.product.commission_rate
-
-                # Actual amount paid for this item
-                item_total = Decimal(str(order_item.price * order_item.quantity))
-                if review.custom_price is not None:
+                if review.custom_price is None:
                     # custom_price already bakes in the price — no extra referral discount
-                    item_referral_discount = Decimal('0')
-                else:
                     discount_pct = review.custom_discount_percent if review.custom_discount_percent is not None else item.product.link_discount_percent
                     item_referral_discount = item_total * Decimal(str(discount_pct)) / Decimal('100')
-                # Proportional coupon discount for this item
-                coupon_only = discount - referral_discount - wallet_redeemed
-                if subtotal > 0 and coupon_only > 0:
-                    item_coupon_discount = item_total * (Decimal(str(coupon_only)) / Decimal(str(subtotal)))
-                else:
-                    item_coupon_discount = Decimal('0')
-                actual_item_amount = item_total - item_referral_discount - item_coupon_discount
+            else:
+                # Customer-generated referral link — discount still applies even though
+                # (per the note below) it pays no commission here.
+                discount_pct = item.product.link_discount_percent
+                item_referral_discount = item_total * Decimal(str(discount_pct)) / Decimal('100')
 
-                commission_amount = actual_item_amount * Decimal(str(rate)) / Decimal('100')
-                commission_amount = commission_amount.quantize(Decimal('0.01'))
+        actual_item_amount = item_total - item_referral_discount - item_coupon_discount
 
-                commission_status = 'completed' if order.payment_status == 'completed' else 'pending'
+        if review:
+            product_link_reward_paid = True
+            if review.custom_commission_rate is not None:
+                rate = review.custom_commission_rate
+            else:
+                rate = item.product.commission_rate
+
+            commission_amount = actual_item_amount * Decimal(str(rate)) / Decimal('100')
+            commission_amount = commission_amount.quantize(Decimal('0.01'))
+
+            commission_status = 'completed' if order.payment_status == 'completed' else 'pending'
+            AffiliateCommission.objects.create(
+                influencer=review.influencer,
+                order=order,
+                product=item.product,
+                amount=commission_amount,
+                status=commission_status,
+                level=1,
+            )
+            # Level 2: upline (the person who recruited the direct referrer) gets 50%
+            upline = getattr(review.influencer, 'referred_by', None)
+            if upline:
+                upline_amount = (commission_amount * Decimal('0.5')).quantize(Decimal('0.01'))
                 AffiliateCommission.objects.create(
-                    influencer=review.influencer,
+                    influencer=upline,
                     order=order,
                     product=item.product,
-                    amount=commission_amount,
+                    amount=upline_amount,
                     status=commission_status,
-                    level=1,
+                    level=2,
                 )
-                # Level 2: upline (the person who recruited the direct referrer) gets 50%
-                upline = getattr(review.influencer, 'referred_by', None)
-                if upline:
-                    upline_amount = (commission_amount * Decimal('0.5')).quantize(Decimal('0.01'))
-                    AffiliateCommission.objects.create(
-                        influencer=upline,
-                        order=order,
-                        product=item.product,
-                        amount=upline_amount,
-                        status=commission_status,
-                        level=2,
-                    )
-            # Note: a customer-generated referral link (CustomerReferralLink) intentionally
-            # pays no commission here. The discount for using one is still applied above
-            # (see valid_referral_map / referral_discount). Commission for that referrer only
-            # exists if this buyer's account is actually bound to them via User.referred_by —
-            # which only happens if the buyer *registered* through that link (see
-            # UserRegistrationSerializer). That binding is what the signup-referral block
-            # below pays out, on every order, forever — an existing account clicking someone
-            # else's product link for a one-off discount earns that link's owner nothing.
+        # Note: a customer-generated referral link (CustomerReferralLink) intentionally
+        # pays no commission here. The discount for using one is still applied above
+        # (see valid_referral_map / referral_discount). Commission for that referrer only
+        # exists if this buyer's account is actually bound to them via User.referred_by —
+        # which only happens if the buyer *registered* through that link (see
+        # UserRegistrationSerializer). That binding is what the signup-referral block
+        # below pays out, on every order, forever — an existing account clicking someone
+        # else's product link for a one-off discount earns that link's owner nothing.
 
         # Signup referral: whoever recruited THIS buyer (User.referred_by, set once at
         # signup via the "Affiliate Recruitment Link") earns on EVERY order the buyer
@@ -580,8 +592,7 @@ def create_order_for_user(user, data):
         # same person, which silently doubled their reward.
         signup_referrer = getattr(user, 'referred_by', None)
         if signup_referrer and not product_link_reward_paid:
-            item_total_signup = Decimal(str(order_item.price * order_item.quantity))
-            signup_reward = (item_total_signup * Decimal(str(item.product.link_discount_percent)) / Decimal('100')).quantize(Decimal('0.01'))
+            signup_reward = (actual_item_amount * Decimal(str(item.product.link_discount_percent)) / Decimal('100')).quantize(Decimal('0.01'))
             if signup_reward > 0:
                 signup_tx_status = 'completed' if order.payment_status == 'completed' else 'pending'
                 WalletTransaction.objects.create(

@@ -23,6 +23,10 @@ export const AuthProvider = ({ children }) => {
     } else {
       setLoading(false);
     }
+
+    const handleForceLogout = () => setUser(null);
+    window.addEventListener('auth:logout', handleForceLogout);
+    return () => window.removeEventListener('auth:logout', handleForceLogout);
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 

@@ -72,7 +72,7 @@ const Footer = () => {
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8">
             {/* Brand + Contact */}
             <div>
-              <img src="/collabo-logo.png" alt="Collabo" className="h-20 object-contain mb-3 scale-[1.6] origin-left transform" />
+              <img src="/collabo-logo-footer.png" alt="Collabo" className="h-10 object-contain -ml-1 mb-3" />
               <p className="text-[12px] text-slate-500 leading-relaxed mb-5">
                 Your one-stop marketplace for quality products. Shop smart, sell easy.
               </p>

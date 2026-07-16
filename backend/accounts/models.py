@@ -1,7 +1,18 @@
 from django.contrib.auth.models import AbstractUser
+from django.contrib.auth.validators import UnicodeUsernameValidator
 from django.db import models
 
 class User(AbstractUser):
+    # Overridden to drop the unique constraint AbstractUser puts on username —
+    # email is USERNAME_FIELD and is what has to be unique here.
+    username_validator = UnicodeUsernameValidator()
+    username = models.CharField(
+        max_length=150,
+        unique=False,
+        help_text='Required. 150 characters or fewer. Letters, digits and @/./+/-/_ only.',
+        validators=[username_validator],
+    )
+
     USER_TYPES = (
         ('influencer', 'Influencer'),
         ('company', 'Company'),
@@ -18,7 +29,9 @@ class User(AbstractUser):
     
     user_type = models.CharField(max_length=20, choices=USER_TYPES)
     email = models.EmailField(unique=True)
-    phone = models.CharField(max_length=20, blank=True)
+    # null=True so multiple users can leave phone blank without tripping the
+    # unique constraint (empty strings would otherwise collide with each other).
+    phone = models.CharField(max_length=20, unique=True, null=True, blank=True)
     is_verified = models.BooleanField(default=False)
     
     # Approval system for influencers

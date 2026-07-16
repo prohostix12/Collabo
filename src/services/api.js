@@ -28,31 +28,44 @@ api.interceptors.request.use(
 );
 
 // Response interceptor to handle token refresh
+let refreshPromise = null;
+
 api.interceptors.response.use(
   (response) => response,
   async (error) => {
     const originalRequest = error.config;
 
     if (error.response?.status === 401 && !originalRequest._retry) {
+      const refreshToken = localStorage.getItem('refresh_token');
+      if (!refreshToken) {
+        return Promise.reject(error);
+      }
+
       originalRequest._retry = true;
 
       try {
-        const refreshToken = localStorage.getItem('refresh_token');
-        if (refreshToken) {
-          const response = await axios.post(`${API_BASE_URL}/auth/token/refresh/`, {
-            refresh: refreshToken,
-          });
-
-          const { access } = response.data;
-          localStorage.setItem('access_token', access);
-          api.defaults.headers.common['Authorization'] = `Bearer ${access}`;
-
-          return api(originalRequest);
+        // Share one in-flight refresh call across requests that 401 at the same time,
+        // instead of each firing its own refresh request.
+        if (!refreshPromise) {
+          refreshPromise = axios
+            .post(`${API_BASE_URL}/auth/token/refresh/`, { refresh: refreshToken })
+            .finally(() => { refreshPromise = null; });
         }
+
+        const response = await refreshPromise;
+        const { access } = response.data;
+        localStorage.setItem('access_token', access);
+        api.defaults.headers.common['Authorization'] = `Bearer ${access}`;
+        originalRequest.headers.Authorization = `Bearer ${access}`;
+
+        return api(originalRequest);
       } catch (refreshError) {
         localStorage.removeItem('access_token');
         localStorage.removeItem('refresh_token');
-        window.location.href = '/login';
+        delete api.defaults.headers.common['Authorization'];
+        // Let the app handle the logged-out state in place — '/login' isn't a
+        // real route here, so a hard redirect just reloads to a blank session.
+        window.dispatchEvent(new Event('auth:logout'));
       }
     }
 

@@ -6,10 +6,22 @@ class UserRegistrationSerializer(serializers.ModelSerializer):
     password = serializers.CharField(write_only=True, min_length=8)
     password_confirm = serializers.CharField(write_only=True)
     referred_by_code = serializers.CharField(write_only=True, required=False, allow_blank=True)
+    # Declared explicitly (rather than left to ModelSerializer) so the model's
+    # auto-added UniqueValidator doesn't reject a blank value before we can
+    # normalize it to None below.
+    phone = serializers.CharField(required=False, allow_blank=True, allow_null=True)
 
     class Meta:
         model = User
         fields = ('email', 'username', 'password', 'password_confirm', 'user_type', 'phone', 'referred_by_code')
+
+    def validate_phone(self, value):
+        value = (value or '').strip()
+        if not value:
+            return None
+        if User.objects.filter(phone=value).exists():
+            raise serializers.ValidationError("A user with this phone number already exists.")
+        return value
 
     def validate(self, attrs):
         if attrs['password'] != attrs['password_confirm']:
@@ -162,7 +174,10 @@ class UserSerializer(serializers.ModelSerializer):
     influencer_profile = InfluencerProfileSerializer(read_only=True)
     company_profile = CompanyProfileSerializer(read_only=True)
     seller_profile = SellerProfileSerializer(read_only=True)
-    
+    # See UserRegistrationSerializer.phone — declared explicitly so a blank
+    # value can be normalized to None before the uniqueness check runs.
+    phone = serializers.CharField(required=False, allow_blank=True, allow_null=True)
+
     class Meta:
         model = User
         fields = ('id', 'email', 'username', 'user_type', 'phone', 'is_verified',
@@ -171,6 +186,17 @@ class UserSerializer(serializers.ModelSerializer):
                  'reward_points', 'affiliate_code')
         read_only_fields = ('id', 'created_at', 'approval_status', 'is_approved',
                            'rejection_reason', 'approval_shown', 'user_type', 'affiliate_code')
+
+    def validate_phone(self, value):
+        value = (value or '').strip()
+        if not value:
+            return None
+        qs = User.objects.filter(phone=value)
+        if self.instance:
+            qs = qs.exclude(pk=self.instance.pk)
+        if qs.exists():
+            raise serializers.ValidationError("A user with this phone number already exists.")
+        return value
 
 
 class ChangePasswordSerializer(serializers.Serializer):
