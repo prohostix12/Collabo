@@ -11,7 +11,7 @@ import razorpay
 from decimal import Decimal, InvalidOperation
 from django.conf import settings
 from django.db import models as db_models
-from django.db.models import Sum, Count, Avg, F
+from django.db.models import Sum, Count, Avg, F, Q
 from django.utils import timezone
 from datetime import timedelta
 from rest_framework import viewsets, permissions, status, filters, views, generics
@@ -171,6 +171,12 @@ class ProductViewSet(viewsets.ModelViewSet):
                 queryset = queryset.filter(status=status_param)
         elif is_own_listings:
             pass
+        elif user and getattr(self, 'action', None) in ['retrieve', 'update', 'partial_update', 'destroy']:
+            # Direct object access (edit/delete/single fetch) — let a seller reach
+            # their own product regardless of status, even without ?seller=<id>
+            # on the URL (e.g. PATCH /products/<id>/ carries no query params).
+            # Everyone else still only reaches approved products this way.
+            queryset = queryset.filter(Q(status='approved') | Q(seller=user))
         else:
             queryset = queryset.filter(status='approved')
 
@@ -189,6 +195,19 @@ class ProductViewSet(viewsets.ModelViewSet):
         except Exception as e:
             import traceback
             return Response({"error": str(e), "traceback": traceback.format_exc()}, status=400)
+
+    def destroy(self, request, *args, **kwargs):
+        # OrderItem.product cascades on delete, so removing a product with
+        # order history would silently wipe those order records. Block it
+        # instead — sellers/admins should set stock to 0 to retire a listing
+        # that's already been sold.
+        product = self.get_object()
+        if OrderItem.objects.filter(product=product).exists():
+            return Response(
+                {"error": "This product has order history and can't be deleted. Set its stock to 0 to stop new orders instead."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        return super().destroy(request, *args, **kwargs)
 
     def perform_create(self, serializer):
         user = self.request.user

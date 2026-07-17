@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import {
   Store, Package, Plus, X, Clock, CheckCircle2, XCircle,
-  IndianRupee, Boxes, ImagePlus, Upload, ShoppingBag,
+  IndianRupee, Boxes, ImagePlus, Upload, ShoppingBag, Pencil, Trash2,
 } from 'lucide-react';
 import api from '../../services/api';
 import toast from 'react-hot-toast';
@@ -40,10 +40,12 @@ const SellerDashboard = () => {
   const [loading, setLoading] = useState(true);
   const [categories, setCategories] = useState([]);
   const [showAddForm, setShowAddForm] = useState(false);
+  const [editingProduct, setEditingProduct] = useState(null);
   const [form, setForm] = useState(emptyForm);
   const [uploadedImages, setUploadedImages] = useState([]);
   const [submitting, setSubmitting] = useState(false);
   const [formError, setFormError] = useState('');
+  const [deletingId, setDeletingId] = useState(null);
 
   const fetchProducts = useCallback(() => {
     if (!user?.id) return;
@@ -72,7 +74,42 @@ const SellerDashboard = () => {
     rejected: products.filter(p => p.status === 'rejected').length,
   };
 
-  const resetForm = () => { setForm(emptyForm); setUploadedImages([]); setFormError(''); };
+  const resetForm = () => { setForm(emptyForm); setUploadedImages([]); setFormError(''); setEditingProduct(null); };
+
+  const openAddForm = () => { resetForm(); setShowAddForm(true); };
+
+  const openEditForm = (product) => {
+    const [main, ...extra] = product.images?.length ? product.images : [product.image];
+    setForm({
+      name: product.name || '',
+      category: product.category || '',
+      brand: product.brand || '',
+      price: String(product.price ?? ''),
+      discount_price: product.discount_price != null && product.discount_price !== product.price ? String(product.discount_price) : '',
+      stock: String(product.stock ?? '0'),
+      image: main || product.image || '',
+      images: extra.filter(img => img !== product.image).join(', '),
+      description: product.description || '',
+    });
+    setUploadedImages([]);
+    setFormError('');
+    setEditingProduct(product);
+    setShowAddForm(true);
+  };
+
+  const handleDelete = async (product) => {
+    if (!window.confirm(`Delete "${product.name}"? This can't be undone.`)) return;
+    setDeletingId(product.id);
+    try {
+      await api.delete(`/ecommerce/products/${product.id}/`);
+      toast.success('Product deleted');
+      fetchProducts();
+    } catch (err) {
+      toast.error(err.response?.data?.error || 'Failed to delete product');
+    } finally {
+      setDeletingId(null);
+    }
+  };
 
   const handleMainImageFile = async (file) => {
     if (!file) return;
@@ -101,7 +138,7 @@ const SellerDashboard = () => {
     setSubmitting(true);
     try {
       const extraUrls = form.images.split(',').map(s => s.trim()).filter(Boolean);
-      await api.post('/ecommerce/products/', {
+      const payload = {
         name: form.name.trim(),
         category: form.category,
         brand: form.brand.trim(),
@@ -111,14 +148,20 @@ const SellerDashboard = () => {
         image: form.image.trim(),
         images: [form.image.trim(), ...extraUrls, ...uploadedImages],
         description: form.description.trim(),
-      });
-      toast.success('Product submitted for admin review');
+      };
+      if (editingProduct) {
+        await api.patch(`/ecommerce/products/${editingProduct.id}/`, payload);
+        toast.success('Product updated');
+      } else {
+        await api.post('/ecommerce/products/', payload);
+        toast.success('Product submitted for admin review');
+      }
       resetForm();
       setShowAddForm(false);
       fetchProducts();
     } catch (err) {
       const data = err.response?.data;
-      const msg = data?.error || data?.name?.[0] || data?.price?.[0] || data?.detail || 'Failed to submit product';
+      const msg = data?.error || data?.name?.[0] || data?.price?.[0] || data?.detail || 'Failed to save product';
       setFormError(msg);
     } finally {
       setSubmitting(false);
@@ -141,7 +184,7 @@ const SellerDashboard = () => {
           </div>
         </div>
         <button
-          onClick={() => { setShowAddForm(true); resetForm(); }}
+          onClick={openAddForm}
           className="flex items-center justify-center gap-1.5 bg-orange-600 hover:bg-orange-700 text-white text-sm font-semibold px-4 py-2.5 rounded-xl transition-colors shadow-sm"
         >
           <Plus className="w-4 h-4" /> Add Product
@@ -187,7 +230,7 @@ const SellerDashboard = () => {
           <div className="text-center py-14">
             <Package className="w-14 h-14 text-gray-300 dark:text-gray-600 mx-auto mb-3" />
             <p className="text-sm text-gray-500 dark:text-gray-400">You haven't listed any products yet</p>
-            <button onClick={() => setShowAddForm(true)} className="mt-3 text-xs font-semibold text-orange-600 hover:underline">
+            <button onClick={openAddForm} className="mt-3 text-xs font-semibold text-orange-600 hover:underline">
               Add your first product
             </button>
           </div>
@@ -209,6 +252,23 @@ const SellerDashboard = () => {
                   <span className={`inline-flex items-center gap-1 text-[10px] font-medium capitalize px-2 py-1 rounded-full shrink-0 ${meta.bg} ${meta.text}`}>
                     <span className={`w-1.5 h-1.5 rounded-full ${meta.dot}`} /> {meta.label}
                   </span>
+                  <div className="flex items-center gap-1 shrink-0">
+                    <button
+                      onClick={() => openEditForm(p)}
+                      title="Edit"
+                      className="p-2 rounded-lg text-gray-500 hover:text-orange-600 hover:bg-orange-50 dark:hover:bg-orange-900/20 transition-colors"
+                    >
+                      <Pencil className="w-3.5 h-3.5" />
+                    </button>
+                    <button
+                      onClick={() => handleDelete(p)}
+                      disabled={deletingId === p.id}
+                      title="Delete"
+                      className="p-2 rounded-lg text-gray-500 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors disabled:opacity-50"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
                 </div>
               );
             })}
@@ -221,7 +281,7 @@ const SellerDashboard = () => {
         <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50 p-4" onClick={() => setShowAddForm(false)}>
           <div className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 max-w-lg w-full max-h-[90vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
             <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100 dark:border-gray-700">
-              <h2 className="text-sm font-bold text-gray-900 dark:text-white">Add Product</h2>
+              <h2 className="text-sm font-bold text-gray-900 dark:text-white">{editingProduct ? 'Edit Product' : 'Add Product'}</h2>
               <button onClick={() => setShowAddForm(false)} className="text-gray-400 hover:text-gray-600">
                 <X className="w-4 h-4" />
               </button>
@@ -321,7 +381,7 @@ const SellerDashboard = () => {
                 </button>
                 <button type="submit" disabled={submitting}
                   className="flex-1 py-2.5 text-sm font-semibold text-white bg-orange-600 hover:bg-orange-700 rounded-lg disabled:opacity-50 transition-colors">
-                  {submitting ? 'Submitting...' : 'Submit for Review'}
+                  {submitting ? 'Saving...' : editingProduct ? 'Save Changes' : 'Submit for Review'}
                 </button>
               </div>
             </form>
