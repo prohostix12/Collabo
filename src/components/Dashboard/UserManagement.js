@@ -107,7 +107,7 @@ const UserManagement = () => {
                         </div>
                         <div>
                           <p className="text-[11px] font-medium text-gray-900 dark:text-white">{u.username}</p>
-                          <p className="text-[10px] text-gray-400">{u.email}</p>
+                          <p className="text-[10px] text-gray-400">{u.email}{u.phone ? ` • ${u.phone}` : ''}</p>
                         </div>
                       </div>
                     </td>
@@ -163,7 +163,12 @@ const UserManagement = () => {
                   </div>
                   <div>
                     <p className="text-sm font-semibold text-gray-900 dark:text-white">{selectedUser.username}</p>
-                    <p className="text-[10px] text-gray-400 flex items-center gap-1"><Mail className="w-2.5 h-2.5" />{selectedUser.email}</p>
+                    <div className="flex flex-col gap-0.5 mt-0.5">
+                      <p className="text-[10px] text-gray-400 flex items-center gap-1"><Mail className="w-2.5 h-2.5" />{selectedUser.email}</p>
+                      {selectedUser.phone && (
+                        <p className="text-[10px] text-gray-400 flex items-center gap-1"><Phone className="w-2.5 h-2.5" />{selectedUser.phone}</p>
+                      )}
+                    </div>
                   </div>
                 </div>
                 <button onClick={() => setSelectedUser(null)} className="p-1.5 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors">

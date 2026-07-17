@@ -2572,15 +2572,39 @@ export default function EcommerceMarketplace({ inlineMode = false, onBackToSelec
                       </div>
 
                       {/* Stock scale */}
-                      <div className="space-y-0.5 sm:space-y-1">
-                        <div className="flex justify-between text-[8px] sm:text-[9px] font-black text-slate-400">
-                          <span>Sold: 42%</span>
-                          <span className="text-orange-500">{prod.stock} left</span>
-                        </div>
-                        <div className="w-full h-1 bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden">
-                          <div className="h-full bg-orange-500" style={{ width: '42%' }} />
-                        </div>
-                      </div>
+                      {(() => {
+                        const stock = prod.stock || 0;
+                        if (stock === 0) {
+                          return (
+                            <div className="space-y-0.5 sm:space-y-1">
+                              <div className="flex justify-between text-[8px] sm:text-[9px] font-black text-slate-400">
+                                <span>Sold: 100%</span>
+                                <span className="text-red-500 font-bold">Out of stock</span>
+                              </div>
+                              <div className="w-full h-1 bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden">
+                                <div className="h-full bg-red-500" style={{ width: '100%' }} />
+                              </div>
+                            </div>
+                          );
+                        }
+                        const seed = (prod.id || 1) % 7;
+                        const multipliers = [1.3, 1.4, 1.5, 1.6, 1.7, 1.8, 1.9];
+                        const mult = multipliers[seed];
+                        const initialStock = Math.round(stock * mult) + ((prod.id || 1) % 15) + 5;
+                        const sold = initialStock - stock;
+                        const percent = Math.min(95, Math.max(10, Math.round((sold / initialStock) * 100)));
+                        return (
+                          <div className="space-y-0.5 sm:space-y-1">
+                            <div className="flex justify-between text-[8px] sm:text-[9px] font-black text-slate-400">
+                              <span>Sold: {percent}%</span>
+                              <span className="text-orange-500">{stock} left</span>
+                            </div>
+                            <div className="w-full h-1 bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden">
+                              <div className="h-full bg-orange-500" style={{ width: `${percent}%` }} />
+                            </div>
+                          </div>
+                        );
+                      })()}
 
                       {/* Action */}
                       <button 
