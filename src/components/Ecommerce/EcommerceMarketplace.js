@@ -789,12 +789,10 @@ export default function EcommerceMarketplace({ inlineMode = false, onBackToSelec
   const [subscriberCount, setSubscriberCount] = useState(null);
   const [subscriberList, setSubscriberList] = useState([]);
   const [subscriberListLoading, setSubscriberListLoading] = useState(false);
-  const [adminAffiliates, setAdminAffiliates] = useState([]);
   const [adminWallets, setAdminWallets] = useState(null);
   const [expandedWalletLinkId, setExpandedWalletLinkId] = useState(null);
   const [adminWalletPayouts, setAdminWalletPayouts] = useState([]);
   const [processingPayoutId, setProcessingPayoutId] = useState(null);
-  const [expandedRefId, setExpandedRefId] = useState(null);
 
   // --- History API for Back Button Support ---
   const prevViewRef = useRef(currentView);
@@ -873,10 +871,6 @@ export default function EcommerceMarketplace({ inlineMode = false, onBackToSelec
     return () => window.removeEventListener('popstate', handlePopState);
   }, [inlineMode]);
   // -------------------------------------------
-
-  const [editingRatesId, setEditingRatesId] = useState(null);
-  const [editDiscountRate, setEditDiscountRate] = useState('');
-  const [editCommissionRate, setEditCommissionRate] = useState('');
 
   // Store Settings state (all admin-editable storefront content)
   const [storeSettings, setStoreSettings] = useState({
@@ -1297,29 +1291,6 @@ export default function EcommerceMarketplace({ inlineMode = false, onBackToSelec
     }
   };
 
-  const fetchAdminAffiliates = async () => {
-    if (!user || (!user.is_staff && user.user_type !== 'admin')) return;
-    try {
-      const response = await api.get('/ecommerce/admin/affiliates/');
-      setAdminAffiliates(response.data);
-    } catch (err) {
-      console.error("Error fetching admin affiliates:", err);
-    }
-  };
-
-  // Poll admin affiliates if the user is on the affiliates tab
-  useEffect(() => {
-    let interval;
-    if (adminView === 'affiliates' && user && (user.is_staff || user.user_type === 'admin')) {
-      interval = setInterval(() => {
-        fetchAdminAffiliates();
-      }, 5000);
-    }
-    return () => {
-      if (interval) clearInterval(interval);
-    };
-  }, [adminView, user]);
-
   const fetchAdminWallets = async () => {
     if (!user || (!user.is_staff && user.user_type !== 'admin')) return;
     try {
@@ -1379,20 +1350,6 @@ export default function EcommerceMarketplace({ inlineMode = false, onBackToSelec
       showToast(err.response?.data?.error || 'Failed to process payout');
     } finally {
       setProcessingPayoutId(null);
-    }
-  };
-
-  const saveAffiliateRates = async (reviewId) => {
-    try {
-      await api.put(`/ecommerce/admin/affiliates/${reviewId}/rates/`, {
-        custom_discount_percent: editDiscountRate === '' ? null : editDiscountRate,
-        custom_commission_rate: editCommissionRate === '' ? null : editCommissionRate
-      });
-      setEditingRatesId(null);
-      fetchAdminAffiliates();
-    } catch (e) {
-      console.error(e);
-      alert(e?.response?.data?.error || 'Error updating rates');
     }
   };
 
@@ -1596,7 +1553,6 @@ export default function EcommerceMarketplace({ inlineMode = false, onBackToSelec
       fetchCustomerOrders();
       fetchSellerProducts();
       fetchSellerOrders();
-      fetchAdminAffiliates();
       fetchSupportTickets();
     } else {
       setCart([]);
@@ -1604,7 +1560,6 @@ export default function EcommerceMarketplace({ inlineMode = false, onBackToSelec
       setCustomerOrders([]);
       setSellerProducts([]);
       setSellerOrders([]);
-      setAdminAffiliates([]);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user]);
@@ -5647,7 +5602,6 @@ export default function EcommerceMarketplace({ inlineMode = false, onBackToSelec
                     { id: 'categories', label: 'Categories', icon: Tag },
                     { id: 'brands', label: 'Brands', icon: Award },
                     { id: 'store-settings', label: 'Store Settings', icon: Settings },
-                    { id: 'affiliates', label: 'Affiliates', icon: Users },
                     { id: 'wallets', label: 'Referral Wallets', icon: Gift },
                     { id: 'tickets', label: 'Tickets', icon: Mail },
                     { id: 'broadcast', label: 'Broadcast', icon: Sparkles }
@@ -7511,222 +7465,6 @@ export default function EcommerceMarketplace({ inlineMode = false, onBackToSelec
                     <Check className="w-4 h-4" />
                     {settingsSaving ? 'Saving...' : 'Save All Store Settings'}
                   </button>
-                </div>
-              </div>
-            )}
-
-            {adminView === 'affiliates' && (user?.is_staff || user?.user_type === 'admin') && (
-              <div className="space-y-6 animate-fadeIn">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <h3 className="font-black text-lg dark:text-white flex items-center gap-2">
-                      <Award className="w-5 h-5 text-orange-500" />
-                      Affiliate Link Tracking
-                    </h3>
-                    <p className="text-[10px] text-slate-400 font-semibold mt-1">
-                      Monitor all generated influencer referral links and customer sales.
-                    </p>
-                  </div>
-                  <button
-                    onClick={fetchAdminAffiliates}
-                    className="bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 font-bold text-xs py-2 px-4 rounded-xl transition-all flex items-center gap-1.5"
-                  >
-                    <RefreshCw className="w-3.5 h-3.5" />
-                    Refresh List
-                  </button>
-                </div>
-
-                <div className="bg-white dark:bg-slate-900 border border-slate-200/50 dark:border-slate-800/50 rounded-3xl overflow-hidden shadow-sm">
-                  <div className="overflow-x-auto">
-                    <table className="w-full text-left border-collapse text-xs">
-                      <thead>
-                        <tr className="bg-slate-50 dark:bg-slate-800 text-slate-400 uppercase tracking-widest font-black text-[9px] border-b border-slate-100 dark:border-slate-800">
-                          <th className="py-4 px-4">Influencer</th>
-                          <th className="py-4 px-4">Product</th>
-                          <th className="py-4 px-4">Referral Code</th>
-                          <th className="py-4 px-4 text-center">Rating</th>
-                          <th className="py-4 px-4 text-center">Clicks</th>
-                          <th className="py-4 px-4 text-right">Product Price</th>
-                          <th className="py-4 px-4 text-right">Influencer Price</th>
-                          <th className="py-4 px-4 text-center">Buyer Discount</th>
-                          <th className="py-4 px-4 text-center">Comm. Rate</th>
-                          <th className="py-4 px-4 text-center">Orders</th>
-                          <th className="py-4 px-4 text-center">Products Bought</th>
-                          <th className="py-4 px-4 text-right">Total Comm. Paid</th>
-                          <th className="py-4 px-4 text-center">Created</th>
-                          <th className="py-4 px-4 text-center">Actions</th>
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y divide-slate-100 dark:divide-slate-800 font-semibold text-slate-600 dark:text-slate-300">
-                        {adminAffiliates && adminAffiliates.length > 0 ? (
-                          adminAffiliates.map((aff) => {
-                            const isExpanded = expandedRefId === aff.id;
-                            return (
-                              <React.Fragment key={aff.id}>
-                                <tr className="hover:bg-slate-50/50 dark:hover:bg-slate-800/50 transition-colors">
-                                  <td className="py-3 px-4 font-bold text-slate-900 dark:text-white">
-                                    @{aff.influencer}
-                                  </td>
-                                  <td className="py-3 px-4 font-bold">{aff.product_name}</td>
-                                  <td className="py-3 px-4 font-mono text-slate-500 text-[10px]">{aff.referral_code}</td>
-                                  <td className="py-3 px-4 text-center">
-                                    <span className="font-black text-orange-500">{aff.rating || '—'}</span>
-                                    {aff.rating && <span className="block text-[9px] text-slate-400">/ 5</span>}
-                                  </td>
-                                  <td className="py-3 px-4 text-center">
-                                    <span className={`font-black text-sm ${(aff.clicks || 0) > 0 ? 'text-violet-600' : 'text-slate-400'}`}>
-                                      {aff.clicks || 0}
-                                    </span>
-                                    <span className="block text-xs font-bold text-slate-400">clicks</span>
-                                  </td>
-                                  <td className="py-3 px-4 text-right">
-                                    <span className="font-bold text-slate-900 dark:text-white">₹{Number(aff.product_discount_price || 0).toLocaleString()}</span>
-                                    {aff.product_price !== aff.product_discount_price && (
-                                      <span className="block text-[9px] text-slate-400 line-through">₹{Number(aff.product_price || 0).toLocaleString()}</span>
-                                    )}
-                                  </td>
-                                  <td className="py-3 px-4 text-right">
-                                    {aff.custom_price !== null && aff.custom_price !== undefined ? (
-                                      <div>
-                                        <span className="font-black text-purple-600">₹{Number(aff.custom_price).toLocaleString()}</span>
-                                        <span className="block text-[9px] text-purple-400 font-bold">+₹{Number(aff.custom_price - (aff.product_discount_price || aff.product_price)).toLocaleString()} markup</span>
-                                      </div>
-                                    ) : (
-                                      <span className="text-slate-400 text-[10px]">—</span>
-                                    )}
-                                  </td>
-                                  <td className="py-3 px-4 text-center font-bold text-violet-500">
-                                    {editingRatesId === aff.id ? (
-                                      <input
-                                        type="number"
-                                        className="w-16 bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded text-center px-1 py-0.5 text-xs focus:outline-none"
-                                        value={editDiscountRate}
-                                        onChange={(e) => setEditDiscountRate(e.target.value)}
-                                        placeholder={`Def: ${aff.link_discount_percent ?? 10}`}
-                                      />
-                                    ) : (
-                                      aff.custom_discount_percent !== null ? `${aff.custom_discount_percent}% (Custom)` : `${aff.link_discount_percent ?? 10}% (Default)`
-                                    )}
-                                  </td>
-                                  <td className="py-3 px-4 text-center font-bold text-orange-500">
-                                    {editingRatesId === aff.id ? (
-                                      <input
-                                        type="number"
-                                        className="w-16 bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded text-center px-1 py-0.5 text-xs focus:outline-none"
-                                        value={editCommissionRate}
-                                        onChange={(e) => setEditCommissionRate(e.target.value)}
-                                        placeholder={`Def: ${aff.commission_rate}`}
-                                      />
-                                    ) : (
-                                      aff.custom_commission_rate !== null ? `${aff.custom_commission_rate}% (Custom)` : `${aff.commission_rate}% (Default)`
-                                    )}
-                                  </td>
-                                  <td className="py-3 px-4 text-center font-black text-slate-900 dark:text-white">
-                                    {aff.conversions}
-                                  </td>
-                                  <td className="py-3 px-4 text-center font-black text-emerald-600">
-                                    {aff.products_bought || 0}
-                                  </td>
-                                  <td className="py-3 px-4 text-right font-black text-slate-900 dark:text-white">
-                                    ₹{Number(aff.total_earned || 0).toLocaleString()}
-                                  </td>
-                                  <td className="py-3 px-4 text-center text-[10px] text-slate-500 font-bold">
-                                    {aff.created_at || '—'}
-                                  </td>
-                                  <td className="py-3 px-4 text-center">
-                                    <div className="flex items-center justify-center gap-2">
-                                      {editingRatesId === aff.id ? (
-                                        <>
-                                          <button
-                                            onClick={() => saveAffiliateRates(aff.id)}
-                                            className="bg-orange-500 hover:bg-orange-600 text-white text-[10px] py-1.5 px-3 rounded-lg font-bold transition-all"
-                                          >
-                                            Save
-                                          </button>
-                                          <button
-                                            onClick={() => setEditingRatesId(null)}
-                                            className="bg-slate-200 hover:bg-slate-300 dark:bg-slate-700 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-200 text-[10px] py-1.5 px-3 rounded-lg font-bold transition-all"
-                                          >
-                                            Cancel
-                                          </button>
-                                        </>
-                                      ) : (
-                                        <>
-                                          <button
-                                            onClick={() => {
-                                              setEditingRatesId(aff.id);
-                                              setEditDiscountRate(aff.custom_discount_percent !== null ? aff.custom_discount_percent : '');
-                                              setEditCommissionRate(aff.custom_commission_rate !== null ? aff.custom_commission_rate : '');
-                                            }}
-                                            className="bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-[10px] py-1.5 px-3 rounded-lg font-bold transition-all text-slate-600 dark:text-slate-350"
-                                          >
-                                            Edit Rates
-                                          </button>
-                                          <button
-                                            onClick={() => setExpandedRefId(isExpanded ? null : aff.id)}
-                                            className="bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-[10px] py-1.5 px-3 rounded-lg font-bold transition-all text-slate-600 dark:text-slate-350"
-                                          >
-                                            {isExpanded ? 'Hide Logs' : `Show (${aff.buyers?.length || 0})`}
-                                          </button>
-                                        </>
-                                      )}
-                                    </div>
-                                  </td>
-                                </tr>
-                                {isExpanded && (
-                                  <tr className="bg-slate-50/30 dark:bg-slate-900/30">
-                                    <td colSpan={14} className="py-4 px-8 border-t border-b border-slate-100 dark:border-slate-800">
-                                      <div className="space-y-3">
-                                        <h4 className="font-black text-[9px] uppercase tracking-wider text-slate-400">
-                                          Buyer Purchase Logs
-                                        </h4>
-                                        {aff.buyers && aff.buyers.length > 0 ? (
-                                          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-                                            {aff.buyers.map((buyer, bIdx) => (
-                                              <div
-                                                key={bIdx}
-                                                className="bg-white dark:bg-slate-850 p-3.5 rounded-2xl border border-slate-200/50 dark:border-slate-800/50 flex flex-col gap-1 text-[11px]"
-                                              >
-                                                <div className="flex justify-between items-center">
-                                                  <span className="font-bold text-slate-900 dark:text-white">
-                                                    {buyer.username}
-                                                  </span>
-                                                  <span className="text-[10px] text-slate-400 font-bold">
-                                                    {buyer.date}
-                                                  </span>
-                                                </div>
-                                                <span className="text-slate-400">{buyer.email}</span>
-                                                <div className="flex justify-between items-center mt-2 pt-2 border-t border-slate-100 dark:border-slate-800 font-bold">
-                                                  <span className="text-slate-400 font-bold">Paid:</span>
-                                                  <span className="text-slate-900 dark:text-white font-bold">
-                                                    ₹{buyer.amount.toLocaleString()}
-                                                  </span>
-                                                </div>
-                                              </div>
-                                            ))}
-                                          </div>
-                                        ) : (
-                                          <p className="text-slate-400 text-xs italic">
-                                            No buyers have purchased using this link yet.
-                                          </p>
-                                        )}
-                                      </div>
-                                    </td>
-                                  </tr>
-                                )}
-                              </React.Fragment>
-                            );
-                          })
-                        ) : (
-                          <tr>
-                            <td colSpan={14} className="py-12 text-center text-slate-400 italic">
-                              No generated influencer referral links found.
-                            </td>
-                          </tr>
-                        )}
-                      </tbody>
-                    </table>
-                  </div>
                 </div>
               </div>
             )}
