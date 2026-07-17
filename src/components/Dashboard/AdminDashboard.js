@@ -75,30 +75,45 @@ const AdminDashboard = () => {
     { id: 'settings', label: 'Platform Settings', icon: Settings },
   ];
 
-  const stats = [
-    { name: 'Total Users', value: '2,847', icon: Users, change: '+12%', description: '1,234 Influencers, 567 Companies' },
-    { name: 'Active Campaigns', value: '156', icon: TrendingUp, change: '+8%', description: '89 Running, 67 Pending' },
-    { name: 'Platform Revenue', value: '₹45,678', icon: DollarSign, change: '+25%', description: 'This month' },
-    { name: 'Success Rate', value: '94.2%', icon: Activity, change: '+2%', description: 'Campaign completion' },
-  ];
+  const [overview, setOverview] = useState(null);
+  const [loadingOverview, setLoadingOverview] = useState(false);
 
-  const recentActivities = [
-    { type: 'user', action: 'New influencer registered', user: 'Sarah Johnson', time: '2 minutes ago', status: 'success' },
-    { type: 'campaign', action: 'Campaign approved', user: 'TechCorp Inc.', time: '15 minutes ago', status: 'success' },
-    { type: 'payment', action: 'Payment processed', user: 'Mike Chen', time: '1 hour ago', status: 'success' },
-    { type: 'alert', action: 'Suspicious activity detected', user: 'System Alert', time: '2 hours ago', status: 'warning' },
-    { type: 'user', action: 'Company profile updated', user: 'Fashion Brand Co.', time: '3 hours ago', status: 'info' },
-  ];
+  const stats = overview ? [
+    { name: 'Total Users', value: overview.total_users.toLocaleString(), icon: Users, description: `${overview.total_influencers} Influencers, ${overview.total_companies} Companies` },
+    { name: 'Active Campaigns', value: overview.active_campaigns.toLocaleString(), icon: TrendingUp, description: `${overview.pending_campaigns} Pending` },
+    { name: 'Platform Revenue', value: `₹${Number(overview.platform_revenue_month).toLocaleString()}`, icon: DollarSign, description: 'This month' },
+    { name: 'Success Rate', value: `${overview.success_rate}%`, icon: Activity, description: 'Campaign completion' },
+  ] : [];
 
-  const systemHealth = [
-    { name: 'API Response Time', value: '245ms', status: 'good', target: '< 500ms' },
-    { name: 'Database Performance', value: '98.5%', status: 'excellent', target: '> 95%' },
-    { name: 'Payment Gateway', value: '99.9%', status: 'excellent', target: '> 99%' },
-    { name: 'Email Delivery', value: '97.2%', status: 'good', target: '> 95%' },
-  ];
+  const timeAgo = (iso) => {
+    const seconds = Math.floor((Date.now() - new Date(iso).getTime()) / 1000);
+    if (seconds < 60) return 'just now';
+    const minutes = Math.floor(seconds / 60);
+    if (minutes < 60) return `${minutes} minute${minutes === 1 ? '' : 's'} ago`;
+    const hours = Math.floor(minutes / 60);
+    if (hours < 24) return `${hours} hour${hours === 1 ? '' : 's'} ago`;
+    const days = Math.floor(hours / 24);
+    return `${days} day${days === 1 ? '' : 's'} ago`;
+  };
+
+  const recentActivities = (overview?.recent_activities || []).map(a => ({ ...a, time: timeAgo(a.time) }));
+
+  const fetchOverview = async () => {
+    setLoadingOverview(true);
+    try {
+      const response = await api.get('/auth/admin/platform-overview/');
+      setOverview(response.data);
+    } catch (error) {
+      console.error('Failed to fetch platform overview:', error);
+    } finally {
+      setLoadingOverview(false);
+    }
+  };
 
   useEffect(() => {
-    if (activeTab === 'approvals') {
+    if (activeTab === 'overview') {
+      fetchOverview();
+    } else if (activeTab === 'approvals') {
       fetchAnalytics();
       fetchInfluencers(approvalTab);
     } else if (activeTab === 'seller-approvals') {
@@ -371,55 +386,50 @@ const AdminDashboard = () => {
       <div className="p-4">
         {activeTab === 'overview' && (
           <div className="space-y-4">
-            {/* Stats */}
-            <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-              {stats.map((stat) => {
-                const StatIcon = stat.icon;
-                return (
-                  <div key={stat.name} className="bg-white dark:bg-gray-800 rounded-xl p-3.5 border border-gray-200 dark:border-gray-700">
-                    <div className="flex items-center justify-between mb-2">
-                      <StatIcon className="w-4 h-4 text-gray-400" />
-                      <span className="text-[10px] font-medium text-emerald-600">{stat.change}</span>
-                    </div>
-                    <p className="text-lg font-bold text-gray-900 dark:text-white">{stat.value}</p>
-                    <p className="text-[10px] text-gray-500 dark:text-gray-400 mt-0.5">{stat.name}</p>
-                  </div>
-                );
-              })}
-            </div>
-
-            {/* Recent Activity + System Health */}
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
-              <div className="bg-white dark:bg-gray-800 rounded-xl p-4 border border-gray-200 dark:border-gray-700">
-                <h3 className="text-xs font-semibold text-gray-900 dark:text-white mb-3">Recent Activity</h3>
-                <div className="space-y-1.5">
-                  {recentActivities.map((a, i) => (
-                    <div key={i} className="flex items-center gap-3 py-2 border-b border-gray-100 dark:border-gray-700 last:border-0">
-                      <div className={`w-1.5 h-1.5 rounded-full shrink-0 ${a.status === 'warning' ? 'bg-amber-400' : a.status === 'info' ? 'bg-blue-400' : 'bg-emerald-400'}`} />
-                      <div className="flex-1 min-w-0">
-                        <p className="text-[11px] font-medium text-gray-900 dark:text-white truncate">{a.action}</p>
-                        <p className="text-[10px] text-gray-400">{a.user} · {a.time}</p>
-                      </div>
-                    </div>
-                  ))}
-                </div>
+            {loadingOverview && !overview ? (
+              <div className="flex justify-center py-12">
+                <div className="w-6 h-6 border-2 border-gray-300 border-t-gray-600 rounded-full animate-spin" />
               </div>
-
-              <div className="bg-white dark:bg-gray-800 rounded-xl p-4 border border-gray-200 dark:border-gray-700">
-                <h3 className="text-xs font-semibold text-gray-900 dark:text-white mb-3">System Health</h3>
-                <div className="space-y-2.5">
-                  {systemHealth.map((m, i) => (
-                    <div key={i} className="flex items-center justify-between">
-                      <span className="text-[11px] text-gray-600 dark:text-gray-400">{m.name}</span>
-                      <div className="flex items-center gap-2">
-                        <span className="text-[11px] font-semibold text-gray-900 dark:text-white">{m.value}</span>
-                        <span className={`w-1.5 h-1.5 rounded-full ${m.status === 'excellent' ? 'bg-emerald-400' : 'bg-amber-400'}`} />
+            ) : (
+              <>
+                {/* Stats */}
+                <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+                  {stats.map((stat) => {
+                    const StatIcon = stat.icon;
+                    return (
+                      <div key={stat.name} className="bg-white dark:bg-gray-800 rounded-xl p-3.5 border border-gray-200 dark:border-gray-700">
+                        <div className="flex items-center justify-between mb-2">
+                          <StatIcon className="w-4 h-4 text-gray-400" />
+                        </div>
+                        <p className="text-lg font-bold text-gray-900 dark:text-white">{stat.value}</p>
+                        <p className="text-[10px] text-gray-500 dark:text-gray-400 mt-0.5">{stat.name}</p>
+                        <p className="text-[10px] text-gray-400 dark:text-gray-500 mt-0.5">{stat.description}</p>
                       </div>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
-              </div>
-            </div>
+
+                {/* Recent Activity */}
+                <div className="bg-white dark:bg-gray-800 rounded-xl p-4 border border-gray-200 dark:border-gray-700">
+                  <h3 className="text-xs font-semibold text-gray-900 dark:text-white mb-3">Recent Activity</h3>
+                  {recentActivities.length === 0 ? (
+                    <p className="text-[11px] text-gray-400 py-3">No recent activity yet.</p>
+                  ) : (
+                    <div className="space-y-1.5">
+                      {recentActivities.map((a, i) => (
+                        <div key={i} className="flex items-center gap-3 py-2 border-b border-gray-100 dark:border-gray-700 last:border-0">
+                          <div className={`w-1.5 h-1.5 rounded-full shrink-0 ${a.status === 'warning' ? 'bg-amber-400' : a.status === 'info' ? 'bg-blue-400' : 'bg-emerald-400'}`} />
+                          <div className="flex-1 min-w-0">
+                            <p className="text-[11px] font-medium text-gray-900 dark:text-white truncate">{a.action}</p>
+                            <p className="text-[10px] text-gray-400">{a.user} · {a.time}</p>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </>
+            )}
           </div>
         )}
 

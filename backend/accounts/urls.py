@@ -8,7 +8,7 @@ from .views import (
     # Admin approval views
     PendingInfluencersListView, AllInfluencersListView, AllUsersListView,
     approve_influencer, reject_influencer, bulk_approve_influencers,
-    delete_influencer, approval_stats, mark_approval_shown,
+    delete_influencer, approval_stats, platform_overview, mark_approval_shown,
     admin_create_influencer, admin_reset_password,
     # Seller profile & admin views
     SellerProfileView, PendingSellersListView, AllSellersListView, approve_seller, reject_seller,
@@ -46,6 +46,7 @@ urlpatterns = [
     path('admin/delete-influencer/<int:user_id>/', delete_influencer, name='delete-influencer'),
     path('admin/convert-to-influencer/<int:user_id>/', admin_convert_to_influencer, name='convert-to-influencer'),
     path('admin/approval-stats/', approval_stats, name='approval-stats'),
+    path('admin/platform-overview/', platform_overview, name='platform-overview'),
     
     # Influencer approval status
     path('mark-approval-shown/', mark_approval_shown, name='mark-approval-shown'),

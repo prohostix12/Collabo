@@ -815,6 +815,76 @@ def approval_stats(request):
     }, status=status.HTTP_200_OK)
 
 
+@api_view(['GET'])
+@permission_classes([IsAdminUser])
+def platform_overview(request):
+    """
+    Real platform-wide stats + recent activity for the Admin Dashboard
+    Overview tab — no placeholder/demo numbers.
+    """
+    from django.db.models import Sum
+    from collaborations.models import Campaign, Collaboration
+    from payments.models import Payment
+    from .models import ApprovalAuditLog
+
+    total_users = User.objects.exclude(user_type='admin').count()
+    total_influencers = User.objects.filter(user_type='influencer').count()
+    total_companies = User.objects.filter(user_type='company').count()
+
+    active_campaigns = Campaign.objects.filter(status='active').count()
+    pending_campaigns = Campaign.objects.filter(status='draft').count()
+
+    now = timezone.now()
+    platform_revenue_month = Payment.objects.filter(
+        status='completed', created_at__year=now.year, created_at__month=now.month
+    ).aggregate(total=Sum('platform_fee'))['total'] or 0
+
+    total_collabs = Collaboration.objects.count()
+    completed_collabs = Collaboration.objects.filter(status='completed').count()
+    success_rate = round((completed_collabs / total_collabs) * 100, 1) if total_collabs else 0
+
+    activities = []
+    for log in ApprovalAuditLog.objects.select_related('user').order_by('-timestamp')[:5]:
+        activities.append({
+            'type': 'user',
+            'action': f"{log.user.get_full_name() or log.user.username} {log.action}",
+            'user': log.admin.username if log.admin else 'System',
+            'time': log.timestamp,
+            'status': 'success' if log.action == 'approved' else 'warning' if log.action == 'rejected' else 'info',
+        })
+    for u in User.objects.exclude(user_type='admin').order_by('-created_at')[:5]:
+        activities.append({
+            'type': 'user',
+            'action': f'New {u.get_user_type_display()} registered',
+            'user': u.username,
+            'time': u.created_at,
+            'status': 'success',
+        })
+    for p in Payment.objects.filter(status='completed').select_related('payee').order_by('-created_at')[:5]:
+        activities.append({
+            'type': 'payment',
+            'action': 'Payment processed',
+            'user': p.payee.username,
+            'time': p.created_at,
+            'status': 'success',
+        })
+    activities.sort(key=lambda a: a['time'], reverse=True)
+    activities = activities[:6]
+    for a in activities:
+        a['time'] = a['time'].isoformat()
+
+    return Response({
+        'total_users': total_users,
+        'total_influencers': total_influencers,
+        'total_companies': total_companies,
+        'active_campaigns': active_campaigns,
+        'pending_campaigns': pending_campaigns,
+        'platform_revenue_month': str(platform_revenue_month),
+        'success_rate': success_rate,
+        'recent_activities': activities,
+    }, status=status.HTTP_200_OK)
+
+
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])
 def mark_approval_shown(request):
