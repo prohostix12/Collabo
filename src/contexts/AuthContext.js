@@ -121,6 +121,8 @@ export const AuthProvider = ({ children }) => {
           errorMessage = data.detail;
         } else if (data.email) {
           errorMessage = Array.isArray(data.email) ? data.email[0] : data.email;
+        } else if (data.phone) {
+          errorMessage = Array.isArray(data.phone) ? data.phone[0] : data.phone;
         } else if (data.username) {
           errorMessage = Array.isArray(data.username) ? data.username[0] : data.username;
         } else if (data.password) {
@@ -131,9 +133,9 @@ export const AuthProvider = ({ children }) => {
       } else if (error.message) {
         errorMessage = error.message;
       }
-      
-      return { 
-        success: false, 
+
+      return {
+        success: false,
         error: errorMessage
       };
     }

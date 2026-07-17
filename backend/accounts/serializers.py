@@ -10,17 +10,26 @@ class UserRegistrationSerializer(serializers.ModelSerializer):
     # auto-added UniqueValidator doesn't reject a blank value before we can
     # normalize it to None below.
     phone = serializers.CharField(required=False, allow_blank=True, allow_null=True)
+    # Declared explicitly too, so we control the uniqueness error message
+    # instead of DRF's default "user with this email already exists."
+    email = serializers.EmailField()
 
     class Meta:
         model = User
         fields = ('email', 'username', 'password', 'password_confirm', 'user_type', 'phone', 'referred_by_code')
+
+    def validate_email(self, value):
+        value = value.strip().lower()
+        if User.objects.filter(email__iexact=value).exists():
+            raise serializers.ValidationError("This email is already registered. Try logging in instead.")
+        return value
 
     def validate_phone(self, value):
         value = (value or '').strip()
         if not value:
             return None
         if User.objects.filter(phone=value).exists():
-            raise serializers.ValidationError("A user with this phone number already exists.")
+            raise serializers.ValidationError("This mobile number is already registered. Try logging in instead.")
         return value
 
     def validate(self, attrs):
