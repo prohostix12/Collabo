@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import {
   Store, Package, Plus, X, Clock, CheckCircle2, XCircle,
-  IndianRupee, Boxes, ImagePlus, Upload, ShoppingBag, Pencil, Trash2,
+  IndianRupee, Boxes, ImagePlus, Upload, ShoppingBag, Pencil, Trash2, Truck,
 } from 'lucide-react';
 import api from '../../services/api';
 import toast from 'react-hot-toast';
@@ -17,7 +17,28 @@ const emptyForm = {
   image: '',
   images: '',
   description: '',
+  delivery: 'Free delivery by Tomorrow',
+  shipping_charge: '0',
+  seller_info: '',
+  highlights: '',
+  offers: '',
+  specifications: '',
 };
+
+const emptyQaRow = () => ({ q: '', a: '' });
+
+// Matches the "Key: Value" per-line format the admin product form also
+// accepts — kept plain-text only here since sellers shouldn't need to author
+// raw JSON to list a product.
+const parseSpecifications = (val) => val.split('\n')
+  .filter(line => line.includes(':'))
+  .map(line => {
+    const [k, ...v] = line.split(':');
+    return { name: k.trim(), value: v.join(':').trim() };
+  })
+  .filter(s => s.name);
+
+const specsToText = (specs) => (specs || []).map(s => `${s.name}: ${s.value}`).join('\n');
 
 const MAX_IMAGE_SIZE = 5 * 1024 * 1024;
 
@@ -43,6 +64,7 @@ const SellerDashboard = () => {
   const [editingProduct, setEditingProduct] = useState(null);
   const [form, setForm] = useState(emptyForm);
   const [uploadedImages, setUploadedImages] = useState([]);
+  const [qaRows, setQaRows] = useState([emptyQaRow()]);
   const [submitting, setSubmitting] = useState(false);
   const [formError, setFormError] = useState('');
   const [deletingId, setDeletingId] = useState(null);
@@ -74,7 +96,7 @@ const SellerDashboard = () => {
     rejected: products.filter(p => p.status === 'rejected').length,
   };
 
-  const resetForm = () => { setForm(emptyForm); setUploadedImages([]); setFormError(''); setEditingProduct(null); };
+  const resetForm = () => { setForm(emptyForm); setUploadedImages([]); setQaRows([emptyQaRow()]); setFormError(''); setEditingProduct(null); };
 
   const openAddForm = () => { resetForm(); setShowAddForm(true); };
 
@@ -90,12 +112,23 @@ const SellerDashboard = () => {
       image: main || product.image || '',
       images: extra.filter(img => img !== product.image).join(', '),
       description: product.description || '',
+      delivery: product.delivery || 'Free delivery by Tomorrow',
+      shipping_charge: String(product.product_shipping_charge ?? '0'),
+      seller_info: product.seller_info || '',
+      highlights: (product.highlights || []).join('\n'),
+      offers: (product.offers || []).join('\n'),
+      specifications: specsToText(product.specifications),
     });
     setUploadedImages([]);
+    setQaRows(product.qa_section?.length ? product.qa_section.map(r => ({ q: r.q || '', a: r.a || '' })) : [emptyQaRow()]);
     setFormError('');
     setEditingProduct(product);
     setShowAddForm(true);
   };
+
+  const updateQaRow = (i, field, value) => setQaRows(rows => rows.map((r, idx) => idx === i ? { ...r, [field]: value } : r));
+  const addQaRow = () => setQaRows(rows => [...rows, emptyQaRow()]);
+  const removeQaRow = (i) => setQaRows(rows => rows.length > 1 ? rows.filter((_, idx) => idx !== i) : rows);
 
   const handleDelete = async (product) => {
     if (!window.confirm(`Delete "${product.name}"? This can't be undone.`)) return;
@@ -148,6 +181,13 @@ const SellerDashboard = () => {
         image: form.image.trim(),
         images: [form.image.trim(), ...extraUrls, ...uploadedImages],
         description: form.description.trim(),
+        delivery: form.delivery.trim() || 'Free delivery by Tomorrow',
+        product_shipping_charge: Number(form.shipping_charge) || 0,
+        seller_info: form.seller_info.trim(),
+        highlights: form.highlights.split('\n').map(s => s.trim()).filter(Boolean),
+        offers: form.offers.split('\n').map(s => s.trim()).filter(Boolean),
+        specifications: parseSpecifications(form.specifications),
+        qa_section: qaRows.filter(r => r.q.trim() && r.a.trim()).map(r => ({ q: r.q.trim(), a: r.a.trim() })),
       };
       if (editingProduct) {
         await api.patch(`/ecommerce/products/${editingProduct.id}/`, payload);
@@ -374,6 +414,77 @@ const SellerDashboard = () => {
                 <textarea rows={4} value={form.description} onChange={e => setForm({ ...form, description: e.target.value })}
                   className="w-full mt-1 border border-gray-200 dark:border-gray-700 rounded-lg px-3 py-2 text-sm bg-white dark:bg-gray-900 focus:outline-none focus:ring-1 focus:ring-orange-400" />
               </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="text-[11px] font-semibold text-gray-500 uppercase tracking-wide flex items-center gap-0.5"><Truck className="w-3 h-3" /> Delivery Estimate</label>
+                  <input type="text" value={form.delivery} onChange={e => setForm({ ...form, delivery: e.target.value })}
+                    placeholder="Free delivery by Tomorrow"
+                    className="w-full mt-1 border border-gray-200 dark:border-gray-700 rounded-lg px-3 py-2 text-sm bg-white dark:bg-gray-900 focus:outline-none focus:ring-1 focus:ring-orange-400" />
+                </div>
+                <div>
+                  <label className="text-[11px] font-semibold text-gray-500 uppercase tracking-wide">Shipping Charge (₹)</label>
+                  <input type="number" min="0" value={form.shipping_charge} onChange={e => setForm({ ...form, shipping_charge: e.target.value })}
+                    placeholder="0 = free shipping"
+                    className="w-full mt-1 border border-gray-200 dark:border-gray-700 rounded-lg px-3 py-2 text-sm bg-white dark:bg-gray-900 focus:outline-none focus:ring-1 focus:ring-orange-400" />
+                </div>
+              </div>
+
+              <div>
+                <label className="text-[11px] font-semibold text-gray-500 uppercase tracking-wide">Seller Info & Policy (optional)</label>
+                <input type="text" value={form.seller_info} onChange={e => setForm({ ...form, seller_info: e.target.value })}
+                  placeholder="e.g. 7-day replacement on manufacturing defects"
+                  className="w-full mt-1 border border-gray-200 dark:border-gray-700 rounded-lg px-3 py-2 text-sm bg-white dark:bg-gray-900 focus:outline-none focus:ring-1 focus:ring-orange-400" />
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="text-[11px] font-semibold text-gray-500 uppercase tracking-wide">Highlights (one per line)</label>
+                  <textarea rows={3} value={form.highlights} onChange={e => setForm({ ...form, highlights: e.target.value })}
+                    placeholder={'Lightweight design\n1 year warranty'}
+                    className="w-full mt-1 border border-gray-200 dark:border-gray-700 rounded-lg px-3 py-2 text-sm bg-white dark:bg-gray-900 focus:outline-none focus:ring-1 focus:ring-orange-400" />
+                </div>
+                <div>
+                  <label className="text-[11px] font-semibold text-gray-500 uppercase tracking-wide">Offers (optional, one per line)</label>
+                  <textarea rows={3} value={form.offers} onChange={e => setForm({ ...form, offers: e.target.value })}
+                    placeholder="Only list offers you can actually honor"
+                    className="w-full mt-1 border border-gray-200 dark:border-gray-700 rounded-lg px-3 py-2 text-sm bg-white dark:bg-gray-900 focus:outline-none focus:ring-1 focus:ring-orange-400" />
+                </div>
+              </div>
+
+              <div>
+                <label className="text-[11px] font-semibold text-gray-500 uppercase tracking-wide">Specifications (optional, one per line)</label>
+                <textarea rows={3} value={form.specifications} onChange={e => setForm({ ...form, specifications: e.target.value })}
+                  placeholder={'Material: Stainless Steel\nColor: Black'}
+                  className="w-full mt-1 border border-gray-200 dark:border-gray-700 rounded-lg px-3 py-2 text-sm bg-white dark:bg-gray-900 focus:outline-none focus:ring-1 focus:ring-orange-400 font-mono text-xs" />
+              </div>
+
+              <div>
+                <label className="text-[11px] font-semibold text-gray-500 uppercase tracking-wide">Questions & Answers (optional)</label>
+                <div className="space-y-2 mt-1">
+                  {qaRows.map((row, i) => (
+                    <div key={i} className="flex gap-2">
+                      <div className="flex-1 space-y-1">
+                        <input type="text" value={row.q} onChange={e => updateQaRow(i, 'q', e.target.value)}
+                          placeholder="Question"
+                          className="w-full border border-gray-200 dark:border-gray-700 rounded-lg px-3 py-2 text-sm bg-white dark:bg-gray-900 focus:outline-none focus:ring-1 focus:ring-orange-400" />
+                        <input type="text" value={row.a} onChange={e => updateQaRow(i, 'a', e.target.value)}
+                          placeholder="Answer"
+                          className="w-full border border-gray-200 dark:border-gray-700 rounded-lg px-3 py-2 text-sm bg-white dark:bg-gray-900 focus:outline-none focus:ring-1 focus:ring-orange-400" />
+                      </div>
+                      <button type="button" onClick={() => removeQaRow(i)}
+                        className="self-start p-2 text-gray-400 hover:text-red-600 transition-colors">
+                        <X className="w-4 h-4" />
+                      </button>
+                    </div>
+                  ))}
+                  <button type="button" onClick={addQaRow}
+                    className="flex items-center gap-1 text-xs font-semibold text-orange-600 hover:underline">
+                    <Plus className="w-3.5 h-3.5" /> Add question
+                  </button>
+                </div>
+              </div>
+
               <div className="flex gap-2 pt-1">
                 <button type="button" onClick={() => setShowAddForm(false)}
                   className="flex-1 py-2.5 text-sm font-medium text-gray-600 bg-gray-100 dark:bg-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-200 transition-colors">
