@@ -1030,8 +1030,10 @@ export default function EcommerceMarketplace({ inlineMode = false, onBackToSelec
   const [reviewImagePreview, setReviewImagePreview] = useState('');
 
   const [toastMessage, setToastMessage] = useState('');
-  const showToast = (msg) => {
+  const [toastType, setToastType] = useState('success');
+  const showToast = (msg, type = 'success') => {
     setToastMessage(msg);
+    setToastType(type);
     setTimeout(() => setToastMessage(''), 3000);
   };
 
@@ -1238,7 +1240,7 @@ export default function EcommerceMarketplace({ inlineMode = false, onBackToSelec
       fetchAddresses();
     } catch (err) {
       console.error("Error saving address:", err);
-      alert("Failed to save address. Please try again.");
+      showToast("Failed to save address. Please try again.", 'error');
     }
   };
 
@@ -1785,7 +1787,7 @@ export default function EcommerceMarketplace({ inlineMode = false, onBackToSelec
       setCouponDiscount(found.discount_percent / 100);
       setCouponApplied(true);
     } else {
-      alert('Invalid Promo Code');
+      showToast('Invalid Promo Code', 'error');
     }
   };
 
@@ -4217,7 +4219,7 @@ export default function EcommerceMarketplace({ inlineMode = false, onBackToSelec
                     <button 
                       onClick={() => {
                         if (selectedCartItems.length === 0) {
-                          alert('Please select at least one item to proceed.');
+                          showToast('Please select at least one item to proceed.', 'error');
                           return;
                         }
                         setCurrentView('checkout')
@@ -5377,7 +5379,7 @@ export default function EcommerceMarketplace({ inlineMode = false, onBackToSelec
                   <button 
                     onClick={async () => {
                       if (!authEmail || !authPassword) {
-                        alert("Please enter email and password");
+                        showToast("Please enter email and password", 'error');
                         return;
                       }
                       const result = await login(authEmail, authPassword);
@@ -5385,7 +5387,7 @@ export default function EcommerceMarketplace({ inlineMode = false, onBackToSelec
                         setCurrentView(postAuthView || 'home');
                         setPostAuthView('home');
                       } else {
-                        alert(result.error || "Login failed");
+                        showToast(result.error || "Login failed", 'error');
                       }
                     }}
                     className="w-full bg-slate-950 hover:bg-slate-900 text-white font-extrabold text-xs py-3 rounded-xl shadow-md transition-colors flex items-center justify-center gap-1.5"
@@ -6217,7 +6219,7 @@ export default function EcommerceMarketplace({ inlineMode = false, onBackToSelec
                                     fetchProducts();
                                   } catch (err) {
                                     console.error("Error deleting product:", err);
-                                    alert("Failed to delete product");
+                                    showToast("Failed to delete product", 'error');
                                   }
                                 }
                               }}
@@ -6484,7 +6486,7 @@ export default function EcommerceMarketplace({ inlineMode = false, onBackToSelec
                             fetchCategoriesAndBrands();
                           } catch (err) {
                             console.error("Error creating category:", err);
-                            alert("Failed to add category");
+                            showToast("Failed to add category", 'error');
                           }
                         }
                       }}
@@ -6516,7 +6518,7 @@ export default function EcommerceMarketplace({ inlineMode = false, onBackToSelec
                                   fetchCategoriesAndBrands();
                                 } catch (err) {
                                   console.error("Error deleting category:", err);
-                                  alert("Failed to delete category");
+                                  showToast("Failed to delete category", 'error');
                                 }
                               }
                             }}
@@ -6563,7 +6565,7 @@ export default function EcommerceMarketplace({ inlineMode = false, onBackToSelec
                             fetchCategoriesAndBrands();
                           } catch (err) {
                             console.error("Error creating brand:", err);
-                            alert("Failed to add brand");
+                            showToast("Failed to add brand", 'error');
                           }
                         }
                       }}
@@ -8711,8 +8713,14 @@ export default function EcommerceMarketplace({ inlineMode = false, onBackToSelec
       )}
 
       {toastMessage && (
-        <div className="fixed bottom-4 left-4 right-4 sm:left-auto sm:right-6 sm:bottom-6 bg-slate-900/95 dark:bg-white/95 text-white dark:text-slate-950 px-6 py-3.5 rounded-2xl shadow-2xl border border-slate-800 dark:border-slate-200 backdrop-blur-md z-50 flex items-center gap-3 animate-slideIn">
-          <div className="w-5 h-5 rounded-full bg-orange-500 flex items-center justify-center text-xs text-white">✓</div>
+        <div className={`fixed bottom-4 left-4 right-4 sm:left-auto sm:right-6 sm:bottom-6 px-6 py-3.5 rounded-2xl shadow-2xl border backdrop-blur-md z-50 flex items-center gap-3 animate-slideIn ${
+          toastType === 'error'
+            ? 'bg-red-600/95 dark:bg-red-500/95 text-white border-red-700 dark:border-red-400'
+            : 'bg-slate-900/95 dark:bg-white/95 text-white dark:text-slate-950 border-slate-800 dark:border-slate-200'
+        }`}>
+          <div className={`w-5 h-5 rounded-full flex items-center justify-center text-xs text-white shrink-0 ${toastType === 'error' ? 'bg-white/20' : 'bg-orange-500'}`}>
+            {toastType === 'error' ? '✕' : '✓'}
+          </div>
           <span className="text-xs font-bold">{toastMessage}</span>
         </div>
       )}
