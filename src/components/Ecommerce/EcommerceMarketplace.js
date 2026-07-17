@@ -136,7 +136,7 @@ const CollaboAdBanner = ({ handleInviteFriendsClick }) => {
             <span className="text-yellow-200">Forever</span>
           </h2>
           <p className="text-xs sm:text-sm md:text-base font-bold text-orange-50/90 max-w-xl leading-relaxed">
-            Invite your friends to shop and earn up to <span className="text-white font-extrabold">30% commission</span> on every order they place! Plus, your friends get instant discounts on sign up.
+            Invite your friends to shop and earn up to <span className="text-white font-extrabold">10% commission</span> on every order they place! Plus, your friends get instant discounts on sign up.
           </p>
           <button
             onClick={handleInviteFriendsClick}
@@ -2308,7 +2308,7 @@ export default function EcommerceMarketplace({ inlineMode = false, onBackToSelec
                           <Gift className="w-3 h-3 text-yellow-300" />
                           Refer & Earn
                         </div>
-                        <h2 className="text-2xl sm:text-4xl lg:text-5xl font-black tracking-tight uppercase drop-shadow-sm leading-none">Earn Upto 30%</h2>
+                        <h2 className="text-2xl sm:text-4xl lg:text-5xl font-black tracking-tight uppercase drop-shadow-sm leading-none">Earn Upto 10%</h2>
                         <h3 key={tickerMsgIndex} className="text-[10px] sm:text-sm font-extrabold text-white/95 drop-shadow-sm leading-tight max-w-[150px] sm:max-w-xs truncate w-full" style={{ animation: 'tickerFade 0.5s ease' }}>
                           {tickerExtraMessages[tickerMsgIndex % tickerExtraMessages.length]}
                         </h3>
@@ -2633,7 +2633,7 @@ export default function EcommerceMarketplace({ inlineMode = false, onBackToSelec
                         <img src="/collabo-logo.png" alt="Collabo" className="h-7 sm:h-8 object-contain scale-[1.8] origin-left" />
                       </div>
                       <p className="text-sm font-black text-slate-900 dark:text-white leading-tight mb-0.5">Secure Payments</p>
-                      <p className="text-xs font-semibold text-slate-600 dark:text-slate-400 line-clamp-1">100% Protected Transactions</p>
+                      <p className="text-xs font-semibold text-slate-600 dark:text-slate-400 line-clamp-1">Quick Withdrawals, Zero Hassle</p>
                     </div>
                  </div>
               </div>
@@ -2646,10 +2646,19 @@ export default function EcommerceMarketplace({ inlineMode = false, onBackToSelec
               </div>
 
               <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2 sm:gap-6">
-                {(storeSettings.trending_product_ids && storeSettings.trending_product_ids.length > 0
-                  ? productsList.filter(p => storeSettings.trending_product_ids.includes(p.id)).slice(0, 4)
-                  : productsList.slice(4, 8)
-                ).map((prod) => (
+                {(() => {
+                  let trending = storeSettings.trending_product_ids && storeSettings.trending_product_ids.length > 0
+                    ? productsList.filter(p => storeSettings.trending_product_ids.includes(p.id)).slice(0, 4)
+                    : productsList.slice(4, 8);
+                  // Always show at least 4 — backfill from the general catalog if the
+                  // curated/sliced list came up short (e.g. a picked product was removed).
+                  if (trending.length < 4) {
+                    const usedIds = new Set(trending.map(p => p.id));
+                    const fillers = productsList.filter(p => !usedIds.has(p.id)).slice(0, 4 - trending.length);
+                    trending = [...trending, ...fillers];
+                  }
+                  return trending;
+                })().map((prod) => (
 
                   <div 
                     key={prod.id} 

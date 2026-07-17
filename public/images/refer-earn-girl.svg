@@ -79,6 +79,6 @@
   <!-- percent badge floating -->
   <g transform="translate(300,40)">
     <circle cx="0" cy="0" r="30" fill="#ffffff"/>
-    <text x="0" y="8" text-anchor="middle" font-family="Arial, sans-serif" font-weight="900" font-size="20" fill="#7c3aed">30%</text>
+    <text x="0" y="8" text-anchor="middle" font-family="Arial, sans-serif" font-weight="900" font-size="20" fill="#7c3aed">10%</text>
   </g>
 </svg>
