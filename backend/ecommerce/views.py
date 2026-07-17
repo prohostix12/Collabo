@@ -370,6 +370,13 @@ def get_wallet_balance(user):
     return balance, wallet_pending + comm_pending
 
 
+# Level-2 (upline) referral payout — a flat percentage of the amount the buyer
+# actually paid, independent of whatever rate the direct (level-1) referrer earns.
+# e.g. A refers B, B refers C: when C buys, B earns the normal direct rate and A
+# (B's upline) earns this flat rate on the same purchase — not a cut of B's payout.
+UPLINE_REFERRAL_RATE = Decimal('0.03')
+
+
 def create_order_for_user(user, data):
     """Core order-creation logic, shared by OrderViewSet.create (COD) and
     verify_razorpay_payment (UPI/Card) so referral discounts, affiliate commissions,
@@ -620,10 +627,11 @@ def create_order_for_user(user, data):
                 status=commission_status,
                 level=1,
             )
-            # Level 2: upline (the person who recruited the direct referrer) gets 50%
+            # Level 2: upline (the person who recruited the direct referrer) gets a
+            # flat UPLINE_REFERRAL_RATE of the amount paid, not a cut of commission_amount.
             upline = getattr(review.influencer, 'referred_by', None)
             if upline:
-                upline_amount = (commission_amount * Decimal('0.5')).quantize(Decimal('0.01'))
+                upline_amount = (actual_item_amount * UPLINE_REFERRAL_RATE).quantize(Decimal('0.01'))
                 AffiliateCommission.objects.create(
                     influencer=upline,
                     order=order,
@@ -644,8 +652,8 @@ def create_order_for_user(user, data):
         # Signup referral: whoever recruited THIS buyer (User.referred_by, set once at
         # signup via the "Affiliate Recruitment Link") earns on EVERY order the buyer
         # places for the rest of their time on the platform — not just orders that go
-        # through a specific product/referral link. Their own recruiter gets half of
-        # that, 2 levels deep. Only fires when this item did NOT already pay out via a
+        # through a specific product/referral link. Their own recruiter gets a flat
+        # UPLINE_REFERRAL_RATE on the same purchase, 2 levels deep. Only fires when this item did NOT already pay out via a
         # specific product/referral link above — otherwise the same upline could get
         # paid twice for the same purchase (once per mechanism) if, e.g., the buyer's
         # signup recruiter and their active product-link referrer happen to be the
@@ -666,7 +674,7 @@ def create_order_for_user(user, data):
                 )
                 upline_signup_referrer = getattr(signup_referrer, 'referred_by', None)
                 if upline_signup_referrer:
-                    upline_signup_reward = (signup_reward * Decimal('0.5')).quantize(Decimal('0.01'))
+                    upline_signup_reward = (actual_item_amount * UPLINE_REFERRAL_RATE).quantize(Decimal('0.01'))
                     WalletTransaction.objects.create(
                         user=upline_signup_referrer,
                         order=order,
