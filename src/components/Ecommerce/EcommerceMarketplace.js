@@ -19,6 +19,7 @@ import Footer from '../Layout/Footer';
 import ChangePasswordModal from '../Layout/ChangePasswordModal';
 import ChangeUsernameModal from '../Layout/ChangeUsernameModal';
 import DeleteAccountModal from '../Layout/DeleteAccountModal';
+import WeeklyBestDealsSection from './WeeklyBestDealsSection';
 
 const InfluencerHub = lazy(() => import('../Dashboard/InfluencerDashboard'));
 
@@ -136,7 +137,7 @@ const CollaboAdBanner = ({ handleInviteFriendsClick }) => {
             <span className="text-yellow-200">Forever</span>
           </h2>
           <p className="text-xs sm:text-sm md:text-base font-bold text-orange-50/90 max-w-xl leading-relaxed">
-            Invite your friends to shop and earn up to <span className="text-white font-extrabold">10% commission</span> on every order they place! Plus, your friends get instant discounts on sign up.
+            Invite your friends to shop and earn up to <span className="text-white font-extrabold">10% commission</span> on every order they place — plus <span className="text-white font-extrabold">3% more</span> every time they refer someone else too! Your friends also get instant discounts on sign up.
           </p>
           <button
             onClick={handleInviteFriendsClick}
@@ -247,7 +248,7 @@ const CollabEarnBanner = ({ handleInviteFriendsClick }) => {
         <div className="hidden lg:flex flex-col justify-center gap-2.5" style={{position:'absolute',right:'310px',top:'60%',transform:'translateY(-50%)',width:'180px',zIndex:20}}>
           <div className="rounded-2xl p-4 space-y-3"
             style={{background:'rgba(255,255,255,0.1)',backdropFilter:'blur(28px)',WebkitBackdropFilter:'blur(28px)',border:'1px solid rgba(255,255,255,0.22)',boxShadow:'0 12px 40px rgba(0,0,0,0.25),inset 0 1px 0 rgba(255,255,255,0.2)'}}>
-            {[['₹50K+','Paid Last Month'],['10%','Max Commission'],['24hrs','Approval Time']].map(([val,lbl]) => (
+            {[['₹50K+','Paid Last Month'],['10%','Max Commission'],['3%','Re-Referral Bonus']].map(([val,lbl]) => (
               <div key={lbl} className="text-center py-2.5 rounded-xl" style={{background:'rgba(255,255,255,0.07)',border:'1px solid rgba(255,255,255,0.1)'}}>
                 <div className="text-base font-black text-white">{val}</div>
                 <div className="text-[10px] font-bold uppercase tracking-wider mt-0.5" style={{color:'rgba(255,255,255,0.55)'}}>{lbl}</div>
@@ -341,49 +342,66 @@ const KoreKartSection = ({ allProducts, setSelectedProduct, setCurrentView, setF
 
 const JewellerySpotlightBanner = ({ allProducts, setSelectedProduct, setCurrentView, setFilterCategory }) => {
   const jewelleryProducts = allProducts.filter(p => p.category === 'Jewellery');
+  const [startIndex, setStartIndex] = useState(0);
+
+  useEffect(() => {
+    if (jewelleryProducts.length < 2) return;
+    const interval = setInterval(() => {
+      setStartIndex(prev => (prev + 1) % jewelleryProducts.length);
+    }, 3500);
+    return () => clearInterval(interval);
+  }, [jewelleryProducts.length]);
+
   if (jewelleryProducts.length === 0) return null;
 
-  const bgImage = jewelleryProducts[0]?.image;
-  const spotlightProducts = jewelleryProducts.slice(0, 4);
+  // Always show 8 cards (2 rows of 4)
+  const spotlightProducts = Array.from({ length: 8 }, (_, i) => 
+    jewelleryProducts[(startIndex + i) % jewelleryProducts.length]
+  );
+
+  const bgImage = spotlightProducts[0]?.image || jewelleryProducts[0]?.image;
 
   return (
-    <div className="w-full relative group overflow-hidden rounded-[32px] my-12 shadow-md h-[360px] md:h-[400px]">
-      {/* ── Background product photo, dimmed for contrast ── */}
+    <div className="w-screen relative left-1/2 right-1/2 -ml-[50vw] -mr-[50vw] rounded-none overflow-hidden shadow-lg mt-12 mb-0 bg-gradient-to-br from-slate-950 via-slate-900 to-amber-900/60 py-12 sm:py-16 lg:py-20 px-4 sm:px-8 lg:px-12 flex items-center min-h-[500px] lg:min-h-[560px]">
       {bgImage && (
-        <img src={bgImage} alt="" className="absolute inset-0 w-full h-full object-cover scale-110 blur-[1px] opacity-50" />
+        <img key={bgImage} src={bgImage} alt="" className="absolute inset-0 w-full h-full object-cover opacity-20 blur-[1px] transition-opacity duration-1000" />
       )}
-      <div className="absolute inset-0 bg-gradient-to-r from-slate-950/95 via-slate-950/80 to-slate-900/30" />
+      <div className="absolute -top-10 -left-10 w-40 h-40 bg-amber-400/20 rounded-full blur-2xl pointer-events-none" />
+      <div className="absolute -bottom-10 -right-10 w-32 h-32 bg-amber-600/10 rounded-full blur-2xl pointer-events-none" />
 
-      {/* ── Glowing Mesh Orbs ── */}
-      <div className="absolute -top-24 -right-20 w-80 h-80 bg-amber-400/20 rounded-full blur-3xl animate-pulse" />
-      <div className="absolute -bottom-24 left-1/4 w-96 h-96 bg-amber-600/10 rounded-full blur-3xl" />
-
-      <div className="absolute inset-0 flex flex-col md:flex-row w-full h-full p-8 md:p-12 z-10">
-        <div className="flex-1 flex flex-col items-start justify-center text-white space-y-4">
-          <h2 className="text-3xl sm:text-4xl lg:text-5xl font-black tracking-tight leading-tight">
+      <div className="max-w-7xl mx-auto w-full relative z-10 flex flex-col lg:flex-row items-center gap-8 sm:gap-10">
+        {/* Left side - Text content */}
+        <div className="lg:w-[35%] w-full flex flex-col justify-center">
+          <h3 className="text-3xl sm:text-4xl lg:text-5xl font-black text-white leading-tight mb-3">
             Timeless Pieces,<br/>
             <span className="text-amber-300">Everyday Elegance</span>
-          </h2>
-          <p className="text-xs sm:text-sm font-semibold text-slate-300 max-w-md leading-relaxed">
-            Earrings, jhumkas & more — handpicked designs to complete every look.
-          </p>
+          </h3>
+          <p className="text-white/80 text-sm sm:text-base lg:text-lg mb-6">Earrings, jhumkas & more — handpicked designs to complete every look.</p>
           <button
             onClick={() => { setFilterCategory('Jewellery'); setCurrentView('listing'); }}
-            className="bg-amber-400 hover:bg-amber-300 text-slate-950 font-black text-xs sm:text-sm px-8 py-4 rounded-2xl transition-all shadow-xl hover:shadow-2xl hover:-translate-y-0.5 uppercase tracking-widest mt-2 flex items-center gap-2"
-          >
-            <Gem className="w-4 h-4" /> Shop Jewellery
+            className="bg-amber-400 text-slate-950 font-black text-xs sm:text-sm px-7 py-3.5 rounded-xl hover:bg-amber-300 transition-all shadow-lg hover:shadow-xl hover:-translate-y-0.5 uppercase tracking-wider flex items-center gap-2 w-fit">
+            <Gem className="w-4.5 h-4.5" /> Shop Jewellery →
           </button>
         </div>
-        <div className="flex-1 hidden md:flex items-center justify-end">
-          <div className="grid grid-cols-2 gap-2.5">
-            {spotlightProducts.map((product) => (
-              <div
-                key={product.id}
+
+        {/* Right side - Product grid (8 products in 2 rows of 4) */}
+        <div className="lg:w-[65%] w-full">
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-3.5">
+            {spotlightProducts.map((product, idx) => (
+              <button
+                key={`${product.id}-${idx}`}
                 onClick={() => { setSelectedProduct(product); setCurrentView('details'); }}
-                className="w-[125px] h-[125px] lg:w-[140px] lg:h-[140px] bg-white rounded-xl p-2 flex items-center justify-center shadow-xl hover:shadow-2xl transition-shadow hover:scale-105 transform duration-200 cursor-pointer border-2 border-white/80"
+                className="bg-white/95 dark:bg-slate-800/95 backdrop-blur-md rounded-xl p-3 flex flex-col items-center text-center group hover:shadow-xl transition-all duration-500 hover:-translate-y-1 cursor-pointer border border-white/20 dark:border-slate-700/50"
               >
-                <img src={product.image} alt={product.name} className="max-h-full max-w-full object-contain rounded-md" />
-              </div>
+                <div className="w-full aspect-square rounded-lg overflow-hidden bg-amber-50/50 dark:bg-slate-700/50 mb-2">
+                  <img src={product.image} alt={product.name} className="w-full h-full object-contain group-hover:scale-110 transition-transform duration-300 p-1" />
+                </div>
+                <p className="text-[11px] sm:text-xs font-bold text-slate-800 dark:text-white line-clamp-2 leading-tight mb-1">{product.name}</p>
+                <div className="flex items-center gap-1.5 mt-auto">
+                  <span className="text-sm font-black text-amber-600 dark:text-amber-400">₹{product.discount_price || product.price}</span>
+                  {product.discount_price && <span className="text-[10px] text-slate-400 line-through">₹{product.price}</span>}
+                </div>
+              </button>
             ))}
           </div>
         </div>
@@ -1668,7 +1686,6 @@ export default function EcommerceMarketplace({ inlineMode = false, onBackToSelec
       }));
       setCart(formatted);
       showToast(`${product.name} added to cart successfully!`);
-      setCurrentView('cart');
       return true;
     } catch (err) {
       console.error("Error adding to cart:", err);
@@ -1909,7 +1926,7 @@ export default function EcommerceMarketplace({ inlineMode = false, onBackToSelec
           {/* Fixed Top Header Wrapper */}
           <div className="w-full sticky top-0 z-50">
             {/* Sticky Glassmorphic Navbar */}
-            <nav className="w-full bg-white/95 dark:bg-slate-900/95 backdrop-blur-xl border-b border-slate-200/50 dark:border-slate-800/50 py-2 px-3 sm:px-8 shadow-sm transition-all">
+            <nav className="w-full bg-white/95 dark:bg-slate-900/95 backdrop-blur-xl border-b border-slate-200/50 dark:border-slate-800/50 py-1.5 px-3 sm:px-8 shadow-sm transition-all">
               <div className="flex items-center justify-between gap-2 sm:gap-4">
 
                 {/* Logo */}
@@ -2515,24 +2532,30 @@ export default function EcommerceMarketplace({ inlineMode = false, onBackToSelec
               </div>
 
               {/* Product grid for deals */}
-              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2 sm:gap-6">
-                {(storeSettings.deals_product_ids && storeSettings.deals_product_ids.length > 0
-                  ? productsList.filter(p => storeSettings.deals_product_ids.includes(p.id)).slice(0, 4)
-                  : productsList.slice(0, 4)
-                ).map((prod) => (
+              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 lg:grid-cols-5 gap-3 sm:gap-4">
+                {(() => {
+                  let selectedDeals = storeSettings.deals_product_ids && storeSettings.deals_product_ids.length > 0
+                    ? productsList.filter(p => storeSettings.deals_product_ids.includes(p.id))
+                    : [];
+                  if (selectedDeals.length < 5) {
+                    const remaining = productsList.filter(p => !selectedDeals.some(s => s.id === p.id));
+                    selectedDeals = [...selectedDeals, ...remaining.slice(0, 5 - selectedDeals.length)];
+                  }
+                  return selectedDeals.slice(0, 10);
+                })().map((prod) => (
 
                   <div 
                     key={prod.id} 
-                    className="bg-[#FFFBF5]/20 dark:bg-slate-900/40 rounded-[28px] border border-slate-200/40 dark:border-slate-800/40 p-4 relative group hover:shadow-xl hover:border-slate-300 dark:hover:border-slate-700 transition-all"
+                    className="bg-white dark:bg-slate-900/90 rounded-2xl border border-slate-200/70 dark:border-slate-800 p-3 relative group hover:shadow-lg hover:border-orange-400 dark:hover:border-orange-500/60 transition-all flex flex-col justify-between"
                   >
                     {/* Discount Tag */}
-                    <div className="absolute top-3 left-3 bg-orange-500 text-white text-[9px] font-black px-2.5 py-1 rounded-full z-10">
+                    <div className="absolute top-2.5 left-2.5 bg-orange-500 text-white text-[9px] font-black px-2 py-0.5 rounded-full z-10 shadow-sm">
                       -{prod.discountPercent}% OFF
                     </div>
                     {/* Wishlist Icon */}
                     <button 
                       onClick={() => toggleWishlist(prod)}
-                      className="absolute top-3 right-3 p-2 bg-white/90 dark:bg-slate-850/90 backdrop-blur-md rounded-xl shadow-sm text-slate-400 hover:text-orange-500 transition-colors z-10"
+                      className="absolute top-2.5 right-2.5 p-1.5 bg-white/90 dark:bg-slate-800/90 backdrop-blur-md rounded-lg shadow-sm text-slate-400 hover:text-orange-500 transition-colors z-10 border border-slate-100 dark:border-slate-700"
                     >
                       <Heart className={`w-3.5 h-3.5 ${wishlist.includes(prod.id) ? 'fill-orange-500 text-orange-500' : ''}`} />
                     </button>
@@ -2540,76 +2563,80 @@ export default function EcommerceMarketplace({ inlineMode = false, onBackToSelec
                     {/* Image */}
                     <div 
                       onClick={() => { setSelectedProduct(prod); setCurrentView('details'); }}
-                      className="w-full aspect-square rounded-2xl overflow-hidden bg-slate-50 dark:bg-slate-800 cursor-pointer mb-4"
+                      className="w-full h-36 sm:h-44 rounded-xl overflow-hidden bg-slate-50 dark:bg-slate-800/70 cursor-pointer mb-2.5 p-2 flex items-center justify-center border border-slate-100 dark:border-slate-800"
                     >
-                      <img src={prod.image} alt={prod.name} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
+                      <img src={prod.image} alt={prod.name} className="max-h-full max-w-full object-contain group-hover:scale-105 transition-transform duration-300" />
                     </div>
 
                     {/* Info */}
-                    <div className="space-y-1.5 sm:space-y-2">
-                      <span className="hidden sm:block text-[9px] sm:text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest truncate">{prod.brand}</span>
-                      <h3 
-                        onClick={() => { setSelectedProduct(prod); setCurrentView('details'); }}
-                        className="font-bold text-xs sm:text-base tracking-tight line-clamp-2 sm:line-clamp-1 cursor-pointer hover:text-orange-500 transition-colors dark:text-white"
-                      >
-                        {prod.name}
-                      </h3>
-
-                      {/* Stars */}
-                      <div className="flex items-center gap-1">
-                        <Star className="w-3 h-3 sm:w-3.5 sm:h-3.5 fill-orange-500 text-orange-500" />
-                        <span className="text-xs sm:text-sm font-black dark:text-slate-200">{prod.rating}</span>
-                        <span className="hidden sm:inline text-[10px] sm:text-xs font-medium text-slate-400">({prod.reviewsCount})</span>
+                    <div className="space-y-1.5 flex-1 flex flex-col justify-between">
+                      <div>
+                        <span className="hidden sm:block text-[9px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest truncate mb-0.5">{prod.brand}</span>
+                        <h3 
+                          onClick={() => { setSelectedProduct(prod); setCurrentView('details'); }}
+                          className="font-bold text-xs sm:text-sm tracking-tight line-clamp-2 cursor-pointer hover:text-orange-500 transition-colors dark:text-white leading-tight"
+                        >
+                          {prod.name}
+                        </h3>
                       </div>
 
-                      {/* Pricing */}
-                      <div className="flex items-baseline gap-1 sm:gap-2">
-                        <span className="text-sm sm:text-base font-black dark:text-white">₹{prod.discountPrice.toLocaleString()}</span>
-                        <span className="text-[10px] sm:text-xs text-slate-400 line-through">₹{prod.price.toLocaleString()}</span>
-                      </div>
+                      <div className="space-y-1.5 pt-1">
+                        {/* Stars */}
+                        <div className="flex items-center gap-1">
+                          <Star className="w-3 h-3 fill-orange-500 text-orange-500" />
+                          <span className="text-xs font-black dark:text-slate-200">{prod.rating}</span>
+                          <span className="text-[10px] font-medium text-slate-400">({prod.reviewsCount})</span>
+                        </div>
 
-                      {/* Stock scale */}
-                      {(() => {
-                        const stock = prod.stock || 0;
-                        if (stock === 0) {
+                        {/* Pricing */}
+                        <div className="flex items-baseline gap-1.5">
+                          <span className="text-sm sm:text-base font-black dark:text-white">₹{prod.discountPrice.toLocaleString()}</span>
+                          <span className="text-[10px] sm:text-xs text-slate-400 line-through">₹{prod.price.toLocaleString()}</span>
+                        </div>
+
+                        {/* Stock scale */}
+                        {(() => {
+                          const stock = prod.stock || 0;
+                          if (stock === 0) {
+                            return (
+                              <div className="space-y-0.5">
+                                <div className="flex justify-between text-[8px] font-black text-slate-400">
+                                  <span>Sold: 100%</span>
+                                  <span className="text-red-500 font-bold">Out of stock</span>
+                                </div>
+                                <div className="w-full h-1 bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden">
+                                  <div className="h-full bg-red-500" style={{ width: '100%' }} />
+                                </div>
+                              </div>
+                            );
+                          }
+                          const seed = (prod.id || 1) % 7;
+                          const multipliers = [1.3, 1.4, 1.5, 1.6, 1.7, 1.8, 1.9];
+                          const mult = multipliers[seed];
+                          const initialStock = Math.round(stock * mult) + ((prod.id || 1) % 15) + 5;
+                          const sold = initialStock - stock;
+                          const percent = Math.min(95, Math.max(10, Math.round((sold / initialStock) * 100)));
                           return (
-                            <div className="space-y-0.5 sm:space-y-1">
-                              <div className="flex justify-between text-[8px] sm:text-[9px] font-black text-slate-400">
-                                <span>Sold: 100%</span>
-                                <span className="text-red-500 font-bold">Out of stock</span>
+                            <div className="space-y-0.5">
+                              <div className="flex justify-between text-[8px] font-black text-slate-400">
+                                <span>Sold: {percent}%</span>
+                                <span className="text-orange-500">{stock} left</span>
                               </div>
                               <div className="w-full h-1 bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden">
-                                <div className="h-full bg-red-500" style={{ width: '100%' }} />
+                                <div className="h-full bg-orange-500" style={{ width: `${percent}%` }} />
                               </div>
                             </div>
                           );
-                        }
-                        const seed = (prod.id || 1) % 7;
-                        const multipliers = [1.3, 1.4, 1.5, 1.6, 1.7, 1.8, 1.9];
-                        const mult = multipliers[seed];
-                        const initialStock = Math.round(stock * mult) + ((prod.id || 1) % 15) + 5;
-                        const sold = initialStock - stock;
-                        const percent = Math.min(95, Math.max(10, Math.round((sold / initialStock) * 100)));
-                        return (
-                          <div className="space-y-0.5 sm:space-y-1">
-                            <div className="flex justify-between text-[8px] sm:text-[9px] font-black text-slate-400">
-                              <span>Sold: {percent}%</span>
-                              <span className="text-orange-500">{stock} left</span>
-                            </div>
-                            <div className="w-full h-1 bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden">
-                              <div className="h-full bg-orange-500" style={{ width: `${percent}%` }} />
-                            </div>
-                          </div>
-                        );
-                      })()}
+                        })()}
 
-                      {/* Action */}
-                      <button 
-                        onClick={() => addToCart(prod)}
-                        className="hidden sm:block w-full bg-slate-950 hover:bg-slate-900 dark:bg-slate-800 dark:hover:bg-slate-700 text-white font-extrabold text-[10px] sm:text-xs uppercase tracking-wider py-2 sm:py-3 rounded-lg sm:rounded-xl transition-colors mt-1 sm:mt-2"
-                      >
-                        Add to Cart
-                      </button>
+                        {/* Action */}
+                        <button 
+                          onClick={() => addToCart(prod)}
+                          className="w-full bg-slate-950 hover:bg-slate-900 dark:bg-slate-800 dark:hover:bg-slate-700 text-white font-extrabold text-[10px] uppercase tracking-wider py-2 rounded-lg transition-colors mt-1"
+                        >
+                          Add to Cart
+                        </button>
+                      </div>
                     </div>
                   </div>
                 ))}
@@ -2912,18 +2939,26 @@ export default function EcommerceMarketplace({ inlineMode = false, onBackToSelec
               setFilterCategory={setFilterCategory}
             />
 
-            <CollaboAdBanner handleInviteFriendsClick={handleInviteFriendsClick} />
+            <div>
+              <JewellerySpotlightBanner
+                allProducts={allProducts}
+                setSelectedProduct={setSelectedProduct}
+                setCurrentView={setCurrentView}
+                setFilterCategory={setFilterCategory}
+              />
 
-            <JewellerySpotlightBanner
-              allProducts={allProducts}
-              setSelectedProduct={setSelectedProduct}
-              setCurrentView={setCurrentView}
-              setFilterCategory={setFilterCategory}
-            />
-
-            <CollabEarnBanner
-              handleInviteFriendsClick={handleInviteFriendsClick}
-            />
+              {/* Weekly Best Deals Section */}
+              <WeeklyBestDealsSection
+                productsList={productsList}
+                addToCart={addToCart}
+                toggleWishlist={toggleWishlist}
+                wishlist={wishlist}
+                setSelectedProduct={setSelectedProduct}
+                setCurrentView={setCurrentView}
+                setFilterCategory={setFilterCategory}
+                storeSettings={storeSettings}
+              />
+            </div>
 
             {/* Shop By Category Grid + Side Ad */}
             {(() => {
@@ -2970,6 +3005,10 @@ export default function EcommerceMarketplace({ inlineMode = false, onBackToSelec
                 </div>
               );
             })()}
+
+            <CollabEarnBanner
+              handleInviteFriendsClick={handleInviteFriendsClick}
+            />
 
             {/* Customer Feedbacks */}
             <div className="space-y-6">
@@ -3034,6 +3073,8 @@ export default function EcommerceMarketplace({ inlineMode = false, onBackToSelec
                 );
               })()}
             </div>
+
+            <CollaboAdBanner handleInviteFriendsClick={handleInviteFriendsClick} />
 
             <Footer />
 
@@ -7032,9 +7073,9 @@ export default function EcommerceMarketplace({ inlineMode = false, onBackToSelec
                   <div className="bg-white dark:bg-slate-900 border border-slate-200/50 dark:border-slate-800/50 p-6 rounded-3xl space-y-4 shadow-sm">
                     <div className="flex items-center gap-2 border-b border-slate-100 dark:border-slate-800 pb-3">
                       <Percent className="w-4 h-4 text-orange-500" />
-                      <h4 className="font-black text-xs uppercase tracking-wider dark:text-white">Deals of the Day (pick up to 4)</h4>
+                      <h4 className="font-black text-xs uppercase tracking-wider dark:text-white">Deals of the Day (pick up to 10)</h4>
                     </div>
-                    <p className="text-[10px] text-slate-400 font-semibold">If empty, the first 4 products from your catalog are shown automatically.</p>
+                    <p className="text-[10px] text-slate-400 font-semibold">If empty, the first 10 products from your catalog are shown automatically.</p>
                     <div className="space-y-2 max-h-52 overflow-y-auto pr-1">
                       {productsList.map(p => {
                         const isSelected = (editSettings.deals_product_ids || []).includes(p.id);
@@ -7044,7 +7085,7 @@ export default function EcommerceMarketplace({ inlineMode = false, onBackToSelec
                               const cur = editSettings.deals_product_ids || [];
                               if (isSelected) {
                                 setEditSettings(prev => ({ ...prev, deals_product_ids: cur.filter(id => id !== p.id) }));
-                              } else if (cur.length < 4) {
+                              } else if (cur.length < 10) {
                                 setEditSettings(prev => ({ ...prev, deals_product_ids: [...cur, p.id] }));
                               }
                             }}>
@@ -7058,9 +7099,46 @@ export default function EcommerceMarketplace({ inlineMode = false, onBackToSelec
                         );
                       })}
                     </div>
-                    <p className="text-[10px] text-orange-500 font-bold">{(editSettings.deals_product_ids || []).length}/4 selected</p>
+                    <p className="text-[10px] text-orange-500 font-bold">{(editSettings.deals_product_ids || []).length}/10 selected</p>
                     {(editSettings.deals_product_ids || []).length > 0 && (
                       <button onClick={() => setEditSettings(prev => ({ ...prev, deals_product_ids: [] }))}
+                        className="text-[10px] text-rose-500 font-bold hover:underline">Clear selection (use auto-defaults)</button>
+                    )}
+                  </div>
+
+                  {/* Featured Products: Weekly Best Deals */}
+                  <div className="bg-white dark:bg-slate-900 border border-slate-200/50 dark:border-slate-800/50 p-6 rounded-3xl space-y-4 shadow-sm">
+                    <div className="flex items-center gap-2 border-b border-slate-100 dark:border-slate-800 pb-3">
+                      <Sparkles className="w-4 h-4 text-teal-500" />
+                      <h4 className="font-black text-xs uppercase tracking-wider dark:text-white">Weekly Best Deals Section (pick up to 10)</h4>
+                    </div>
+                    <p className="text-[10px] text-slate-400 font-semibold">Select products to highlight in the Weekly Best Deals forest banner.</p>
+                    <div className="space-y-2 max-h-52 overflow-y-auto pr-1">
+                      {productsList.map(p => {
+                        const isSelected = (editSettings.weekly_deals_product_ids || []).includes(p.id);
+                        return (
+                          <div key={p.id} className={`flex items-center gap-3 p-3 rounded-xl border cursor-pointer transition-all text-xs ${isSelected ? 'border-teal-500 bg-teal-500/5' : 'border-slate-200 dark:border-slate-700 hover:border-teal-300'}`}
+                            onClick={() => {
+                              const cur = editSettings.weekly_deals_product_ids || [];
+                              if (isSelected) {
+                                setEditSettings(prev => ({ ...prev, weekly_deals_product_ids: cur.filter(id => id !== p.id) }));
+                              } else if (cur.length < 10) {
+                                setEditSettings(prev => ({ ...prev, weekly_deals_product_ids: [...cur, p.id] }));
+                              }
+                            }}>
+                            <img src={p.image} alt={p.name} className="w-8 h-8 rounded-lg object-cover shrink-0" />
+                            <div className="flex-1 min-w-0">
+                              <p className="font-bold dark:text-white truncate">{p.name}</p>
+                              <p className="text-slate-400">₹{Number(p.discountPrice).toLocaleString()} · {p.category}</p>
+                            </div>
+                            {isSelected && <Check className="w-4 h-4 text-teal-500 shrink-0" />}
+                          </div>
+                        );
+                      })}
+                    </div>
+                    <p className="text-[10px] text-teal-500 font-bold">{(editSettings.weekly_deals_product_ids || []).length}/10 selected</p>
+                    {(editSettings.weekly_deals_product_ids || []).length > 0 && (
+                      <button onClick={() => setEditSettings(prev => ({ ...prev, weekly_deals_product_ids: [] }))}
                         className="text-[10px] text-rose-500 font-bold hover:underline">Clear selection (use auto-defaults)</button>
                     )}
                   </div>

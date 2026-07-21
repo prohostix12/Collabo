@@ -275,15 +275,15 @@ const StoreContentEditor = () => {
         </Card>
 
         {/* Deals of the Day */}
-        <Card icon={Percent} title="Deals of the Day (pick up to 4)">
-          <p className="text-xs text-gray-400">Leave empty to auto-show the first 4 products.</p>
+        <Card icon={Percent} title="Deals of the Day (pick up to 10)">
+          <p className="text-xs text-gray-400">Leave empty to auto-show the first 10 products.</p>
           <div className="space-y-2 max-h-56 overflow-y-auto pr-1">
             {products.map(p => {
               const selected = (settings.deals_product_ids || []).includes(p.id);
               return (
                 <div
                   key={p.id}
-                  onClick={() => toggleProduct('deals_product_ids', p.id, 4)}
+                  onClick={() => toggleProduct('deals_product_ids', p.id, 10)}
                   className={`flex items-center gap-3 p-2.5 rounded-xl border cursor-pointer transition-all text-xs ${selected ? 'border-orange-400 bg-orange-50' : 'border-gray-200 hover:border-orange-300 hover:bg-orange-50/40'}`}
                 >
                   {p.image ? (
@@ -303,9 +303,45 @@ const StoreContentEditor = () => {
             })}
           </div>
           <div className="flex items-center justify-between text-xs">
-            <span className="text-orange-500 font-bold">{(settings.deals_product_ids || []).length}/4 selected</span>
+            <span className="text-orange-500 font-bold">{(settings.deals_product_ids || []).length}/10 selected</span>
             {(settings.deals_product_ids || []).length > 0 && (
               <button onClick={() => set('deals_product_ids', [])} className="text-red-400 hover:underline font-semibold">Clear</button>
+            )}
+          </div>
+        </Card>
+
+        {/* Weekly Best Deals */}
+        <Card icon={Sparkles} title="Weekly Best Deals (pick up to 10)">
+          <p className="text-xs text-gray-400">Select products to highlight in the dark forest Weekly Best Deals section.</p>
+          <div className="space-y-2 max-h-56 overflow-y-auto pr-1">
+            {products.map(p => {
+              const selected = (settings.weekly_deals_product_ids || []).includes(p.id);
+              return (
+                <div
+                  key={p.id}
+                  onClick={() => toggleProduct('weekly_deals_product_ids', p.id, 10)}
+                  className={`flex items-center gap-3 p-2.5 rounded-xl border cursor-pointer transition-all text-xs ${selected ? 'border-teal-500 bg-teal-50' : 'border-gray-200 hover:border-teal-300 hover:bg-teal-50/40'}`}
+                >
+                  {p.image ? (
+                    <img src={p.image} alt={p.name} className="w-8 h-8 rounded-lg object-cover flex-shrink-0" />
+                  ) : (
+                    <div className="w-8 h-8 rounded-lg bg-gray-100 flex items-center justify-center flex-shrink-0">
+                      <Image className="w-4 h-4 text-gray-300" />
+                    </div>
+                  )}
+                  <div className="flex-1 min-w-0">
+                    <p className="font-semibold text-gray-800 truncate">{p.name}</p>
+                    <p className="text-gray-400">₹{Number(p.discount_price || p.price).toLocaleString()} · {p.category}</p>
+                  </div>
+                  {selected && <div className="w-4 h-4 rounded-full bg-teal-600 flex items-center justify-center flex-shrink-0"><span className="text-white text-[9px] font-black">✓</span></div>}
+                </div>
+              );
+            })}
+          </div>
+          <div className="flex items-center justify-between text-xs">
+            <span className="text-teal-600 font-bold">{(settings.weekly_deals_product_ids || []).length}/10 selected</span>
+            {(settings.weekly_deals_product_ids || []).length > 0 && (
+              <button onClick={() => set('weekly_deals_product_ids', [])} className="text-red-400 hover:underline font-semibold">Clear</button>
             )}
           </div>
         </Card>
