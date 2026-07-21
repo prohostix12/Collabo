@@ -339,6 +339,59 @@ const KoreKartSection = ({ allProducts, setSelectedProduct, setCurrentView, setF
   );
 };
 
+const JewellerySpotlightBanner = ({ allProducts, setSelectedProduct, setCurrentView, setFilterCategory }) => {
+  const jewelleryProducts = allProducts.filter(p => p.category === 'Jewellery');
+  if (jewelleryProducts.length === 0) return null;
+
+  const bgImage = jewelleryProducts[0]?.image;
+  const spotlightProducts = jewelleryProducts.slice(0, 4);
+
+  return (
+    <div className="w-full relative group overflow-hidden rounded-[32px] my-12 shadow-md h-[360px] md:h-[400px]">
+      {/* ── Background product photo, dimmed for contrast ── */}
+      {bgImage && (
+        <img src={bgImage} alt="" className="absolute inset-0 w-full h-full object-cover scale-110 blur-[1px] opacity-50" />
+      )}
+      <div className="absolute inset-0 bg-gradient-to-r from-slate-950/95 via-slate-950/80 to-slate-900/30" />
+
+      {/* ── Glowing Mesh Orbs ── */}
+      <div className="absolute -top-24 -right-20 w-80 h-80 bg-amber-400/20 rounded-full blur-3xl animate-pulse" />
+      <div className="absolute -bottom-24 left-1/4 w-96 h-96 bg-amber-600/10 rounded-full blur-3xl" />
+
+      <div className="absolute inset-0 flex flex-col md:flex-row w-full h-full p-8 md:p-12 z-10">
+        <div className="flex-1 flex flex-col items-start justify-center text-white space-y-4">
+          <h2 className="text-3xl sm:text-4xl lg:text-5xl font-black tracking-tight leading-tight">
+            Timeless Pieces,<br/>
+            <span className="text-amber-300">Everyday Elegance</span>
+          </h2>
+          <p className="text-xs sm:text-sm font-semibold text-slate-300 max-w-md leading-relaxed">
+            Earrings, jhumkas & more — handpicked designs to complete every look.
+          </p>
+          <button
+            onClick={() => { setFilterCategory('Jewellery'); setCurrentView('listing'); }}
+            className="bg-amber-400 hover:bg-amber-300 text-slate-950 font-black text-xs sm:text-sm px-8 py-4 rounded-2xl transition-all shadow-xl hover:shadow-2xl hover:-translate-y-0.5 uppercase tracking-widest mt-2 flex items-center gap-2"
+          >
+            <Gem className="w-4 h-4" /> Shop Jewellery
+          </button>
+        </div>
+        <div className="flex-1 hidden md:flex items-center justify-end">
+          <div className="grid grid-cols-2 gap-2.5">
+            {spotlightProducts.map((product) => (
+              <div
+                key={product.id}
+                onClick={() => { setSelectedProduct(product); setCurrentView('details'); }}
+                className="w-[125px] h-[125px] lg:w-[140px] lg:h-[140px] bg-white rounded-xl p-2 flex items-center justify-center shadow-xl hover:shadow-2xl transition-shadow hover:scale-105 transform duration-200 cursor-pointer border-2 border-white/80"
+              >
+                <img src={product.image} alt={product.name} className="max-h-full max-w-full object-contain rounded-md" />
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
 export default function EcommerceMarketplace({ inlineMode = false, onBackToSelect = null }) {
   const navigate = useNavigate();
 
@@ -2860,6 +2913,13 @@ export default function EcommerceMarketplace({ inlineMode = false, onBackToSelec
             />
 
             <CollaboAdBanner handleInviteFriendsClick={handleInviteFriendsClick} />
+
+            <JewellerySpotlightBanner
+              allProducts={allProducts}
+              setSelectedProduct={setSelectedProduct}
+              setCurrentView={setCurrentView}
+              setFilterCategory={setFilterCategory}
+            />
 
             <CollabEarnBanner
               handleInviteFriendsClick={handleInviteFriendsClick}
@@ -8759,15 +8819,26 @@ export default function EcommerceMarketplace({ inlineMode = false, onBackToSelec
                 <p className="text-sm text-slate-400 text-center py-4">No referral earnings yet — start sharing product links!</p>
               ) : (
                 <div className="space-y-2">
-                  {walletData.transactions.map(tx => (
-                    <div key={tx.id} className="flex items-center justify-between bg-slate-50 dark:bg-slate-800 rounded-lg p-3.5">
-                      <div className="min-w-0">
-                        <p className="text-sm font-bold text-slate-700 dark:text-slate-200 truncate">{tx.reason}</p>
-                        <p className="text-xs text-slate-400">{new Date(tx.created_at).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })} · {tx.level === 0 ? 'Redeemed' : tx.level === 2 ? 'Upline bonus' : 'Direct referral'}</p>
+                  {walletData.transactions.map(tx => {
+                    const levelLabel = tx.level === 0 ? 'Redeemed' : tx.level === 2 ? 'Upline bonus' : 'Direct referral';
+                    const levelBadgeClass = tx.level === 0
+                      ? 'bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-300'
+                      : tx.level === 2
+                        ? 'bg-indigo-100 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400'
+                        : 'bg-orange-100 dark:bg-orange-900/30 text-orange-600 dark:text-orange-400';
+                    return (
+                      <div key={tx.id} className="flex items-center justify-between gap-3 bg-slate-50 dark:bg-slate-800 border border-slate-100 dark:border-slate-750 rounded-lg px-3.5 py-3">
+                        <div className="min-w-0 flex-1">
+                          <p className="text-xs font-bold text-slate-700 dark:text-slate-200 truncate">{tx.reason}</p>
+                          <div className="flex items-center gap-1.5 mt-1">
+                            <span className={`text-[9px] font-black uppercase tracking-wide px-1.5 py-0.5 rounded ${levelBadgeClass}`}>{levelLabel}</span>
+                            <span className="text-[10px] text-slate-400">{new Date(tx.created_at).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}</span>
+                          </div>
+                        </div>
+                        <span className={`text-xs font-black flex-shrink-0 ${tx.amount < 0 ? 'text-rose-500' : tx.status === 'completed' ? 'text-emerald-600' : tx.status === 'pending' ? 'text-amber-500' : 'text-slate-400 line-through'}`}>{tx.amount < 0 ? '-' : '+'}₹{Math.abs(tx.amount)}</span>
                       </div>
-                      <span className={`text-sm font-black flex-shrink-0 ml-2 ${tx.amount < 0 ? 'text-rose-500' : tx.status === 'completed' ? 'text-emerald-600' : tx.status === 'pending' ? 'text-amber-500' : 'text-slate-400 line-through'}`}>{tx.amount < 0 ? '-' : '+'}₹{Math.abs(tx.amount)}</span>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               )}
             </div>
