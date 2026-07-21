@@ -96,7 +96,7 @@ const WeeklyBestDealsSection = ({
   };
 
   return (
-    <section className="w-screen relative left-1/2 right-1/2 -ml-[50vw] -mr-[50vw] mt-0 mb-10">
+    <section className="w-screen relative left-1/2 right-1/2 -ml-[50vw] -mr-[50vw] mt-8 sm:mt-12 mb-10">
       <div className="bg-gradient-to-r from-[#0F232D] via-[#1A3847] to-[#0F232D] rounded-none py-10 sm:py-14 px-4 sm:px-8 lg:px-12 shadow-xl relative overflow-hidden border-y border-cyan-900/30">
         {/* Background glow graphics */}
         <div className="absolute -top-24 -left-24 w-80 h-80 bg-orange-500/15 rounded-full blur-3xl pointer-events-none" />
