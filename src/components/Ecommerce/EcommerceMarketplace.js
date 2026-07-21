@@ -10,7 +10,7 @@ import {
   LayoutGrid, Cpu, Smartphone, Shirt, ShoppingBasket, Home as HomeIcon,
   Armchair, Dumbbell, BookOpen, Gamepad2, Plug, Film, Download,
   Mail, Shield, Calendar, Headphones, HeartPulse, Droplets, Bath, Truck, Share2, Menu, ChevronLeft,
-  Baby, Flower2, Gift
+  Baby, Flower2, Gift, Gem
 } from 'lucide-react';
 import api from '../../services/api';
 import { useAuth } from '../../contexts/AuthContext';
@@ -59,6 +59,7 @@ const CAT_ICON_MAP = {
   'Beauty & Personal Care': { Icon: Bath, color: 'text-slate-900 dark:text-white', bg: 'bg-slate-100 dark:bg-slate-700' },
   'Kids':              { Icon: Baby,           color: 'text-slate-900 dark:text-white', bg: 'bg-slate-100 dark:bg-slate-700' },
   'Korean Products':   { Icon: Flower2,        color: 'text-slate-900 dark:text-white', bg: 'bg-slate-100 dark:bg-slate-700' },
+  'Jewellery':         { Icon: Gem,            color: 'text-slate-900 dark:text-white', bg: 'bg-slate-100 dark:bg-slate-700' },
 };
 const getCatIcon = (name) => CAT_ICON_MAP[name] || { Icon: LayoutGrid, color: 'text-slate-900 dark:text-white', bg: 'bg-slate-100 dark:bg-slate-700' };
 
