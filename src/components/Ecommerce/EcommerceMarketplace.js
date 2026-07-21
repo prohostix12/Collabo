@@ -2329,13 +2329,6 @@ export default function EcommerceMarketplace({ inlineMode = false, onBackToSelec
                         <div className="w-[55%] p-4 sm:p-6 flex flex-col justify-center z-10">
                           <h3 className="text-xl sm:text-2xl font-black mb-1 leading-tight text-slate-900 dark:text-white line-clamp-2">{title}</h3>
                           <p className="text-xs sm:text-sm font-semibold text-slate-600 dark:text-slate-400 mb-3 sm:mb-4 line-clamp-2">{subtitle}</p>
-
-                          <div className="mt-auto border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-2 sm:px-3 py-1 sm:py-1.5 flex items-center gap-2 w-fit rounded shadow-sm">
-                             <div className="flex flex-col">
-                               <span className="text-[9px] sm:text-[10px] font-black text-blue-800 dark:text-blue-400">BANK OFFER</span>
-                               <span className="text-[8px] sm:text-[9px] font-semibold text-slate-500 dark:text-slate-400">Up to ₹500 Discount</span>
-                             </div>
-                          </div>
                         </div>
 
                         {/* Ad Banner Image & Shapes */}
@@ -2430,12 +2423,6 @@ export default function EcommerceMarketplace({ inlineMode = false, onBackToSelec
                           <h3 className="font-extrabold text-xl sm:text-2xl leading-tight tracking-tight mb-3">
                             {title}
                           </h3>
-                          <div className="mb-3 border border-white/20 bg-white/10 backdrop-blur-md px-2 py-1 flex items-center gap-2 w-fit rounded shadow-sm">
-                             <div className="flex flex-col">
-                               <span className="text-[9px] font-black text-white uppercase tracking-wider">BANK OFFER</span>
-                               <span className="text-[8px] font-semibold text-white/80">Up to ₹500 Discount</span>
-                             </div>
-                          </div>
                           <div className="inline-flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-widest border-b-2 border-white/30 hover:border-white pb-0.5 w-max transition-colors">
                             <span>Shop Now</span>
                             <ChevronRight className="w-3.5 h-3.5" />
@@ -2830,7 +2817,7 @@ export default function EcommerceMarketplace({ inlineMode = false, onBackToSelec
                       <div className="relative z-10">
                         <span className="inline-block bg-white/20 backdrop-blur-sm text-white text-[10px] font-black tracking-widest uppercase px-3 py-1 rounded-full mb-3">Kids Special</span>
                         <h3 className="text-2xl sm:text-3xl lg:text-4xl font-black text-white leading-tight mb-2">Best Toys<br/>for Your<br/>Little Ones</h3>
-                        <p className="text-white/80 text-sm sm:text-base mb-5">Educational toys, games & fun picks starting from just <span className="font-black text-yellow-200">₹199</span></p>
+                        <p className="text-white/80 text-sm sm:text-base mb-5">Fun, safe & educational picks your little ones will love</p>
                         <button
                           onClick={() => { setFilterCategory('Kids'); setCurrentView('listing'); }}
                           className="bg-white text-pink-600 font-black text-xs sm:text-sm px-6 py-3 rounded-xl hover:bg-pink-50 transition-all shadow-lg hover:shadow-xl hover:-translate-y-0.5 uppercase tracking-wider">
@@ -8455,29 +8442,82 @@ export default function EcommerceMarketplace({ inlineMode = false, onBackToSelec
         <div className="fixed inset-0 z-[9999] bg-black/50 backdrop-blur-sm flex items-center justify-center p-4" onClick={() => setReferModalData(null)}>
           <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-2xl max-w-sm w-full overflow-hidden" onClick={e => e.stopPropagation()}>
             <div className="bg-gradient-to-r from-violet-600 to-fuchsia-600 px-5 py-4 flex items-center gap-3 relative">
-              <button onClick={() => setReferModalData(null)} className="absolute top-3 right-3 text-white/70 hover:text-white"><X className="w-4 h-4" /></button>
+              <button onClick={() => setReferModalData(null)} className="absolute top-4 right-4 text-white/70 hover:text-white"><X className="w-4 h-4" /></button>
               <div className="w-10 h-10 bg-white/20 rounded-full flex items-center justify-center backdrop-blur-sm flex-shrink-0">
                 <Gift className="w-5 h-5 text-white" />
               </div>
               <div>
                 <h2 className="text-base font-black text-white leading-tight">Refer & Earn</h2>
-                <p className="text-[10px] text-white/70 font-semibold truncate max-w-[200px]">{referModalData.product_name}</p>
+                <p className="text-[10px] text-white/80 font-medium">Earn wallet cash rewards</p>
               </div>
             </div>
-            <div className="p-4 space-y-3">
-              <p className="text-[11px] text-slate-500 dark:text-slate-400 leading-relaxed">
-                Share this link. When someone buys <span className="font-bold text-slate-700 dark:text-slate-200">{referModalData.product_name}</span> through it, you earn a <span className="font-black text-violet-600">{referModalData.link_discount_percent}%</span> wallet reward — and if you were referred by someone, they get half of that too.
-              </p>
-              <div className="flex items-center gap-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2.5">
-                <span className="flex-1 text-[10px] font-mono text-slate-600 dark:text-slate-300 truncate">{referModalData.referral_link}</span>
-                <button
-                  onClick={() => { navigator.clipboard.writeText(referModalData.referral_link); showToast('Referral link copied!'); }}
-                  className="flex-shrink-0 p-1.5 rounded-lg bg-violet-600 hover:bg-violet-700 text-white transition-colors"
-                  title="Copy link"
-                >
-                  <Copy className="w-3.5 h-3.5" />
-                </button>
+            
+            <div className="p-5 space-y-4">
+              {/* Product Summary */}
+              <div className="bg-slate-50 dark:bg-slate-800/50 border border-slate-100 dark:border-slate-800 rounded-xl p-3 flex gap-3 items-center">
+                <div className="w-10 h-10 rounded-lg bg-violet-100 dark:bg-violet-900/30 flex items-center justify-center shrink-0">
+                  <Gift className="w-5 h-5 text-violet-600 dark:text-violet-400" />
+                </div>
+                <div className="min-w-0 flex-1">
+                  <p className="text-[9px] text-slate-400 font-bold uppercase tracking-wider">Product</p>
+                  <p className="text-xs font-bold text-slate-700 dark:text-slate-200 truncate">{referModalData.product_name}</p>
+                </div>
               </div>
+
+              {/* Steps */}
+              <div className="space-y-3.5">
+                <p className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-wider">How it works</p>
+                <div className="space-y-3">
+                  <div className="flex gap-3">
+                    <div className="w-6 h-6 rounded-full bg-violet-50 dark:bg-violet-900/20 text-violet-600 dark:text-violet-400 flex items-center justify-center text-xs font-black shrink-0">
+                      1
+                    </div>
+                    <div>
+                      <h4 className="text-[11px] font-bold text-slate-700 dark:text-slate-200">Copy your link</h4>
+                      <p className="text-[10px] text-slate-400">Get the unique referral link generated for your account.</p>
+                    </div>
+                  </div>
+
+                  <div className="flex gap-3">
+                    <div className="w-6 h-6 rounded-full bg-violet-50 dark:bg-violet-900/20 text-violet-600 dark:text-violet-400 flex items-center justify-center text-xs font-black shrink-0">
+                      2
+                    </div>
+                    <div>
+                      <h4 className="text-[11px] font-bold text-slate-700 dark:text-slate-200">Share it with friends</h4>
+                      <p className="text-[10px] text-slate-400">Send the link to others or post it on social media platforms.</p>
+                    </div>
+                  </div>
+
+                  <div className="flex gap-3">
+                    <div className="w-6 h-6 rounded-full bg-emerald-50 dark:bg-emerald-900/20 text-emerald-600 dark:text-emerald-400 flex items-center justify-center text-xs font-black shrink-0">
+                      3
+                    </div>
+                    <div>
+                      <h4 className="text-[11px] font-bold text-slate-700 dark:text-slate-200 flex items-center gap-1.5">
+                        Earn <span className="text-emerald-600 dark:text-emerald-400 font-black">{referModalData.link_discount_percent}% Cash Reward</span>
+                      </h4>
+                      <p className="text-[10px] text-slate-400">Get {referModalData.link_discount_percent}% of the order amount in your wallet when someone buys through your link.</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Link Container */}
+              <div className="space-y-1.5">
+                <p className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-wider">Your Referral Link</p>
+                <div className="flex items-center gap-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl p-2.5">
+                  <span className="flex-1 text-[10px] font-mono text-slate-600 dark:text-slate-300 truncate select-all">{referModalData.referral_link}</span>
+                  <button
+                    onClick={() => { navigator.clipboard.writeText(referModalData.referral_link); showToast('Referral link copied!'); }}
+                    className="flex-shrink-0 p-1.5 rounded-lg bg-slate-200 hover:bg-slate-300 dark:bg-slate-700 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-200 transition-colors"
+                    title="Copy link"
+                  >
+                    <Copy className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+              </div>
+
+              {/* Share button */}
               <button
                 onClick={() => {
                   if (navigator.share) {
@@ -8492,10 +8532,10 @@ export default function EcommerceMarketplace({ inlineMode = false, onBackToSelec
                   }
                   setReferModalData(null);
                 }}
-                className="w-full bg-gradient-to-r from-violet-600 to-fuchsia-600 text-white font-black text-[11px] py-2.5 rounded-xl hover:opacity-90 transition-opacity flex items-center justify-center gap-1.5"
+                className="w-full bg-gradient-to-r from-violet-600 to-fuchsia-600 text-white font-black text-xs py-3 rounded-xl hover:opacity-95 transition-opacity flex items-center justify-center gap-2 shadow-lg shadow-violet-500/20"
               >
-                <Share2 className="w-3.5 h-3.5" />
-                Copy & Share
+                <Share2 className="w-4 h-4" />
+                Share & Earn
               </button>
             </div>
           </div>
