@@ -9,8 +9,8 @@ import {
   Edit, EyeOff, Phone, Zap, Store, Sun, Moon,
   LayoutGrid, Cpu, Smartphone, Shirt, ShoppingBasket, Home as HomeIcon,
   Armchair, Dumbbell, BookOpen, Gamepad2, Plug, Film, Download,
-  Mail, Shield, Calendar, Headphones, HeartPulse, Droplets, Bath, Truck, Share2, Menu, ChevronLeft,
-  Baby, Flower2, Gift, Gem
+  Mail, Shield, Calendar, Headphones, HeartPulse, Bath, Truck, Share2, Menu, ChevronLeft,
+  Baby, Flower2, Gift, Gem, Wallet
 } from 'lucide-react';
 import api from '../../services/api';
 import { useAuth } from '../../contexts/AuthContext';
@@ -55,7 +55,6 @@ const CAT_ICON_MAP = {
   'Appliances':    { Icon: Plug,           color: 'text-slate-900 dark:text-white', bg: 'bg-slate-100 dark:bg-slate-700' },
   'Mobile Accessories': { Icon: Headphones, color: 'text-slate-900 dark:text-white', bg: 'bg-slate-100 dark:bg-slate-700' },
   'Health & Personal Care': { Icon: HeartPulse, color: 'text-slate-900 dark:text-white', bg: 'bg-slate-100 dark:bg-slate-700' },
-  'Laundry & Garment Care': { Icon: Droplets, color: 'text-slate-900 dark:text-white', bg: 'bg-slate-100 dark:bg-slate-700' },
   'Beauty & Personal Care': { Icon: Bath, color: 'text-slate-900 dark:text-white', bg: 'bg-slate-100 dark:bg-slate-700' },
   'Kids':              { Icon: Baby,           color: 'text-slate-900 dark:text-white', bg: 'bg-slate-100 dark:bg-slate-700' },
   'Korean Products':   { Icon: Flower2,        color: 'text-slate-900 dark:text-white', bg: 'bg-slate-100 dark:bg-slate-700' },
@@ -8599,39 +8598,62 @@ export default function EcommerceMarketplace({ inlineMode = false, onBackToSelec
 
       {showWalletModal && walletData && (
         <div className="fixed inset-0 z-[9999] bg-black/50 backdrop-blur-sm flex items-center justify-center p-4" onClick={() => setShowWalletModal(false)}>
-          <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-2xl max-w-lg w-full overflow-hidden max-h-[90vh] overflow-y-auto" style={{ scrollbarWidth: 'none' }} onClick={e => e.stopPropagation()}>
-            <div className="bg-gradient-to-r from-violet-600 to-fuchsia-600 px-7 py-6 flex items-center gap-4 relative">
-              <button onClick={() => setShowWalletModal(false)} className="absolute top-4 right-4 text-white/70 hover:text-white"><X className="w-5 h-5" /></button>
+          <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-2xl max-w-lg w-full overflow-hidden max-h-[90vh] overflow-y-auto border border-slate-200 dark:border-slate-800" style={{ scrollbarWidth: 'none' }} onClick={e => e.stopPropagation()}>
+            <div className="bg-gradient-to-r from-orange-500 to-amber-500 px-7 py-6 flex items-center gap-4 relative shadow-sm">
+              <button onClick={() => setShowWalletModal(false)} className="absolute top-4 right-4 text-white/80 hover:text-white transition-colors"><X className="w-5 h-5" /></button>
               <div className="w-14 h-14 bg-white/20 rounded-full flex items-center justify-center backdrop-blur-sm flex-shrink-0">
                 <Gift className="w-7 h-7 text-white" />
               </div>
               <div>
                 <h2 className="text-3xl font-black text-white leading-none">₹{walletData.balance}</h2>
-                <p className="text-sm text-white/70 font-semibold">Referral Wallet Balance{walletData.pending > 0 ? ` · ₹${walletData.pending} pending` : ''}</p>
+                <p className="text-sm text-white/80 font-semibold">Referral Wallet Balance{walletData.pending > 0 ? ` · ₹${walletData.pending} pending` : ''}</p>
               </div>
             </div>
             <div className="p-7 space-y-5">
-              <div className="flex items-center gap-3.5 bg-slate-50 dark:bg-slate-800 rounded-lg p-4">
-                <div className="w-9 h-9 rounded-md bg-violet-100 dark:bg-violet-900/30 flex items-center justify-center flex-shrink-0">
-                  <Gift className="w-4.5 h-4.5 text-violet-600" />
-                </div>
-                <div className="flex-1">
-                  <p className="text-sm font-bold text-slate-800 dark:text-white">How it works</p>
-                  <p className="text-xs text-slate-500">Tap "Refer & Earn" on any product to get your link. When someone buys through it, you earn a wallet reward — and if you were referred by someone, they earn half of that too.</p>
+              {/* How it works — numbered steps */}
+              <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-4 shadow-sm">
+                <p className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-wider mb-3">How it works</p>
+                <div className="space-y-3">
+                  <div className="flex gap-3">
+                    <div className="w-6 h-6 rounded-full bg-orange-50 dark:bg-orange-900/20 text-orange-600 dark:text-orange-400 flex items-center justify-center text-xs font-black shrink-0">1</div>
+                    <div>
+                      <h4 className="text-xs font-bold text-slate-700 dark:text-slate-200">Get your link</h4>
+                      <p className="text-[11px] text-slate-400">Tap "Refer & Earn" on any product to generate your unique referral link.</p>
+                    </div>
+                  </div>
+                  <div className="flex gap-3">
+                    <div className="w-6 h-6 rounded-full bg-orange-50 dark:bg-orange-900/20 text-orange-600 dark:text-orange-400 flex items-center justify-center text-xs font-black shrink-0">2</div>
+                    <div>
+                      <h4 className="text-xs font-bold text-slate-700 dark:text-slate-200">Share it</h4>
+                      <p className="text-[11px] text-slate-400">Send the link to friends or post it wherever you like.</p>
+                    </div>
+                  </div>
+                  <div className="flex gap-3">
+                    <div className="w-6 h-6 rounded-full bg-emerald-50 dark:bg-emerald-900/20 text-emerald-600 dark:text-emerald-400 flex items-center justify-center text-xs font-black shrink-0">3</div>
+                    <div>
+                      <h4 className="text-xs font-bold text-slate-700 dark:text-slate-200">Earn when they buy</h4>
+                      <p className="text-[11px] text-slate-400">You get a cash reward in this wallet — and if someone referred you, they earn a share too.</p>
+                    </div>
+                  </div>
                 </div>
               </div>
 
               {/* Withdraw as cash — redeemable any time, independent of checkout */}
-              <div className="border border-violet-200 dark:border-violet-800 bg-violet-50 dark:bg-violet-950/30 rounded-xl p-4 space-y-3">
+              <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-4 shadow-sm space-y-3">
                 <div className="flex items-center justify-between">
-                  <p className="text-sm font-bold text-violet-700 dark:text-violet-300">Withdraw as Cash</p>
+                  <div className="flex items-center gap-2.5">
+                    <div className="w-8 h-8 rounded-md bg-orange-100 dark:bg-orange-900/30 flex items-center justify-center flex-shrink-0">
+                      <Wallet className="w-4 h-4 text-orange-600" />
+                    </div>
+                    <p className="text-sm font-bold text-slate-800 dark:text-white">Withdraw as Cash</p>
+                  </div>
                   {walletData.balance > 0 && (
                     <button
                       onClick={() => {
                         if (!showWithdrawForm) setWithdrawAmount(String(walletData.balance));
                         setShowWithdrawForm(!showWithdrawForm);
                       }}
-                      className="text-xs font-black text-violet-600 hover:underline"
+                      className="text-xs font-black text-orange-600 hover:underline"
                     >
                       {showWithdrawForm ? 'Cancel' : 'Claim'}
                     </button>
@@ -8649,11 +8671,11 @@ export default function EcommerceMarketplace({ inlineMode = false, onBackToSelec
                       value={withdrawAmount}
                       onChange={(e) => setWithdrawAmount(e.target.value)}
                       placeholder={`Amount — up to ₹${walletData.balance}`}
-                      className="w-full text-sm bg-white dark:bg-slate-800 border border-violet-200 dark:border-violet-700 rounded-lg px-3.5 py-2.5 focus:outline-none focus:ring-1 focus:ring-violet-500 dark:text-white"
+                      className="w-full text-sm bg-white dark:bg-slate-800 border border-orange-200 dark:border-orange-700 rounded-lg px-3.5 py-2.5 focus:outline-none focus:ring-1 focus:ring-orange-500 dark:text-white"
                     />
 
                     {walletData.bank_details && !editBankDetails ? (
-                      <div className="flex items-center justify-between bg-white dark:bg-slate-800 border border-violet-200 dark:border-violet-700 rounded-lg px-3.5 py-3">
+                      <div className="flex items-center justify-between bg-white dark:bg-slate-800 border border-orange-200 dark:border-orange-700 rounded-lg px-3.5 py-3">
                         <div className="min-w-0">
                           <p className="text-sm font-bold text-slate-700 dark:text-slate-200 truncate">{walletData.bank_details.account_holder_name}</p>
                           <p className="text-xs text-slate-400 font-mono">••••{walletData.bank_details.account_number.slice(-4)} · {walletData.bank_details.ifsc_code}</p>
@@ -8665,7 +8687,7 @@ export default function EcommerceMarketplace({ inlineMode = false, onBackToSelec
                             setWithdrawAccountNumber(walletData.bank_details.account_number);
                             setWithdrawIfsc(walletData.bank_details.ifsc_code);
                           }}
-                          className="text-xs font-black text-violet-600 hover:underline flex-shrink-0 ml-2"
+                          className="text-xs font-black text-orange-600 hover:underline flex-shrink-0 ml-2"
                         >
                           Change
                         </button>
@@ -8677,21 +8699,21 @@ export default function EcommerceMarketplace({ inlineMode = false, onBackToSelec
                           value={withdrawAccountName}
                           onChange={(e) => setWithdrawAccountName(e.target.value)}
                           placeholder="Account holder name"
-                          className="w-full text-sm bg-white dark:bg-slate-800 border border-violet-200 dark:border-violet-700 rounded-lg px-3.5 py-2.5 focus:outline-none focus:ring-1 focus:ring-violet-500 dark:text-white"
+                          className="w-full text-sm bg-white dark:bg-slate-800 border border-orange-200 dark:border-orange-700 rounded-lg px-3.5 py-2.5 focus:outline-none focus:ring-1 focus:ring-orange-500 dark:text-white"
                         />
                         <input
                           type="text"
                           value={withdrawAccountNumber}
                           onChange={(e) => setWithdrawAccountNumber(e.target.value.replace(/\D/g, ''))}
                           placeholder="Bank account number"
-                          className="w-full text-sm bg-white dark:bg-slate-800 border border-violet-200 dark:border-violet-700 rounded-lg px-3.5 py-2.5 focus:outline-none focus:ring-1 focus:ring-violet-500 dark:text-white"
+                          className="w-full text-sm bg-white dark:bg-slate-800 border border-orange-200 dark:border-orange-700 rounded-lg px-3.5 py-2.5 focus:outline-none focus:ring-1 focus:ring-orange-500 dark:text-white"
                         />
                         <input
                           type="text"
                           value={withdrawIfsc}
                           onChange={(e) => setWithdrawIfsc(e.target.value.toUpperCase())}
                           placeholder="IFSC code"
-                          className="w-full text-sm bg-white dark:bg-slate-800 border border-violet-200 dark:border-violet-700 rounded-lg px-3.5 py-2.5 focus:outline-none focus:ring-1 focus:ring-violet-500 dark:text-white uppercase"
+                          className="w-full text-sm bg-white dark:bg-slate-800 border border-orange-200 dark:border-orange-700 rounded-lg px-3.5 py-2.5 focus:outline-none focus:ring-1 focus:ring-orange-500 dark:text-white uppercase"
                         />
                       </>
                     )}
@@ -8703,7 +8725,7 @@ export default function EcommerceMarketplace({ inlineMode = false, onBackToSelec
                     <button
                       onClick={handleWithdraw}
                       disabled={withdrawing}
-                      className="w-full bg-violet-600 hover:bg-violet-700 disabled:opacity-50 text-white text-sm font-black px-4 py-3 rounded-lg transition-colors"
+                      className="w-full bg-slate-950 hover:bg-slate-900 dark:bg-orange-600 dark:hover:bg-orange-700 disabled:opacity-50 text-white text-sm font-black px-4 py-3 rounded-lg transition-colors shadow-sm"
                     >
                       {withdrawing ? 'Requesting...' : 'Request Withdrawal'}
                     </button>
