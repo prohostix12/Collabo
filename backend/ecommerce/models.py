@@ -88,6 +88,11 @@ class CartItem(models.Model):
     product = models.ForeignKey(Product, on_delete=models.CASCADE)
     quantity = models.PositiveIntegerField(default=1)
 
+    class Meta:
+        # Without this, cart.items.all() has no guaranteed order, so a quantity
+        # update (which rewrites the row) can make items visibly reshuffle.
+        ordering = ['id']
+
     def __str__(self):
         return f"{self.product.name} x {self.quantity} in {self.cart}"
 
