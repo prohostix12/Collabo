@@ -75,6 +75,10 @@ class Cart(models.Model):
     user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='cart')
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
+    abandoned_reminder_sent_at = models.DateTimeField(
+        null=True, blank=True,
+        help_text="When the last 'you left something in your cart' WhatsApp reminder was sent for the cart's current contents. Reset (implicitly superseded) whenever updated_at moves past it, i.e. the cart changes again."
+    )
 
     def __str__(self):
         return f"Cart: {self.user.username}"

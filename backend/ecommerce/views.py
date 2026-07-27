@@ -293,7 +293,8 @@ class CartViewSet(viewsets.ViewSet):
              return Response({'error': f'Only {product.stock} items left in stock'}, status=status.HTTP_400_BAD_REQUEST)
              
         cart_item.save()
-        
+        cart.save()  # bump updated_at so abandoned-cart detection sees real activity
+
         serializer = CartSerializer(cart)
         return Response(serializer.data, status=status.HTTP_200_OK)
 
@@ -316,6 +317,7 @@ class CartViewSet(viewsets.ViewSet):
                     cart_item.quantity = quantity
                     cart_item.save()
 
+        cart.save()  # bump updated_at so abandoned-cart detection sees real activity
         serializer = CartSerializer(cart)
         return Response(serializer.data)
 

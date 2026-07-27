@@ -88,15 +88,19 @@ def send_abandoned_cart_reminders():
     Find carts that have items but no recent order.
     Remind users who haven't checked out in 2+ hours.
     """
+    from django.db.models import F
     from .models import Cart, CartItem, StoreSettings
     from .notification_service import notify_abandoned_cart
 
     cutoff = timezone.now() - timedelta(hours=2)
 
-    # Carts updated more than 2 hours ago with items
+    # Carts updated more than 2 hours ago with items, that haven't already
+    # been reminded about since their contents last changed.
     stale_carts = Cart.objects.filter(
         updated_at__lte=cutoff,
         items__isnull=False,
+    ).exclude(
+        abandoned_reminder_sent_at__gte=F('updated_at')
     ).distinct().select_related('user').prefetch_related('items__product')
 
     store = StoreSettings.get_settings()
@@ -127,6 +131,8 @@ def send_abandoned_cart_reminders():
 
         try:
             notify_abandoned_cart(user, item_names, coupon, discount_pct)
+            cart.abandoned_reminder_sent_at = timezone.now()
+            cart.save(update_fields=['abandoned_reminder_sent_at'])
             count += 1
         except Exception as exc:
             logger.error(f"Abandoned cart notify failed for {user.username}: {exc}")
