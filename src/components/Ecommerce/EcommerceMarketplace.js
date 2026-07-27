@@ -2349,8 +2349,8 @@ export default function EcommerceMarketplace({ inlineMode = false, onBackToSelec
 
                       {/* Center: Frosted CTA Block (Visible on sm+) */}
                       <div className="hidden sm:flex flex-col items-center justify-center z-10 space-y-3 px-4">
-                        <p className="text-[11px] lg:text-xs text-white/90 max-w-xs text-center font-medium drop-shadow-sm leading-relaxed line-clamp-2">
-                          Share your referral link, wallet & redeem rewards every time a friend shops.
+                        <p className="text-[11px] lg:text-xs text-white/90 max-w-xs text-center font-medium drop-shadow-sm leading-relaxed line-clamp-3">
+                          Share your referral link, wallet & redeem rewards every time a friend shops — plus 3% more every time they refer someone else too!
                         </p>
                         <button
                           onClick={handleInviteFriendsClick}
