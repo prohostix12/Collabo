@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
 import api from '../../services/api';
 import {
@@ -311,6 +311,11 @@ function SellerRegistrationWidget() {
 export default function SellOnCollabo() {
   const [openFaq, setOpenFaq] = useState(null);
   const { user } = useAuth();
+  const [hubStats, setHubStats] = useState(null);
+
+  useEffect(() => {
+    api.get('/ecommerce/seller-hub-stats/').then(res => setHubStats(res.data)).catch(() => {});
+  }, []);
 
   return (
     <div className="min-h-screen bg-white">
@@ -337,7 +342,7 @@ export default function SellOnCollabo() {
             <div className="pt-4">
               <div className="inline-flex items-center gap-1.5 bg-white border border-gray-200 rounded-full px-3 py-1 mb-4">
                 <span className="w-1.5 h-1.5 bg-emerald-400 rounded-full"></span>
-                <span className="text-[10px] font-medium text-gray-600">Trusted by 500+ sellers across India</span>
+                <span className="text-[10px] font-medium text-gray-600">Now onboarding sellers across India</span>
               </div>
               <h1 className="text-3xl sm:text-4xl font-bold text-gray-900 leading-tight mb-4">
                 Sell online to crores of buyers on <span className="text-orange-600">Collabo</span>
@@ -351,7 +356,11 @@ export default function SellOnCollabo() {
                 ))}
               </div>
               <div className="grid grid-cols-3 gap-3">
-                {[{v:'500+',l:'Active Sellers'},{v:'₹2Cr+',l:'Monthly GMV'},{v:'50K+',l:'Products Listed'}].map(s=>(
+                {[
+                  {v: hubStats ? String(hubStats.active_sellers) : '—', l: 'Active Sellers'},
+                  {v: hubStats ? `₹${Number(hubStats.total_gmv).toLocaleString('en-IN')}` : '—', l: 'Total Sales'},
+                  {v: hubStats ? String(hubStats.products_listed) : '—', l: 'Products Listed'},
+                ].map(s=>(
                   <div key={s.l} className="text-center"><p className="text-lg font-bold text-gray-900">{s.v}</p><p className="text-[10px] text-gray-400">{s.l}</p></div>
                 ))}
               </div>

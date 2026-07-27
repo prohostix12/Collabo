@@ -3,7 +3,7 @@ from rest_framework.routers import DefaultRouter
 from .views import (
     ProductViewSet, CartViewSet, AddressViewSet, OrderViewSet, WishlistViewSet,
     CategoryViewSet, BrandViewSet, ProductReviewViewSet, CustomerReviewViewSet,
-    PlatformSettingsView, StoreSettingsView, check_pincode, AdminAffiliatesView,
+    PlatformSettingsView, StoreSettingsView, check_pincode, seller_hub_stats, AdminAffiliatesView,
     AdminUpdateAffiliateRateView, RecordReferralClickView, ResolveReferralView,
     AdminAnalyticsView, create_razorpay_order, verify_razorpay_payment, razorpay_webhook,
     BroadcastOfferView,
@@ -40,6 +40,7 @@ urlpatterns = [
     path('settings/', PlatformSettingsView.as_view(), name='platform-settings'),
     path('store-settings/', StoreSettingsView.as_view(), name='store-settings'),
     path('check-pincode/', check_pincode, name='check-pincode'),
+    path('seller-hub-stats/', seller_hub_stats, name='seller-hub-stats'),
     path('admin/affiliates/', AdminAffiliatesView.as_view(), name='admin-affiliates'),
     path('admin/affiliates/<int:pk>/rates/', AdminUpdateAffiliateRateView.as_view(), name='admin-affiliates-rates'),
     path('admin/wallets/', AdminWalletsView.as_view(), name='admin-wallets'),

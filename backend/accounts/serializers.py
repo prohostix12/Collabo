@@ -170,6 +170,10 @@ class SellerProfileSerializer(serializers.ModelSerializer):
 
 class ApprovalAuditLogSerializer(serializers.ModelSerializer):
     admin_username = serializers.ReadOnlyField(source='admin.username', default=None)
+    # Plain text, not serializers.IPAddressField: DRF 3.14's auto-mapped IPAddressField
+    # crashes against Django 5.1's ip_address_validators() (unpacking mismatch), and this
+    # field is read-only/display-only here anyway, so no validation is needed.
+    ip_address = serializers.CharField(read_only=True)
 
     class Meta:
         from .models import ApprovalAuditLog

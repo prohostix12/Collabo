@@ -1528,6 +1528,27 @@ def check_pincode(request):
     })
 
 
+@api_view(['GET'])
+@permission_classes([])
+def seller_hub_stats(request):
+    """Real, public platform stats for the Sell-on-Collabo landing page. No placeholder numbers."""
+    from accounts.models import User
+
+    active_sellers = User.objects.filter(user_type='seller').filter(
+        Q(seller_profile__verification_status='approved') | Q(products__isnull=False)
+    ).distinct().count()
+
+    products_listed = Product.objects.filter(status='approved').count()
+
+    total_gmv = Order.objects.exclude(status='cancelled').aggregate(total=Sum('total_amount'))['total'] or 0
+
+    return Response({
+        'active_sellers': active_sellers,
+        'products_listed': products_listed,
+        'total_gmv': str(total_gmv),
+    })
+
+
 class AdminAffiliatesView(views.APIView):
     """GET: Admin only. View all affiliate links and associated buyers."""
     permission_classes = [permissions.IsAuthenticated, IsAdminOrReadOnly]

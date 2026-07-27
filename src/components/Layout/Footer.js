@@ -36,7 +36,7 @@ const Footer = () => {
             <h4 className="text-sm font-black text-white tracking-tight">Get updates on new deals & offers</h4>
             <p className="text-[11px] text-white/70 font-medium mt-0.5">Subscribe for the latest arrivals, exclusive discounts & more.</p>
           </div>
-          <form onSubmit={handleSubscribe} className="flex gap-2 w-full sm:w-auto">
+          <form onSubmit={handleSubscribe} className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
             <input
               type="email"
               required
@@ -44,7 +44,7 @@ const Footer = () => {
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               disabled={status === 'loading'}
-              className="flex-1 sm:w-64 bg-white text-slate-800 placeholder-slate-400 text-xs font-medium rounded-lg px-4 py-2.5 outline-none focus:ring-2 focus:ring-[#ff9f00] transition-all disabled:opacity-60"
+              className="flex-1 min-w-0 sm:w-64 bg-white text-slate-800 placeholder-slate-400 text-xs font-medium rounded-lg px-4 py-2.5 outline-none focus:ring-2 focus:ring-[#ff9f00] transition-all disabled:opacity-60"
             />
             <button
               type="submit"
