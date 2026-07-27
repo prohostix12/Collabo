@@ -100,7 +100,8 @@ def notify_order_placed(order):
     items = ', '.join(
         item.product.name for item in order.items.select_related('product').all()
     ) or 'your items'
-    _send_template(phone, 'order_placed_confirmation', [name, str(order.order_id), items])
+    # Gupshup template ID for order_placed_confirmation
+    _send_template(phone, '00b7cd8a-87a7-4941-817b-18cf10317783', [name, str(order.order_id), items])
 
 
 def notify_order_shipped(order):
@@ -122,7 +123,8 @@ def notify_order_delivered(order):
     if not phone:
         return
     name = _order_name(order)
-    _send_template(phone, 'order_delivered', [name, str(order.order_id)])
+    # Gupshup template ID for order_delivered
+    _send_template(phone, '0d0222de-140a-4b31-b71b-df9b3660161d', [name, str(order.order_id)])
 
 
 def notify_order_cancelled(order):
