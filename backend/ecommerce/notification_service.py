@@ -226,13 +226,15 @@ def notify_abandoned_cart(user, item_names: list, coupon_code: str = None, disco
 # ── Internal helpers ──────────────────────────────────────────────────────────
 
 def _get_order_phone(order) -> str:
-    """Prefer address phone, then user.phone."""
+    """Prefer the account's verified phone over the checkout address's free-text phone."""
+    if order.user.phone:
+        return order.user.phone
     try:
         if order.address and order.address.phone:
             return order.address.phone
     except Exception:
         pass
-    return order.user.phone or ''
+    return ''
 
 
 def _items_summary(order) -> str:

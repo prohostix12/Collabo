@@ -80,9 +80,13 @@ def notify_welcome(user):
 
 
 def _order_phone(order) -> str:
-    phone = (order.address.phone if order.address else '') or ''
+    # Prefer the account's verified phone over the checkout address's phone —
+    # the address field is free-text (can be a typo, or a different person's
+    # number for delivery purposes) and was silently causing notifications to
+    # go to the wrong number.
+    phone = getattr(order.user, 'phone', '') or ''
     if not phone:
-        phone = getattr(order.user, 'phone', '') or ''
+        phone = (order.address.phone if order.address else '') or ''
     return phone
 
 
