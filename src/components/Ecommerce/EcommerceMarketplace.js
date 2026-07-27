@@ -598,6 +598,7 @@ export default function EcommerceMarketplace({ inlineMode = false, onBackToSelec
   const [sellerOrders, setSellerOrders] = useState([]);
   const [trackedOrder, setTrackedOrder] = useState(null);
   const [createdOrderId, setCreatedOrderId] = useState('');
+  const [createdOrderDelivery, setCreatedOrderDelivery] = useState('');
   const [placingOrder, setPlacingOrder] = useState(false);
   const [activeProfileModal, setActiveProfileModal] = useState(null); // 'username' | 'password' | 'delete' | null
   const [cancelModal, setCancelModal] = useState(null); // order object or null
@@ -4689,6 +4690,7 @@ export default function EcommerceMarketplace({ inlineMode = false, onBackToSelec
                             });
                             localStorage.removeItem('referral_discount_map');
                             setCreatedOrderId(response.data.order_id);
+                            setCreatedOrderDelivery(response.data.expected_delivery_date || '');
                             setCart(prevCart => prevCart.filter(item => !selectedCartItems.includes(item.id)));
                             setSelectedCartItems([]);
                             fetchCustomerOrders();
@@ -4738,6 +4740,7 @@ export default function EcommerceMarketplace({ inlineMode = false, onBackToSelec
                                 });
                                 localStorage.removeItem('referral_discount_map');
                                 setCreatedOrderId(verifyRes.data.order_id);
+                                setCreatedOrderDelivery(verifyRes.data.expected_delivery_date || '');
                                 setCart(prevCart => prevCart.filter(item => !selectedCartItems.includes(item.id)));
                                 setSelectedCartItems([]);
                                 fetchCustomerOrders();
@@ -4774,6 +4777,7 @@ export default function EcommerceMarketplace({ inlineMode = false, onBackToSelec
                                   });
                                   localStorage.removeItem('referral_discount_map');
                                   setCreatedOrderId(verifyRes.data.order_id);
+                                  setCreatedOrderDelivery(verifyRes.data.expected_delivery_date || '');
                                   setCart(prevCart => prevCart.filter(item => !selectedCartItems.includes(item.id)));
                                   setSelectedCartItems([]);
                                   fetchCustomerOrders();
@@ -4846,7 +4850,14 @@ export default function EcommerceMarketplace({ inlineMode = false, onBackToSelec
               </div>
               <div className="flex justify-between">
                 <span className="text-slate-400">Delivery:</span>
-                <span className="text-slate-850 dark:text-slate-250">Tomorrow by 8 PM</span>
+                <span className="text-slate-850 dark:text-slate-250">
+                  {(() => {
+                    const expectedDelivery = createdOrderDelivery
+                      ? new Date(createdOrderDelivery)
+                      : new Date(Date.now() + 5 * 24 * 60 * 60 * 1000);
+                    return expectedDelivery.toLocaleDateString('en-IN', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' });
+                  })()}
+                </span>
               </div>
             </div>
 
@@ -8376,33 +8387,36 @@ export default function EcommerceMarketplace({ inlineMode = false, onBackToSelec
                 />
               </div>
 
-              {/* Step 3: Attachments */}
-              <div className="space-y-2">
-                <label className="text-[10px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-widest flex items-center gap-1">
-                  <span className="w-4 h-4 bg-slate-400 text-white rounded-full text-[9px] flex items-center justify-center font-black">3</span>
-                  Attach proof — screenshots / images / videos (optional)
-                </label>
-                <label className="flex flex-col items-center justify-center gap-1.5 border-2 border-dashed border-slate-200 dark:border-slate-700 rounded-xl py-4 px-3 cursor-pointer hover:border-rose-300 dark:hover:border-rose-700 hover:bg-rose-50/40 dark:hover:bg-rose-950/10 transition-all">
-                  <span className="text-xl">📎</span>
-                  <span className="text-[11px] font-bold text-slate-500 dark:text-slate-400">Click to upload images or videos</span>
-                  <span className="text-[9px] text-slate-400">JPG, PNG, MP4, MOV — max 10MB each</span>
-                  <input type="file" multiple accept="image/*,video/*" className="hidden" onChange={e => setCancelFiles(prev => [...prev, ...Array.from(e.target.files)])} />
-                </label>
-                {cancelFiles.length > 0 && (
-                  <div className="space-y-1.5">
-                    {cancelFiles.map((f, i) => (
-                      <div key={i} className="flex items-center justify-between bg-slate-50 dark:bg-slate-800 rounded-xl px-3 py-2 border border-slate-100 dark:border-slate-700">
-                        <div className="flex items-center gap-2 min-w-0">
-                          <span className="text-sm shrink-0">{f.type.startsWith('video') ? '🎥' : '🖼️'}</span>
-                          <span className="text-[10px] font-semibold text-slate-600 dark:text-slate-300 truncate">{f.name}</span>
-                          <span className="text-[9px] text-slate-400 shrink-0">{(f.size / 1024 / 1024).toFixed(1)}MB</span>
+              {/* Step 3: Attachments — only makes sense once the buyer has actually received the product;
+                  payment method/status is irrelevant since there's nothing physical to prove before that. */}
+              {cancelModal.status === 'delivered' && (
+                <div className="space-y-2">
+                  <label className="text-[10px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-widest flex items-center gap-1">
+                    <span className="w-4 h-4 bg-slate-400 text-white rounded-full text-[9px] flex items-center justify-center font-black">3</span>
+                    Attach proof — screenshots / images / videos (optional)
+                  </label>
+                  <label className="flex flex-col items-center justify-center gap-1.5 border-2 border-dashed border-slate-200 dark:border-slate-700 rounded-xl py-4 px-3 cursor-pointer hover:border-rose-300 dark:hover:border-rose-700 hover:bg-rose-50/40 dark:hover:bg-rose-950/10 transition-all">
+                    <span className="text-xl">📎</span>
+                    <span className="text-[11px] font-bold text-slate-500 dark:text-slate-400">Click to upload images or videos</span>
+                    <span className="text-[9px] text-slate-400">JPG, PNG, MP4, MOV — max 10MB each</span>
+                    <input type="file" multiple accept="image/*,video/*" className="hidden" onChange={e => setCancelFiles(prev => [...prev, ...Array.from(e.target.files)])} />
+                  </label>
+                  {cancelFiles.length > 0 && (
+                    <div className="space-y-1.5">
+                      {cancelFiles.map((f, i) => (
+                        <div key={i} className="flex items-center justify-between bg-slate-50 dark:bg-slate-800 rounded-xl px-3 py-2 border border-slate-100 dark:border-slate-700">
+                          <div className="flex items-center gap-2 min-w-0">
+                            <span className="text-sm shrink-0">{f.type.startsWith('video') ? '🎥' : '🖼️'}</span>
+                            <span className="text-[10px] font-semibold text-slate-600 dark:text-slate-300 truncate">{f.name}</span>
+                            <span className="text-[9px] text-slate-400 shrink-0">{(f.size / 1024 / 1024).toFixed(1)}MB</span>
+                          </div>
+                          <button onClick={() => setCancelFiles(prev => prev.filter((_, idx) => idx !== i))} className="text-slate-400 hover:text-rose-500 ml-2 font-black text-xs shrink-0 transition-colors">✕</button>
                         </div>
-                        <button onClick={() => setCancelFiles(prev => prev.filter((_, idx) => idx !== i))} className="text-slate-400 hover:text-rose-500 ml-2 font-black text-xs shrink-0 transition-colors">✕</button>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
 
             {/* Footer Buttons */}
