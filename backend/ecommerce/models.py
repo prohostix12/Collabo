@@ -1,4 +1,5 @@
 from django.db import models
+from django.utils import timezone
 from accounts.models import User
 
 class Category(models.Model):
@@ -403,6 +404,19 @@ class StoreSettings(models.Model):
     )
 
     # Featured product IDs for homepage sections
+    show_deals_section = models.BooleanField(
+        default=True,
+        help_text='Show/hide the "Deals of the Day" section on the storefront homepage'
+    )
+    deals_timer_hours = models.PositiveIntegerField(
+        default=4,
+        help_text='Duration in hours for the "Deals of the Day" countdown timer (recurring)'
+    )
+    deals_cycle_anchor = models.DateTimeField(
+        default=timezone.now,
+        help_text='Reference start time the recurring deals countdown cycles are calculated from. '
+                   'Reset to now whenever deals_timer_hours changes so the new duration takes effect immediately.'
+    )
     deals_product_ids = models.JSONField(
         default=list,
         blank=True,

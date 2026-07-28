@@ -155,7 +155,7 @@ class StoreSettingsSerializer(serializers.ModelSerializer):
             'hero_badge_text', 'hero_headline', 'hero_subheadline',
             'hero_cta_primary', 'hero_cta_secondary',
             'category_images',
-            'deals_product_ids', 'trending_product_ids',
+            'show_deals_section', 'deals_timer_hours', 'deals_cycle_anchor', 'deals_product_ids', 'trending_product_ids',
             'trending_phones_title', 'trending_phones_subtitle', 'trending_phones_product_ids',
             'coupon_codes', 'testimonials',
             'footer_tagline', 'copyright_text',
@@ -165,7 +165,7 @@ class StoreSettingsSerializer(serializers.ModelSerializer):
             'shipping_charge', 'free_shipping_threshold', 'serviceable_pincodes',
             'updated_at'
         ]
-        read_only_fields = ['updated_at']
+        read_only_fields = ['updated_at', 'deals_cycle_anchor']
 
 
 class ProductInfluencerMediaSerializer(serializers.ModelSerializer):

@@ -554,14 +554,7 @@ export default function EcommerceMarketplace({ inlineMode = false, onBackToSelec
     }
   }, [isLoggedIn]);
 
-  const [dealTimeLeft, setDealTimeLeft] = useState(4 * 3600 + 18 * 60 + 52);
-
-  useEffect(() => {
-    const timer = setInterval(() => {
-      setDealTimeLeft((prev) => (prev > 0 ? prev - 1 : 0));
-    }, 1000);
-    return () => clearInterval(timer);
-  }, []);
+  const [dealTimeLeft, setDealTimeLeft] = useState(4 * 3600);
 
   const formatTime = (seconds) => {
     const h = Math.floor(seconds / 3600);
@@ -984,6 +977,27 @@ export default function EcommerceMarketplace({ inlineMode = false, onBackToSelec
     shipping_charge: 99,
     free_shipping_threshold: 1500,
   });
+
+  // Real, server-synced Deals of the Day countdown: recurring cycles of deals_timer_hours
+  // length, anchored to deals_cycle_anchor (set server-side). Recomputed from wall-clock
+  // time every tick so it survives refresh/backgrounding and matches every visitor.
+  useEffect(() => {
+    if (!storeSettings.deals_cycle_anchor) return;
+    const anchor = new Date(storeSettings.deals_cycle_anchor).getTime();
+    const cycleMs = (storeSettings.deals_timer_hours || 4) * 3600 * 1000;
+
+    const tick = () => {
+      const now = Date.now();
+      const cyclesPassed = Math.floor((now - anchor) / cycleMs);
+      const cycleEnd = anchor + (cyclesPassed + 1) * cycleMs;
+      setDealTimeLeft(Math.max(0, Math.round((cycleEnd - now) / 1000)));
+    };
+
+    tick();
+    const timer = setInterval(tick, 1000);
+    return () => clearInterval(timer);
+  }, [storeSettings.deals_cycle_anchor, storeSettings.deals_timer_hours]);
+
   // Store settings edit state
   const [editSettings, setEditSettings] = useState(null);
   const [settingsSaving, setSettingsSaving] = useState(false);
@@ -2514,6 +2528,7 @@ export default function EcommerceMarketplace({ inlineMode = false, onBackToSelec
             </div>
 
             {/* Flash Sale / Deals Section */}
+            {(storeSettings.show_deals_section ?? true) && (
             <div className="bg-white dark:bg-slate-900 border border-slate-200/60 dark:border-slate-850 p-6 sm:p-8 rounded-[40px] shadow-sm space-y-6">
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                 <div className="space-y-1">
@@ -2643,6 +2658,7 @@ export default function EcommerceMarketplace({ inlineMode = false, onBackToSelec
                 ))}
               </div>
             </div>
+            )}
 
               {/* Micro-Section: Trust Badges / Bank Offers */}
               <div className="w-full grid grid-cols-1 sm:grid-cols-3 gap-4 mb-2">
@@ -3207,19 +3223,21 @@ export default function EcommerceMarketplace({ inlineMode = false, onBackToSelec
                 </div>
 
                 {/* Brand */}
-                <div className="space-y-2">
-                  <h4 className="font-black text-[10px] text-slate-400 uppercase tracking-widest">Brand</h4>
-                  <select
-                    value={filterBrand}
-                    onChange={(e) => setFilterBrand(e.target.value)}
-                    className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl py-2 px-3 text-xs font-bold focus:outline-none focus:ring-1 focus:ring-orange-500 dark:text-white"
-                  >
-                    <option value="All">All Brands</option>
-                    {dynamicBrands.map((b, idx) => (
-                      <option key={idx} value={b}>{b}</option>
-                    ))}
-                  </select>
-                </div>
+                {dynamicBrands.length >= 3 && (
+                  <div className="space-y-2">
+                    <h4 className="font-black text-[10px] text-slate-400 uppercase tracking-widest">Brand</h4>
+                    <select
+                      value={filterBrand}
+                      onChange={(e) => setFilterBrand(e.target.value)}
+                      className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl py-2 px-3 text-xs font-bold focus:outline-none focus:ring-1 focus:ring-orange-500 dark:text-white"
+                    >
+                      <option value="All">All Brands</option>
+                      {dynamicBrands.map((b, idx) => (
+                        <option key={idx} value={b}>{b}</option>
+                      ))}
+                    </select>
+                  </div>
+                )}
 
                 {/* Price Range */}
                 <div className="space-y-3">
@@ -7085,6 +7103,27 @@ export default function EcommerceMarketplace({ inlineMode = false, onBackToSelec
                     <div className="flex items-center gap-2 border-b border-slate-100 dark:border-slate-800 pb-3">
                       <Percent className="w-4 h-4 text-orange-500" />
                       <h4 className="font-black text-xs uppercase tracking-wider dark:text-white">Deals of the Day (pick up to 10)</h4>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <span className="text-[11px] font-bold text-slate-600 dark:text-slate-300">Show this section on the storefront</span>
+                      <button
+                        type="button"
+                        onClick={() => setEditSettings(prev => ({ ...prev, show_deals_section: !(prev.show_deals_section ?? true) }))}
+                        className={`relative w-10 h-5 rounded-full transition-colors shrink-0 ${(editSettings.show_deals_section ?? true) ? 'bg-orange-500' : 'bg-slate-300 dark:bg-slate-700'}`}
+                      >
+                        <span className={`absolute top-0.5 left-0.5 w-4 h-4 bg-white rounded-full shadow transition-transform ${(editSettings.show_deals_section ?? true) ? 'translate-x-5' : 'translate-x-0'}`} />
+                      </button>
+                    </div>
+                    <div className="flex items-center justify-between gap-3">
+                      <span className="text-[11px] font-bold text-slate-600 dark:text-slate-300">Countdown timer duration (hours)</span>
+                      <input
+                        type="number"
+                        min={1}
+                        max={72}
+                        value={editSettings.deals_timer_hours ?? 4}
+                        onChange={e => setEditSettings(prev => ({ ...prev, deals_timer_hours: Math.max(1, Number(e.target.value) || 1) }))}
+                        className="w-20 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg px-2.5 py-1.5 text-xs font-semibold text-slate-800 dark:text-white outline-none focus:border-orange-400"
+                      />
                     </div>
                     <p className="text-[10px] text-slate-400 font-semibold">If empty, the first 10 products from your catalog are shown automatically.</p>
                     <div className="space-y-2 max-h-52 overflow-y-auto pr-1">
