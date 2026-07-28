@@ -333,6 +333,27 @@ const StoreContentEditor = () => {
 
         {/* Weekly Best Deals */}
         <Card icon={Sparkles} title="Weekly Best Deals (pick up to 10)">
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-semibold text-gray-600">Show this section on the storefront</span>
+            <button
+              type="button"
+              onClick={() => set('show_weekly_deals_section', !(settings.show_weekly_deals_section ?? true))}
+              className={`relative w-10 h-5 rounded-full transition-colors shrink-0 ${(settings.show_weekly_deals_section ?? true) ? 'bg-teal-500' : 'bg-gray-300'}`}
+            >
+              <span className={`absolute top-0.5 left-0.5 w-4 h-4 bg-white rounded-full shadow transition-transform ${(settings.show_weekly_deals_section ?? true) ? 'translate-x-5' : 'translate-x-0'}`} />
+            </button>
+          </div>
+          <div className="flex items-center justify-between gap-3">
+            <span className="text-xs font-semibold text-gray-600">Countdown timer duration (hours)</span>
+            <input
+              type="number"
+              min={1}
+              max={336}
+              value={settings.weekly_deals_timer_hours ?? 168}
+              onChange={e => set('weekly_deals_timer_hours', Math.max(1, Number(e.target.value) || 1))}
+              className="w-20 border border-gray-200 rounded-lg px-2.5 py-1.5 text-xs font-semibold text-gray-800 focus:outline-none focus:border-teal-400"
+            />
+          </div>
           <p className="text-xs text-gray-400">Select products to highlight in the dark forest Weekly Best Deals section.</p>
           <div className="space-y-2 max-h-56 overflow-y-auto pr-1">
             {products.map(p => {

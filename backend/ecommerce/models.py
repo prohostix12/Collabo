@@ -422,6 +422,24 @@ class StoreSettings(models.Model):
         blank=True,
         help_text='List of product IDs to show in Deals of the Day (up to 4)'
     )
+    show_weekly_deals_section = models.BooleanField(
+        default=True,
+        help_text='Show/hide the "Weekly Best Deals" section on the storefront homepage'
+    )
+    weekly_deals_timer_hours = models.PositiveIntegerField(
+        default=168,
+        help_text='Duration in hours for the "Weekly Best Deals" countdown timer (recurring)'
+    )
+    weekly_deals_cycle_anchor = models.DateTimeField(
+        default=timezone.now,
+        help_text='Reference start time the recurring Weekly Best Deals countdown cycles are calculated from. '
+                   'Reset to now whenever weekly_deals_timer_hours changes so the new duration takes effect immediately.'
+    )
+    weekly_deals_product_ids = models.JSONField(
+        default=list,
+        blank=True,
+        help_text='List of product IDs to show in Weekly Best Deals (up to 10)'
+    )
     trending_product_ids = models.JSONField(
         default=list,
         blank=True,

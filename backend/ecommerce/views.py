@@ -1507,9 +1507,15 @@ class StoreSettingsView(views.APIView):
         settings_obj = StoreSettings.get_settings()
         serializer = StoreSettingsSerializer(settings_obj, data=request.data, partial=True)
         if serializer.is_valid():
-            new_hours = serializer.validated_data.get('deals_timer_hours')
-            reset_anchor = new_hours is not None and new_hours != settings_obj.deals_timer_hours
-            serializer.save(deals_cycle_anchor=timezone.now()) if reset_anchor else serializer.save()
+            anchor_resets = {}
+            for hours_field, anchor_field in [
+                ('deals_timer_hours', 'deals_cycle_anchor'),
+                ('weekly_deals_timer_hours', 'weekly_deals_cycle_anchor'),
+            ]:
+                new_hours = serializer.validated_data.get(hours_field)
+                if new_hours is not None and new_hours != getattr(settings_obj, hours_field):
+                    anchor_resets[anchor_field] = timezone.now()
+            serializer.save(**anchor_resets)
             return Response(serializer.data)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 

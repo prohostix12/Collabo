@@ -12,14 +12,28 @@ const WeeklyBestDealsSection = ({
   storeSettings = {}
 }) => {
   const [activeFilter, setActiveFilter] = useState('All');
-  const [timeLeft, setTimeLeft] = useState(85420); // seconds for timer countdown
+  const [timeLeft, setTimeLeft] = useState(0);
 
+  // Real, server-synced countdown: recurring cycles of weekly_deals_timer_hours
+  // length, anchored to weekly_deals_cycle_anchor (set server-side). Recomputed
+  // from wall-clock time every tick so it survives refresh/backgrounding and
+  // matches every visitor, mirroring the Deals of the Day countdown.
   useEffect(() => {
-    const timer = setInterval(() => {
-      setTimeLeft((prev) => (prev > 0 ? prev - 1 : 86400));
-    }, 1000);
+    if (!storeSettings.weekly_deals_cycle_anchor) return;
+    const anchor = new Date(storeSettings.weekly_deals_cycle_anchor).getTime();
+    const cycleMs = (storeSettings.weekly_deals_timer_hours || 168) * 3600 * 1000;
+
+    const tick = () => {
+      const now = Date.now();
+      const cyclesPassed = Math.floor((now - anchor) / cycleMs);
+      const cycleEnd = anchor + (cyclesPassed + 1) * cycleMs;
+      setTimeLeft(Math.max(0, Math.round((cycleEnd - now) / 1000)));
+    };
+
+    tick();
+    const timer = setInterval(tick, 1000);
     return () => clearInterval(timer);
-  }, []);
+  }, [storeSettings.weekly_deals_cycle_anchor, storeSettings.weekly_deals_timer_hours]);
 
   const formatCountdown = (totalSec) => {
     const days = Math.floor(totalSec / 86400);

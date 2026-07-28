@@ -2965,16 +2965,18 @@ export default function EcommerceMarketplace({ inlineMode = false, onBackToSelec
               />
 
               {/* Weekly Best Deals Section */}
-              <WeeklyBestDealsSection
-                productsList={productsList}
-                addToCart={addToCart}
-                toggleWishlist={toggleWishlist}
-                wishlist={wishlist}
-                setSelectedProduct={setSelectedProduct}
-                setCurrentView={setCurrentView}
-                setFilterCategory={setFilterCategory}
-                storeSettings={storeSettings}
-              />
+              {(storeSettings.show_weekly_deals_section ?? true) && (
+                <WeeklyBestDealsSection
+                  productsList={productsList}
+                  addToCart={addToCart}
+                  toggleWishlist={toggleWishlist}
+                  wishlist={wishlist}
+                  setSelectedProduct={setSelectedProduct}
+                  setCurrentView={setCurrentView}
+                  setFilterCategory={setFilterCategory}
+                  storeSettings={storeSettings}
+                />
+              )}
             </div>
 
             {/* Shop By Category Grid + Side Ad */}
@@ -7161,6 +7163,27 @@ export default function EcommerceMarketplace({ inlineMode = false, onBackToSelec
                     <div className="flex items-center gap-2 border-b border-slate-100 dark:border-slate-800 pb-3">
                       <Sparkles className="w-4 h-4 text-teal-500" />
                       <h4 className="font-black text-xs uppercase tracking-wider dark:text-white">Weekly Best Deals Section (pick up to 10)</h4>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <span className="text-[11px] font-bold text-slate-600 dark:text-slate-300">Show this section on the storefront</span>
+                      <button
+                        type="button"
+                        onClick={() => setEditSettings(prev => ({ ...prev, show_weekly_deals_section: !(prev.show_weekly_deals_section ?? true) }))}
+                        className={`relative w-10 h-5 rounded-full transition-colors shrink-0 ${(editSettings.show_weekly_deals_section ?? true) ? 'bg-teal-500' : 'bg-slate-300 dark:bg-slate-700'}`}
+                      >
+                        <span className={`absolute top-0.5 left-0.5 w-4 h-4 bg-white rounded-full shadow transition-transform ${(editSettings.show_weekly_deals_section ?? true) ? 'translate-x-5' : 'translate-x-0'}`} />
+                      </button>
+                    </div>
+                    <div className="flex items-center justify-between gap-3">
+                      <span className="text-[11px] font-bold text-slate-600 dark:text-slate-300">Countdown timer duration (hours)</span>
+                      <input
+                        type="number"
+                        min={1}
+                        max={336}
+                        value={editSettings.weekly_deals_timer_hours ?? 168}
+                        onChange={e => setEditSettings(prev => ({ ...prev, weekly_deals_timer_hours: Math.max(1, Number(e.target.value) || 1) }))}
+                        className="w-20 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg px-2.5 py-1.5 text-xs font-semibold text-slate-800 dark:text-white outline-none focus:border-teal-400"
+                      />
                     </div>
                     <p className="text-[10px] text-slate-400 font-semibold">Select products to highlight in the Weekly Best Deals forest banner.</p>
                     <div className="space-y-2 max-h-52 overflow-y-auto pr-1">
