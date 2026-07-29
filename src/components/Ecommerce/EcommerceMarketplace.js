@@ -103,7 +103,7 @@ const ShopByCategoryAdCarousel = ({ setFilterCategory, setCurrentView, categoryP
                 onClick={() => { if (product) { setSelectedProduct(product); setCurrentView('details'); } else { setFilterCategory(ad.category); setCurrentView('listing'); } }}
                 className="bg-white rounded-lg p-1 flex items-center justify-center shadow-xl hover:shadow-2xl transition-shadow hover:scale-105 transform duration-200 cursor-pointer border-2 border-white/80"
               >
-                <img src={img} alt="" className="w-full h-[110px] object-cover rounded-md" />
+                <img loading="lazy" src={img} alt="" className="w-full h-[110px] object-cover rounded-md" />
               </div>
             );
           })}
@@ -146,7 +146,7 @@ const CollaboAdBanner = ({ handleInviteFriendsClick }) => {
           </button>
         </div>
         <div className="flex-1 hidden md:flex items-center justify-end pr-4 md:pr-8 relative">
-          <img src="/collabo-logo.png" alt="Collabo" className="h-32 lg:h-48 object-contain drop-shadow-2xl transform group-hover:scale-110 transition-all duration-700 scale-[1.5] origin-right" />
+          <img loading="lazy" src="/collabo-logo.png" alt="Collabo" className="h-32 lg:h-48 object-contain drop-shadow-2xl transform group-hover:scale-110 transition-all duration-700 scale-[1.5] origin-right" />
         </div>
       </div>
     </div>
@@ -171,7 +171,7 @@ const CollabEarnBanner = ({ handleInviteFriendsClick }) => {
       <div className="absolute inset-y-0 right-0 w-2/5 hidden lg:block" style={{background:'linear-gradient(to right,transparent 0%,rgba(0,40,70,0.15) 100%)'}} />
 
       {/* ── MODEL IMAGE ── positioned right side, bottom-anchored */}
-      <img
+      <img loading="lazy"
         src="/affiliate-girl.jpg"
         alt="Collabo Partner"
         className="absolute bottom-0 right-0 hidden lg:block object-cover select-none pointer-events-none"
@@ -186,7 +186,7 @@ const CollabEarnBanner = ({ handleInviteFriendsClick }) => {
 
           {/* Logo + urgency badge */}
           <div className="flex items-center gap-3 flex-wrap">
-            <img src="/collabo-logo.png" alt="Collabo" className="h-9 object-contain drop-shadow" style={{filter:'brightness(0) invert(1)'}} />
+            <img loading="lazy" src="/collabo-logo.png" alt="Collabo" className="h-9 object-contain drop-shadow" style={{filter:'brightness(0) invert(1)'}} />
             <div className="w-px h-4" style={{background:'rgba(255,255,255,0.25)'}} />
             <span className="text-[11px] font-black uppercase tracking-widest px-3 py-1 rounded-full animate-pulse"
               style={{background:'linear-gradient(90deg,#ff6b35,#f7931e)',color:'#fff',boxShadow:'0 2px 12px rgba(255,107,53,0.5)'}}>
@@ -303,7 +303,7 @@ const KoreKartSection = ({ allProducts, setSelectedProduct, setCurrentView, setF
                 onClick={() => { setSelectedProduct(product); setCurrentView('details'); }}
                 className="bg-white rounded-2xl p-2 flex items-center justify-center shadow-lg hover:shadow-xl transition-all hover:scale-105 transform duration-350 cursor-pointer border border-white/60 aspect-square animate-in fade-in slide-in-from-bottom-2"
               >
-                <img src={product.image} alt={product.name} className="max-h-full max-w-full object-contain rounded-lg p-1" />
+                <img loading="lazy" src={product.image} alt={product.name} className="max-h-full max-w-full object-contain rounded-lg p-1" />
               </div>
             ))}
           </div>
@@ -326,7 +326,7 @@ const KoreKartSection = ({ allProducts, setSelectedProduct, setCurrentView, setF
                 className="flex flex-col items-center group cursor-pointer"
               >
                 <div className="w-[120px] h-[120px] sm:w-[135px] sm:h-[135px] rounded-2xl overflow-hidden bg-white dark:bg-slate-800 shadow-sm group-hover:shadow-lg transition-all group-hover:-translate-y-1 border border-slate-200 dark:border-slate-700 p-2.5 flex items-center justify-center">
-                  <img src={product.image} alt={product.name} className="max-h-full max-w-full object-contain group-hover:scale-110 transition-transform duration-300" />
+                  <img loading="lazy" src={product.image} alt={product.name} className="max-h-full max-w-full object-contain group-hover:scale-110 transition-transform duration-300" />
                 </div>
                 <span className="mt-2 text-xs font-bold text-slate-700 dark:text-slate-300 group-hover:text-purple-600 transition-colors text-center leading-tight line-clamp-1 w-28">{product.name}</span>
                 <span className="text-xs font-black text-purple-600 mt-0.5">₹{product.discount_price || product.price}</span>
@@ -364,7 +364,7 @@ const JewellerySpotlightBanner = ({ allProducts, setSelectedProduct, setCurrentV
   return (
     <div className="w-screen relative left-1/2 right-1/2 -ml-[50vw] -mr-[50vw] rounded-none overflow-hidden shadow-lg mt-12 mb-0 bg-gradient-to-br from-slate-950 via-slate-900 to-amber-900/60 py-12 sm:py-16 lg:py-20 px-4 sm:px-8 lg:px-12 flex items-center min-h-[500px] lg:min-h-[560px]">
       {bgImage && (
-        <img key={bgImage} src={bgImage} alt="" className="absolute inset-0 w-full h-full object-cover opacity-20 blur-[1px] transition-opacity duration-1000" />
+        <img loading="lazy" key={bgImage} src={bgImage} alt="" className="absolute inset-0 w-full h-full object-cover opacity-20 blur-[1px] transition-opacity duration-1000" />
       )}
       <div className="absolute -top-10 -left-10 w-40 h-40 bg-amber-400/20 rounded-full blur-2xl pointer-events-none" />
       <div className="absolute -bottom-10 -right-10 w-32 h-32 bg-amber-600/10 rounded-full blur-2xl pointer-events-none" />
@@ -394,7 +394,7 @@ const JewellerySpotlightBanner = ({ allProducts, setSelectedProduct, setCurrentV
                 className="bg-white/95 dark:bg-slate-800/95 backdrop-blur-md rounded-xl p-3 flex flex-col items-center text-center group hover:shadow-xl transition-all duration-500 hover:-translate-y-1 cursor-pointer border border-white/20 dark:border-slate-700/50"
               >
                 <div className="w-full aspect-square rounded-lg overflow-hidden bg-amber-50/50 dark:bg-slate-700/50 mb-2">
-                  <img src={product.image} alt={product.name} className="w-full h-full object-contain group-hover:scale-110 transition-transform duration-300 p-1" />
+                  <img loading="lazy" src={product.image} alt={product.name} className="w-full h-full object-contain group-hover:scale-110 transition-transform duration-300 p-1" />
                 </div>
                 <p className="text-[11px] sm:text-xs font-bold text-slate-800 dark:text-white line-clamp-2 leading-tight mb-1">{product.name}</p>
                 <div className="flex items-center gap-1.5 mt-auto">
@@ -406,6 +406,39 @@ const JewellerySpotlightBanner = ({ allProducts, setSelectedProduct, setCurrentV
           </div>
         </div>
       </div>
+    </div>
+  );
+};
+
+// Isolated so its 1-second tick only re-renders this small display, not the
+// entire (huge) EcommerceMarketplace tree.
+const DealsCountdownTimer = ({ anchorIso, timerHours }) => {
+  const [timeLeft, setTimeLeft] = useState(0);
+
+  useEffect(() => {
+    if (!anchorIso) return;
+    const anchor = new Date(anchorIso).getTime();
+    const cycleMs = (timerHours || 4) * 3600 * 1000;
+
+    const tick = () => {
+      const now = Date.now();
+      const cyclesPassed = Math.floor((now - anchor) / cycleMs);
+      const cycleEnd = anchor + (cyclesPassed + 1) * cycleMs;
+      setTimeLeft(Math.max(0, Math.round((cycleEnd - now) / 1000)));
+    };
+
+    tick();
+    const timer = setInterval(tick, 1000);
+    return () => clearInterval(timer);
+  }, [anchorIso, timerHours]);
+
+  const h = Math.floor(timeLeft / 3600).toString().padStart(2, '0');
+  const m = Math.floor((timeLeft % 3600) / 60).toString().padStart(2, '0');
+  const s = (timeLeft % 60).toString().padStart(2, '0');
+
+  return (
+    <div className="flex items-center gap-1 font-mono text-sm font-black text-orange-500 bg-[#FFFBF5] dark:bg-slate-800 px-3 py-1 rounded-xl border border-orange-200/40">
+      <span>{h}</span>:<span>{m}</span>:<span>{s}</span>
     </div>
   );
 };
@@ -554,18 +587,6 @@ export default function EcommerceMarketplace({ inlineMode = false, onBackToSelec
     }
   }, [isLoggedIn]);
 
-  const [dealTimeLeft, setDealTimeLeft] = useState(4 * 3600);
-
-  const formatTime = (seconds) => {
-    const h = Math.floor(seconds / 3600);
-    const m = Math.floor((seconds % 3600) / 60);
-    const s = seconds % 60;
-    return {
-      h: h.toString().padStart(2, '0'),
-      m: m.toString().padStart(2, '0'),
-      s: s.toString().padStart(2, '0')
-    };
-  };
   const [wishlist, setWishlist] = useState(() => {
     try { return JSON.parse(localStorage.getItem('collabo_wishlist') || '[]'); } catch { return []; }
   });
@@ -977,26 +998,6 @@ export default function EcommerceMarketplace({ inlineMode = false, onBackToSelec
     shipping_charge: 99,
     free_shipping_threshold: 1500,
   });
-
-  // Real, server-synced Deals of the Day countdown: recurring cycles of deals_timer_hours
-  // length, anchored to deals_cycle_anchor (set server-side). Recomputed from wall-clock
-  // time every tick so it survives refresh/backgrounding and matches every visitor.
-  useEffect(() => {
-    if (!storeSettings.deals_cycle_anchor) return;
-    const anchor = new Date(storeSettings.deals_cycle_anchor).getTime();
-    const cycleMs = (storeSettings.deals_timer_hours || 4) * 3600 * 1000;
-
-    const tick = () => {
-      const now = Date.now();
-      const cyclesPassed = Math.floor((now - anchor) / cycleMs);
-      const cycleEnd = anchor + (cyclesPassed + 1) * cycleMs;
-      setDealTimeLeft(Math.max(0, Math.round((cycleEnd - now) / 1000)));
-    };
-
-    tick();
-    const timer = setInterval(tick, 1000);
-    return () => clearInterval(timer);
-  }, [storeSettings.deals_cycle_anchor, storeSettings.deals_timer_hours]);
 
   // Store settings edit state
   const [editSettings, setEditSettings] = useState(null);
@@ -1950,7 +1951,7 @@ export default function EcommerceMarketplace({ inlineMode = false, onBackToSelec
                     onClick={() => setCurrentView('home')}
                     className="flex items-center group transition-all hover:opacity-90"
                   >
-                    <img src="/collabo-logo.png" alt="Collabo" className="h-8 sm:h-12 object-contain scale-[2.0] sm:scale-[2.2] origin-left transform" />
+                    <img loading="lazy" src="/collabo-logo.png" alt="Collabo" className="h-8 sm:h-12 object-contain scale-[2.0] sm:scale-[2.2] origin-left transform" />
                   </button>
                 </div>
 
@@ -2208,7 +2209,7 @@ export default function EcommerceMarketplace({ inlineMode = false, onBackToSelec
                           <div className="w-10 h-10 flex items-center justify-center transition-transform group-hover:scale-105 relative">
                             <div className="absolute w-5 h-5 bg-orange-400/90 dark:bg-orange-500/90 rounded-[6px] transform rotate-12 top-1.5 right-1.5 z-0"></div>
                             {cat.image ? (
-                              <img src={cat.image} alt={cat.name} className="w-full h-full object-contain relative z-10" />
+                              <img loading="lazy" src={cat.image} alt={cat.name} className="w-full h-full object-contain relative z-10" />
                             ) : hasSpecificIcon ? (
                               <Icon className="w-8 h-8 text-slate-900 dark:text-slate-100 relative z-10" strokeWidth={1.25} />
                             ) : cat.icon ? (
@@ -2305,7 +2306,7 @@ export default function EcommerceMarketplace({ inlineMode = false, onBackToSelec
                           {/* Right side image */}
                           <div className="flex items-center justify-end pr-3 sm:pr-16 relative w-32 sm:w-auto sm:flex-1 h-full z-0">
                              {finalImageUrl && (
-                               <img 
+                               <img loading="lazy" 
                                  src={finalImageUrl} 
                                  alt="Promo" 
                                  className="max-h-[95%] sm:h-[120%] sm:absolute sm:right-8 sm:top-1/2 sm:-translate-y-1/2 object-contain drop-shadow-2xl hover:scale-105 transition-transform duration-700" 
@@ -2335,7 +2336,7 @@ export default function EcommerceMarketplace({ inlineMode = false, onBackToSelec
                           </div>
 
                           <div className="flex items-center justify-end pr-3 sm:pr-16 relative w-32 sm:w-auto sm:flex-1 h-full z-0">
-                             <img src="/ecommerce_products_collage.png" alt="Tech" className="max-h-[95%] sm:h-[130%] sm:absolute sm:right-8 sm:top-1/2 sm:-translate-y-1/2 object-contain drop-shadow-2xl hover:scale-105 transition-transform duration-700" />
+                             <img loading="lazy" src="/ecommerce_products_collage.png" alt="Tech" className="max-h-[95%] sm:h-[130%] sm:absolute sm:right-8 sm:top-1/2 sm:-translate-y-1/2 object-contain drop-shadow-2xl hover:scale-105 transition-transform duration-700" />
                           </div>
                         </div>
                     </div>
@@ -2377,7 +2378,7 @@ export default function EcommerceMarketplace({ inlineMode = false, onBackToSelec
 
                       {/* Right side image */}
                       <div className="flex items-center justify-end pr-3 sm:pr-16 relative w-32 sm:w-auto sm:flex-1 h-full z-0">
-                        <img
+                        <img loading="lazy"
                           src="/images/refer-earn-girl.svg"
                           alt="Refer and Earn"
                           className="max-h-[95%] sm:h-[130%] sm:absolute sm:right-8 sm:top-1/2 sm:-translate-y-1/2 object-contain drop-shadow-2xl hover:scale-105 transition-transform duration-700"
@@ -2424,7 +2425,7 @@ export default function EcommerceMarketplace({ inlineMode = false, onBackToSelec
                           </div>
 
                           {linkedProduct && linkedProduct.image ? (
-                             <img src={linkedProduct.image} className="w-full h-full max-w-[110px] sm:max-w-[160px] object-contain drop-shadow-xl group-hover:scale-105 transition-transform duration-500 relative z-10" />
+                             <img loading="lazy" src={linkedProduct.image} className="w-full h-full max-w-[110px] sm:max-w-[160px] object-contain drop-shadow-xl group-hover:scale-105 transition-transform duration-500 relative z-10" />
                           ) : (
                              <div className="text-orange-300 dark:text-orange-900/50 group-hover:scale-105 transition-transform relative z-10">
                                <Zap className="w-16 h-16 sm:w-24 sm:h-24" fill="currentColor" />
@@ -2487,7 +2488,7 @@ export default function EcommerceMarketplace({ inlineMode = false, onBackToSelec
                         {/* Background Image */}
                         <div className="absolute inset-0 bg-slate-100 dark:bg-slate-800">
                           {imgSrc ? (
-                            <img 
+                            <img loading="lazy" 
                               src={imgSrc} 
                               alt={title} 
                               className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700 ease-out" 
@@ -2541,9 +2542,7 @@ export default function EcommerceMarketplace({ inlineMode = false, onBackToSelec
                 {/* Custom Countdown Timer */}
                 <div className="flex items-center gap-2 text-xs font-bold text-slate-500">
                   <span>EXPIRING IN</span>
-                  <div className="flex items-center gap-1 font-mono text-sm font-black text-orange-500 bg-[#FFFBF5] dark:bg-slate-800 px-3 py-1 rounded-xl border border-orange-200/40">
-                    <span>{formatTime(dealTimeLeft).h}</span>:<span>{formatTime(dealTimeLeft).m}</span>:<span>{formatTime(dealTimeLeft).s}</span>
-                  </div>
+                  <DealsCountdownTimer anchorIso={storeSettings.deals_cycle_anchor} timerHours={storeSettings.deals_timer_hours} />
                 </div>
               </div>
 
@@ -2581,7 +2580,7 @@ export default function EcommerceMarketplace({ inlineMode = false, onBackToSelec
                       onClick={() => { setSelectedProduct(prod); setCurrentView('details'); }}
                       className="w-full h-36 sm:h-44 rounded-xl overflow-hidden bg-slate-50 dark:bg-slate-800/70 cursor-pointer mb-2.5 p-2 flex items-center justify-center border border-slate-100 dark:border-slate-800"
                     >
-                      <img src={prod.image} alt={prod.name} className="max-h-full max-w-full object-contain group-hover:scale-105 transition-transform duration-300" />
+                      <img loading="lazy" src={prod.image} alt={prod.name} className="max-h-full max-w-full object-contain group-hover:scale-105 transition-transform duration-300" />
                     </div>
 
                     {/* Info */}
@@ -2673,7 +2672,7 @@ export default function EcommerceMarketplace({ inlineMode = false, onBackToSelec
                     <div className="text-3xl sm:text-4xl flex-shrink-0 drop-shadow-sm z-10 relative group-hover:scale-110 transition-transform">🎁</div>
                     <div className="z-10 relative flex flex-col justify-center">
                       <div className="flex items-center gap-1 mb-1">
-                        <img src="/collabo-logo.png" alt="Collabo" className="h-7 sm:h-8 object-contain scale-[1.8] origin-left" />
+                        <img loading="lazy" src="/collabo-logo.png" alt="Collabo" className="h-7 sm:h-8 object-contain scale-[1.8] origin-left" />
                       </div>
                       <p className="text-sm font-black text-slate-900 dark:text-white leading-tight mb-0.5">Refer & Earn</p>
                       <p className="text-xs font-semibold text-slate-600 dark:text-slate-400 line-clamp-1">Invite Friends, Get Rewards</p>
@@ -2684,7 +2683,7 @@ export default function EcommerceMarketplace({ inlineMode = false, onBackToSelec
                     <div className="text-3xl sm:text-4xl flex-shrink-0 drop-shadow-sm z-10 relative group-hover:scale-110 transition-transform">🚚</div>
                     <div className="z-10 relative flex flex-col justify-center">
                       <div className="flex items-center gap-1 mb-1">
-                        <img src="/collabo-logo.png" alt="Collabo" className="h-7 sm:h-8 object-contain scale-[1.8] origin-left" />
+                        <img loading="lazy" src="/collabo-logo.png" alt="Collabo" className="h-7 sm:h-8 object-contain scale-[1.8] origin-left" />
                       </div>
                       <p className="text-sm font-black text-slate-900 dark:text-white leading-tight mb-0.5">Free Fast Delivery</p>
                       <p className="text-xs font-semibold text-slate-600 dark:text-slate-400 line-clamp-1">On all orders over ₹499</p>
@@ -2695,7 +2694,7 @@ export default function EcommerceMarketplace({ inlineMode = false, onBackToSelec
                     <div className="text-3xl sm:text-4xl flex-shrink-0 drop-shadow-sm z-10 relative group-hover:scale-110 transition-transform">🛡️</div>
                     <div className="z-10 relative flex flex-col justify-center">
                       <div className="flex items-center gap-1 mb-1">
-                        <img src="/collabo-logo.png" alt="Collabo" className="h-7 sm:h-8 object-contain scale-[1.8] origin-left" />
+                        <img loading="lazy" src="/collabo-logo.png" alt="Collabo" className="h-7 sm:h-8 object-contain scale-[1.8] origin-left" />
                       </div>
                       <p className="text-sm font-black text-slate-900 dark:text-white leading-tight mb-0.5">Secure Payments</p>
                       <p className="text-xs font-semibold text-slate-600 dark:text-slate-400 line-clamp-1">Quick Withdrawals, Zero Hassle</p>
@@ -2741,7 +2740,7 @@ export default function EcommerceMarketplace({ inlineMode = false, onBackToSelec
                       onClick={() => { setSelectedProduct(prod); setCurrentView('details'); }}
                       className="w-full aspect-square rounded-2xl overflow-hidden bg-slate-50 dark:bg-slate-800 cursor-pointer mb-4"
                     >
-                      <img src={prod.image} alt={prod.name} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
+                      <img loading="lazy" src={prod.image} alt={prod.name} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
                     </div>
 
                     {/* Info */}
@@ -2857,7 +2856,7 @@ export default function EcommerceMarketplace({ inlineMode = false, onBackToSelec
 
                           {/* Image */}
                           <div className="aspect-square rounded-xl overflow-hidden bg-slate-50 dark:bg-slate-800 mb-3">
-                            <img
+                            <img loading="lazy"
                               src={prod.image}
                               alt={prod.name}
                               className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
@@ -2932,7 +2931,7 @@ export default function EcommerceMarketplace({ inlineMode = false, onBackToSelec
                             className="bg-white rounded-xl p-3 flex flex-col items-center text-center group hover:shadow-lg transition-all hover:-translate-y-1 cursor-pointer"
                           >
                             <div className="w-full aspect-square rounded-lg overflow-hidden bg-pink-50 mb-2">
-                              <img src={product.image} alt={product.name} className="w-full h-full object-contain group-hover:scale-110 transition-transform duration-300 p-1" />
+                              <img loading="lazy" src={product.image} alt={product.name} className="w-full h-full object-contain group-hover:scale-110 transition-transform duration-300 p-1" />
                             </div>
                             <p className="text-[11px] sm:text-xs font-bold text-slate-800 line-clamp-2 leading-tight mb-1">{product.name}</p>
                             <div className="flex items-center gap-1.5">
@@ -3008,7 +3007,7 @@ export default function EcommerceMarketplace({ inlineMode = false, onBackToSelec
                               className="flex flex-col items-center group cursor-pointer"
                             >
                               <div className="w-[120px] h-[120px] sm:w-[135px] sm:h-[135px] rounded-2xl overflow-hidden bg-slate-100 dark:bg-slate-800 shadow-sm group-hover:shadow-lg transition-all group-hover:-translate-y-1 border border-slate-200 dark:border-slate-700">
-                                <img src={coverImg} alt={cat.name} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-300" />
+                                <img loading="lazy" src={coverImg} alt={cat.name} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-300" />
                               </div>
                               <span className="mt-2 text-xs sm:text-sm font-bold text-slate-700 dark:text-slate-300 group-hover:text-orange-600 transition-colors text-center leading-tight">{cat.name}</span>
                             </button>
@@ -3137,7 +3136,7 @@ export default function EcommerceMarketplace({ inlineMode = false, onBackToSelec
                     >
                       {/* Taller Image */}
                       <div className="w-full aspect-[4/5] bg-slate-50 dark:bg-slate-800 relative">
-                        <img src={prod.image} alt={prod.name} className="w-full h-full object-cover hover:scale-105 transition-transform duration-500" />
+                        <img loading="lazy" src={prod.image} alt={prod.name} className="w-full h-full object-cover hover:scale-105 transition-transform duration-500" />
                         <button 
                           onClick={(e) => { e.stopPropagation(); toggleWishlist(prod); }}
                           className="absolute top-1.5 right-1.5 p-1.5 bg-white/90 dark:bg-slate-800/90 backdrop-blur-sm rounded-full text-slate-400 shadow-sm"
@@ -3443,7 +3442,7 @@ export default function EcommerceMarketplace({ inlineMode = false, onBackToSelec
                         onClick={() => { setSelectedProduct(prod); setCurrentView('details'); }}
                         className="w-full aspect-square rounded-2xl overflow-hidden bg-slate-50 dark:bg-slate-800 cursor-pointer mb-4"
                       >
-                        <img src={prod.image} alt={prod.name} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
+                        <img loading="lazy" src={prod.image} alt={prod.name} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
                       </div>
 
                       {/* Details */}
@@ -3564,7 +3563,7 @@ export default function EcommerceMarketplace({ inlineMode = false, onBackToSelec
                       {selectedProduct.images.map((img, idx) => (
                         <button key={idx} onClick={() => setActiveDetailImage(img)}
                           className={`shrink-0 w-16 h-16 bg-white dark:bg-slate-900 border rounded-2xl p-1 overflow-hidden transition-all ${activeDetailImage === img ? 'border-orange-500 scale-105 shadow-sm' : 'border-slate-200 dark:border-slate-800'}`}>
-                          <img src={img} className="w-full h-full object-cover rounded-xl" alt="thumb" />
+                          <img loading="lazy" src={img} className="w-full h-full object-cover rounded-xl" alt="thumb" />
                         </button>
                       ))}
                     </div>
@@ -3581,7 +3580,7 @@ export default function EcommerceMarketplace({ inlineMode = false, onBackToSelec
                     <button onClick={() => handleReferProduct(selectedProduct)} disabled={referLoading} className="absolute bottom-4 right-4 z-10 flex items-center gap-1.5 bg-violet-600 hover:bg-violet-700 disabled:opacity-50 text-white text-xs font-black px-4 py-2 rounded-full shadow-sm hover:shadow-md transition-all" title="Refer & Earn">
                       <Gift className="w-3.5 h-3.5" /> Refer
                     </button>
-                    <img src={activeDetailImage} alt={selectedProduct.name} className="max-h-full object-cover rounded-2xl" />
+                    <img loading="lazy" src={activeDetailImage} alt={selectedProduct.name} className="max-h-full object-cover rounded-2xl" />
                   </div>
                 </div>
                 {selectedProduct.images && selectedProduct.images.length > 1 && (
@@ -3592,7 +3591,7 @@ export default function EcommerceMarketplace({ inlineMode = false, onBackToSelec
                         onClick={() => setLightboxImage(img)}
                         className="bg-white dark:bg-slate-900 border border-slate-200/50 dark:border-slate-800/50 rounded-2xl overflow-hidden aspect-square flex items-center justify-center p-4 cursor-pointer hover:border-orange-400 hover:shadow-md transition-all group"
                       >
-                        <img src={img} alt={`${selectedProduct.name} ${idx + 1}`} className="max-h-full max-w-full object-contain group-hover:scale-105 transition-transform duration-300" />
+                        <img loading="lazy" src={img} alt={`${selectedProduct.name} ${idx + 1}`} className="max-h-full max-w-full object-contain group-hover:scale-105 transition-transform duration-300" />
                       </div>
                     ))}
                   </div>
@@ -3619,7 +3618,7 @@ export default function EcommerceMarketplace({ inlineMode = false, onBackToSelec
                     
                     <div className="w-16 h-16 bg-white dark:bg-slate-900 rounded-xl overflow-hidden shrink-0 border border-slate-200 dark:border-slate-700 shadow-sm relative">
                       {storeSettings.product_ads.map((ad, idx) => (
-                        <img 
+                        <img loading="lazy" 
                           key={ad.id} 
                           src={ad.image} 
                           alt="Ad" 
@@ -3998,7 +3997,7 @@ export default function EcommerceMarketplace({ inlineMode = false, onBackToSelec
                             </div>
                             {rev.image && (
                               <div className="pl-9">
-                                <img src={rev.image} alt="Review" className="h-20 w-20 rounded-lg object-cover border border-slate-200 dark:border-slate-700 cursor-pointer hover:opacity-80 transition-opacity" onClick={() => setLightboxImage(rev.image)} />
+                                <img loading="lazy" src={rev.image} alt="Review" className="h-20 w-20 rounded-lg object-cover border border-slate-200 dark:border-slate-700 cursor-pointer hover:opacity-80 transition-opacity" onClick={() => setLightboxImage(rev.image)} />
                               </div>
                             )}
                             <div className="flex items-center gap-2 pl-9">
@@ -4038,7 +4037,7 @@ export default function EcommerceMarketplace({ inlineMode = false, onBackToSelec
                                 <ShoppingBag className="w-4 h-4" />{reviewImagePreview ? 'Change Photo' : 'Add Photo'}
                                 <input type="file" accept="image/*" className="hidden" onChange={e => { const f = e.target.files[0]; if (!f) return; if (f.size > 5*1024*1024) { showToast('Max 5MB'); return; } const r = new FileReader(); r.onloadend = () => { setNewCustomerReviewImage(r.result); setReviewImagePreview(r.result); }; r.readAsDataURL(f); }} />
                               </label>
-                              {reviewImagePreview && <div className="relative"><img src={reviewImagePreview} className="w-14 h-14 rounded-lg object-cover border border-slate-200" alt="preview" /><button type="button" onClick={() => { setNewCustomerReviewImage(''); setReviewImagePreview(''); }} className="absolute -top-1.5 -right-1.5 w-5 h-5 bg-red-500 text-white rounded-full flex items-center justify-center shadow-sm"><X className="w-3 h-3" /></button></div>}
+                              {reviewImagePreview && <div className="relative"><img loading="lazy" src={reviewImagePreview} className="w-14 h-14 rounded-lg object-cover border border-slate-200" alt="preview" /><button type="button" onClick={() => { setNewCustomerReviewImage(''); setReviewImagePreview(''); }} className="absolute -top-1.5 -right-1.5 w-5 h-5 bg-red-500 text-white rounded-full flex items-center justify-center shadow-sm"><X className="w-3 h-3" /></button></div>}
                             </div>
                             <button type="submit" disabled={!newCustomerReviewComment.trim()} className="bg-[#ff9f00] hover:bg-[#ff9f00]/90 text-white font-bold text-sm uppercase tracking-wide px-8 py-3 rounded-xl shadow-sm transition-all disabled:opacity-50 flex items-center justify-center gap-2"><Star className="w-4 h-4" />Submit Review</button>
                           </form>
@@ -4070,7 +4069,7 @@ export default function EcommerceMarketplace({ inlineMode = false, onBackToSelec
                       <div key={prod.id} onClick={() => { setSelectedProduct(prod); setActiveDetailImage(prod.image); window.scrollTo({ top: 0, behavior: 'smooth' }); }}
                         className="bg-white dark:bg-slate-900 border border-slate-200/50 dark:border-slate-800/50 rounded-[20px] p-3 cursor-pointer hover:shadow-lg hover:border-orange-300 dark:hover:border-orange-700 transition-all group">
                         <div className="aspect-square rounded-xl overflow-hidden bg-slate-50 dark:bg-slate-800 mb-2.5 flex items-center justify-center">
-                          <img src={prod.image} alt={prod.name} className="max-h-full object-contain group-hover:scale-105 transition-transform duration-300" />
+                          <img loading="lazy" src={prod.image} alt={prod.name} className="max-h-full object-contain group-hover:scale-105 transition-transform duration-300" />
                         </div>
                         <p className="text-sm font-bold text-slate-800 dark:text-white line-clamp-2 leading-snug mb-1">{prod.name}</p>
                         <span className="text-[10px] bg-green-600 text-white px-1 py-0.5 rounded font-bold">{prod.rating}★</span>
@@ -4100,7 +4099,7 @@ export default function EcommerceMarketplace({ inlineMode = false, onBackToSelec
                       <div key={prod.id} onClick={() => { setSelectedProduct(prod); setActiveDetailImage(prod.image); window.scrollTo({ top: 0, behavior: 'smooth' }); }}
                         className="bg-white dark:bg-slate-900 border border-slate-200/50 dark:border-slate-800/50 rounded-[20px] p-3 cursor-pointer hover:shadow-lg hover:border-orange-300 dark:hover:border-orange-700 transition-all group">
                         <div className="aspect-square rounded-xl overflow-hidden bg-slate-50 dark:bg-slate-800 mb-2.5 flex items-center justify-center">
-                          <img src={prod.image} alt={prod.name} className="max-h-full object-contain group-hover:scale-105 transition-transform duration-300" />
+                          <img loading="lazy" src={prod.image} alt={prod.name} className="max-h-full object-contain group-hover:scale-105 transition-transform duration-300" />
                         </div>
                         <p className="text-sm font-bold text-slate-800 dark:text-white line-clamp-2 leading-snug mb-1">{prod.name}</p>
                         <span className="text-[10px] bg-green-600 text-white px-1 py-0.5 rounded font-bold">{prod.rating}★</span>
@@ -4173,7 +4172,7 @@ export default function EcommerceMarketplace({ inlineMode = false, onBackToSelec
                             />
                           </div>
                           <div className="w-16 h-16 bg-slate-50 dark:bg-slate-800 rounded-xl overflow-hidden shrink-0 flex items-center justify-center border border-slate-100 dark:border-slate-800">
-                            <img src={item.product.image} className="max-h-full object-cover" alt={item.product.name} />
+                            <img loading="lazy" src={item.product.image} className="max-h-full object-cover" alt={item.product.name} />
                           </div>
                           <div className="space-y-1.5 flex-1 min-w-0">
                             <span className="text-[9px] font-black text-orange-500 uppercase tracking-widest">{item.product.brand}</span>
@@ -4376,7 +4375,7 @@ export default function EcommerceMarketplace({ inlineMode = false, onBackToSelec
                       <div key={prod.id} onClick={() => { setSelectedProduct(prod); setCurrentView('details'); }}
                         className="bg-white dark:bg-slate-900 border border-slate-200/50 dark:border-slate-800/50 rounded-[20px] p-3 cursor-pointer hover:shadow-lg hover:border-orange-300 dark:hover:border-orange-700 transition-all group">
                         <div className="aspect-square rounded-xl overflow-hidden bg-slate-50 dark:bg-slate-800 mb-2.5 flex items-center justify-center">
-                          <img src={prod.image} alt={prod.name} className="max-h-full object-contain group-hover:scale-105 transition-transform duration-300" />
+                          <img loading="lazy" src={prod.image} alt={prod.name} className="max-h-full object-contain group-hover:scale-105 transition-transform duration-300" />
                         </div>
                         <p className="text-sm font-bold text-slate-800 dark:text-white line-clamp-2 leading-snug mb-1">{prod.name}</p>
                         <span className="text-[10px] bg-green-600 text-white px-1 py-0.5 rounded font-bold">{prod.rating}★</span>
@@ -4402,7 +4401,7 @@ export default function EcommerceMarketplace({ inlineMode = false, onBackToSelec
                       <div key={prod.id} onClick={() => { setSelectedProduct(prod); setCurrentView('details'); }}
                         className="bg-white dark:bg-slate-900 border border-slate-200/50 dark:border-slate-800/50 rounded-[20px] p-3 cursor-pointer hover:shadow-lg hover:border-orange-300 dark:hover:border-orange-700 transition-all group">
                         <div className="aspect-square rounded-xl overflow-hidden bg-slate-50 dark:bg-slate-800 mb-2.5 flex items-center justify-center">
-                          <img src={prod.image} alt={prod.name} className="max-h-full object-contain group-hover:scale-105 transition-transform duration-300" />
+                          <img loading="lazy" src={prod.image} alt={prod.name} className="max-h-full object-contain group-hover:scale-105 transition-transform duration-300" />
                         </div>
                         <p className="text-sm font-bold text-slate-800 dark:text-white line-clamp-2 leading-snug mb-1">{prod.name}</p>
                         <span className="text-[10px] bg-green-600 text-white px-1 py-0.5 rounded font-bold">{prod.rating}★</span>
@@ -4537,7 +4536,7 @@ export default function EcommerceMarketplace({ inlineMode = false, onBackToSelec
                     {cart.filter(item => selectedCartItems.includes(item.id)).map((item, i) => (
                       <div key={i} className="flex items-center gap-2.5 text-xs">
                         <div className="w-9 h-9 bg-slate-100 dark:bg-slate-800 rounded-lg overflow-hidden shrink-0 flex items-center justify-center">
-                          <img src={item.product?.image || item.image} alt="" className="max-h-full object-contain" />
+                          <img loading="lazy" src={item.product?.image || item.image} alt="" className="max-h-full object-contain" />
                         </div>
                         <div className="flex-1 min-w-0">
                           <p className="font-bold text-slate-800 dark:text-white truncate text-[11px]">{item.product?.name || item.name}</p>
@@ -4982,7 +4981,7 @@ export default function EcommerceMarketplace({ inlineMode = false, onBackToSelec
                               <div key={iIdx} className="flex items-start gap-4 pb-4 border-b border-slate-100 dark:border-slate-800 last:border-0 last:pb-0">
                                 <div className="w-16 h-16 sm:w-20 sm:h-20 bg-slate-50 dark:bg-slate-800 rounded-xl flex-shrink-0 flex items-center justify-center border border-slate-100 dark:border-slate-700 overflow-hidden">
                                   {item.product_details?.image ? (
-                                    <img src={item.product_details.image} alt={item.product_details.name} className="w-full h-full object-cover" />
+                                    <img loading="lazy" src={item.product_details.image} alt={item.product_details.name} className="w-full h-full object-cover" />
                                   ) : (
                                     <ShoppingBag className="w-6 h-6 text-slate-300" />
                                   )}
@@ -5035,7 +5034,7 @@ export default function EcommerceMarketplace({ inlineMode = false, onBackToSelec
                       onClick={() => { setSelectedProduct(prod); setCurrentView('details'); }}
                       className="w-full aspect-square rounded-2xl overflow-hidden bg-slate-50 dark:bg-slate-800 cursor-pointer mb-4"
                     >
-                      <img src={prod.image} alt={prod.name} className="w-full h-full object-cover" />
+                      <img loading="lazy" src={prod.image} alt={prod.name} className="w-full h-full object-cover" />
                     </div>
 
                     <div className="space-y-1.5 sm:space-y-2">
@@ -5334,7 +5333,7 @@ export default function EcommerceMarketplace({ inlineMode = false, onBackToSelec
                         <div className="flex items-center gap-4">
                           <div className="w-16 h-16 rounded-xl bg-slate-50 dark:bg-slate-700/50 border border-slate-100 dark:border-slate-600 flex items-center justify-center overflow-hidden shrink-0">
                             {prodImage ? (
-                              <img src={prodImage} alt={prodName} className="w-full h-full object-cover" />
+                              <img loading="lazy" src={prodImage} alt={prodName} className="w-full h-full object-cover" />
                             ) : (
                               <Package className="w-6 h-6 text-slate-300" />
                             )}
@@ -5971,7 +5970,7 @@ export default function EcommerceMarketplace({ inlineMode = false, onBackToSelec
                       <div className="flex flex-wrap gap-2">
                         {(editingProduct ? editProdImages : newProdImages).map((img, i) => (
                           <div key={i} className="relative group">
-                            <img src={img} alt={`Sub ${i+1}`} className="w-14 h-14 rounded-lg object-cover border border-slate-200 dark:border-slate-700" />
+                            <img loading="lazy" src={img} alt={`Sub ${i+1}`} className="w-14 h-14 rounded-lg object-cover border border-slate-200 dark:border-slate-700" />
                             <button
                               type="button"
                               onClick={() => {
@@ -6298,7 +6297,7 @@ export default function EcommerceMarketplace({ inlineMode = false, onBackToSelec
                               className="w-10 h-10 bg-slate-200 rounded-xl overflow-hidden shrink-0 flex items-center justify-center cursor-pointer hover:ring-2 hover:ring-orange-400 transition-all"
                               onClick={() => setLightboxImage(p.image)}
                             >
-                              <img src={p.image} className="max-h-full object-cover" alt="prod" />
+                              <img loading="lazy" src={p.image} className="max-h-full object-cover" alt="prod" />
                             </div>
                             <div className="space-y-0.5 font-bold flex-1 min-w-0">
                               <h4 
@@ -6434,7 +6433,7 @@ export default function EcommerceMarketplace({ inlineMode = false, onBackToSelec
                             {myItems.map((item, itemIdx) => (
                               <div key={itemIdx} className="flex items-center gap-3">
                                 <div className="w-12 h-12 bg-slate-100 dark:bg-slate-800 rounded-xl overflow-hidden shrink-0 flex items-center justify-center border border-slate-100 dark:border-slate-700/50">
-                                  <img src={item.product_details?.image} className="max-h-full object-cover" alt="item" />
+                                  <img loading="lazy" src={item.product_details?.image} className="max-h-full object-cover" alt="item" />
                                 </div>
                                 <div className="space-y-0.5 font-bold">
                                   <h4 className="font-extrabold text-slate-800 dark:text-white line-clamp-1 text-xs">{item.product_details?.name}</h4>
@@ -6951,7 +6950,7 @@ export default function EcommerceMarketplace({ inlineMode = false, onBackToSelec
                               <div className="mt-1 bg-slate-950 text-white p-3 rounded-xl relative overflow-hidden max-w-xs">
                                 {slide.image && (
                                   <div className="absolute inset-0 rounded-xl overflow-hidden">
-                                    <img src={slide.image} alt={slide.title} className="w-full h-full object-cover opacity-30" />
+                                    <img loading="lazy" src={slide.image} alt={slide.title} className="w-full h-full object-cover opacity-30" />
                                     <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-slate-950/60 to-slate-950/30" />
                                   </div>
                                 )}
@@ -7141,7 +7140,7 @@ export default function EcommerceMarketplace({ inlineMode = false, onBackToSelec
                                 setEditSettings(prev => ({ ...prev, deals_product_ids: [...cur, p.id] }));
                               }
                             }}>
-                            <img src={p.image} alt={p.name} className="w-8 h-8 rounded-lg object-cover shrink-0" />
+                            <img loading="lazy" src={p.image} alt={p.name} className="w-8 h-8 rounded-lg object-cover shrink-0" />
                             <div className="flex-1 min-w-0">
                               <p className="font-bold dark:text-white truncate">{p.name}</p>
                               <p className="text-slate-400">₹{Number(p.discountPrice).toLocaleString()} · {p.category}</p>
@@ -7199,7 +7198,7 @@ export default function EcommerceMarketplace({ inlineMode = false, onBackToSelec
                                 setEditSettings(prev => ({ ...prev, weekly_deals_product_ids: [...cur, p.id] }));
                               }
                             }}>
-                            <img src={p.image} alt={p.name} className="w-8 h-8 rounded-lg object-cover shrink-0" />
+                            <img loading="lazy" src={p.image} alt={p.name} className="w-8 h-8 rounded-lg object-cover shrink-0" />
                             <div className="flex-1 min-w-0">
                               <p className="font-bold dark:text-white truncate">{p.name}</p>
                               <p className="text-slate-400">₹{Number(p.discountPrice).toLocaleString()} · {p.category}</p>
@@ -7236,7 +7235,7 @@ export default function EcommerceMarketplace({ inlineMode = false, onBackToSelec
                                 setEditSettings(prev => ({ ...prev, trending_product_ids: [...cur, p.id] }));
                               }
                             }}>
-                            <img src={p.image} alt={p.name} className="w-8 h-8 rounded-lg object-cover shrink-0" />
+                            <img loading="lazy" src={p.image} alt={p.name} className="w-8 h-8 rounded-lg object-cover shrink-0" />
                             <div className="flex-1 min-w-0">
                               <p className="font-bold dark:text-white truncate">{p.name}</p>
                               <p className="text-slate-400">₹{Number(p.discountPrice).toLocaleString()} · {p.category}</p>
@@ -7307,7 +7306,7 @@ export default function EcommerceMarketplace({ inlineMode = false, onBackToSelec
                                 }}
                                 className={`flex items-center gap-3 p-3 rounded-xl border cursor-pointer transition-all text-xs ${isSelected ? 'border-orange-500 bg-orange-500/5' : 'border-slate-200 dark:border-slate-700 hover:border-orange-300'}`}
                               >
-                                <img src={p.image} alt={p.name} className="w-8 h-8 rounded-lg object-cover shrink-0" />
+                                <img loading="lazy" src={p.image} alt={p.name} className="w-8 h-8 rounded-lg object-cover shrink-0" />
                                 <div className="flex-1 min-w-0">
                                   <p className="font-bold dark:text-white truncate">{p.name}</p>
                                   <p className="text-slate-400">{p.brand} · ₹{Number(p.discountPrice).toLocaleString()}</p>
@@ -7410,7 +7409,7 @@ export default function EcommerceMarketplace({ inlineMode = false, onBackToSelec
                           
                           <div className="flex flex-col sm:flex-row gap-4">
                              <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-xl overflow-hidden bg-white shrink-0 border border-slate-200 dark:border-slate-700">
-                               <img src={ad.image || 'https://via.placeholder.com/80'} className="w-full h-full object-cover" alt="Ad thumb" />
+                               <img loading="lazy" src={ad.image || 'https://via.placeholder.com/80'} className="w-full h-full object-cover" alt="Ad thumb" />
                              </div>
                              <div className="flex-1 space-y-2 text-xs">
                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
@@ -8331,7 +8330,7 @@ export default function EcommerceMarketplace({ inlineMode = false, onBackToSelec
                             <div className="absolute inset-0 flex items-center justify-center"><Film className="w-5 h-5 text-white/70" /></div>
                           </div>
                         ) : (
-                          <img src={m.file_url || m.file} alt={m.title} className="aspect-square w-full object-cover" />
+                          <img loading="lazy" src={m.file_url || m.file} alt={m.title} className="aspect-square w-full object-cover" />
                         )}
                         <button
                           onClick={() => deleteMedia(m.id)}
@@ -9024,7 +9023,7 @@ export default function EcommerceMarketplace({ inlineMode = false, onBackToSelec
           >
             <X className="w-6 h-6" />
           </button>
-          <img
+          <img loading="lazy"
             src={lightboxImage}
             alt="Preview"
             className="max-w-[90vw] max-h-[85vh] object-contain rounded-2xl shadow-2xl"
