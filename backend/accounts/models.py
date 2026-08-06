@@ -63,14 +63,9 @@ class User(AbstractUser):
             import uuid
             self.affiliate_code = uuid.uuid4().hex[:8].upper()
 
-        # Auto-set approval status for non-influencers
-        if self.user_type != 'influencer':
-            self.is_approved = True
-            self.approval_status = 'approved'
-        elif self.user_type == 'influencer' and not self.pk:
-            # New influencer registration - set to pending
-            self.is_approved = False
-            self.approval_status = 'pending'
+        # Auto-set approval status for all users (influencer approval system removed)
+        self.is_approved = True
+        self.approval_status = 'approved'
 
         super().save(*args, **kwargs)
 

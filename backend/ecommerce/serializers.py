@@ -1,6 +1,6 @@
 from rest_framework import serializers
 from django.conf import settings
-from .models import Product, Cart, CartItem, Address, Order, OrderItem, Category, Brand, ProductReview, AffiliateCommission, StoreSettings, CustomerReview, ProductInfluencerMedia, SellerReview, SellerPayout, NewsletterSubscriber, Wishlist, CustomerReferralLink, WalletTransaction, WalletPayout
+from .models import Product, Cart, CartItem, Address, Order, OrderItem, Category, Brand, ProductReview, AffiliateCommission, StoreSettings, CustomerReview, ProductInfluencerMedia, SellerReview, SellerPayout, NewsletterSubscriber, Wishlist, CustomerReferralLink, WalletTransaction, WalletPayout, Vendor
 
 class CategorySerializer(serializers.ModelSerializer):
     class Meta:
@@ -12,6 +12,11 @@ class BrandSerializer(serializers.ModelSerializer):
         model = Brand
         fields = ['id', 'name']
 
+class VendorSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Vendor
+        fields = ['id', 'name', 'return_policy', 'delivery_time', 'delivery_charge']
+
 def _force_https(url):
     if isinstance(url, str) and url.startswith('http://'):
         return 'https://' + url[7:]
@@ -20,11 +25,13 @@ def _force_https(url):
 class ProductSerializer(serializers.ModelSerializer):
     seller_username = serializers.ReadOnlyField(source='seller.username')
     id = serializers.IntegerField(required=False)
+    vendor_details = VendorSerializer(source='vendor', read_only=True)
 
     class Meta:
         model = Product
         fields = [
             'id', 'seller', 'seller_username', 'status', 'rejection_reason', 'name', 'category', 'brand',
+            'vendor', 'vendor_details', 'return_policy',
             'price', 'discount_price', 'discount_percent', 'rating', 'reviews_count',
             'image', 'images', 'description', 'stock', 'delivery', 'specifications',
             'highlights', 'offers', 'seller_info', 'qa_section',

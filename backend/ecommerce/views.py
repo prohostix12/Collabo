@@ -20,13 +20,13 @@ from rest_framework.decorators import action, api_view, permission_classes
 from rest_framework.permissions import IsAuthenticated
 from django.db import transaction
 from django.shortcuts import get_object_or_404
-from .models import Product, Cart, CartItem, Address, Order, OrderItem, Category, Brand, ProductReview, AffiliateCommission, StoreSettings, CustomerReview, ReferralClick, ProductInfluencerMedia, Wishlist, CustomerReferralLink, WalletTransaction, WalletPayout
+from .models import Product, Cart, CartItem, Address, Order, OrderItem, Category, Brand, ProductReview, AffiliateCommission, StoreSettings, CustomerReview, ReferralClick, ProductInfluencerMedia, Wishlist, CustomerReferralLink, WalletTransaction, WalletPayout, Vendor
 from .serializers import (
     ProductSerializer, CartSerializer, CartItemSerializer,
     AddressSerializer, OrderSerializer, OrderItemSerializer,
     CategorySerializer, BrandSerializer, ProductReviewSerializer, StoreSettingsSerializer, CustomerReviewSerializer,
     ProductInfluencerMediaSerializer, WishlistSerializer, CustomerReferralLinkSerializer, WalletTransactionSerializer,
-    WalletPayoutSerializer
+    WalletPayoutSerializer, VendorSerializer
 )
 
 DEFAULT_CATEGORIES = [
@@ -72,6 +72,15 @@ class IsAdminOrReadOnly(permissions.BasePermission):
         if request.method in permissions.SAFE_METHODS:
             return True
         return request.user and request.user.is_authenticated and (request.user.is_staff or request.user.user_type == 'admin')
+
+class VendorViewSet(viewsets.ModelViewSet):
+    queryset = Vendor.objects.all()
+    serializer_class = VendorSerializer
+
+    def get_permissions(self):
+        if self.action in ['create', 'update', 'partial_update', 'destroy']:
+            return [permissions.IsAdminUser()]
+        return [permissions.IsAuthenticated()]
 
 class CategoryViewSet(viewsets.ModelViewSet):
     queryset = Category.objects.all()

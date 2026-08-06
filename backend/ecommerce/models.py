@@ -18,6 +18,15 @@ class Brand(models.Model):
     def __str__(self):
         return self.name
 
+class Vendor(models.Model):
+    name = models.CharField(max_length=255)
+    return_policy = models.TextField(blank=True, default='')
+    delivery_time = models.CharField(max_length=255, default='Free delivery by Tomorrow')
+    delivery_charge = models.DecimalField(max_digits=8, decimal_places=2, default=0)
+
+    def __str__(self):
+        return self.name
+
 class Product(models.Model):
     APPROVAL_STATUS = (
         ('pending', 'Pending Review'),
@@ -35,6 +44,8 @@ class Product(models.Model):
     name = models.CharField(max_length=255)
     category = models.CharField(max_length=100)
     brand = models.CharField(max_length=100, blank=True, default='')
+    vendor = models.ForeignKey(Vendor, on_delete=models.SET_NULL, null=True, blank=True, related_name='products')
+    return_policy = models.TextField(blank=True, default='')
     price = models.DecimalField(max_digits=12, decimal_places=2)
     discount_price = models.DecimalField(max_digits=12, decimal_places=2, null=True, blank=True)
     discount_percent = models.PositiveIntegerField(default=0)

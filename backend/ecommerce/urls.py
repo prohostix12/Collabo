@@ -2,7 +2,7 @@ from django.urls import path, include
 from rest_framework.routers import DefaultRouter
 from .views import (
     ProductViewSet, CartViewSet, AddressViewSet, OrderViewSet, WishlistViewSet,
-    CategoryViewSet, BrandViewSet, ProductReviewViewSet, CustomerReviewViewSet,
+    CategoryViewSet, BrandViewSet, ProductReviewViewSet, CustomerReviewViewSet, VendorViewSet,
     PlatformSettingsView, StoreSettingsView, check_pincode, seller_hub_stats, AdminAffiliatesView,
     AdminUpdateAffiliateRateView, RecordReferralClickView, ResolveReferralView,
     AdminAnalyticsView, create_razorpay_order, verify_razorpay_payment, razorpay_webhook,
@@ -30,6 +30,7 @@ router.register('reviews', ProductReviewViewSet, basename='reviews')
 router.register('customer-reviews', CustomerReviewViewSet, basename='customer-reviews')
 router.register('wishlist', WishlistViewSet, basename='wishlist')
 router.register('referral-links', CustomerReferralLinkViewSet, basename='referral-links')
+router.register('vendors', VendorViewSet, basename='vendors')
 
 urlpatterns = [
     path('wallet/', WalletView.as_view(), name='wallet'),
