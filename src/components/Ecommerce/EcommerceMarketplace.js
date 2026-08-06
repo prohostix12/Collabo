@@ -188,26 +188,22 @@ const CollabEarnBanner = ({ handleInviteFriendsClick }) => {
           {/* Logo + urgency badge */}
           <div className="flex items-center gap-3 flex-wrap">
             <img loading="lazy" src="/collabo-logo.png" alt="Collabo" className="h-9 object-contain drop-shadow" style={{filter:'brightness(0) invert(1)'}} />
-            <div className="w-px h-4" style={{background:'rgba(255,255,255,0.25)'}} />
-            <span className="text-[11px] font-black uppercase tracking-widest px-3 py-1 rounded-full animate-pulse"
-              style={{background:'linear-gradient(90deg,#ff6b35,#f7931e)',color:'#fff',boxShadow:'0 2px 12px rgba(255,107,53,0.5)'}}>
-              🔥 Now Open — Apply Today
-            </span>
+            
           </div>
 
           {/* Headline */}
+          <style>{`
+            @keyframes shareMoreMove {
+              0%, 100% { transform: translateX(0); }
+              50% { transform: translateX(12px); }
+            }
+            .share-more-animate {
+              display: inline-block;
+              animation: shareMoreMove 3s ease-in-out infinite;
+            }
+          `}</style>
           <div className="space-y-3">
-            <style>{`
-              @keyframes shareMoreMove {
-                0%, 100% { transform: translateX(0); }
-                50% { transform: translateX(12px); }
-              }
-              .share-more-animate {
-                display: inline-block;
-                animation: shareMoreMove 3s ease-in-out infinite;
-              }
-            `}</style>
-            <p className="text-[18px] font-semibold italic leading-relaxed whitespace-nowrap" style={{color:'rgba(0,235,220,0.95)'}}>
+            <p className="text-[18px] font-semibold italic leading-relaxed whitespace-nowrap -mt-6" style={{color:'rgba(0,235,220,0.95)'}}>
               "Why should buying only cost money? What if it could also earn you money?"
             </p>
             <h2 className="font-black leading-[0.95] tracking-tighter unstoppable-text" style={{fontSize:'clamp(2.5rem,4.8vw,3.9rem)',color:'rgba(255,255,255,0.72)'}}>
