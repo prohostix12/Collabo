@@ -8,13 +8,10 @@ import ProfileSetup from '../Profile/InfluencerProfile';
 import CollaborationList from '../Collaborations/CollaborationList';
 import InfluencerAnalytics from '../Analytics/InfluencerAnalytics';
 import InfluencerHero from '../Influencer/InfluencerHero';
-import ApprovalStatusAlert from './ApprovalStatusAlert';
-import ApprovalSuccessModal from './ApprovalSuccessModal';
 import { useAuth } from '../../contexts/AuthContext';
 
 const InfluencerDashboard = ({ onClose } = {}) => {
   const [activeTab, setActiveTab] = useState('overview');
-  const [showApprovalModal, setShowApprovalModal] = useState(false);
   const { user } = useAuth();
   const navigate = useNavigate();
 
@@ -386,14 +383,7 @@ const InfluencerDashboard = ({ onClose } = {}) => {
         </div>
       </div>
 
-      {/* Approval Status Alert - Show on all tabs */}
-      {user && (user.approval_status === 'pending' || user.approval_status === 'rejected') && (
-        <div className="w-full px-4 sm:px-6 lg:px-12 xl:px-16 pt-6">
-          <ApprovalStatusAlert 
-            status={user.approval_status}
-          />
-        </div>
-      )}
+
 
       {activeTab === 'overview' && (
         <>
@@ -1090,12 +1080,6 @@ const InfluencerDashboard = ({ onClose } = {}) => {
           </div>
         </div>
       )}
-
-      {/* Approval Success Modal */}
-      <ApprovalSuccessModal 
-        isOpen={showApprovalModal}
-        onClose={() => setShowApprovalModal(false)}
-      />
     </div>
   );
 };

@@ -64,7 +64,6 @@ const AdminDashboard = () => {
   const tabs = [
     { id: 'overview', label: 'Overview', icon: BarChart3 },
     { id: 'users', label: 'User Management', icon: Users },
-    { id: 'approvals', label: 'Influencer Approvals', icon: UserCheck },
     { id: 'seller-approvals', label: 'Seller Approvals', icon: Store },
     { id: 'product-approvals', label: 'Product Approvals', icon: Package },
     { id: 'seller-payouts', label: 'Seller Payouts', icon: DollarSign },

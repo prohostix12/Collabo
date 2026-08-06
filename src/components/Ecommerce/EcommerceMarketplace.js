@@ -19,6 +19,7 @@ import Footer from '../Layout/Footer';
 import ChangePasswordModal from '../Layout/ChangePasswordModal';
 import ChangeUsernameModal from '../Layout/ChangeUsernameModal';
 import DeleteAccountModal from '../Layout/DeleteAccountModal';
+import VendorManagement from '../Dashboard/VendorManagement';
 import WeeklyBestDealsSection from './WeeklyBestDealsSection';
 
 const InfluencerHub = lazy(() => import('../Dashboard/InfluencerDashboard'));
@@ -818,6 +819,7 @@ export default function EcommerceMarketplace({ inlineMode = false, onBackToSelec
   const [supportSubmitting, setSupportSubmitting] = useState(false);
   const [confirmModal, setConfirmModal] = useState(null);
   const [catalogSearch, setCatalogSearch] = useState('');
+  const [catalogVendorFilter, setCatalogVendorFilter] = useState('');
 
   const fetchSupportTickets = async () => {
     if (!user) return;
@@ -1066,6 +1068,8 @@ export default function EcommerceMarketplace({ inlineMode = false, onBackToSelec
   const [newProdStock, setNewProdStock] = useState('10');
   const [newProdShippingCharge, setNewProdShippingCharge] = useState('49');
   const [newProdDelivery, setNewProdDelivery] = useState('Free delivery by Tomorrow');
+  const [newProdVendor, setNewProdVendor] = useState('');
+  const [newProdReturnPolicy, setNewProdReturnPolicy] = useState('');
   const [newProdCommissionRate, setNewProdCommissionRate] = useState('10');
   const [newProdLinkDiscount, setNewProdLinkDiscount] = useState('0');
 
@@ -1093,6 +1097,9 @@ export default function EcommerceMarketplace({ inlineMode = false, onBackToSelec
   const [editProdStock, setEditProdStock] = useState('10');
   const [editProdShippingCharge, setEditProdShippingCharge] = useState('49');
   const [editProdDelivery, setEditProdDelivery] = useState('Free delivery by Tomorrow');
+  const [editProdVendor, setEditProdVendor] = useState('');
+  const [editProdReturnPolicy, setEditProdReturnPolicy] = useState('');
+  const [vendorsList, setVendorsList] = useState([]);
   const [editProdCommissionRate, setEditProdCommissionRate] = useState('10');
   const [editProdLinkDiscount, setEditProdLinkDiscount] = useState('0');
 
@@ -1136,8 +1143,39 @@ export default function EcommerceMarketplace({ inlineMode = false, onBackToSelec
   };
 
   // Fetch Categories and Brands from backend
+  
+  const handleVendorChange = (e, isEdit) => {
+    const vendorId = e.target.value;
+    if (isEdit) {
+      setEditProdVendor(vendorId);
+    } else {
+      setNewProdVendor(vendorId);
+    }
+    
+    if (vendorId) {
+      const selectedVendor = vendorsList.find(v => String(v.id) === String(vendorId));
+      if (selectedVendor) {
+        if (isEdit) {
+          setEditProdDelivery(selectedVendor.delivery_time);
+          setEditProdShippingCharge(selectedVendor.delivery_charge);
+          setEditProdReturnPolicy(selectedVendor.return_policy);
+        } else {
+          setNewProdDelivery(selectedVendor.delivery_time);
+          setNewProdShippingCharge(selectedVendor.delivery_charge);
+          setNewProdReturnPolicy(selectedVendor.return_policy);
+        }
+      }
+    }
+  };
+
   const fetchCategoriesAndBrands = async () => {
     try {
+      try {
+        const vendorResponse = await api.get('/ecommerce/vendors/');
+        setVendorsList(Array.isArray(vendorResponse.data) ? vendorResponse.data : (vendorResponse.data.results || []));
+      } catch (err) {
+        console.error('Error fetching vendors', err);
+      }
       const catResponse = await api.get('/ecommerce/categories/');
       const catData = Array.isArray(catResponse.data) ? catResponse.data : (catResponse.data.results || []);
       setCategoriesList(catData);
@@ -1269,6 +1307,8 @@ export default function EcommerceMarketplace({ inlineMode = false, onBackToSelec
     setEditProdOffers(Array.isArray(p.offers) ? p.offers.join('\n') : (p.offers || ''));
     setEditProdSpecifications(typeof p.specifications === 'string' ? p.specifications : JSON.stringify(p.specifications || {}));
     setEditProdQaSection(typeof p.qa_section === 'string' ? p.qa_section : JSON.stringify(p.qa_section || []));
+                                setEditProdVendor(p.vendor || '');
+                                setEditProdReturnPolicy(p.return_policy || '');
   };
 
   // Sync / fetch cart
@@ -3023,6 +3063,10 @@ export default function EcommerceMarketplace({ inlineMode = false, onBackToSelec
                 </div>
               );
             })()}
+
+            <div className="w-full rounded-3xl overflow-hidden shadow-xl border border-slate-100 dark:border-slate-800 bg-black mt-10 mb-6">
+              <video src="/videos/Referral.mp4" autoPlay loop muted playsInline className="w-full max-h-[70vh] object-cover" />
+            </div>
 
             <CollabEarnBanner
               handleInviteFriendsClick={handleInviteFriendsClick}
@@ -5719,6 +5763,7 @@ export default function EcommerceMarketplace({ inlineMode = false, onBackToSelec
                   { id: 'products', label: 'Inventories', icon: Package },
                   { id: 'orders', label: 'Orders', icon: ShoppingBag },
                   ...(user?.is_staff || user?.user_type === 'admin' ? [
+                    { id: 'vendors', label: 'Vendors', icon: Store },
                     { id: 'categories', label: 'Categories', icon: Tag },
                     { id: 'brands', label: 'Brands', icon: Award },
                     { id: 'store-settings', label: 'Store Settings', icon: Settings },
@@ -5886,6 +5931,31 @@ export default function EcommerceMarketplace({ inlineMode = false, onBackToSelec
                           value={editingProduct ? editProdRating : newProdRating}
                           onChange={(e) => editingProduct ? setEditProdRating(e.target.value) : setNewProdRating(e.target.value)}
                           className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl py-2 px-3 focus:outline-none dark:text-white font-bold"
+                        />
+                      </div>
+
+                      <div className="space-y-1">
+                        <label className="font-bold text-slate-450 dark:text-slate-400">Vendor</label>
+                        <select
+                          value={editingProduct ? editProdVendor : newProdVendor}
+                          onChange={(e) => handleVendorChange(e, !!editingProduct)}
+                          className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl py-2 px-3 focus:outline-none dark:text-white font-bold text-sm"
+                        >
+                          <option value="">Select Vendor (Optional)</option>
+                          {vendorsList.map(v => (
+                            <option key={v.id} value={v.id}>{v.name}</option>
+                          ))}
+                        </select>
+                      </div>
+
+                      <div className="space-y-1 lg:col-span-2">
+                        <label className="font-bold text-slate-450 dark:text-slate-400">Return Policy</label>
+                        <textarea
+                          value={editingProduct ? editProdReturnPolicy : newProdReturnPolicy}
+                          onChange={(e) => editingProduct ? setEditProdReturnPolicy(e.target.value) : setNewProdReturnPolicy(e.target.value)}
+                          rows="2"
+                          placeholder="e.g. 7 Days Replacement Policy"
+                          className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl py-2 px-3 focus:outline-none dark:text-white font-bold text-sm resize-none"
                         />
                       </div>
 
@@ -6212,6 +6282,8 @@ export default function EcommerceMarketplace({ inlineMode = false, onBackToSelec
                                   stock: Number(newProdStock),
                                   product_shipping_charge: Number(newProdShippingCharge) || 0,
                                   delivery: newProdDelivery || 'Free delivery by Tomorrow',
+                                  vendor: newProdVendor || null,
+                                  return_policy: newProdReturnPolicy,
                                   commission_rate: Number(newProdCommissionRate),
                                   link_discount_percent: Number(newProdLinkDiscount),
                                   seller_info: newProdSellerInfo,
@@ -6272,16 +6344,27 @@ export default function EcommerceMarketplace({ inlineMode = false, onBackToSelec
                 <div className="lg:col-span-7 bg-white dark:bg-slate-900 border border-slate-200/50 dark:border-slate-800/50 p-6 rounded-3xl space-y-4 shadow-sm">
                   <div className="flex items-center justify-between gap-3">
                     <h3 className="font-extrabold text-sm dark:text-white">Active Catalog Listing</h3>
-                    <div className="relative flex-1 max-w-xs">
-                      <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400" />
-                      {/* eslint-disable-next-line no-undef */}
-                      <input
-                        type="text"
-                        placeholder="Search products..."
-                        value={catalogSearch || ''} // eslint-disable-line no-undef
-                        onChange={(e) => setCatalogSearch(e.target.value)} // eslint-disable-line no-undef
-                        className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl py-1.5 pl-8 pr-3 text-xs font-bold focus:outline-none focus:ring-1 focus:ring-orange-500 dark:text-white"
-                      />
+                                        <div className="flex items-center gap-2 flex-1 max-w-[400px] justify-end">
+                      <select
+                        value={catalogVendorFilter || ''}
+                        onChange={(e) => setCatalogVendorFilter(e.target.value)}
+                        className="w-[45%] bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl py-1.5 px-2 text-xs font-bold focus:outline-none focus:ring-1 focus:ring-orange-500 dark:text-white"
+                      >
+                        <option value="">All Vendors</option>
+                        {vendorsList.map(v => (
+                          <option key={v.id} value={v.id}>{v.name}</option>
+                        ))}
+                      </select>
+                      <div className="relative flex-1">
+                        <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400" />
+                        <input
+                          type="text"
+                          placeholder="Search..."
+                          value={catalogSearch || ''}
+                          onChange={(e) => setCatalogSearch(e.target.value)}
+                          className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl py-1.5 pl-8 pr-3 text-xs font-bold focus:outline-none focus:ring-1 focus:ring-orange-500 dark:text-white"
+                        />
+                      </div>
                     </div>
                   </div>
 
@@ -6289,7 +6372,7 @@ export default function EcommerceMarketplace({ inlineMode = false, onBackToSelec
                     {sellerProducts.length === 0 ? (
                       <p className="text-xs text-slate-500 font-semibold text-center py-4">No active products found.</p>
                     ) : (
-                      [...sellerProducts].sort((a, b) => a.id - b.id).filter(p => !catalogSearch || p.name?.toLowerCase().includes(catalogSearch.toLowerCase()) || p.category?.toLowerCase().includes(catalogSearch.toLowerCase()) || String(p.id).includes(catalogSearch)).map((p, idx) => ( // eslint-disable-line no-undef
+                      [...sellerProducts].sort((a, b) => a.id - b.id).filter(p => !catalogSearch || p.name?.toLowerCase().includes(catalogSearch.toLowerCase()) || p.category?.toLowerCase().includes(catalogSearch.toLowerCase()) || String(p.id).includes(catalogSearch)).filter(p => !catalogVendorFilter || String(p.vendor) === String(catalogVendorFilter)).map((p, idx) => ( // eslint-disable-line no-undef
                         <div key={idx} className="p-3.5 bg-slate-50 dark:bg-slate-800/60 rounded-2xl flex items-center justify-between border border-slate-100 dark:border-slate-700/50 text-xs">
                           <div className="flex items-center gap-3">
                             <span className="text-[10px] font-bold text-slate-400 dark:text-slate-500 w-12 text-center shrink-0">ID: {p.id}</span>
@@ -6357,6 +6440,13 @@ export default function EcommerceMarketplace({ inlineMode = false, onBackToSelec
             )}
 
             {/* ORDERS MANAGEMENT */}
+            
+            {adminView === 'vendors' && (user?.is_staff || user?.user_type === 'admin') && (
+              <div className="bg-white dark:bg-slate-900 rounded-3xl p-6 shadow-sm border border-slate-100 dark:border-slate-800 mt-6">
+                <VendorManagement />
+              </div>
+            )}
+
             {adminView === 'orders' && (
               <div className="space-y-6">
                 <h3 className="font-extrabold text-sm dark:text-white">Customer Orders Management</h3>
