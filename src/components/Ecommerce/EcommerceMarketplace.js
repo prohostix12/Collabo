@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef, lazy, Suspense } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { motion } from 'framer-motion';
 import {
   Search, ShoppingBag, Heart, User, Star, ArrowRight, ShieldCheck,
   ChevronRight, Plus, Minus, Trash2, CheckCircle2, Package,
@@ -666,20 +667,29 @@ export default function EcommerceMarketplace({ inlineMode = false, onBackToSelec
   const [pincodeInput, setPincodeInput] = useState('');
   const [pincodeResult, setPincodeResult] = useState(null);
 
-  const handleCheckPincode = () => {
+  const handleCheckPincode = async () => {
     if (pincodeInput.length !== 6 || isNaN(Number(pincodeInput))) {
       setPincodeResult('invalid');
       return;
     }
+    
+    if (!pincodeInput.startsWith('67') && !pincodeInput.startsWith('68') && !pincodeInput.startsWith('69')) {
+      setPincodeResult('error');
+      return;
+    }
+
     setPincodeResult('checking');
-    setTimeout(() => {
-      // Mock logic: 80% chance of delivery available
-      if (Math.random() > 0.2) {
+    try {
+      const response = await fetch(`https://api.postalpincode.in/pincode/${pincodeInput}`);
+      const data = await response.json();
+      if (data && data[0] && data[0].Status === 'Success') {
         setPincodeResult('success');
       } else {
         setPincodeResult('error');
       }
-    }, 1000);
+    } catch (error) {
+      setPincodeResult('error');
+    }
   };
 
   const [recentlyViewed, setRecentlyViewed] = useState(() => {
@@ -3060,9 +3070,15 @@ export default function EcommerceMarketplace({ inlineMode = false, onBackToSelec
               );
             })()}
 
-            <div className="w-full rounded-3xl overflow-hidden shadow-xl border border-slate-100 dark:border-slate-800 bg-black mt-10 mb-6">
+            <motion.div 
+              initial={{ scale: 0, opacity: 0 }}
+              whileInView={{ scale: 1, opacity: 1 }}
+              viewport={{ once: true, margin: "-100px" }}
+              transition={{ type: "spring", stiffness: 100, damping: 20, duration: 0.8 }}
+              className="w-full rounded-3xl overflow-hidden shadow-xl border border-slate-100 dark:border-slate-800 bg-black mt-10 mb-6"
+            >
               <video src="/videos/Referral.mp4" autoPlay loop muted playsInline className="w-full max-h-[70vh] object-cover" />
-            </div>
+            </motion.div>
 
             <CollabEarnBanner
               handleInviteFriendsClick={handleInviteFriendsClick}
@@ -3291,7 +3307,7 @@ export default function EcommerceMarketplace({ inlineMode = false, onBackToSelec
                         min="0"
                         max={filterPrice - 1}
                         value={filterMinPrice}
-                        onChange={(e) => setFilterMinPrice(Number(e.target.value))}
+                        onChange={(e) => setFilterMinPrice(e.target.value === '' ? '' : Number(e.target.value))}
                         placeholder="0"
                         className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl py-1.5 px-2.5 text-xs font-bold focus:outline-none focus:ring-1 focus:ring-orange-500 dark:text-white"
                       />
@@ -3803,6 +3819,12 @@ export default function EcommerceMarketplace({ inlineMode = false, onBackToSelec
                         <div className="flex-1 flex justify-between items-center flex-wrap gap-2">
                           {pincodeResult === 'success' ? (
                             <span className="font-semibold dark:text-white">Delivery to {pincodeInput}</span>
+                          ) : pincodeResult === 'checking' ? (
+                            <span className="font-semibold text-blue-600">Checking...</span>
+                          ) : pincodeResult === 'error' ? (
+                            <span className="font-semibold text-red-500">Not deliverable to {pincodeInput}</span>
+                          ) : pincodeResult === 'invalid' ? (
+                            <span className="font-semibold text-red-500">Invalid pincode</span>
                           ) : (
                             <span className="font-semibold dark:text-white">Location not set</span>
                           )}

@@ -1,4 +1,4 @@
-﻿import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
   Users, UserCheck, UserX, Clock, TrendingUp, 
@@ -6,7 +6,7 @@ import {
   CheckCircle, XCircle, Search, Filter, Mail,
   // eslint-disable-next-line no-unused-vars
   Calendar, Eye, AlertCircle, Shield, Settings, 
-  BarChart3, Activity, DollarSign, Layout, ShoppingBag, Store
+  BarChart3, Activity, DollarSign, Layout, ShoppingBag, Store, Box
 } from 'lucide-react';
 import api from '../../services/api';
 import toast from 'react-hot-toast';
@@ -20,6 +20,7 @@ import PaymentManagement from './PaymentManagement';
 import PlatformSettings from './PlatformSettings';
 import EcommerceMarketplace from '../Ecommerce/EcommerceMarketplace';
 import StoreContentEditor from './StoreContentEditor';
+import VendorManagement from './VendorManagement';
 
 const AdminDashboard = () => {
   const { user } = useAuth();
@@ -57,6 +58,7 @@ const AdminDashboard = () => {
     { id: 'store', label: 'Store Content', icon: ShoppingBag },
     { id: 'support', label: 'Support Tickets', icon: AlertCircle },
     { id: 'payments', label: 'Payment Management', icon: DollarSign },
+    { id: 'vendors', label: 'Vendor Management', icon: Box },
     { id: 'settings', label: 'Platform Settings', icon: Settings },
   ];
 
@@ -517,6 +519,10 @@ const AdminDashboard = () => {
               ? <StoreContentEditor />
               : <div className="p-4 text-center text-gray-500">Access denied. Admins only.</div>}
           </>
+        )}
+
+        {activeTab === 'vendors' && (
+          <VendorManagement />
         )}
 
         {activeTab === 'settings' && (

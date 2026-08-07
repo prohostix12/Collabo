@@ -525,6 +525,53 @@ const StoreContentEditor = () => {
           </div>
         </Card>
 
+        {/* Mini Offer Cards (Uses hero_card_slides) */}
+        <Card icon={Sparkles} title="Mini Offer Cards (3 Cards below Carousel)">
+          <div className="space-y-3">
+            {(settings.hero_card_slides || []).map((card, idx) => (
+              <div key={idx} className="bg-gray-50 rounded-xl p-3 space-y-2 border border-gray-100">
+                <div className="flex items-center justify-between">
+                  <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Card #{idx + 1}</span>
+                  <button
+                    onClick={() => removeJson('hero_card_slides', idx)}
+                    className="p-1 rounded-lg text-red-400 hover:bg-red-50 transition-colors"
+                  >
+                    <X className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+                <div className="grid grid-cols-2 gap-2">
+                  <Field label="Title">
+                    <input type="text" value={card.title || ''} onChange={e => setJson('hero_card_slides', idx, { title: e.target.value })} className={inputCls} placeholder="e.g. Top Audio Deals" />
+                  </Field>
+                  <Field label="Subtitle">
+                    <input type="text" value={card.subtitle || ''} onChange={e => setJson('hero_card_slides', idx, { subtitle: e.target.value })} className={inputCls} placeholder="e.g. Min. 50% Off" />
+                  </Field>
+                </div>
+                <div className="grid grid-cols-2 gap-2">
+                  <Field label="Ad Image URL">
+                    <input type="text" value={card.image || ''} onChange={e => setJson('hero_card_slides', idx, { image: e.target.value })} className={inputCls} placeholder="https://..." />
+                  </Field>
+                  <Field label="Link to Product">
+                    <select value={card.product_id || ''} onChange={e => setJson('hero_card_slides', idx, { product_id: e.target.value })} className={inputCls}>
+                      <option value="">-- No Product --</option>
+                      {products.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
+                    </select>
+                  </Field>
+                </div>
+              </div>
+            ))}
+            {(settings.hero_card_slides || []).length < 3 && (
+              <button
+                onClick={() => addJson('hero_card_slides', { title: 'New Offer', subtitle: 'Special Promo', image: '', product_id: '' })}
+                className="w-full flex items-center justify-center gap-2 text-xs font-semibold text-orange-500 hover:text-orange-700 border border-dashed border-orange-300 hover:border-orange-500 rounded-xl py-2.5 transition-colors"
+              >
+                <PlusCircle className="w-4 h-4" />
+                Add Offer Card
+              </button>
+            )}
+          </div>
+        </Card>
+
 
         {/* Testimonials */}
         <Card icon={Users} title="Customer Testimonials">

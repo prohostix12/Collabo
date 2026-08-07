@@ -19,6 +19,7 @@ import Footer from '../Layout/Footer';
 import ChangePasswordModal from '../Layout/ChangePasswordModal';
 import ChangeUsernameModal from '../Layout/ChangeUsernameModal';
 import DeleteAccountModal from '../Layout/DeleteAccountModal';
+import VendorManagement from '../Dashboard/VendorManagement';
 
 
 
@@ -423,15 +424,22 @@ export default function EcommerceMarketplace({ inlineMode = false, onBackToSelec
   const [pincodeInput, setPincodeInput] = useState('');
   const [pincodeResult, setPincodeResult] = useState(null);
 
-  const handleCheckPincode = () => {
+  const handleCheckPincode = async () => {
     if (pincodeInput.length !== 6 || isNaN(Number(pincodeInput))) {
       setPincodeResult('invalid');
       return;
     }
+    
+    if (!pincodeInput.startsWith('67') && !pincodeInput.startsWith('68') && !pincodeInput.startsWith('69')) {
+      setPincodeResult('error');
+      return;
+    }
+
     setPincodeResult('checking');
-    setTimeout(() => {
-      // Mock logic: 80% chance of delivery available
-      if (Math.random() > 0.2) {
+    try {
+      const response = await fetch(`https://api.postalpincode.in/pincode/${pincodeInput}`);
+      const data = await response.json();
+      if (data && data[0] && data[0].Status === 'Success') {
         setPincodeResult('success');
       } else {
         setPincodeResult('error');
@@ -784,6 +792,8 @@ export default function EcommerceMarketplace({ inlineMode = false, onBackToSelec
   const [newProdStock, setNewProdStock] = useState('10');
   const [newProdShippingCharge, setNewProdShippingCharge] = useState('49');
   const [newProdDelivery, setNewProdDelivery] = useState('Free delivery by Tomorrow');
+  const [newProdVendor, setNewProdVendor] = useState('');
+  const [newProdReturnPolicy, setNewProdReturnPolicy] = useState('');
   const [newProdCommissionRate, setNewProdCommissionRate] = useState('10');
   const [newProdLinkDiscount, setNewProdLinkDiscount] = useState('0');
 
@@ -811,6 +821,9 @@ export default function EcommerceMarketplace({ inlineMode = false, onBackToSelec
   const [editProdStock, setEditProdStock] = useState('10');
   const [editProdShippingCharge, setEditProdShippingCharge] = useState('49');
   const [editProdDelivery, setEditProdDelivery] = useState('Free delivery by Tomorrow');
+  const [editProdVendor, setEditProdVendor] = useState('');
+  const [editProdReturnPolicy, setEditProdReturnPolicy] = useState('');
+  const [vendorsList, setVendorsList] = useState([]);
   const [editProdCommissionRate, setEditProdCommissionRate] = useState('10');
   const [editProdLinkDiscount, setEditProdLinkDiscount] = useState('0');
 
@@ -852,8 +865,39 @@ export default function EcommerceMarketplace({ inlineMode = false, onBackToSelec
   };
 
   // Fetch Categories and Brands from backend
+  
+  const handleVendorChange = (e, isEdit) => {
+    const vendorId = e.target.value;
+    if (isEdit) {
+      setEditProdVendor(vendorId);
+    } else {
+      setNewProdVendor(vendorId);
+    }
+    
+    if (vendorId) {
+      const selectedVendor = vendorsList.find(v => String(v.id) === String(vendorId));
+      if (selectedVendor) {
+        if (isEdit) {
+          setEditProdDelivery(selectedVendor.delivery_time);
+          setEditProdShippingCharge(selectedVendor.delivery_charge);
+          setEditProdReturnPolicy(selectedVendor.return_policy);
+        } else {
+          setNewProdDelivery(selectedVendor.delivery_time);
+          setNewProdShippingCharge(selectedVendor.delivery_charge);
+          setNewProdReturnPolicy(selectedVendor.return_policy);
+        }
+      }
+    }
+  };
+
   const fetchCategoriesAndBrands = async () => {
     try {
+      try {
+        const vendorResponse = await api.get('/ecommerce/vendors/');
+        setVendorsList(Array.isArray(vendorResponse.data) ? vendorResponse.data : (vendorResponse.data.results || []));
+      } catch (err) {
+        console.error('Error fetching vendors', err);
+      }
       const catResponse = await api.get('/ecommerce/categories/');
       const catData = Array.isArray(catResponse.data) ? catResponse.data : (catResponse.data.results || []);
       setCategoriesList(catData);
@@ -2768,7 +2812,7 @@ export default function EcommerceMarketplace({ inlineMode = false, onBackToSelec
                         min="0"
                         max={filterPrice - 1}
                         value={filterMinPrice}
-                        onChange={(e) => setFilterMinPrice(Number(e.target.value))}
+                        onChange={(e) => setFilterMinPrice(e.target.value === '' ? '' : Number(e.target.value))}
                         placeholder="0"
                         className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl py-1.5 px-2.5 text-xs font-bold focus:outline-none focus:ring-1 focus:ring-orange-500 dark:text-white"
                       />
@@ -3237,6 +3281,12 @@ export default function EcommerceMarketplace({ inlineMode = false, onBackToSelec
                         <div className="flex-1 flex justify-between items-center flex-wrap gap-2">
                           {pincodeResult === 'success' ? (
                             <span className="font-semibold dark:text-white">Delivery to {pincodeInput}</span>
+                          ) : pincodeResult === 'checking' ? (
+                            <span className="font-semibold text-blue-600">Checking...</span>
+                          ) : pincodeResult === 'error' ? (
+                            <span className="font-semibold text-red-500">Not deliverable to {pincodeInput}</span>
+                          ) : pincodeResult === 'invalid' ? (
+                            <span className="font-semibold text-red-500">Invalid pincode</span>
                           ) : (
                             <span className="font-semibold dark:text-white">Location not set</span>
                           )}
@@ -5065,6 +5115,12 @@ export default function EcommerceMarketplace({ inlineMode = false, onBackToSelec
                 >
                   Orders
                 </button>
+                <button 
+                  onClick={() => setAdminView('vendors')}
+                  className={`px-4 py-2 rounded-xl text-xs font-bold transition-all ${adminView === 'vendors' ? 'bg-slate-950 text-white' : 'bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-350'}`}
+                >
+                  Vendors
+                </button>
                 {(user?.is_staff || user?.user_type === 'admin') && (
                   <>
                     <button 
@@ -5561,6 +5617,8 @@ export default function EcommerceMarketplace({ inlineMode = false, onBackToSelec
                                   stock: Number(newProdStock),
                                   product_shipping_charge: Number(newProdShippingCharge) || 0,
                                   delivery: newProdDelivery || 'Free delivery by Tomorrow',
+                                  vendor: newProdVendor || null,
+                                  return_policy: newProdReturnPolicy,
                                   commission_rate: Number(newProdCommissionRate),
                                   link_discount_percent: Number(newProdLinkDiscount),
                                   seller_info: newProdSellerInfo,
@@ -5687,6 +5745,8 @@ export default function EcommerceMarketplace({ inlineMode = false, onBackToSelec
                                 setEditProdOffers(Array.isArray(p.offers) ? p.offers.join('\n') : (p.offers || ''));
                                 setEditProdSpecifications(typeof p.specifications === 'string' ? p.specifications : JSON.stringify(p.specifications || {}));
                                 setEditProdQaSection(typeof p.qa_section === 'string' ? p.qa_section : JSON.stringify(p.qa_section || []));
+                                setEditProdVendor(p.vendor || '');
+                                setEditProdReturnPolicy(p.return_policy || '');
                               }}
                               className="p-1.5 text-blue-500 hover:bg-blue-50 dark:hover:bg-blue-950/20 rounded-lg border border-blue-100 dark:border-blue-900/30"
                               title="Edit Product"
@@ -5723,6 +5783,13 @@ export default function EcommerceMarketplace({ inlineMode = false, onBackToSelec
             )}
 
             {/* ORDERS MANAGEMENT */}
+            
+            {adminView === 'vendors' && (user?.is_staff || user?.user_type === 'admin') && (
+              <div className="bg-white dark:bg-slate-900 rounded-3xl p-6 shadow-sm border border-slate-100 dark:border-slate-800">
+                <VendorManagement />
+              </div>
+            )}
+
             {adminView === 'orders' && (
               <div className="space-y-6">
                 <h3 className="font-extrabold text-sm dark:text-white">Customer Orders Management</h3>
