@@ -3075,9 +3075,9 @@ export default function EcommerceMarketplace({ inlineMode = false, onBackToSelec
               whileInView={{ scale: 1, opacity: 1 }}
               viewport={{ once: true, margin: "-100px" }}
               transition={{ type: "spring", stiffness: 100, damping: 20, duration: 0.8 }}
-              className="w-full rounded-3xl overflow-hidden shadow-xl border border-slate-100 dark:border-slate-800 bg-black mt-10 mb-6"
+              className="w-full max-w-3xl mx-auto rounded-3xl overflow-hidden shadow-xl border border-slate-100 dark:border-slate-800 bg-black mt-10 mb-6"
             >
-              <video src="/videos/Referral.mp4" autoPlay loop muted playsInline className="w-full max-h-[70vh] object-cover" />
+              <video src="/videos/Referral_Voiceover.mp4" autoPlay loop controls playsInline className="w-full h-auto object-cover" />
             </motion.div>
 
             <CollabEarnBanner
