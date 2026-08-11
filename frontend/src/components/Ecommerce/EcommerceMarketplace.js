@@ -444,7 +444,9 @@ export default function EcommerceMarketplace({ inlineMode = false, onBackToSelec
       } else {
         setPincodeResult('error');
       }
-    }, 1000);
+    } catch (err) {
+      setPincodeResult('error');
+    }
   };
 
   const [recentlyViewed, setRecentlyViewed] = useState(() => {
@@ -2536,12 +2538,9 @@ export default function EcommerceMarketplace({ inlineMode = false, onBackToSelec
 
             <CollaboAdBanner isLoggedIn={isLoggedIn} setCurrentView={setCurrentView} />
 
-            <CollabEarnBanner
-              setCurrentView={setCurrentView}
-              setSupportSubject={setSupportSubject}
-              setSupportCategory={setSupportCategory}
-              setSupportMessage={setSupportMessage}
-            />
+            <div className="w-full max-w-3xl mx-auto rounded-[28px] overflow-hidden shadow-xl border border-slate-100 dark:border-slate-800 bg-black my-8">
+              <video src="/videos/Referral_Voiceover.mp4" autoPlay loop controls playsInline className="w-full h-auto object-cover" />
+            </div>
 
             {/* Shop By Category Grid + Side Ad */}
             {(() => {
