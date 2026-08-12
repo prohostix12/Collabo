@@ -959,6 +959,13 @@ class SellerProfileView(generics.RetrieveUpdateAPIView):
         serializer = self.get_serializer(profile, data=request.data, partial=True)
         serializer.is_valid(raise_exception=True)
         serializer.save(user=request.user, verification_status='pending', rejection_reason=None)
+
+        try:
+            from .email_service import ApprovalEmailService
+            ApprovalEmailService.send_seller_application_submitted_email(profile)
+        except Exception:
+            pass
+
         return Response(serializer.data, status=status.HTTP_200_OK)
 
 

@@ -417,3 +417,85 @@ The Collabo Team
         except Exception as e:
             logger.error(f"Failed to send seller rejection email to {user.email}: {str(e)}")
             return False
+
+    @staticmethod
+    def send_seller_application_submitted_email(profile):
+        """Notify all admin/staff accounts that a seller application needs review."""
+        try:
+            from django.contrib.auth import get_user_model
+            User = get_user_model()
+            admin_emails = list(
+                User.objects.filter(is_staff=True).exclude(email='').values_list('email', flat=True)
+            )
+            if not admin_emails:
+                return False
+
+            user = profile.user
+            applicant = user.first_name or user.username
+            review_url = f"{settings.FRONTEND_URL}/admin"
+            subject = f'New Seller Application: {profile.store_name}'
+
+            message = f"""
+A new seller application is waiting for review.
+
+Store: {profile.store_name}
+Applicant: {applicant} ({user.email})
+Tax ID: {profile.tax_id}
+Submitted: {profile.updated_at.strftime('%d %b %Y, %I:%M %p')}
+
+Review it here: {review_url}
+
+— Collabo
+            """.strip()
+
+            html_message = f"""
+<!DOCTYPE html>
+<html>
+<head>
+    <style>
+        body {{ font-family: Arial, sans-serif; line-height: 1.6; color: #333; }}
+        .container {{ max-width: 600px; margin: 0 auto; padding: 20px; }}
+        .header {{ background: linear-gradient(135deg, #f97316 0%, #ea580c 100%); color: white; padding: 30px; text-align: center; border-radius: 10px 10px 0 0; }}
+        .content {{ background: #f9f9f9; padding: 30px; border-radius: 0 0 10px 10px; }}
+        .button {{ display: inline-block; padding: 12px 30px; background: linear-gradient(135deg, #f97316 0%, #ea580c 100%); color: white; text-decoration: none; border-radius: 5px; margin: 20px 0; }}
+        .details {{ background: white; padding: 16px 20px; border-radius: 8px; margin: 16px 0; border: 1px solid #eee; }}
+        .details p {{ margin: 6px 0; font-size: 14px; }}
+        .footer {{ text-align: center; color: #666; font-size: 12px; margin-top: 30px; }}
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🔔 New Seller Application</h1>
+        </div>
+        <div class="content">
+            <p>A seller application is waiting for review.</p>
+            <div class="details">
+                <p><strong>Store:</strong> {profile.store_name}</p>
+                <p><strong>Applicant:</strong> {applicant} ({user.email})</p>
+                <p><strong>Tax ID:</strong> {profile.tax_id}</p>
+                <p><strong>Submitted:</strong> {profile.updated_at.strftime('%d %b %Y, %I:%M %p')}</p>
+            </div>
+            <center><a href="{review_url}" class="button">Review Application</a></center>
+            <div class="footer">
+                <p>Collabo Admin Notifications</p>
+            </div>
+        </div>
+    </div>
+</body>
+</html>
+            """.strip()
+
+            send_mail(
+                subject=subject,
+                message=message,
+                from_email=settings.DEFAULT_FROM_EMAIL,
+                recipient_list=admin_emails,
+                html_message=html_message,
+                fail_silently=False,
+            )
+            logger.info(f"Seller application notification sent to admins for {profile.store_name}")
+            return True
+        except Exception as e:
+            logger.error(f"Failed to send seller application notification: {str(e)}")
+            return False
