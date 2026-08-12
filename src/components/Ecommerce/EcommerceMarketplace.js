@@ -149,10 +149,9 @@ const CollaboAdBanner = ({ handleInviteFriendsClick }) => {
         </div>
         <div className="flex-1 hidden md:flex items-center justify-end pr-4 md:pr-8 relative">
           <video
-            src="/videos/Referral.mp4"
-            autoPlay
+            src="/videos/Referral_Voiceover.mp4"
             loop
-            muted
+            controls
             playsInline
             className="w-[320px] md:w-[480px] aspect-video object-cover rounded-2xl shadow-2xl border-4 border-white/20"
           />
