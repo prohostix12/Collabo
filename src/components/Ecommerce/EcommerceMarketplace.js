@@ -3076,9 +3076,7 @@ export default function EcommerceMarketplace({ inlineMode = false, onBackToSelec
               );
             })()}
 
-            <CollabEarnBanner
-              handleInviteFriendsClick={handleInviteFriendsClick}
-            />
+            <CollaboAdBanner handleInviteFriendsClick={handleInviteFriendsClick} />
 
             {/* Customer Feedbacks */}
             <div className="space-y-6">
@@ -3144,7 +3142,9 @@ export default function EcommerceMarketplace({ inlineMode = false, onBackToSelec
               })()}
             </div>
 
-            <CollaboAdBanner handleInviteFriendsClick={handleInviteFriendsClick} />
+            <CollabEarnBanner
+              handleInviteFriendsClick={handleInviteFriendsClick}
+            />
 
             <Footer />
 
