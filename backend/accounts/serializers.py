@@ -196,9 +196,10 @@ class UserSerializer(serializers.ModelSerializer):
         fields = ('id', 'email', 'username', 'user_type', 'phone', 'is_verified',
                  'created_at', 'influencer_profile', 'company_profile', 'seller_profile',
                  'approval_status', 'is_approved', 'rejection_reason', 'approval_shown',
-                 'reward_points', 'affiliate_code')
+                 'reward_points', 'affiliate_code', 'is_staff')
         read_only_fields = ('id', 'created_at', 'approval_status', 'is_approved',
-                           'rejection_reason', 'approval_shown', 'user_type', 'affiliate_code')
+                           'rejection_reason', 'approval_shown', 'user_type', 'affiliate_code',
+                           'is_staff')
 
     def validate_phone(self, value):
         value = (value or '').strip()
