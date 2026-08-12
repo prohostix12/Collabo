@@ -1034,6 +1034,12 @@ def approve_seller(request, user_id):
     except Exception:
         pass
 
+    try:
+        from ecommerce.gupshup import notify_seller_approved
+        notify_seller_approved(user, profile.store_name)
+    except Exception:
+        pass
+
     return Response({
         'message': 'Seller approved successfully',
         'profile': SellerProfileSerializer(profile).data

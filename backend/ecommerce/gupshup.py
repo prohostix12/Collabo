@@ -79,6 +79,16 @@ def notify_welcome(user):
     return _send_template(phone, 'f894c8ea-4e75-4341-9d62-69845ef7325d', [name])
 
 
+def notify_seller_approved(user, store_name):
+    phone = getattr(user, 'phone', '') or ''
+    if not phone:
+        return False
+    name = user.first_name or user.username
+    # Gupshup template ID for seller_account_approved — replace once the
+    # template below is submitted and approved in the Gupshup/Meta dashboard.
+    return _send_template(phone, 'REPLACE_WITH_SELLER_APPROVED_TEMPLATE_ID', [name, store_name])
+
+
 def _order_phone(order) -> str:
     # Prefer the account's verified phone over the checkout address's phone —
     # the address field is free-text (can be a typo, or a different person's
