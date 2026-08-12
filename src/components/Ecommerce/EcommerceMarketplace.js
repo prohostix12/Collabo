@@ -148,7 +148,14 @@ const CollaboAdBanner = ({ handleInviteFriendsClick }) => {
           </button>
         </div>
         <div className="flex-1 hidden md:flex items-center justify-end pr-4 md:pr-8 relative">
-          <img loading="lazy" src="/collabo-logo.png" alt="Collabo" className="h-32 lg:h-48 object-contain drop-shadow-2xl transform group-hover:scale-110 transition-all duration-700 scale-[1.5] origin-right" />
+          <video
+            src="/videos/Referral.mp4"
+            autoPlay
+            loop
+            muted
+            playsInline
+            className="w-[320px] md:w-[480px] aspect-video object-cover rounded-2xl shadow-2xl border-4 border-white/20"
+          />
         </div>
       </div>
     </div>
@@ -3069,16 +3076,6 @@ export default function EcommerceMarketplace({ inlineMode = false, onBackToSelec
                 </div>
               );
             })()}
-
-            <motion.div 
-              initial={{ scale: 0, opacity: 0 }}
-              whileInView={{ scale: 1, opacity: 1 }}
-              viewport={{ once: true, margin: "-100px" }}
-              transition={{ type: "spring", stiffness: 100, damping: 20, duration: 0.8 }}
-              className="w-full max-w-3xl mx-auto rounded-3xl overflow-hidden shadow-xl border border-slate-100 dark:border-slate-800 bg-black mt-10 mb-6"
-            >
-              <video src="/videos/Referral_Voiceover.mp4" autoPlay loop controls playsInline className="w-full h-auto object-cover" />
-            </motion.div>
 
             <CollabEarnBanner
               handleInviteFriendsClick={handleInviteFriendsClick}
