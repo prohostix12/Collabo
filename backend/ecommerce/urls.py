@@ -10,7 +10,7 @@ from .views import (
     upload_influencer_media, list_influencer_media, delete_influencer_media,
     import_shopify_csv,
     SellerStorefrontView, seller_reviews,
-    SellerEarningsView, seller_withdraw, SellerPayoutHistoryView,
+    SellerEarningsView, seller_withdraw, SellerPayoutHistoryView, SellerProductAnalyticsView,
     AdminPayoutListView, admin_process_payout,
     NewsletterSubscribeView,
     NewsletterBroadcastView,
@@ -63,6 +63,7 @@ urlpatterns = [
     path('seller/earnings/', SellerEarningsView.as_view(), name='seller-earnings'),
     path('seller/withdraw/', seller_withdraw, name='seller-withdraw'),
     path('seller/payouts/', SellerPayoutHistoryView.as_view(), name='seller-payouts'),
+    path('seller/analytics/', SellerProductAnalyticsView.as_view(), name='seller-product-analytics'),
     # Admin payout management
     path('admin/seller-payouts/', AdminPayoutListView.as_view(), name='admin-seller-payouts'),
     path('admin/seller-payouts/<int:payout_id>/process/', admin_process_payout, name='admin-process-payout'),

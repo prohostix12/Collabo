@@ -2,7 +2,11 @@ import React, { useState, useEffect, useCallback } from 'react';
 import {
   Store, Package, Plus, X, Clock, CheckCircle2, XCircle,
   IndianRupee, Boxes, ImagePlus, Upload, ShoppingBag, Pencil, Trash2, Truck,
+  TrendingUp, ArrowUpCircle, ArrowDownCircle, ShoppingCart, LayoutGrid,
 } from 'lucide-react';
+import {
+  ResponsiveContainer, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip,
+} from 'recharts';
 import api from '../../services/api';
 import toast from 'react-hot-toast';
 import { useAuth } from '../../contexts/AuthContext';
@@ -68,6 +72,13 @@ const SellerDashboard = () => {
   const [submitting, setSubmitting] = useState(false);
   const [formError, setFormError] = useState('');
   const [deletingId, setDeletingId] = useState(null);
+  const [activeTab, setActiveTab] = useState('products');
+  const [analytics, setAnalytics] = useState(null);
+  const [analyticsLoading, setAnalyticsLoading] = useState(false);
+  const [stockProductId, setStockProductId] = useState(null);
+  const [stockQty, setStockQty] = useState('1');
+  const [stockExact, setStockExact] = useState('');
+  const [stockSubmitting, setStockSubmitting] = useState(false);
 
   const fetchProducts = useCallback(() => {
     if (!user?.id) return;
@@ -88,6 +99,49 @@ const SellerDashboard = () => {
       .then(res => setCategories(res.data.results || res.data || []))
       .catch(() => setCategories([]));
   }, []);
+
+  const fetchAnalytics = useCallback(() => {
+    setAnalyticsLoading(true);
+    api.get('/ecommerce/seller/analytics/')
+      .then(res => setAnalytics(res.data))
+      .catch(() => setAnalytics(null))
+      .finally(() => setAnalyticsLoading(false));
+  }, []);
+
+  useEffect(() => {
+    if (activeTab === 'analytics' && !analytics) fetchAnalytics();
+  }, [activeTab, analytics, fetchAnalytics]);
+
+  const openStockPopover = (product) => {
+    setStockProductId(product.id);
+    setStockQty('1');
+    setStockExact(String(product.stock));
+  };
+
+  const closeStockPopover = () => setStockProductId(null);
+
+  const applyStockUpdate = (product, delta) => {
+    if (!delta) return;
+    if (product.stock + delta < 0) { toast.error(`Only ${product.stock} in stock`); return; }
+    setStockSubmitting(true);
+    api.post(`/ecommerce/products/${product.id}/adjust-stock/`, { delta })
+      .then(res => {
+        setProducts(prev => prev.map(p => p.id === product.id ? res.data : p));
+        setStockExact(String(res.data.stock));
+        toast.success(delta > 0 ? `Added ${delta} to stock` : `Removed ${-delta} from stock`);
+        if (analytics) fetchAnalytics();
+      })
+      .catch(err => toast.error(err.response?.data?.error || 'Failed to update stock'))
+      .finally(() => setStockSubmitting(false));
+  };
+
+  const handleStockIn = (product) => applyStockUpdate(product, Number(stockQty) || 0);
+  const handleStockOut = (product) => applyStockUpdate(product, -(Number(stockQty) || 0));
+  const handleSetExactStock = (product) => {
+    const target = Number(stockExact);
+    if (!Number.isFinite(target) || target < 0) { toast.error('Enter a valid stock quantity'); return; }
+    applyStockUpdate(product, target - product.stock);
+  };
 
   const counts = {
     all: products.length,
@@ -256,7 +310,98 @@ const SellerDashboard = () => {
         New products are reviewed by our team before they go live. Once approved, they'll appear in the store and buyers can purchase them right away.
       </div>
 
+      {/* Tab switcher */}
+      <div className="flex gap-1 bg-gray-100 dark:bg-gray-800 p-1 rounded-xl w-fit">
+        <button
+          onClick={() => setActiveTab('products')}
+          className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg text-xs font-semibold transition-colors ${
+            activeTab === 'products' ? 'bg-white dark:bg-gray-700 text-gray-900 dark:text-white shadow-sm' : 'text-gray-500 dark:text-gray-400'
+          }`}
+        >
+          <LayoutGrid className="w-3.5 h-3.5" /> Products
+        </button>
+        <button
+          onClick={() => setActiveTab('analytics')}
+          className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg text-xs font-semibold transition-colors ${
+            activeTab === 'analytics' ? 'bg-white dark:bg-gray-700 text-gray-900 dark:text-white shadow-sm' : 'text-gray-500 dark:text-gray-400'
+          }`}
+        >
+          <TrendingUp className="w-3.5 h-3.5" /> Analytics
+        </button>
+      </div>
+
+      {activeTab === 'analytics' && (
+        <div className="space-y-4">
+          {analyticsLoading ? (
+            <div className="flex justify-center py-12">
+              <div className="w-6 h-6 border-2 border-gray-300 border-t-gray-600 rounded-full animate-spin" />
+            </div>
+          ) : !analytics ? (
+            <div className="text-center py-14 bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700">
+              <p className="text-sm text-gray-500 dark:text-gray-400">Couldn't load analytics right now</p>
+              <button onClick={fetchAnalytics} className="mt-3 text-xs font-semibold text-orange-600 hover:underline">Retry</button>
+            </div>
+          ) : (
+            <>
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+                {[
+                  { label: 'Total Revenue', value: `₹${analytics.summary.total_revenue.toLocaleString('en-IN')}`, icon: IndianRupee, color: 'text-emerald-600 bg-emerald-50 dark:bg-emerald-900/20 dark:text-emerald-400 border-emerald-100 dark:border-emerald-800' },
+                  { label: 'Units Sold', value: analytics.summary.total_units_sold, icon: ShoppingCart, color: 'text-blue-600 bg-blue-50 dark:bg-blue-900/20 dark:text-blue-400 border-blue-100 dark:border-blue-800' },
+                  { label: 'Orders', value: analytics.summary.total_orders, icon: Package, color: 'text-purple-600 bg-purple-50 dark:bg-purple-900/20 dark:text-purple-400 border-purple-100 dark:border-purple-800' },
+                  { label: 'Total Stock', value: analytics.summary.total_stock, icon: Boxes, color: 'text-amber-600 bg-amber-50 dark:bg-amber-900/20 dark:text-amber-400 border-amber-100 dark:border-amber-800' },
+                ].map(s => (
+                  <div key={s.label} className="bg-white dark:bg-gray-800 rounded-2xl p-4 border border-gray-150 dark:border-gray-700 shadow-sm flex items-center gap-3.5">
+                    <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 border ${s.color}`}>
+                      <s.icon className="w-5 h-5 stroke-[2.25]" />
+                    </div>
+                    <div>
+                      <p className="text-xl font-extrabold text-gray-900 dark:text-white leading-none">{s.value}</p>
+                      <p className="text-xs text-gray-500 dark:text-gray-400 font-medium mt-1.5">{s.label}</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-4">
+                <h3 className="text-xs font-semibold text-gray-900 dark:text-white mb-3">Revenue — last 6 months</h3>
+                <ResponsiveContainer width="100%" height={220}>
+                  <BarChart data={analytics.monthly}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
+                    <XAxis dataKey="month" tick={{ fontSize: 11 }} stroke="#9ca3af" />
+                    <YAxis tick={{ fontSize: 11 }} stroke="#9ca3af" />
+                    <Tooltip formatter={(v) => `₹${Number(v).toLocaleString('en-IN')}`} />
+                    <Bar dataKey="revenue" fill="#ea580c" radius={[4, 4, 0, 0]} />
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+
+              <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 overflow-hidden">
+                <div className="px-4 py-3 border-b border-gray-100 dark:border-gray-700">
+                  <h3 className="text-xs font-semibold text-gray-900 dark:text-white">Sales by Product</h3>
+                </div>
+                {analytics.products.length === 0 ? (
+                  <p className="text-sm text-gray-500 dark:text-gray-400 text-center py-10">No sales yet</p>
+                ) : (
+                  <div className="divide-y divide-gray-100 dark:divide-gray-700">
+                    {analytics.products.map(p => (
+                      <div key={p.id} className="flex items-center gap-3 px-4 py-3">
+                        <img src={p.image} alt={p.name} className="w-10 h-10 rounded-lg object-cover bg-gray-100 dark:bg-gray-700 shrink-0" />
+                        <p className="text-sm font-medium text-gray-900 dark:text-white truncate flex-1 min-w-0">{p.name}</p>
+                        <p className="text-xs text-gray-500 dark:text-gray-400 shrink-0">{p.units_sold} sold</p>
+                        <p className="text-xs text-gray-500 dark:text-gray-400 shrink-0">Stock: {p.stock}</p>
+                        <p className="text-sm font-semibold text-gray-900 dark:text-white shrink-0 w-24 text-right">₹{p.revenue.toLocaleString('en-IN')}</p>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </>
+          )}
+        </div>
+      )}
+
       {/* Products list */}
+      {activeTab === 'products' && (
       <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 overflow-hidden">
         <div className="px-4 py-3 border-b border-gray-100 dark:border-gray-700">
           <h3 className="text-xs font-semibold text-gray-900 dark:text-white">My Products</h3>
@@ -294,6 +439,13 @@ const SellerDashboard = () => {
                   </span>
                   <div className="flex items-center gap-1 shrink-0">
                     <button
+                      onClick={() => openStockPopover(p)}
+                      title="Update Stock"
+                      className="p-2 rounded-lg text-gray-500 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-colors"
+                    >
+                      <Boxes className="w-3.5 h-3.5" />
+                    </button>
+                    <button
                       onClick={() => openEditForm(p)}
                       title="Edit"
                       className="p-2 rounded-lg text-gray-500 hover:text-orange-600 hover:bg-orange-50 dark:hover:bg-orange-900/20 transition-colors"
@@ -315,6 +467,7 @@ const SellerDashboard = () => {
           </div>
         )}
       </div>
+      )}
 
       {/* Add Product Modal */}
       {showAddForm && (
@@ -499,6 +652,61 @@ const SellerDashboard = () => {
           </div>
         </div>
       )}
+
+      {/* Update Stock Modal */}
+      {stockProductId && (() => {
+        const product = products.find(p => p.id === stockProductId);
+        if (!product) return null;
+        return (
+          <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50 p-4" onClick={closeStockPopover}>
+            <div className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 max-w-sm w-full" onClick={e => e.stopPropagation()}>
+              <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100 dark:border-gray-700">
+                <h2 className="text-sm font-bold text-gray-900 dark:text-white">Update Stock</h2>
+                <button onClick={closeStockPopover} className="text-gray-400 hover:text-gray-600">
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+              <div className="p-5 space-y-4">
+                <div className="flex items-center gap-3">
+                  <img src={product.image} alt={product.name} className="w-10 h-10 rounded-lg object-cover bg-gray-100 dark:bg-gray-700 shrink-0" />
+                  <div className="min-w-0">
+                    <p className="text-sm font-medium text-gray-900 dark:text-white truncate">{product.name}</p>
+                    <p className="text-xs text-gray-500 dark:text-gray-400">Current stock: {product.stock}</p>
+                  </div>
+                </div>
+
+                <div>
+                  <label className="text-[11px] font-semibold text-gray-500 uppercase tracking-wide">Quantity</label>
+                  <input type="number" min="1" value={stockQty} onChange={e => setStockQty(e.target.value)}
+                    className="w-full mt-1 border border-gray-200 dark:border-gray-700 rounded-lg px-3 py-2 text-sm bg-white dark:bg-gray-900 focus:outline-none focus:ring-1 focus:ring-orange-400" />
+                  <div className="flex gap-2 mt-2">
+                    <button type="button" disabled={stockSubmitting} onClick={() => handleStockIn(product)}
+                      className="flex-1 flex items-center justify-center gap-1.5 py-2 text-xs font-semibold text-emerald-700 bg-emerald-50 dark:bg-emerald-900/20 dark:text-emerald-400 rounded-lg hover:bg-emerald-100 dark:hover:bg-emerald-900/30 transition-colors disabled:opacity-50">
+                      <ArrowUpCircle className="w-3.5 h-3.5" /> Stock In
+                    </button>
+                    <button type="button" disabled={stockSubmitting} onClick={() => handleStockOut(product)}
+                      className="flex-1 flex items-center justify-center gap-1.5 py-2 text-xs font-semibold text-red-700 bg-red-50 dark:bg-red-900/20 dark:text-red-400 rounded-lg hover:bg-red-100 dark:hover:bg-red-900/30 transition-colors disabled:opacity-50">
+                      <ArrowDownCircle className="w-3.5 h-3.5" /> Stock Out
+                    </button>
+                  </div>
+                </div>
+
+                <div className="pt-3 border-t border-gray-100 dark:border-gray-700">
+                  <label className="text-[11px] font-semibold text-gray-500 uppercase tracking-wide">Or set exact stock</label>
+                  <div className="flex gap-2 mt-1">
+                    <input type="number" min="0" value={stockExact} onChange={e => setStockExact(e.target.value)}
+                      className="flex-1 border border-gray-200 dark:border-gray-700 rounded-lg px-3 py-2 text-sm bg-white dark:bg-gray-900 focus:outline-none focus:ring-1 focus:ring-orange-400" />
+                    <button type="button" disabled={stockSubmitting} onClick={() => handleSetExactStock(product)}
+                      className="px-4 py-2 text-xs font-semibold text-white bg-orange-600 hover:bg-orange-700 rounded-lg disabled:opacity-50 transition-colors">
+                      Save
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
     </div>
   );
 };

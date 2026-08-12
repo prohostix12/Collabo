@@ -241,6 +241,24 @@ class ProductViewSet(viewsets.ModelViewSet):
         product.save(update_fields=['status', 'rejection_reason'])
         return Response(ProductSerializer(product, context={'request': request}).data)
 
+    @action(detail=True, methods=['post'], url_path='adjust-stock')
+    def adjust_stock(self, request, pk=None):
+        """Stock in (positive delta) / stock out (negative delta) without touching the rest of the listing."""
+        product = self.get_object()
+        try:
+            delta = int(request.data.get('delta'))
+        except (TypeError, ValueError):
+            return Response({'error': 'delta must be an integer'}, status=status.HTTP_400_BAD_REQUEST)
+        new_stock = product.stock + delta
+        if new_stock < 0:
+            return Response(
+                {'error': f'Not enough stock to remove. Current stock is {product.stock}.'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        product.stock = new_stock
+        product.save(update_fields=['stock'])
+        return Response(ProductSerializer(product, context={'request': request}).data)
+
 class WishlistViewSet(viewsets.ModelViewSet):
     serializer_class = WishlistSerializer
     permission_classes = [permissions.IsAuthenticated]
@@ -1848,6 +1866,70 @@ class AdminAnalyticsView(views.APIView):
                 'total_links': total_affiliate_links,
                 'active_influencers': active_influencers,
             },
+        })
+
+
+class SellerProductAnalyticsView(views.APIView):
+    """GET: Authenticated seller. Sales analytics for the requesting seller's own products."""
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request):
+        user = request.user
+        products = Product.objects.filter(seller=user)
+        completed_items = OrderItem.objects.filter(product__seller=user, order__payment_status='completed')
+
+        totals = completed_items.aggregate(
+            revenue=Sum(F('price') * F('quantity')),
+            units=Sum('quantity'),
+        )
+        total_orders = completed_items.values('order').distinct().count()
+
+        now = timezone.now()
+        monthly_data = []
+        for i in range(5, -1, -1):
+            month_start = (now.replace(day=1) - timedelta(days=i * 30)).replace(day=1)
+            month_end = (month_start.replace(day=28) + timedelta(days=4)).replace(day=1)
+            qs = completed_items.filter(order__created_at__gte=month_start, order__created_at__lt=month_end)
+            row = qs.aggregate(revenue=Sum(F('price') * F('quantity')), units=Sum('quantity'))
+            monthly_data.append({
+                'month': month_start.strftime('%b %Y'),
+                'revenue': float(row['revenue'] or 0),
+                'units': row['units'] or 0,
+            })
+
+        per_product_qs = (
+            completed_items.values('product__id', 'product__name', 'product__image', 'product__stock')
+            .annotate(units_sold=Sum('quantity'), revenue=Sum(F('price') * F('quantity')))
+            .order_by('-revenue')
+        )
+        per_product = [
+            {
+                'id': row['product__id'],
+                'name': row['product__name'],
+                'image': row['product__image'],
+                'stock': row['product__stock'],
+                'units_sold': row['units_sold'] or 0,
+                'revenue': float(row['revenue'] or 0),
+            }
+            for row in per_product_qs
+        ]
+        sold_ids = {row['id'] for row in per_product}
+        for p in products.exclude(id__in=sold_ids).values('id', 'name', 'image', 'stock'):
+            per_product.append({
+                'id': p['id'], 'name': p['name'], 'image': p['image'], 'stock': p['stock'],
+                'units_sold': 0, 'revenue': 0.0,
+            })
+
+        return Response({
+            'summary': {
+                'total_revenue': float(totals['revenue'] or 0),
+                'total_units_sold': totals['units'] or 0,
+                'total_orders': total_orders,
+                'total_products': products.count(),
+                'total_stock': products.aggregate(t=Sum('stock'))['t'] or 0,
+            },
+            'monthly': monthly_data,
+            'products': per_product,
         })
 
 
