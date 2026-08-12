@@ -823,16 +823,16 @@ def platform_overview(request):
     Overview tab — no placeholder/demo numbers.
     """
     from django.db.models import Sum
-    from collaborations.models import Campaign, Collaboration
+    from collaborations.models import Collaboration
     from payments.models import Payment
-    from .models import ApprovalAuditLog
+    from .models import ApprovalAuditLog, SellerProfile
 
     total_users = User.objects.exclude(user_type='admin').count()
     total_influencers = User.objects.filter(user_type='influencer').count()
     total_companies = User.objects.filter(user_type='company').count()
 
-    active_campaigns = Campaign.objects.filter(status='active').count()
-    pending_campaigns = Campaign.objects.filter(status='draft').count()
+    seller_applications_total = SellerProfile.objects.count()
+    seller_applications_pending = SellerProfile.objects.filter(verification_status='pending').count()
 
     now = timezone.now()
     platform_revenue_month = Payment.objects.filter(
@@ -877,8 +877,8 @@ def platform_overview(request):
         'total_users': total_users,
         'total_influencers': total_influencers,
         'total_companies': total_companies,
-        'active_campaigns': active_campaigns,
-        'pending_campaigns': pending_campaigns,
+        'seller_applications_total': seller_applications_total,
+        'seller_applications_pending': seller_applications_pending,
         'platform_revenue_month': str(platform_revenue_month),
         'success_rate': success_rate,
         'recent_activities': activities,

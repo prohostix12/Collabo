@@ -79,7 +79,7 @@ const AdminDashboard = () => {
 
   const stats = overview ? [
     { name: 'Total Users', value: overview.total_users.toLocaleString(), icon: Users, description: `${overview.total_influencers} Influencers, ${overview.total_companies} Companies` },
-    { name: 'Active Campaigns', value: overview.active_campaigns.toLocaleString(), icon: TrendingUp, description: `${overview.pending_campaigns} Pending` },
+    { name: 'Seller Applications', value: overview.seller_applications_total.toLocaleString(), icon: Store, description: `${overview.seller_applications_pending} Pending` },
     { name: 'Platform Revenue', value: `₹${Number(overview.platform_revenue_month).toLocaleString()}`, icon: DollarSign, description: 'This month' },
     { name: 'Success Rate', value: `${overview.success_rate}%`, icon: Activity, description: 'Campaign completion' },
   ] : [];
