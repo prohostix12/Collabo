@@ -4,8 +4,9 @@ import api from '../../services/api';
 import {
   Store, TrendingUp, Shield, Truck, BarChart3, Users, Package,
   ArrowRight, ArrowLeft, CheckCircle, ChevronDown, ChevronUp, Eye, EyeOff,
-  Mail, Lock, User, Phone, AlertCircle, Upload
+  Mail, Lock, User, Phone, AlertCircle, Upload, X
 } from 'lucide-react';
+import { SELLER_TERMS_INTRO, SELLER_TERMS_SECTIONS } from './sellerTerms';
 
 const STEPS_INFO = [
   { step: '01', title: 'Create Account', desc: 'Sign up with email and phone. Takes under 2 minutes.' },
@@ -15,9 +16,9 @@ const STEPS_INFO = [
 ];
 
 const BENEFITS = [
-  { icon: Users, title: 'Crores of Customers', desc: 'Instant visibility to our growing buyer base across India.' },
+  { icon: Users, title: 'Growing Customer Base', desc: 'Instant visibility to our active buyer community.' },
   { icon: TrendingUp, title: 'Influencer Marketing', desc: 'Creators promote your products. Pay only on actual sales.' },
-  { icon: Truck, title: 'Easy Shipping', desc: 'Shiprocket integration with 17+ couriers. Auto-tracking.' },
+  { icon: Truck, title: 'Major Courier Partners', desc: 'Shiprocket integration with top delivery partners. Auto-tracking.' },
   { icon: Shield, title: 'Secure Payments', desc: '7-day settlement. Transparent fees. Withdraw anytime.' },
   { icon: BarChart3, title: 'Seller Dashboard', desc: 'Real-time analytics, orders, inventory, and earnings.' },
   { icon: Package, title: 'Bulk Import', desc: 'Upload products from Shopify or any platform via CSV.' },
@@ -51,6 +52,8 @@ function SellerRegistrationWidget() {
   const [bankDoc, setBankDoc] = useState(null);
   const [kycError, setKycError] = useState('');
   const [kycSubmitting, setKycSubmitting] = useState(false);
+  const [agreedToTerms, setAgreedToTerms] = useState(false);
+  const [showTermsModal, setShowTermsModal] = useState(false);
 
   const handleFileUpload = useCallback((e, setter) => {
     const file = e.target.files?.[0];
@@ -115,6 +118,7 @@ function SellerRegistrationWidget() {
       if (!/^\d{9,18}$/.test(bankAccount.trim())) return setKycError('Account number must be 9-18 digits');
       setKycStep(4);
     } else {
+      if (!agreedToTerms) return setKycError('Please agree to the Seller Terms & Conditions to continue');
       setKycSubmitting(true);
       try {
         const fd = new FormData();
@@ -293,17 +297,69 @@ function SellerRegistrationWidget() {
         </div>
       )}
 
+      {kycStep === 4 && (
+        <label className="flex items-start gap-2 cursor-pointer select-none">
+          <input
+            type="checkbox"
+            checked={agreedToTerms}
+            onChange={e => setAgreedToTerms(e.target.checked)}
+            className="mt-0.5 w-3.5 h-3.5 shrink-0 rounded border-gray-300 text-orange-600 focus:ring-1 focus:ring-orange-400"
+          />
+          <span className="text-[11px] text-gray-600">
+            I have read and agree to the{' '}
+            <button type="button" onClick={() => setShowTermsModal(true)} className="text-orange-600 font-medium hover:underline">
+              Seller Terms &amp; Conditions
+            </button>
+          </span>
+        </label>
+      )}
+
       <div className="flex gap-2 pt-1">
         {kycStep > 1 && (
           <button onClick={()=>{setKycError('');setKycStep(s=>s-1)}} className="px-5 py-2.5 bg-slate-100 text-slate-700 rounded-lg text-[12px] font-bold hover:bg-slate-200 transition-colors flex items-center gap-1.5 border border-slate-200">
             <ArrowLeft className="w-4 h-4" /> Back
           </button>
         )}
-        <button onClick={handleKycSubmit} disabled={kycSubmitting}
+        <button onClick={handleKycSubmit} disabled={kycSubmitting || (kycStep === 4 && !agreedToTerms)}
           className="flex-1 bg-orange-600 hover:bg-orange-700 text-white text-[12px] font-medium py-2.5 rounded-lg transition-colors disabled:opacity-50 flex items-center justify-center gap-1.5">
           {kycSubmitting ? 'Submitting...' : kycStep === 4 ? <><CheckCircle className="w-4 h-4" /> Submit Application</> : <>Next <ArrowRight className="w-3.5 h-3.5" /></>}
         </button>
       </div>
+
+      {showTermsModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50" onClick={() => setShowTermsModal(false)}>
+          <div className="bg-white rounded-xl w-full max-w-lg max-h-[80vh] flex flex-col shadow-xl" onClick={e => e.stopPropagation()}>
+            <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100 shrink-0">
+              <h3 className="text-sm font-bold text-gray-900">Seller Terms &amp; Conditions</h3>
+              <button type="button" onClick={() => setShowTermsModal(false)} className="text-gray-400 hover:text-gray-600">
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+            <div className="overflow-y-auto px-5 py-4 space-y-4">
+              <p className="text-[11px] text-gray-600 leading-relaxed">{SELLER_TERMS_INTRO}</p>
+              {SELLER_TERMS_SECTIONS.map(section => (
+                <div key={section.title}>
+                  <p className="text-[12px] font-bold text-gray-900 mb-1.5">{section.title}</p>
+                  <ul className="space-y-1 list-disc pl-4">
+                    {section.points.map((point, i) => (
+                      <li key={i} className="text-[11px] text-gray-600 leading-relaxed">{point}</li>
+                    ))}
+                  </ul>
+                </div>
+              ))}
+            </div>
+            <div className="px-5 py-3 border-t border-gray-100 shrink-0">
+              <button
+                type="button"
+                onClick={() => { setAgreedToTerms(true); setShowTermsModal(false); }}
+                className="w-full bg-orange-600 hover:bg-orange-700 text-white text-[12px] font-medium py-2.5 rounded-lg transition-colors"
+              >
+                I Agree
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
