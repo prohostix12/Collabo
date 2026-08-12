@@ -43,7 +43,8 @@ function ProtectedRoute({ children, allowedUserTypes }) {
     return <Navigate to="/login" />;
   }
   
-  if (allowedUserTypes && !allowedUserTypes.includes(user.user_type)) {
+  const isStaffAdmin = user.is_staff || user.user_type === 'admin';
+  if (allowedUserTypes && !(allowedUserTypes.includes(user.user_type) || (isStaffAdmin && allowedUserTypes.includes('admin')))) {
     return <Navigate to="/unauthorized" />;
   }
   
