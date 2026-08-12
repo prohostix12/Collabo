@@ -142,6 +142,14 @@ function SellerRegistrationWidget() {
   const sp = user?.seller_profile;
   const status = sp?.verification_status;
 
+  // While an application is under review, poll for the admin's decision so
+  // approval/rejection shows up here without the seller needing to refresh.
+  useEffect(() => {
+    if (status !== 'pending' && phase !== 'done') return;
+    const interval = setInterval(() => { fetchUser(); }, 15000);
+    return () => clearInterval(interval);
+  }, [status, phase, fetchUser]);
+
   if (status === 'approved' || user?.user_type === 'seller') {
     return (
       <div className="space-y-4">
