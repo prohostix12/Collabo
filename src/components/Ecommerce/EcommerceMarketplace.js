@@ -1615,6 +1615,16 @@ export default function EcommerceMarketplace({ inlineMode = false, onBackToSelec
     }
   };
 
+  // The backend recalculates a product's rating/reviews_count from real
+  // reviews whenever one is created, edited, or deleted — pull the fresh
+  // numbers in so the details page doesn't keep showing stale ones until reload.
+  const refreshSelectedProductRating = async (productId) => {
+    try {
+      const res = await api.get(`/ecommerce/products/${productId}/`);
+      setSelectedProduct(prev => (prev && prev.id === productId) ? { ...prev, rating: res.data.rating, reviewsCount: res.data.reviews_count } : prev);
+    } catch { /* non-critical — next full reload will pick it up */ }
+  };
+
   const submitCustomerReview = async (e) => {
     e.preventDefault();
     if (!newCustomerReviewComment.trim()) return;
@@ -1631,6 +1641,7 @@ export default function EcommerceMarketplace({ inlineMode = false, onBackToSelec
       setReviewImagePreview('');
       showToast('Review submitted successfully!');
       fetchProductReviews(selectedProduct.id);
+      refreshSelectedProductRating(selectedProduct.id);
     } catch (err) {
       console.error("Error submitting review:", err);
       const msg = err.response?.data?.detail || err.response?.data?.error || err.response?.data?.[0] || "Failed to submit review.";
@@ -4031,6 +4042,7 @@ export default function EcommerceMarketplace({ inlineMode = false, onBackToSelec
                                           await api.patch(`/ecommerce/customer-reviews/${rev.id}/`, { comment: newComment.trim(), rating: Number(newRating) || rev.rating });
                                           const res = await api.get(`/ecommerce/customer-reviews/?product=${selectedProduct.id}`);
                                           setCustomerReviews(res.data.results || res.data);
+                                          refreshSelectedProductRating(selectedProduct.id);
                                           toast.success('Review updated');
                                         } catch (err) { toast.error('Failed to update review'); }
                                       }
@@ -4044,6 +4056,7 @@ export default function EcommerceMarketplace({ inlineMode = false, onBackToSelec
                                           await api.delete(`/ecommerce/customer-reviews/${rev.id}/`);
                                           const res = await api.get(`/ecommerce/customer-reviews/?product=${selectedProduct.id}`);
                                           setCustomerReviews(res.data.results || res.data);
+                                          refreshSelectedProductRating(selectedProduct.id);
                                           toast.success('Review deleted');
                                         } catch (err) { toast.error('Failed to delete review'); }
                                       }

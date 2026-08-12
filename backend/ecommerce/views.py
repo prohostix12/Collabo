@@ -1004,6 +1004,18 @@ class OrderViewSet(viewsets.ModelViewSet):
         serializer = OrderSerializer(order)
         return Response(serializer.data)
 
+def _recalculate_product_rating(product):
+    """Recompute a product's displayed rating/reviews_count from its real
+    CustomerReview records. Only called on review create/update/delete, so a
+    product with no real reviews yet keeps whatever rating/count an admin or
+    seller seeded it with until genuine customer reviews start coming in —
+    at which point that seed is fully replaced by the honest, live figure."""
+    agg = CustomerReview.objects.filter(product=product).aggregate(avg=Avg('rating'), count=Count('id'))
+    product.rating = round(agg['avg'], 2) if agg['count'] else 0
+    product.reviews_count = agg['count']
+    product.save(update_fields=['rating', 'reviews_count'])
+
+
 class CustomerReviewViewSet(viewsets.ModelViewSet):
     queryset = CustomerReview.objects.all()
     serializer_class = CustomerReviewSerializer
@@ -1019,7 +1031,9 @@ class CustomerReviewViewSet(viewsets.ModelViewSet):
         is_admin = user.is_staff or user.user_type == 'admin'
         if review.user != user and not is_admin:
             return Response({'error': 'You can only edit your own reviews'}, status=status.HTTP_403_FORBIDDEN)
-        return super().update(request, *args, **kwargs)
+        response = super().update(request, *args, **kwargs)
+        _recalculate_product_rating(review.product)
+        return response
 
     def destroy(self, request, *args, **kwargs):
         review = self.get_object()
@@ -1027,7 +1041,10 @@ class CustomerReviewViewSet(viewsets.ModelViewSet):
         is_admin = user.is_staff or user.user_type == 'admin'
         if review.user != user and not is_admin:
             return Response({'error': 'You can only delete your own reviews'}, status=status.HTTP_403_FORBIDDEN)
-        return super().destroy(request, *args, **kwargs)
+        product = review.product
+        response = super().destroy(request, *args, **kwargs)
+        _recalculate_product_rating(product)
+        return response
 
     def get_queryset(self):
         queryset = CustomerReview.objects.all()
@@ -1056,7 +1073,8 @@ class CustomerReviewViewSet(viewsets.ModelViewSet):
             from rest_framework.exceptions import ValidationError
             raise ValidationError("You have already reviewed this product.")
 
-        serializer.save(user=user)
+        review = serializer.save(user=user)
+        _recalculate_product_rating(review.product)
 
         # Award 5 reward points for writing a review
         if user.reward_points is None:
