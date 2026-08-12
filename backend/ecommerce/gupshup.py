@@ -84,9 +84,8 @@ def notify_seller_approved(user, store_name):
     if not phone:
         return False
     name = user.first_name or user.username
-    # Gupshup template ID for seller_account_approved — replace once the
-    # template below is submitted and approved in the Gupshup/Meta dashboard.
-    return _send_template(phone, 'REPLACE_WITH_SELLER_APPROVED_TEMPLATE_ID', [name, store_name])
+    # Gupshup template ID for seller_account_approved
+    return _send_template(phone, 'd509a4f5-eba7-488a-be95-08d7c314fd26', [name, store_name])
 
 
 def _order_phone(order) -> str:
