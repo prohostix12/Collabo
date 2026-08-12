@@ -440,6 +440,13 @@ def create_order_for_user(user, data):
     if not cart_items.exists():
         raise OrderCreationError('No items selected or cart is empty')
 
+    # Lock these product rows for the rest of the transaction so two
+    # concurrent checkouts can't both read the same stock count and both
+    # succeed, oversetting stock below zero.
+    list(Product.objects.select_for_update().filter(
+        id__in=cart_items.values_list('product_id', flat=True)
+    ))
+
     # Calculate pricing with per-product referral discounts
     subtotal = 0
     referral_discount = 0
