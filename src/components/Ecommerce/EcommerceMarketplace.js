@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, lazy, Suspense } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import {
@@ -22,8 +22,6 @@ import ChangeUsernameModal from '../Layout/ChangeUsernameModal';
 import DeleteAccountModal from '../Layout/DeleteAccountModal';
 import VendorManagement from '../Dashboard/VendorManagement';
 import WeeklyBestDealsSection from './WeeklyBestDealsSection';
-
-const InfluencerHub = lazy(() => import('../Dashboard/InfluencerDashboard'));
 
 const CATEGORIES = [
   { name: 'All', icon: '🌟' },
@@ -467,8 +465,7 @@ export default function EcommerceMarketplace({ inlineMode = false, onBackToSelec
 
   // Navigation State
   const [currentView, setCurrentView] = useState(inlineMode ? 'dashboard' : 'home'); // home | listing | details | cart | checkout | success | wishlist | profile | tracking | dashboard | auth
-  const [showHub, setShowHub] = useState(() => window.location.hash === '#hub');
-  
+
   // App Core State
   const { user, login, logout, register } = useAuth();
   const isLoggedIn = !!user;
@@ -915,15 +912,10 @@ export default function EcommerceMarketplace({ inlineMode = false, onBackToSelec
     if (inlineMode) return;
 
     const rawHash = window.location.hash.replace('#', '');
-    // #hub opens the influencer hub overlay — handle before anything else
-    if (rawHash === 'hub') {
-      setShowHub(true);
-      window.history.replaceState({ view: 'hub' }, '', '#hub');
-    }
     const [hashView, hashPid] = rawHash.includes(':') ? rawHash.split(':') : [rawHash, null];
     const validViews = ['home', 'listing', 'details', 'cart', 'checkout', 'success', 'wishlist', 'profile', 'tracking', 'orders', 'dashboard', 'auth', 'support'];
 
-    if (rawHash !== 'hub' && hashView && hashView !== 'home' && validViews.includes(hashView)) {
+    if (hashView && hashView !== 'home' && validViews.includes(hashView)) {
       setCurrentView(hashView);
       if (hashView === 'details' && hashPid) {
         setPendingSelectProductId(hashPid);
@@ -943,12 +935,6 @@ export default function EcommerceMarketplace({ inlineMode = false, onBackToSelec
 
     const handlePopState = (event) => {
       const currentHash = window.location.hash.replace('#', '');
-      // Handle hub overlay open/close via back/forward
-      if (currentHash === 'hub') {
-        setShowHub(true);
-        return;
-      }
-      setShowHub(false);
 
       if (event.state && event.state.view) {
         setCurrentView(event.state.view);
@@ -2109,12 +2095,7 @@ export default function EcommerceMarketplace({ inlineMode = false, onBackToSelec
                     {isLoggedIn ? "My Account" : "Login"}
                   </button>
 
-                  {isLoggedIn && user?.user_type === 'influencer' && (
-                    <button onClick={() => { setShowHub(true); window.history.pushState({ view: 'hub' }, '', '#hub'); }} className="hidden sm:flex bg-[#1B5E6B] hover:bg-[#164E5A] dark:bg-[#1B5E6B] dark:hover:bg-[#164E5A] text-white py-1.5 px-3.5 rounded-xl shadow-md transition-all items-center gap-1.5 border border-[#164E5A]">
-                      <Award className="w-3.5 h-3.5 text-white" />
-                      <span className="text-[10px] font-black uppercase tracking-wider">Collab Hub</span>
-                    </button>
-                  )}
+
 
                   <button onClick={() => setMobileMenuOpen(!mobileMenuOpen)} className="sm:hidden p-2 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-500 dark:text-slate-300">
                     {mobileMenuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
@@ -2145,9 +2126,7 @@ export default function EcommerceMarketplace({ inlineMode = false, onBackToSelec
                   {(user?.is_staff || user?.user_type === 'admin') && (
                     <button onClick={() => { navigate('/admin'); setMobileMenuOpen(false); }} className="w-full text-left px-3 py-2.5 rounded-xl hover:bg-slate-50 dark:hover:bg-slate-800 text-sm font-bold text-slate-700 dark:text-slate-200 flex items-center gap-3"><LayoutDashboard className="w-4 h-4 text-orange-500" />Admin Dashboard</button>
                   )}
-                  {isLoggedIn && user?.user_type === 'influencer' && (
-                    <button onClick={() => { setShowHub(true); window.history.pushState({ view: 'hub' }, '', '#hub'); setMobileMenuOpen(false); }} className="w-full text-left px-3 py-2.5 rounded-xl bg-[#1B5E6B]/5 hover:bg-[#1B5E6B]/10 text-sm font-bold text-[#1B5E6B] flex items-center gap-3"><Award className="w-4 h-4" />Collab Hub</button>
-                  )}
+
                 </div>
               )}
             </nav>
@@ -3086,6 +3065,8 @@ export default function EcommerceMarketplace({ inlineMode = false, onBackToSelec
                 </div>
               );
             })()}
+
+
 
             <CollaboAdBanner handleInviteFriendsClick={handleInviteFriendsClick} />
 
@@ -9171,15 +9152,6 @@ export default function EcommerceMarketplace({ inlineMode = false, onBackToSelec
             <User className="w-5 h-5" />
             <span className="text-[10px] font-bold">Account</span>
           </button>
-        </div>
-      )}
-
-      {/* Influencer Collab Hub Overlay — shown via "Collab Hub" button, closed by browser back */}
-      {showHub && user?.user_type === 'influencer' && (
-        <div className="fixed inset-0 z-[200] bg-white overflow-auto">
-          <Suspense fallback={<div className="flex items-center justify-center h-screen text-sm text-gray-500">Loading...</div>}>
-            <InfluencerHub onClose={() => { setShowHub(false); window.history.back(); }} />
-          </Suspense>
         </div>
       )}
 
