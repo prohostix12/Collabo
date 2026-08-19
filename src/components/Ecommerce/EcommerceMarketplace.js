@@ -208,9 +208,6 @@ const CollabEarnBanner = ({ handleInviteFriendsClick }) => {
             }
           `}</style>
           <div className="space-y-3">
-            <p className="text-[18px] font-semibold italic leading-relaxed whitespace-nowrap -mt-6" style={{color:'rgba(0,235,220,0.95)'}}>
-              "Why should buying only cost money? What if it could also earn you money?"
-            </p>
             <h2 className="font-black leading-[0.95] tracking-tighter unstoppable-text" style={{fontSize:'clamp(2.5rem,4.8vw,3.9rem)',color:'rgba(255,255,255,0.72)'}}>
               Shop Smart<br/>
               <span className="share-more-animate" style={{WebkitTextStroke:'1.5px rgba(255,255,255,0.35)',color:'transparent'}}>Share More</span><br/>
