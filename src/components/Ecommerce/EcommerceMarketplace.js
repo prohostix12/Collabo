@@ -8855,7 +8855,7 @@ export default function EcommerceMarketplace({ inlineMode = false, onBackToSelec
         return (
           <div className="fixed inset-0 z-[9999] bg-black/50 backdrop-blur-sm flex items-center justify-center p-4" onClick={() => setShowInviteModal(false)}>
             <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-2xl max-w-lg w-full overflow-hidden" onClick={e => e.stopPropagation()}>
-              <div className="bg-gradient-to-r from-violet-600 to-fuchsia-600 px-7 py-6 flex items-center gap-4 relative">
+              <div className="bg-gradient-to-r from-[#004e6e] to-orange-500 px-7 py-6 flex items-center gap-4 relative">
                 <button onClick={() => setShowInviteModal(false)} className="absolute top-4 right-4 text-white/70 hover:text-white"><X className="w-5 h-5" /></button>
                 <div className="w-14 h-14 bg-white/20 rounded-full flex items-center justify-center backdrop-blur-sm flex-shrink-0">
                   <Users className="w-7 h-7 text-white" />
@@ -8873,7 +8873,7 @@ export default function EcommerceMarketplace({ inlineMode = false, onBackToSelec
                   <span className="flex-1 text-sm font-mono text-slate-600 dark:text-slate-300 truncate">{inviteLink}</span>
                   <button
                     onClick={() => { navigator.clipboard.writeText(inviteLink); showToast('Invite link copied!'); }}
-                    className="flex-shrink-0 p-2.5 rounded-lg bg-violet-600 hover:bg-violet-700 text-white transition-colors"
+                    className="flex-shrink-0 p-2.5 rounded-lg bg-[#004e6e] hover:bg-[#003a52] text-white transition-colors"
                     title="Copy link"
                   >
                     <Copy className="w-5 h-5" />
@@ -8893,7 +8893,7 @@ export default function EcommerceMarketplace({ inlineMode = false, onBackToSelec
                     }
                     setShowInviteModal(false);
                   }}
-                  className="w-full bg-gradient-to-r from-violet-600 to-fuchsia-600 text-white font-black text-sm py-3.5 rounded-xl hover:opacity-90 transition-opacity flex items-center justify-center gap-2"
+                  className="w-full bg-gradient-to-r from-[#004e6e] to-orange-500 text-white font-black text-sm py-3.5 rounded-xl hover:opacity-90 transition-opacity flex items-center justify-center gap-2"
                 >
                   <Share2 className="w-5 h-5" />
                   Copy & Share
