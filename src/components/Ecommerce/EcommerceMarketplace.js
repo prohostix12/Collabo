@@ -54,7 +54,7 @@ const CAT_ICON_MAP = {
   'Books':         { Icon: BookOpen,       color: 'text-slate-900 dark:text-white', bg: 'bg-slate-100 dark:bg-slate-700' },
   'Toys':          { Icon: Gamepad2,       color: 'text-slate-900 dark:text-white', bg: 'bg-slate-100 dark:bg-slate-700' },
   'Appliances':    { Icon: Plug,           color: 'text-slate-900 dark:text-white', bg: 'bg-slate-100 dark:bg-slate-700' },
-  'Mobile Accessories': { Icon: Headphones, color: 'text-slate-900 dark:text-white', bg: 'bg-slate-100 dark:bg-slate-700' },
+  'Mobile & Accessories': { Icon: Headphones, color: 'text-slate-900 dark:text-white', bg: 'bg-slate-100 dark:bg-slate-700' },
   'Health & Personal Care': { Icon: HeartPulse, color: 'text-slate-900 dark:text-white', bg: 'bg-slate-100 dark:bg-slate-700' },
   'Beauty & Personal Care': { Icon: Bath, color: 'text-slate-900 dark:text-white', bg: 'bg-slate-100 dark:bg-slate-700' },
   'Kids':              { Icon: Baby,           color: 'text-slate-900 dark:text-white', bg: 'bg-slate-100 dark:bg-slate-700' },

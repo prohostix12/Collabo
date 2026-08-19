@@ -154,7 +154,7 @@ const WeeklyBestDealsSection = ({
               'Jewellery',
               'Electronics',
               'Home & Kitchen',
-              'Mobile Accessories'
+              'Mobile & Accessories'
             ].map((pill) => {
               const isActive = activeFilter === pill;
               return (
