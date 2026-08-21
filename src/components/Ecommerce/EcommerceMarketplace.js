@@ -63,20 +63,16 @@ const CAT_ICON_MAP = {
 };
 const getCatIcon = (name) => CAT_ICON_MAP[name] || { Icon: LayoutGrid, color: 'text-slate-900 dark:text-white', bg: 'bg-slate-100 dark:bg-slate-700' };
 
-// Renders product photos without cropping/zooming: a blurred cover of the same
-// image fills the tile, with the full, un-cropped image contained on top.
-// Parent only needs to size the tile (e.g. aspect-square); this fills it.
+// Renders product photos without cropping/zooming (object-contain instead of
+// object-cover) so tall marketing-style photos aren't chopped. Parent supplies
+// the sized, colored tile (e.g. aspect-square bg-slate-50); this just fills it.
+// Single <img>, no blur filter -- cheap to paint even across large grids.
 const ProductImage = ({ src, alt = '', imgClassName = '' }) => (
-  <div className="relative w-full h-full">
-    {src ? (
-      <>
-        <img loading="lazy" src={src} alt="" aria-hidden="true" className="absolute inset-0 w-full h-full object-cover scale-110 blur-xl opacity-50" />
-        <img loading="lazy" src={src} alt={alt} className={`relative w-full h-full object-contain ${imgClassName}`} />
-      </>
-    ) : (
-      <div className="w-full h-full bg-gradient-to-br from-slate-200 to-slate-300 dark:from-slate-700 dark:to-slate-800" />
-    )}
-  </div>
+  src ? (
+    <img loading="lazy" src={src} alt={alt} className={`w-full h-full object-contain ${imgClassName}`} />
+  ) : (
+    <div className="w-full h-full bg-gradient-to-br from-slate-200 to-slate-300 dark:from-slate-700 dark:to-slate-800" />
+  )
 );
 
 const PROMO_CARDS_DEFAULT = [
@@ -2543,19 +2539,11 @@ export default function EcommerceMarketplace({ inlineMode = false, onBackToSelec
                         {/* Background Image */}
                         <div className="absolute inset-0 bg-slate-100 dark:bg-slate-800">
                           {imgSrc ? (
-                            <>
-                              <img loading="lazy"
-                                src={imgSrc}
-                                alt=""
-                                aria-hidden="true"
-                                className="absolute inset-0 w-full h-full object-cover scale-110 blur-xl opacity-60"
-                              />
-                              <img loading="lazy"
-                                src={imgSrc}
-                                alt={title}
-                                className="relative w-full h-full object-contain group-hover:scale-110 transition-transform duration-700 ease-out"
-                              />
-                            </>
+                            <img loading="lazy"
+                              src={imgSrc}
+                              alt={title}
+                              className="w-full h-full object-contain group-hover:scale-110 transition-transform duration-700 ease-out"
+                            />
                           ) : (
                             <div className="w-full h-full bg-gradient-to-br from-slate-200 to-slate-300 dark:from-slate-700 dark:to-slate-800" />
                           )}
