@@ -15,9 +15,9 @@ const STEPS_INFO = [
 ];
 
 const BENEFITS = [
-  { icon: Users, title: 'Crores of Customers', desc: 'Instant visibility to our growing buyer base across India.' },
+  { icon: Users, title: 'Growing Customer Base', desc: 'Instant visibility to our active buyer community.' },
   { icon: TrendingUp, title: 'Influencer Marketing', desc: 'Creators promote your products. Pay only on actual sales.' },
-  { icon: Truck, title: 'Easy Shipping', desc: 'Shiprocket integration with 17+ couriers. Auto-tracking.' },
+  { icon: Truck, title: 'Major Courier Partners', desc: 'Shiprocket integration with top delivery partners. Auto-tracking.' },
   { icon: Shield, title: 'Secure Payments', desc: '7-day settlement. Transparent fees. Withdraw anytime.' },
   { icon: BarChart3, title: 'Seller Dashboard', desc: 'Real-time analytics, orders, inventory, and earnings.' },
   { icon: Package, title: 'Bulk Import', desc: 'Upload products from Shopify or any platform via CSV.' },

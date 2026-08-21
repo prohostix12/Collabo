@@ -45,7 +45,7 @@ function ProtectedRoute({ children, allowedUserTypes }) {
   
   const isStaffAdmin = user.is_staff || user.user_type === 'admin';
   if (allowedUserTypes && !(allowedUserTypes.includes(user.user_type) || (isStaffAdmin && allowedUserTypes.includes('admin')))) {
-    return <Navigate to="/unauthorized" />;
+    return <Navigate to="/" />;
   }
   
   return children;
@@ -116,14 +116,7 @@ function AppRoutes() {
         </ProtectedRoute>
       } />
       
-      <Route path="/unauthorized" element={
-        <div className="flex justify-center items-center h-screen">
-          <div className="text-center">
-            <h1 className="text-2xl font-bold text-red-600">Unauthorized</h1>
-            <p className="mt-2">You don't have permission to access this page.</p>
-          </div>
-        </div>
-      } />
+
     </Routes>
   );
 }

@@ -137,7 +137,14 @@ const CollaboAdBanner = ({ isLoggedIn, setCurrentView }) => {
           </button>
         </div>
         <div className="flex-1 hidden md:flex items-center justify-end pr-4 md:pr-8 relative">
-          <img loading="lazy" src="/collabo-logo.png" alt="Collabo" className="h-32 lg:h-48 object-contain drop-shadow-2xl transform group-hover:scale-110 transition-all duration-700 scale-[1.5] origin-right" />
+          <video 
+            src="/videos/Referral_Voiceover.mp4" 
+            autoPlay 
+            loop 
+            controls 
+            playsInline
+            className="w-[320px] md:w-[480px] aspect-video object-cover rounded-2xl shadow-2xl border-4 border-white/20" 
+          />
         </div>
       </div>
     </div>
@@ -1735,12 +1742,7 @@ export default function EcommerceMarketplace({ inlineMode = false, onBackToSelec
                     {isLoggedIn ? "My Account" : "Login"}
                   </button>
 
-                  {isLoggedIn && (user?.user_type === 'influencer' || user?.user_type === 'admin' || user?.is_staff) && (
-                    <button onClick={() => navigate('/collab')} className="hidden sm:flex bg-[#1B5E6B] hover:bg-[#164E5A] dark:bg-[#1B5E6B] dark:hover:bg-[#164E5A] text-white py-1.5 px-3.5 rounded-xl shadow-md transition-all items-center gap-1.5 border border-[#164E5A]">
-                      <Award className="w-3.5 h-3.5 text-white" />
-                      <span className="text-[10px] font-black uppercase tracking-wider">Collab Hub</span>
-                    </button>
-                  )}
+
 
                   <button onClick={() => setMobileMenuOpen(!mobileMenuOpen)} className="sm:hidden p-2 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-500 dark:text-slate-300">
                     {mobileMenuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
@@ -1771,9 +1773,7 @@ export default function EcommerceMarketplace({ inlineMode = false, onBackToSelec
                   {(user?.is_staff || user?.user_type === 'admin') && (
                     <button onClick={() => { navigate('/dashboard'); setMobileMenuOpen(false); }} className="w-full text-left px-3 py-2.5 rounded-xl hover:bg-slate-50 dark:hover:bg-slate-800 text-sm font-bold text-slate-700 dark:text-slate-200 flex items-center gap-3"><LayoutDashboard className="w-4 h-4 text-orange-500" />Admin Dashboard</button>
                   )}
-                  {isLoggedIn && (user?.user_type === 'influencer' || user?.user_type === 'admin' || user?.is_staff) && (
-                    <button onClick={() => { navigate('/collab'); setMobileMenuOpen(false); }} className="w-full text-left px-3 py-2.5 rounded-xl bg-[#1B5E6B]/5 hover:bg-[#1B5E6B]/10 text-sm font-bold text-[#1B5E6B] flex items-center gap-3"><Award className="w-4 h-4" />Collab Hub</button>
-                  )}
+
                 </div>
               )}
             </nav>
@@ -2538,9 +2538,6 @@ export default function EcommerceMarketplace({ inlineMode = false, onBackToSelec
 
             <CollaboAdBanner isLoggedIn={isLoggedIn} setCurrentView={setCurrentView} />
 
-            <div className="w-full max-w-3xl mx-auto rounded-[28px] overflow-hidden shadow-xl border border-slate-100 dark:border-slate-800 bg-black my-8">
-              <video src="/videos/Referral_Voiceover.mp4" autoPlay loop controls playsInline className="w-full h-auto object-cover" />
-            </div>
 
             {/* Shop By Category Grid + Side Ad */}
             {(() => {

@@ -6,7 +6,6 @@ import { motion } from 'framer-motion';
 // eslint-disable-next-line no-unused-vars
 import { Users, Star, ArrowRight, CheckCircle, Zap, Target, Heart, ChevronLeft, ChevronRight } from 'lucide-react';
 import LandingNavbar from './LandingNavbar';
-import ModernHero from './ModernHero';
 import AnimatedTextSection from './AnimatedTextSection';
 import CatalogFlipSection from './CatalogFlipSection';
 import BrandChoiceSection from './BrandChoiceSection';
@@ -244,7 +243,6 @@ const LandingPage = () => {
       </div>
 
       <div className="relative z-10 font-sans">
-        <ModernHero />
 
 
         <BrandChoiceSection />
