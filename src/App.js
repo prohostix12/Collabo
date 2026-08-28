@@ -11,7 +11,6 @@ import CompanyDashboard from './components/Dashboard/CompanyDashboard';
 import AdminDashboard from './components/Dashboard/AdminDashboard';
 import SellerDashboard from './components/Dashboard/SellerDashboard';
 import Layout from './components/Layout/Layout';
-import LandingPage from './components/Landing/LandingPage';
 import AboutPage from './components/Landing/AboutPage';
 import ServicesPage from './components/Landing/ServicesPage';
 import InfluencerDetailPage from './components/Landing/InfluencerDetailPage';
@@ -23,7 +22,6 @@ import ShippingPolicy from './components/Legal/ShippingPolicy';
 import ReturnPolicy from './components/Legal/ReturnPolicy';
 import PrivacyPolicy from './components/Legal/PrivacyPolicy';
 import TermsConditions from './components/Legal/TermsConditions';
-import CollabHub from './components/Collab/CollabHub';
 
 // Redirects to "/" while preserving the query string (e.g. /register?affiliate=CODE),
 // which plain <Navigate to="/" /> would otherwise silently drop.
@@ -59,7 +57,6 @@ function AppRoutes() {
       {/* Public Routes */}
       <Route path="/" element={<EcommerceMarketplace />} />
       <Route path="/sell" element={<SellOnCollabo />} />
-      <Route path="/collab" element={user?.user_type === 'company' ? <CollabHub /> : user?.user_type === 'influencer' ? <Navigate to="/" replace /> : <LandingPage />} />
       <Route path="/about" element={<AboutPage />} />
       <Route path="/services" element={<ServicesPage />} />
       <Route path="/creators" element={<CreatorsPage />} />
