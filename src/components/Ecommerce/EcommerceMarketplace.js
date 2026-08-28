@@ -3154,7 +3154,7 @@ export default function EcommerceMarketplace({ inlineMode = false, onBackToSelec
             {/* Top Category Strip (Flipkart-style) — shrinks once pinned by scroll */}
             <div className="sticky top-0 z-20 shrink-0 bg-white dark:bg-slate-950 border-b border-slate-200 dark:border-slate-800 shadow-sm">
               <div className={`flex overflow-x-auto hide-scrollbar transition-all duration-200 ${isCatPageStripCompact ? 'gap-2 px-3 py-1.5' : 'gap-3 px-3 py-2.5'}`}>
-                {['All', ...categoriesList.map(c => c.name)].filter(cat => cat === 'All' || productsList.some(p => (p.category || '').toLowerCase() === (cat || '').toLowerCase())).map((cat, idx) => {
+                {['All', ...categoriesList.map(c => c.name)].filter(cat => cat === 'All' || allProducts.some(p => (p.category || '').toLowerCase() === (cat || '').toLowerCase())).map((cat, idx) => {
                   const { Icon } = getCatIcon(cat);
                   return (
                     <button
