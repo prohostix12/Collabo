@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import {
   Search, ShoppingBag, Heart, User, Star, ArrowRight, ShieldCheck,
@@ -456,6 +456,7 @@ const DealsCountdownTimer = ({ anchorIso, timerHours }) => {
 
 export default function EcommerceMarketplace({ inlineMode = false, onBackToSelect = null }) {
   const navigate = useNavigate();
+  const location = useLocation();
 
   // Capture referral URL params immediately at render time (before any history effects strip the query string)
   const [initialRefCode] = useState(() => new URLSearchParams(window.location.search).get('ref') || '');
@@ -1586,12 +1587,17 @@ export default function EcommerceMarketplace({ inlineMode = false, onBackToSelec
       setPendingSelectProductId(pid);
       setCurrentView('details');
     }
+  }, []);
 
-    const view = new URLSearchParams(window.location.search).get('view');
+  // Footer/nav links use `?view=listing` etc. to jump straight to a view — since
+  // this route doesn't remount on a search-param-only change, watch location.search
+  // directly so the link also works when already sitting on this page.
+  useEffect(() => {
+    const view = new URLSearchParams(location.search).get('view');
     if (view) {
       setCurrentView(view);
     }
-  }, []);
+  }, [location.search]);
 
   // Fetch reviews for the selected product
   const fetchProductReviews = async (productId) => {

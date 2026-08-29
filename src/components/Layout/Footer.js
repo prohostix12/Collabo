@@ -102,7 +102,7 @@ const Footer = () => {
             <div>
               <h4 className="text-[11px] font-black text-[#1B5E6B] uppercase tracking-widest mb-4 pb-2 border-b-2 border-[#ff9f00] inline-block">Shop</h4>
               <ul className="space-y-3">
-                <li><Link to="/#listing" className="text-[12px] text-slate-500 hover:text-[#1B5E6B] transition-colors font-medium">Browse Products</Link></li>
+                <li><Link to="/?view=listing" className="text-[12px] text-slate-500 hover:text-[#1B5E6B] transition-colors font-medium">Browse Products</Link></li>
                 <li><Link to="/sell" className="text-[12px] text-slate-500 hover:text-[#1B5E6B] transition-colors font-medium">Sell on Collabo</Link></li>
                 <li><Link to="/dashboard" className="text-[12px] text-slate-500 hover:text-[#1B5E6B] transition-colors font-medium">Dashboard</Link></li>
               </ul>
