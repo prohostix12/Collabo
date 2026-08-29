@@ -53,6 +53,7 @@ class Product(models.Model):
     reviews_count = models.PositiveIntegerField(default=0)
     image = models.TextField(blank=True, help_text="Main product image URL or base64 data")
     images = models.JSONField(default=list, blank=True, help_text="List of extra image URLs or base64 data")
+    colors = models.JSONField(default=list, blank=True, help_text="List of color variants [{name: '', image: ''}]")
     description = models.TextField()
     stock = models.PositiveIntegerField(default=0)
     delivery = models.CharField(max_length=255, default='Free delivery by Tomorrow')

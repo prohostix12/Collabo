@@ -33,7 +33,7 @@ class ProductSerializer(serializers.ModelSerializer):
             'id', 'seller', 'seller_username', 'status', 'rejection_reason', 'name', 'category', 'brand',
             'vendor', 'vendor_details', 'return_policy',
             'price', 'discount_price', 'discount_percent', 'rating', 'reviews_count',
-            'image', 'images', 'description', 'stock', 'delivery', 'specifications',
+            'image', 'images', 'colors', 'description', 'stock', 'delivery', 'specifications',
             'highlights', 'offers', 'seller_info', 'qa_section',
             'product_shipping_charge', 'commission_rate', 'link_discount_percent', 'created_at', 'updated_at'
         ]
@@ -46,6 +46,11 @@ class ProductSerializer(serializers.ModelSerializer):
         data['image'] = _force_https(data.get('image'))
         if isinstance(data.get('images'), list):
             data['images'] = [_force_https(u) for u in data['images']]
+        if isinstance(data.get('colors'), list):
+            data['colors'] = [
+                {**c, 'image': _force_https(c.get('image'))} if isinstance(c, dict) else c
+                for c in data['colors']
+            ]
         return data
 
 class CartItemSerializer(serializers.ModelSerializer):

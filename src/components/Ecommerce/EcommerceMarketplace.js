@@ -1121,6 +1121,8 @@ export default function EcommerceMarketplace({ inlineMode = false, onBackToSelec
   const [editProdSpecifications, setEditProdSpecifications] = useState('');
   const [newProdQaSection, setNewProdQaSection] = useState('');
   const [editProdQaSection, setEditProdQaSection] = useState('');
+  const [newProdColors, setNewProdColors] = useState('');
+  const [editProdColors, setEditProdColors] = useState('');
 
   // Product reviews in details view
   const [productReviews, setProductReviews] = useState([]);
@@ -1314,6 +1316,7 @@ export default function EcommerceMarketplace({ inlineMode = false, onBackToSelec
     setEditProdOffers(Array.isArray(p.offers) ? p.offers.join('\n') : (p.offers || ''));
     setEditProdSpecifications(typeof p.specifications === 'string' ? p.specifications : JSON.stringify(p.specifications || {}));
     setEditProdQaSection(typeof p.qa_section === 'string' ? p.qa_section : JSON.stringify(p.qa_section || []));
+    setEditProdColors(Array.isArray(p.colors) ? p.colors.map(c => `${c.name}|${c.image}`).join('\n') : '');
                                 setEditProdVendor(p.vendor || '');
                                 setEditProdReturnPolicy(p.return_policy || '');
   };
@@ -3710,6 +3713,29 @@ export default function EcommerceMarketplace({ inlineMode = false, onBackToSelec
                       </span>
                     </div>
                   </div>
+
+                  {Array.isArray(selectedProduct.colors) && selectedProduct.colors.length > 0 && (
+                    <div className="space-y-2">
+                      <p className="text-xs font-bold text-slate-500 dark:text-slate-400">
+                        Color: <span className="text-slate-900 dark:text-white">
+                          {(selectedProduct.colors.find(c => c.image === activeDetailImage) || selectedProduct.colors[0]).name}
+                        </span>
+                      </p>
+                      <div className="flex flex-wrap gap-2.5">
+                        {selectedProduct.colors.map((c, i) => (
+                          <button
+                            key={i}
+                            type="button"
+                            onClick={() => setActiveDetailImage(c.image)}
+                            title={c.name}
+                            className={`w-14 h-14 shrink-0 bg-white dark:bg-slate-900 border-2 rounded-xl p-1 overflow-hidden transition-all ${activeDetailImage === c.image ? 'border-orange-500 scale-105 shadow-sm' : 'border-slate-200 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-600'}`}
+                          >
+                            <img loading="lazy" src={c.image} alt={c.name} className="w-full h-full object-cover rounded-lg" />
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
 
                   <hr className="border-slate-100 dark:border-slate-800" />
 
@@ -6217,11 +6243,22 @@ export default function EcommerceMarketplace({ inlineMode = false, onBackToSelec
 
                     <div className="space-y-1">
                       <label className="font-bold text-slate-450 dark:text-slate-400">Q&A Section (JSON array of {"{q, a}"})</label>
-                      <textarea 
+                      <textarea
                         rows="3"
                         value={editingProduct ? editProdQaSection : newProdQaSection}
                         onChange={(e) => editingProduct ? setEditProdQaSection(e.target.value) : setNewProdQaSection(e.target.value)}
                         placeholder='[{"q": "Is this original?", "a": "Yes"}]'
+                        className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl py-2 px-3 focus:outline-none dark:text-white font-bold text-xs font-mono"
+                      />
+                    </div>
+
+                    <div className="space-y-1">
+                      <label className="font-bold text-slate-450 dark:text-slate-400">Color Variants (Name|Image URL, one per line)</label>
+                      <textarea
+                        rows="3"
+                        value={editingProduct ? editProdColors : newProdColors}
+                        onChange={(e) => editingProduct ? setEditProdColors(e.target.value) : setNewProdColors(e.target.value)}
+                        placeholder={'Black|https://example.com/black.jpg\nBlue|https://example.com/blue.jpg'}
                         className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl py-2 px-3 focus:outline-none dark:text-white font-bold text-xs font-mono"
                       />
                     </div>
@@ -6253,6 +6290,14 @@ export default function EcommerceMarketplace({ inlineMode = false, onBackToSelec
                                 if (typeof val !== 'string') return val;
                                 try { return JSON.parse(val); } catch { return []; }
                               };
+                              const parseColors = (val) => {
+                                if (!val) return [];
+                                if (typeof val !== 'string') return val;
+                                return val.split('\n').filter(s => s.includes('|')).map(s => {
+                                  const [name, ...img] = s.split('|');
+                                  return { name: name.trim(), image: img.join('|').trim() };
+                                }).filter(c => c.name && c.image);
+                              };
 
                               if (editingProduct) {
                                 // Update Product Details
@@ -6276,7 +6321,8 @@ export default function EcommerceMarketplace({ inlineMode = false, onBackToSelec
                                   highlights: editProdHighlights.split('\n').filter(s=>s.trim()),
                                   offers: editProdOffers.split('\n').filter(s=>s.trim()),
                                   specifications: parseSpecs(editProdSpecifications),
-                                  qa_section: parseQa(editProdQaSection)
+                                  qa_section: parseQa(editProdQaSection),
+                                  colors: parseColors(editProdColors)
                                 });
                                 setEditingProduct(null);
                               } else {
@@ -6303,7 +6349,8 @@ export default function EcommerceMarketplace({ inlineMode = false, onBackToSelec
                                   highlights: newProdHighlights.split('\n').filter(s=>s.trim()),
                                   offers: newProdOffers.split('\n').filter(s=>s.trim()),
                                   specifications: parseSpecs(newProdSpecifications),
-                                  qa_section: parseQa(newProdQaSection)
+                                  qa_section: parseQa(newProdQaSection),
+                                  colors: parseColors(newProdColors)
                                 });
                                 // Clear Add Product form
                                 setNewProdName('');
@@ -6320,6 +6367,7 @@ export default function EcommerceMarketplace({ inlineMode = false, onBackToSelec
                                 setNewProdOffers('');
                                 setNewProdSpecifications('');
                                 setNewProdQaSection('');
+                                setNewProdColors('');
                                 setNewProdImages([]);
                               }
                               fetchSellerProducts();
