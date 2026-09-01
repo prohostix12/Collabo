@@ -17,6 +17,7 @@ def api_root(request):
             'support': '/api/support/',
             'landing': '/api/landing/',
             'ecommerce': '/api/ecommerce/',
+            'pricing': '/api/pricing/',
         },
         'status': 'running'
     })
@@ -31,6 +32,7 @@ urlpatterns = [
     path('api/support/', include('support.urls')),
     path('api/landing/', include('landing.urls')),
     path('api/ecommerce/', include('ecommerce.urls')),
+    path('api/pricing/', include('pricing.urls')),
 ]
 
 # Serve Media and Static files for local and production-at-scale (Render deployment fix)

@@ -6,7 +6,7 @@ import {
   CheckCircle, XCircle, Search, Filter, Mail,
   // eslint-disable-next-line no-unused-vars
   Calendar, Eye, AlertCircle, Shield, Settings, 
-  BarChart3, Activity, DollarSign, Layout, ShoppingBag, Store, Package
+  BarChart3, Activity, DollarSign, Layout, ShoppingBag, Store, Package, Link2, LineChart
 } from 'lucide-react';
 import api from '../../services/api';
 import toast from 'react-hot-toast';
@@ -20,6 +20,8 @@ import PaymentManagement from './PaymentManagement';
 import PlatformSettings from './PlatformSettings';
 import EcommerceMarketplace from '../Ecommerce/EcommerceMarketplace';
 import StoreContentEditor from './StoreContentEditor';
+import CompetitorMapping from './CompetitorMapping';
+import DynamicPricingDashboard from './DynamicPricingDashboard';
 
 const AdminDashboard = () => {
   const { user } = useAuth();
@@ -69,6 +71,8 @@ const AdminDashboard = () => {
     { id: 'seller-payouts', label: 'Seller Payouts', icon: DollarSign },
     { id: 'landing', label: 'Landing Page', icon: Layout },
     { id: 'store', label: 'Store Content', icon: ShoppingBag },
+    { id: 'dynamic-pricing', label: 'Dynamic Pricing', icon: LineChart },
+    { id: 'competitor-mapping', label: 'Competitor Mapping', icon: Link2 },
     { id: 'support', label: 'Support Tickets', icon: AlertCircle },
     { id: 'payments', label: 'Payment Management', icon: DollarSign },
     { id: 'settings', label: 'Platform Settings', icon: Settings },
@@ -653,6 +657,14 @@ const AdminDashboard = () => {
 
         {activeTab === 'settings' && (
           <PlatformSettings />
+        )}
+
+        {activeTab === 'competitor-mapping' && (
+          <CompetitorMapping />
+        )}
+
+        {activeTab === 'dynamic-pricing' && (
+          <DynamicPricingDashboard />
         )}
       </div>
 

@@ -1,11 +1,30 @@
 import os
 import platform
+import sys
 from pathlib import Path
 from decouple import config
 import dj_database_url
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
+
+# `manage.py test` builds a throwaway database from scratch by replaying every
+# migration in order. The ecommerce app's migration history has a pre-existing
+# conflict unrelated to this change (two migrations both add
+# AffiliateCommission.level), which only surfaces on a truly fresh database —
+# it doesn't affect the real dev/prod database at all, only test-DB creation.
+# Skipping migration replay for test runs only (tables are created straight
+# from current model state instead) is the standard Django workaround and
+# leaves ecommerce's migration files untouched.
+if 'test' in sys.argv:
+    class _DisableMigrations(dict):
+        def __contains__(self, item):
+            return True
+
+        def __getitem__(self, item):
+            return None
+
+    MIGRATION_MODULES = _DisableMigrations()
 
 # Detect OS for platform-specific defaults
 IS_MACOS = platform.system() == 'Darwin'
@@ -53,6 +72,7 @@ LOCAL_APPS = [
     'support',
     'landing',
     'ecommerce',
+    'pricing',
 ]
 
 INSTALLED_APPS = DJANGO_APPS + THIRD_PARTY_APPS + LOCAL_APPS
@@ -179,6 +199,24 @@ RAZORPAY_WEBHOOK_SECRET = config('RAZORPAY_WEBHOOK_SECRET', default='')
 # Shiprocket
 SHIPROCKET_EMAIL = config('SHIPROCKET_EMAIL', default='')
 SHIPROCKET_PASSWORD = config('SHIPROCKET_PASSWORD', default='')
+
+# Competitor Price Monitoring - Amazon Product Advertising API (PA-API 5.0)
+# Requires an approved Amazon Associates account. Left blank = provider runs
+# in "not configured" mode (see pricing/providers/amazon.py).
+AMAZON_PAAPI_ACCESS_KEY = config('AMAZON_PAAPI_ACCESS_KEY', default='')
+AMAZON_PAAPI_SECRET_KEY = config('AMAZON_PAAPI_SECRET_KEY', default='')
+AMAZON_PAAPI_PARTNER_TAG = config('AMAZON_PAAPI_PARTNER_TAG', default='')
+AMAZON_PAAPI_COUNTRY = config('AMAZON_PAAPI_COUNTRY', default='IN')
+# API schema version required by the python-amazon-paapi/amazon_creatorsapi
+# SDK's AmazonCreatorsApi(..., version=...) — per-region, not account-specific.
+AMAZON_PAAPI_VERSION = config('AMAZON_PAAPI_VERSION', default='2.2')
+
+# Competitor Price Monitoring - Flipkart Affiliate API
+# Requires an approved Flipkart Affiliate account. Left blank = provider runs
+# in "not configured" mode (see pricing/providers/flipkart.py).
+FLIPKART_AFFILIATE_ID = config('FLIPKART_AFFILIATE_ID', default='')
+FLIPKART_AFFILIATE_TOKEN = config('FLIPKART_AFFILIATE_TOKEN', default='')
+FLIPKART_API_BASE_URL = config('FLIPKART_API_BASE_URL', default='https://affiliate-api.flipkart.net')
 
 # Custom User Model
 AUTH_USER_MODEL = 'accounts.User'

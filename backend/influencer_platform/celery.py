@@ -38,6 +38,11 @@ app.conf.beat_schedule = {
         'task': 'ecommerce.tasks.send_abandoned_cart_reminders',
         'schedule': crontab(minute=0, hour='*/2'),  # Every 2 hours
     },
+    # ── Dynamic pricing ──────────────────────────────────────────────────────
+    'dynamic-pricing-sync': {
+        'task': 'pricing.tasks.run_dynamic_pricing_sync',
+        'schedule': crontab(minute=0, hour='*/6'),  # Every 6 hours
+    },
 }
 
 app.conf.timezone = 'UTC'
