@@ -11,7 +11,7 @@ import {
   LayoutGrid, Cpu, Smartphone, Shirt, ShoppingBasket, Home as HomeIcon,
   Armchair, Dumbbell, BookOpen, Gamepad2, Plug, Film, Download,
   Mail, Shield, Calendar, Headphones, HeartPulse, Bath, Truck, Share2, Menu, ChevronLeft,
-  Baby, Flower2, Gift, Gem, Wallet
+  Baby, Flower2, Gift, Gem, Wallet, ExternalLink
 } from 'lucide-react';
 import api from '../../services/api';
 import { useAuth } from '../../contexts/AuthContext';
@@ -1127,6 +1127,8 @@ export default function EcommerceMarketplace({ inlineMode = false, onBackToSelec
 
   // Product reviews in details view
   const [productReviews, setProductReviews] = useState([]);
+  const [priceComparison, setPriceComparison] = useState(null);
+  const [priceComparisonLoading, setPriceComparisonLoading] = useState(false);
   const [customerReviews, setCustomerReviews] = useState([]);
   const [newCustomerReviewRating, setNewCustomerReviewRating] = useState(5);
   const [newCustomerReviewComment, setNewCustomerReviewComment] = useState('');
@@ -1653,9 +1655,24 @@ export default function EcommerceMarketplace({ inlineMode = false, onBackToSelec
     }
   };
 
+  // Fetch competitor price comparison (Amazon / Flipkart) for the selected product
+  const fetchPriceComparison = async (productId) => {
+    setPriceComparisonLoading(true);
+    try {
+      const response = await api.get(`/pricing/compare/${productId}/`);
+      setPriceComparison(response.data);
+    } catch (err) {
+      console.error("Error fetching price comparison:", err);
+      setPriceComparison(null);
+    } finally {
+      setPriceComparisonLoading(false);
+    }
+  };
+
   useEffect(() => {
     if (selectedProduct && currentView === 'details') {
       fetchProductReviews(selectedProduct.id);
+      fetchPriceComparison(selectedProduct.id);
     }
   }, [selectedProduct, currentView]);
 
@@ -3835,6 +3852,60 @@ export default function EcommerceMarketplace({ inlineMode = false, onBackToSelec
                       </div>
                     );
                   })()}
+
+                  {(priceComparisonLoading || (priceComparison?.competitors?.length > 0)) && (
+                    <div className="space-y-2 py-1">
+                      <h4 className="font-black text-[11px] text-slate-500 dark:text-slate-400 uppercase tracking-widest flex items-center gap-1">
+                        <BarChart3 className="w-3 h-3" /> Compare Prices
+                      </h4>
+                      {priceComparisonLoading ? (
+                        <div className="text-xs text-slate-400 font-medium">Checking competitor prices…</div>
+                      ) : (
+                        <div className="border border-slate-200 dark:border-slate-700 rounded-xl overflow-hidden divide-y divide-slate-200 dark:divide-slate-700 text-sm">
+                          <div className="flex items-center justify-between gap-3 p-3 bg-orange-50/50 dark:bg-orange-950/10">
+                            <div className="flex items-center gap-2">
+                              <span className="w-6 h-6 rounded-full bg-orange-500 text-white text-[10px] font-black flex items-center justify-center shrink-0">C</span>
+                              <span className="font-bold dark:text-white">Collabo</span>
+                            </div>
+                            <span className="font-black dark:text-white">₹{Number(priceComparison.collabo_price).toLocaleString()}</span>
+                          </div>
+                          {priceComparison.competitors.map((c) => {
+                            const hasPrice = c.last_price !== null && c.last_price !== undefined;
+                            const isCheaper = hasPrice && Number(c.last_price) < Number(priceComparison.collabo_price);
+                            return (
+                              <div key={c.platform} className="flex items-center justify-between gap-3 p-3">
+                                <div className="flex items-center gap-2 min-w-0">
+                                  <span className={`w-6 h-6 rounded-full text-white text-[10px] font-black flex items-center justify-center shrink-0 ${c.platform === 'amazon' ? 'bg-[#FF9900]' : 'bg-[#2874F0]'}`}>
+                                    {c.platform === 'amazon' ? 'A' : 'F'}
+                                  </span>
+                                  <div className="min-w-0">
+                                    <p className="font-bold dark:text-white truncate">{c.platform_label}</p>
+                                    <p className="text-[10px] text-slate-400 flex items-center gap-1">
+                                      <Clock className="w-2.5 h-2.5" />
+                                      {c.last_checked_at ? `Checked ${new Date(c.last_checked_at).toLocaleString()}` : 'Not checked yet'}
+                                    </p>
+                                  </div>
+                                </div>
+                                <div className="flex flex-col items-end gap-0.5 shrink-0">
+                                  {hasPrice ? (
+                                    <span className={`font-black ${isCheaper ? 'text-emerald-600' : 'dark:text-white'}`}>₹{Number(c.last_price).toLocaleString()}</span>
+                                  ) : (
+                                    <span className="text-xs text-slate-400 font-semibold">Price unavailable</span>
+                                  )}
+                                  <span className={`text-[10px] font-bold ${c.last_in_stock === false ? 'text-red-500' : c.last_in_stock ? 'text-emerald-600' : 'text-slate-400'}`}>
+                                    {c.last_in_stock === false ? 'Out of stock' : c.last_in_stock ? 'In stock' : 'Availability unknown'}
+                                  </span>
+                                  <a href={c.product_url} target="_blank" rel="noopener noreferrer" className="text-[10px] text-blue-600 font-bold hover:underline flex items-center gap-0.5">
+                                    View <ExternalLink className="w-2.5 h-2.5" />
+                                  </a>
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      )}
+                    </div>
+                  )}
 
                   <div className="space-y-4 pt-2">
                     <h4 className="font-extrabold text-[15px] text-slate-800 dark:text-slate-200">Delivery details</h4>

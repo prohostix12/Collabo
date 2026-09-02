@@ -1,30 +1,11 @@
 import os
 import platform
-import sys
 from pathlib import Path
 from decouple import config
 import dj_database_url
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
-
-# `manage.py test` builds a throwaway database from scratch by replaying every
-# migration in order. The ecommerce app's migration history has a pre-existing
-# conflict unrelated to this change (two migrations both add
-# AffiliateCommission.level), which only surfaces on a truly fresh database —
-# it doesn't affect the real dev/prod database at all, only test-DB creation.
-# Skipping migration replay for test runs only (tables are created straight
-# from current model state instead) is the standard Django workaround and
-# leaves ecommerce's migration files untouched.
-if 'test' in sys.argv:
-    class _DisableMigrations(dict):
-        def __contains__(self, item):
-            return True
-
-        def __getitem__(self, item):
-            return None
-
-    MIGRATION_MODULES = _DisableMigrations()
 
 # Detect OS for platform-specific defaults
 IS_MACOS = platform.system() == 'Darwin'
@@ -200,24 +181,6 @@ RAZORPAY_WEBHOOK_SECRET = config('RAZORPAY_WEBHOOK_SECRET', default='')
 SHIPROCKET_EMAIL = config('SHIPROCKET_EMAIL', default='')
 SHIPROCKET_PASSWORD = config('SHIPROCKET_PASSWORD', default='')
 
-# Competitor Price Monitoring - Amazon Product Advertising API (PA-API 5.0)
-# Requires an approved Amazon Associates account. Left blank = provider runs
-# in "not configured" mode (see pricing/providers/amazon.py).
-AMAZON_PAAPI_ACCESS_KEY = config('AMAZON_PAAPI_ACCESS_KEY', default='')
-AMAZON_PAAPI_SECRET_KEY = config('AMAZON_PAAPI_SECRET_KEY', default='')
-AMAZON_PAAPI_PARTNER_TAG = config('AMAZON_PAAPI_PARTNER_TAG', default='')
-AMAZON_PAAPI_COUNTRY = config('AMAZON_PAAPI_COUNTRY', default='IN')
-# API schema version required by the python-amazon-paapi/amazon_creatorsapi
-# SDK's AmazonCreatorsApi(..., version=...) — per-region, not account-specific.
-AMAZON_PAAPI_VERSION = config('AMAZON_PAAPI_VERSION', default='2.2')
-
-# Competitor Price Monitoring - Flipkart Affiliate API
-# Requires an approved Flipkart Affiliate account. Left blank = provider runs
-# in "not configured" mode (see pricing/providers/flipkart.py).
-FLIPKART_AFFILIATE_ID = config('FLIPKART_AFFILIATE_ID', default='')
-FLIPKART_AFFILIATE_TOKEN = config('FLIPKART_AFFILIATE_TOKEN', default='')
-FLIPKART_API_BASE_URL = config('FLIPKART_API_BASE_URL', default='https://affiliate-api.flipkart.net')
-
 # Custom User Model
 AUTH_USER_MODEL = 'accounts.User'
 
@@ -333,3 +296,13 @@ FRONTEND_URL = config('FRONTEND_URL', default='http://localhost:3000')
 GUPSHUP_API_KEY = config('GUPSHUP_API_KEY', default='')
 GUPSHUP_SOURCE_NUMBER = config('GUPSHUP_SOURCE_NUMBER', default='')
 GUPSHUP_APP_NAME = config('GUPSHUP_APP_NAME', default='')
+
+# Bright Data — Web Unlocker API, used only by the `pricing` app (backend-only,
+# never exposed to the frontend) to fetch Amazon/Flipkart product pages for
+# competitor price comparison. Leaving these unset just makes price checks a
+# no-op (BrightDataNotConfigured, logged and recorded as a failed check) —
+# nothing else in the app depends on them being set.
+BRIGHTDATA_API_KEY = config('BRIGHTDATA_API_KEY', default='')
+BRIGHTDATA_ZONE = config('BRIGHTDATA_ZONE', default='')
+BRIGHTDATA_API_URL = config('BRIGHTDATA_API_URL', default='https://api.brightdata.com/request')
+BRIGHTDATA_TIMEOUT_SECS = config('BRIGHTDATA_TIMEOUT_SECS', default=30, cast=int)
