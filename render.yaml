@@ -16,6 +16,14 @@ services:
         value: False
       - key: DB_PATH
         value: /data/db.sqlite3
+      # Live keys from dashboard.razorpay.com (Account & Settings > API Keys).
+      # Set the values in the Render dashboard; they are never committed.
+      - key: RAZORPAY_KEY_ID
+        sync: false
+      - key: RAZORPAY_KEY_SECRET
+        sync: false
+      - key: RAZORPAY_WEBHOOK_SECRET
+        sync: false
     disk:
       name: collabo-data
       mountPath: /data

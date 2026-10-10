@@ -8,6 +8,9 @@ import re
 import hmac
 import hashlib
 import razorpay
+import logging
+
+logger = logging.getLogger(__name__)
 from decimal import Decimal, InvalidOperation
 from django.conf import settings
 from django.db import models as db_models
@@ -1975,7 +1978,16 @@ def create_razorpay_order(request):
         'XXXX' in settings.RAZORPAY_KEY_SECRET
     )
 
+    # Simulated payments exist for local development only. In production
+    # (DEBUG off) a missing key or a failed Razorpay call is a hard error, so a
+    # real customer can never be shown, or sent through, a fake payment.
     if is_dummy:
+        if not settings.DEBUG:
+            logger.error('Razorpay keys are not configured; refusing to create a mock order.')
+            return Response(
+                {'error': 'Online payments are not available right now. Please try Cash on Delivery.'},
+                status=status.HTTP_503_SERVICE_UNAVAILABLE,
+            )
         import uuid
         mock_order_id = f"order_mock_{uuid.uuid4().hex[:12]}"
         return Response({
@@ -2000,6 +2012,12 @@ def create_razorpay_order(request):
             'key_id': settings.RAZORPAY_KEY_ID,
         })
     except Exception as e:
+        if not settings.DEBUG:
+            logger.exception('Razorpay order creation failed')
+            return Response(
+                {'error': 'We could not start the payment. Please try again in a moment.'},
+                status=status.HTTP_502_BAD_GATEWAY,
+            )
         import uuid
         mock_order_id = f"order_mock_{uuid.uuid4().hex[:12]}"
         return Response({
@@ -2020,12 +2038,15 @@ def verify_razorpay_payment(request):
     rzp_payment_id = request.data.get('razorpay_payment_id')
     rzp_signature = request.data.get('razorpay_signature')
 
-    is_mock = (
-        (rzp_order_id and rzp_order_id.startswith('order_mock_')) or 
-        rzp_signature == 'mock_signature' or
-        not settings.RAZORPAY_KEY_SECRET or 
-        'XXXX' in settings.RAZORPAY_KEY_SECRET
-    )
+    secret_missing = not settings.RAZORPAY_KEY_SECRET or 'XXXX' in settings.RAZORPAY_KEY_SECRET
+    looks_mock = bool(rzp_order_id and rzp_order_id.startswith('order_mock_')) or rzp_signature == 'mock_signature'
+
+    # Mock payments are honoured only with DEBUG on. Otherwise anyone could
+    # place a "paid" order by sending signature=mock_signature.
+    if (looks_mock or secret_missing) and not settings.DEBUG:
+        return Response({'error': 'Payment verification failed.'}, status=status.HTTP_400_BAD_REQUEST)
+
+    is_mock = looks_mock or secret_missing
 
     if not is_mock:
         # Verify signature

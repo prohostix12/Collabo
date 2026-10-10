@@ -541,7 +541,7 @@ export default function EcommerceMarketplace({ inlineMode = false, onBackToSelec
     api.get('/ecommerce/wallet/payouts/').then(res => setWalletPayouts(res.data.results || res.data || [])).catch(() => {});
   };
   useEffect(() => {
-    if ((currentView === 'profile' || currentView === 'checkout') && isLoggedIn) {
+    if (isLoggedIn) {
       fetchWalletData();
     }
   }, [currentView, isLoggedIn]);
@@ -822,6 +822,8 @@ export default function EcommerceMarketplace({ inlineMode = false, onBackToSelec
 
   // Checkout & Interactive Timeline States
   const [selectedAddress, setSelectedAddress] = useState(0);
+  const [showAddressPicker, setShowAddressPicker] = useState(false);
+  const addressAutoPicked = useRef(false);
   const [selectedPayment, setSelectedPayment] = useState('upi');
   const [couponCode, setCouponCode] = useState('');
   const [couponApplied, setCouponApplied] = useState(false);
@@ -1720,6 +1722,20 @@ export default function EcommerceMarketplace({ inlineMode = false, onBackToSelec
   }, [storeSettings.testimonials]);
 
   useEffect(() => {
+    if (!addresses.length) {
+      addressAutoPicked.current = false;
+      return;
+    }
+    if (!addressAutoPicked.current) {
+      addressAutoPicked.current = true;
+      const defaultIdx = addresses.findIndex(a => a.is_default);
+      if (defaultIdx > 0) setSelectedAddress(defaultIdx);
+    } else if (selectedAddress >= addresses.length) {
+      setSelectedAddress(0);
+    }
+  }, [addresses]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  useEffect(() => {
     if (user) {
       fetchCart();
       fetchAddresses();
@@ -2114,6 +2130,20 @@ export default function EcommerceMarketplace({ inlineMode = false, onBackToSelec
                     {wishlist.length > 0 && <span className="absolute -top-0.5 -right-0.5 w-4 h-4 bg-orange-500 text-[10px] font-black text-white rounded-full flex items-center justify-center">{wishlist.length}</span>}
                   </button>
 
+                  {isLoggedIn && (
+                    <button
+                      onClick={() => { fetchWalletData(); setShowWalletModal(true); }}
+                      title="Referral Wallet"
+                      aria-label="Referral Wallet"
+                      className="hidden sm:flex items-center gap-1 p-2 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-500 dark:text-slate-300 relative"
+                    >
+                      <Wallet className="w-4 h-4" />
+                      {walletData?.balance > 0 && (
+                        <span className="text-[10px] font-black text-emerald-600 dark:text-emerald-400">₹{Number(walletData.balance).toLocaleString('en-IN')}</span>
+                      )}
+                    </button>
+                  )}
+
                   <button onClick={() => setCurrentView('cart')} className="hidden md:block p-2 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-500 dark:text-slate-300 relative">
                     <ShoppingCart className="w-4 h-4" />
                     {cart.length > 0 && <span className="absolute -top-0.5 -right-0.5 w-4 h-4 bg-orange-500 text-[10px] font-black text-white rounded-full flex items-center justify-center">{cart.reduce((s, i) => s + i.quantity, 0)}</span>}
@@ -2157,6 +2187,9 @@ export default function EcommerceMarketplace({ inlineMode = false, onBackToSelec
                   <button onClick={() => { setCurrentView('orders'); setMobileMenuOpen(false); }} className="w-full text-left px-3 py-2.5 rounded-xl hover:bg-slate-50 dark:hover:bg-slate-800 text-sm font-bold text-slate-700 dark:text-slate-200 flex items-center gap-3"><Package className="w-4 h-4 text-slate-400" />Orders</button>
                   <a href="/sell" target="_blank" rel="noopener noreferrer" className="w-full text-left px-3 py-2.5 rounded-xl hover:bg-slate-50 dark:hover:bg-slate-800 text-sm font-bold text-slate-700 dark:text-slate-200 flex items-center gap-3"><Store className="w-4 h-4 text-slate-400" />Sell</a>
                   <button onClick={() => { setCurrentView('wishlist'); setMobileMenuOpen(false); }} className="w-full text-left px-3 py-2.5 rounded-xl hover:bg-slate-50 dark:hover:bg-slate-800 text-sm font-bold text-slate-700 dark:text-slate-200 flex items-center gap-3"><Heart className="w-4 h-4 text-slate-400" />Wishlist {wishlist.length > 0 && `(${wishlist.length})`}</button>
+                  {isLoggedIn && (
+                    <button onClick={() => { fetchWalletData(); setShowWalletModal(true); setMobileMenuOpen(false); }} className="w-full text-left px-3 py-2.5 rounded-xl hover:bg-slate-50 dark:hover:bg-slate-800 text-sm font-bold text-slate-700 dark:text-slate-200 flex items-center gap-3"><Wallet className="w-4 h-4 text-slate-400" />Referral Wallet{walletData?.balance > 0 && ` (₹${Number(walletData.balance).toLocaleString('en-IN')})`}</button>
+                  )}
                   <button onClick={() => { isLoggedIn ? setCurrentView('profile') : setCurrentView('auth'); setMobileMenuOpen(false); }} className="w-full text-left px-3 py-2.5 rounded-xl hover:bg-slate-50 dark:hover:bg-slate-800 text-sm font-bold text-slate-700 dark:text-slate-200 flex items-center gap-3"><User className="w-4 h-4 text-slate-400" />{isLoggedIn ? 'My Account' : 'Login'}</button>
                   {(user?.is_staff || user?.user_type === 'admin') && (
                     <button onClick={() => { navigate('/admin'); setMobileMenuOpen(false); }} className="w-full text-left px-3 py-2.5 rounded-xl hover:bg-slate-50 dark:hover:bg-slate-800 text-sm font-bold text-slate-700 dark:text-slate-200 flex items-center gap-3"><LayoutDashboard className="w-4 h-4 text-orange-500" />Admin Dashboard</button>
@@ -2189,9 +2222,28 @@ export default function EcommerceMarketplace({ inlineMode = false, onBackToSelec
                     )}
                   </div>
                 </div>
+                {(() => {
+                  const list = Array.isArray(addresses) ? addresses : [];
+                  const a = list[selectedAddress] || list.find(x => x.is_default) || list[0];
+                  return (
+                    <button
+                      onClick={() => setShowAddressPicker(true)}
+                      title={a ? 'Change delivery address' : 'Add a delivery address'}
+                      className="flex items-center gap-1.5 min-w-0 max-w-[48%] sm:max-w-sm text-left rounded-lg px-2 py-1 hover:bg-orange-100/70 dark:hover:bg-slate-700 transition-colors"
+                    >
+                      <MapPin className="w-4 h-4 text-orange-500 flex-shrink-0" />
+                      <span className="min-w-0 leading-tight">
+                        <span className="block text-[9px] font-semibold text-slate-400 dark:text-slate-500">{a ? 'Deliver to' : 'Delivery address'}</span>
+                        <span className="block text-[11px] font-extrabold text-slate-700 dark:text-slate-200 truncate">
+                          {a ? `${(a.name || '').split(' ')[0]} \u2013 ${a.city} ${a.postal_code}` : 'Add address'}
+                        </span>
+                      </span>
+                    </button>
+                  );
+                })()}
               </div>
             )}
-            <div className="text-white py-3 px-4 flex items-center justify-between text-sm font-bold overflow-hidden shadow-inner max-w-7xl mx-auto w-full">
+            <div className="text-white py-1.5 px-4 flex items-center justify-between text-xs sm:text-[13px] font-bold overflow-hidden shadow-inner max-w-7xl mx-auto w-full">
               <div key={tickerMsgIndex} className="flex items-center gap-2 min-w-0" style={{ animation: 'tickerFade 0.5s ease' }}>
                 <Tag className="w-3.5 h-3.5 text-orange-500 flex-shrink-0" />
                 {tickerMsgIndex === 0 ? (
@@ -2216,7 +2268,7 @@ export default function EcommerceMarketplace({ inlineMode = false, onBackToSelec
                     <span className="truncate">{tickerExtraMessages[tickerMsgIndex - 1]}</span>
                     <button
                       onClick={handleInviteFriendsClick}
-                      className="hidden sm:inline-flex items-center gap-1 bg-orange-500 hover:bg-orange-600 text-white px-2.5 py-1 rounded-md font-black text-[10px] uppercase tracking-wide flex-shrink-0 transition-colors"
+                      className="hidden sm:inline-flex items-center gap-1 bg-orange-500 hover:bg-orange-600 text-white px-2 py-0.5 rounded-md font-black text-[10px] uppercase tracking-wide flex-shrink-0 transition-colors"
                     >
                       <Gift className="w-3 h-3" /> Invite Friends
                     </button>
@@ -4901,36 +4953,15 @@ export default function EcommerceMarketplace({ inlineMode = false, onBackToSelec
                             amount: finalAmount
                           });
 
+                          // Never simulate a payment: if the server could not create a real
+                          // Razorpay order, or the checkout SDK failed to load, stop here.
                           if (orderRes.data.is_mock || typeof window.Razorpay === 'undefined') {
-                            toast('Simulating Razorpay payment...', { icon: '⏳' });
-                            setTimeout(async () => {
-                              try {
-                                const verifyRes = await api.post('/ecommerce/razorpay/verify-payment/', {
-                                  razorpay_order_id: orderRes.data.rzp_order_id,
-                                  razorpay_payment_id: 'pay_mock_' + Math.random().toString(36).substring(2, 11),
-                                  razorpay_signature: 'mock_signature',
-                                  address: selectedAddrObj.id,
-                                  coupon_code: couponApplied ? couponCode : '',
-                                  referral_code: refCode,
-                                  referral_map: refMap,
-                                  selected_items: selectedCartItems,
-                                  redeem_points: redeemPoints,
-                                  redeem_wallet: redeemWallet
-                                });
-                                localStorage.removeItem('referral_discount_map');
-                                setCreatedOrderId(verifyRes.data.order_id);
-                                setCreatedOrderDelivery(verifyRes.data.expected_delivery_date || '');
-                                setCart(prevCart => prevCart.filter(item => !selectedCartItems.includes(item.id)));
-                                setSelectedCartItems([]);
-                                fetchCustomerOrders();
-                                setCurrentView('success');
-                                toast.success('Mock Payment Successful!');
-                              } catch (err) {
-                                toast.error(err.response?.data?.error || "Mock verification failed");
-                              } finally {
-                                setPlacingOrder(false);
-                              }
-                            }, 1500);
+                            toast.error(
+                              typeof window.Razorpay === 'undefined'
+                                ? 'Could not load the payment gateway. Check your connection and try again.'
+                                : 'Online payment is temporarily unavailable. Please choose Cash on Delivery.'
+                            );
+                            setPlacingOrder(false);
                           } else {
                             const options = {
                               key: orderRes.data.key_id,
@@ -4985,6 +5016,10 @@ export default function EcommerceMarketplace({ inlineMode = false, onBackToSelec
                               }
                             };
                             const rzp = new window.Razorpay(options);
+                            rzp.on('payment.failed', function (failure) {
+                              setPlacingOrder(false);
+                              toast.error(failure?.error?.description || 'Payment failed. Please try again.');
+                            });
                             rzp.open();
                           }
                         } catch (err) {
@@ -9036,6 +9071,44 @@ export default function EcommerceMarketplace({ inlineMode = false, onBackToSelec
           </div>
         );
       })()}
+
+      {showAddressPicker && (
+        <div className="fixed inset-0 z-[9999] bg-black/50 backdrop-blur-sm flex items-center justify-center p-4" onClick={() => setShowAddressPicker(false)}>
+          <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-2xl max-w-md w-full max-h-[85vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-center justify-between px-5 py-4 border-b border-slate-100 dark:border-slate-800">
+              <h3 className="font-black text-sm dark:text-white flex items-center gap-2"><MapPin className="w-4 h-4 text-orange-500" /> Choose your delivery address</h3>
+              <button onClick={() => setShowAddressPicker(false)} className="text-slate-400 hover:text-slate-600"><X className="w-4 h-4" /></button>
+            </div>
+            <div className="p-4 space-y-3">
+              {(Array.isArray(addresses) ? addresses : []).length === 0 && (
+                <p className="text-xs text-slate-500 font-semibold">You have no saved addresses yet.</p>
+              )}
+              {(Array.isArray(addresses) ? addresses : []).map((addr, idx) => (
+                <button
+                  key={addr.id || idx}
+                  onClick={() => { setSelectedAddress(idx); setShowAddressPicker(false); }}
+                  className={`w-full text-left p-3 rounded-xl border transition-all ${selectedAddress === idx ? 'border-orange-500 bg-orange-500/5' : 'border-slate-200 dark:border-slate-800 hover:border-slate-300'}`}
+                >
+                  <div className="flex items-center justify-between">
+                    <span className="font-extrabold text-xs dark:text-white">{addr.name}</span>
+                    {selectedAddress === idx && <CheckCircle2 className="w-4 h-4 text-orange-500" />}
+                  </div>
+                  <p className="text-[11px] text-slate-500 font-semibold leading-relaxed mt-1">
+                    {addr.street_address}, {addr.city}{addr.district ? `, ${addr.district}` : ''}, {addr.state} - {addr.postal_code}
+                  </p>
+                  {addr.is_default && <span className="inline-block mt-1 text-[9px] font-black uppercase tracking-wider text-slate-400">Default</span>}
+                </button>
+              ))}
+              <button
+                onClick={() => { setShowAddressPicker(false); setShowAddressForm(true); setCurrentView('checkout'); }}
+                className="w-full py-2.5 rounded-xl border border-dashed border-orange-300 text-orange-600 hover:bg-orange-50 dark:hover:bg-slate-800 text-xs font-extrabold flex items-center justify-center gap-1.5"
+              >
+                <PlusCircle className="w-3.5 h-3.5" /> Add a new address
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {showWalletModal && walletData && (
         <div className="fixed inset-0 z-[9999] bg-black/50 backdrop-blur-sm flex items-center justify-center p-4" onClick={() => setShowWalletModal(false)}>
