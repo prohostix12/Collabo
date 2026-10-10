@@ -1635,150 +1635,93 @@ export default function EcommerceMarketplace({ inlineMode = false, onBackToSelec
       
       {!inlineMode && (
         <>
-          {/* Fixed Top Header Wrapper */}
-          <div className="w-full sticky top-0 z-50">
-            {/* Sticky Glassmorphic Navbar */}
-            <nav className="w-full bg-white/95 dark:bg-slate-900/95 backdrop-blur-xl border-b border-slate-200/50 dark:border-slate-800/50 py-2 px-3 sm:px-8 shadow-sm transition-all">
-              <div className="flex items-center justify-between gap-2 sm:gap-4">
-
-                {/* Logo */}
-                <div className="flex items-center shrink-0">
-                  <button
-                    onClick={() => setCurrentView('home')}
-                    className="flex items-center group transition-all hover:opacity-90"
-                  >
-                    <img loading="lazy" src="/collabo-logo.png" alt="Collabo" className="h-8 sm:h-12 object-contain scale-[2.0] sm:scale-[2.2] origin-left transform" />
-                  </button>
+          {/* Fixed Top Header Wrapper with Exact Flipkart Electric Violet/Purple Gradient Background */}
+          <div className="w-full sticky top-0 z-50 bg-gradient-to-b from-[#1b006e] via-[#3900aa] to-[#5500ca] text-white shadow-xl border-b border-white/10">
+            
+            {/* Top Flipkart-Style Brand Pills Bar */}
+            <div className="max-w-7xl mx-auto px-3 sm:px-6 pt-2 pb-1 flex items-center justify-between gap-2 overflow-x-auto no-scrollbar">
+              <div className="flex items-center gap-2 flex-shrink-0">
+                <button onClick={() => setCurrentView('home')} className="bg-yellow-400 hover:bg-yellow-300 text-slate-950 font-black px-3 py-1 rounded-xl text-xs sm:text-sm tracking-tight flex items-center gap-1.5 shadow-md transition-transform hover:scale-105">
+                  <span className="italic text-blue-900 font-black text-sm">f</span> Collabo
+                </button>
+                <div className="bg-white/95 text-slate-900 px-2.5 py-1 rounded-xl text-[11px] font-bold shadow-sm flex items-center gap-1.5">
+                  <span className="bg-rose-600 text-white font-black text-[10px] px-1 rounded">16</span>
+                  <span>Minutes</span>
                 </div>
-
-                {/* Smart Search Bar */}
-                <div ref={searchContainerRef} className="relative flex-1 max-w-md hidden md:block">
-                  <div className="relative">
-                    <input
-                      type="text"
-                      value={searchQuery}
-                      onChange={handleSearchChange}
-                      onFocus={() => setSearchFocused(true)}
-                      onKeyDown={(e) => e.key === 'Enter' && executeSearch(searchQuery)}
-                      placeholder="Search catalog..."
-                      className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-full py-2 pl-10 pr-4 text-xs font-semibold focus:outline-none focus:ring-1 focus:ring-orange-500 transition-all dark:text-white"
-                    />
-                    <Search className="absolute left-3.5 top-2.5 w-3.5 h-3.5 text-slate-400" />
-                  </div>
-                  {/* Search suggestions */}
-                  {showSuggestions && searchSuggestions.length > 0 && (
-                    <div className="absolute top-full left-0 right-0 mt-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl shadow-2xl p-2 z-50">
-                      {searchSuggestions.map((s, idx) => (
-                        <button
-                          key={idx}
-                          onClick={() => { executeSearch(s); setSearchFocused(false); }}
-                          className="w-full text-left px-4 py-2 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-xl text-xs font-bold transition-colors"
-                        >
-                          {s}
-                        </button>
-                      ))}
-                    </div>
-                  )}
-                  {/* Category dropdown on focus (Amazon-style) */}
-                  {searchFocused && !searchQuery && categoriesLoaded && (
-                    <div className="absolute top-full left-0 right-0 mt-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl shadow-2xl z-50 overflow-hidden">
-                      <div className="px-4 py-2.5 border-b border-slate-100 dark:border-slate-700">
-                        <span className="text-[10px] font-black tracking-widest text-slate-400 uppercase">Browse Categories</span>
-                      </div>
-                      <div className="py-1">
-                        {dynamicCategories.filter(c => c.name !== 'All').map((cat, idx) => {
-                          const { Icon } = getCatIcon(cat.name);
-                          return (
-                            <button
-                              key={idx}
-                              onClick={() => { setFilterCategory(cat.name); setCurrentView('listing'); setSearchFocused(false); }}
-                              className="w-full flex items-center gap-3 px-4 py-2.5 hover:bg-orange-50 dark:hover:bg-slate-700 transition-colors group"
-                            >
-                              <div className="w-8 h-8 rounded-lg bg-slate-100 dark:bg-slate-700 flex items-center justify-center group-hover:bg-orange-100 dark:group-hover:bg-orange-900/30 transition-colors">
-                                <Icon className="w-4 h-4 text-slate-600 dark:text-slate-300 group-hover:text-orange-600" strokeWidth={1.5} />
-                              </div>
-                              <span className="text-sm font-semibold text-slate-700 dark:text-slate-300 group-hover:text-orange-600 transition-colors">{cat.name}</span>
-                              <ChevronRight className="w-3.5 h-3.5 text-slate-300 ml-auto group-hover:text-orange-400" />
-                            </button>
-                          );
-                        })}
-                      </div>
-                      <div className="px-4 py-2.5 border-t border-slate-100 dark:border-slate-700 bg-slate-50 dark:bg-slate-900/50">
-                        <button
-                          onClick={() => { setFilterCategory('All'); setCurrentView('listing'); setSearchFocused(false); }}
-                          className="text-xs font-bold text-orange-500 hover:text-orange-600 transition-colors"
-                        >
-                          View All Products →
-                        </button>
-                      </div>
-                    </div>
-                  )}
-                </div>
-
-                {/* Actions */}
-                <div className="flex items-center space-x-1.5 sm:space-x-3">
-
-                  <button onClick={() => setCurrentView('orders')} className="hidden md:block p-2 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-500 dark:text-slate-300 relative font-bold text-xs transition-colors">Orders</button>
-                  <a href="/sell" target="_blank" rel="noopener noreferrer" className="hidden md:block p-2 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-500 dark:text-slate-300 relative font-bold text-xs transition-colors">Sell</a>
-
-                  <button onClick={() => setCurrentView('wishlist')} className="hidden sm:block p-2 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-500 dark:text-slate-300 relative">
-                    <Heart className="w-4 h-4" />
-                    {wishlist.length > 0 && <span className="absolute -top-0.5 -right-0.5 w-4 h-4 bg-orange-500 text-[10px] font-black text-white rounded-full flex items-center justify-center">{wishlist.length}</span>}
-                  </button>
-
-                  <button onClick={() => setCurrentView('cart')} className="hidden md:block p-2 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-500 dark:text-slate-300 relative">
-                    <ShoppingCart className="w-4 h-4" />
-                    {cart.length > 0 && <span className="absolute -top-0.5 -right-0.5 w-4 h-4 bg-orange-500 text-[10px] font-black text-white rounded-full flex items-center justify-center">{cart.reduce((s, i) => s + i.quantity, 0)}</span>}
-                  </button>
-
-                  {(user?.is_staff || user?.user_type === 'admin') && (
-                    <button onClick={() => navigate('/dashboard')} className="hidden sm:flex p-2 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-500 dark:text-slate-300 items-center gap-1">
-                      <LayoutDashboard className="w-4 h-4 text-orange-500" />
-                      <span className="hidden lg:inline text-xs font-bold uppercase tracking-wider">Admin</span>
-                    </button>
-                  )}
-
-                  <button onClick={() => isLoggedIn ? setCurrentView('profile') : setCurrentView('auth')} className="hidden sm:block bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 py-1.5 px-3 rounded-xl text-[11px] font-extrabold transition-all border border-slate-200/20">
-                    {isLoggedIn ? "My Account" : "Login"}
-                  </button>
-
-
-
-                  <button onClick={() => setMobileMenuOpen(!mobileMenuOpen)} className="sm:hidden p-2 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-500 dark:text-slate-300">
-                    {mobileMenuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
-                  </button>
+                <div className="bg-white/95 text-slate-900 px-2.5 py-1 rounded-xl text-[11px] font-bold shadow-sm flex items-center gap-1.5 hidden sm:flex">
+                  <span className="text-xs">✈️</span>
+                  <span>Travel</span>
                 </div>
               </div>
 
-              {/* Mobile Search */}
-              <div className="md:hidden mt-2">
-                <div className="relative">
-                  <input type="text" value={searchQuery} onChange={handleSearchChange} onKeyDown={(e) => e.key === 'Enter' && executeSearch(searchQuery)} placeholder="Search catalog..." className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-full py-2 pl-10 pr-4 text-xs font-semibold focus:outline-none focus:ring-1 focus:ring-orange-500 transition-all dark:text-white" />
-                  <Search className="absolute left-3.5 top-2.5 w-3.5 h-3.5 text-slate-400" />
+              {/* Top Action Icons */}
+              <div className="flex items-center space-x-1 sm:space-x-2 shrink-0">
+                <button onClick={() => setCurrentView('orders')} className="hidden md:block px-2.5 py-1 rounded-lg bg-white/10 hover:bg-white/20 text-white text-xs font-bold transition-all border border-white/15">Orders</button>
+                <a href="/sell" target="_blank" rel="noopener noreferrer" className="hidden md:block px-2.5 py-1 rounded-lg bg-white/10 hover:bg-white/20 text-white text-xs font-bold transition-all border border-white/15">Sell</a>
+                <button onClick={() => setCurrentView('wishlist')} className="p-1.5 rounded-xl bg-white/10 hover:bg-white/20 text-white relative border border-white/15">
+                  <Heart className="w-4 h-4" />
+                  {wishlist.length > 0 && <span className="absolute -top-1 -right-1 w-4 h-4 bg-yellow-400 text-slate-950 font-black text-[9px] rounded-full flex items-center justify-center shadow">{wishlist.length}</span>}
+                </button>
+                <button onClick={() => setCurrentView('cart')} className="p-1.5 rounded-xl bg-white/10 hover:bg-white/20 text-white relative border border-white/15">
+                  <ShoppingCart className="w-4 h-4" />
+                  {cart.length > 0 && <span className="absolute -top-1 -right-1 w-4 h-4 bg-yellow-400 text-slate-950 font-black text-[9px] rounded-full flex items-center justify-center shadow">{cart.reduce((s, i) => s + i.quantity, 0)}</span>}
+                </button>
+                {(user?.is_staff || user?.user_type === 'admin') && (
+                  <button onClick={() => navigate('/admin')} className="hidden sm:flex p-1.5 rounded-xl bg-yellow-400 text-slate-950 hover:bg-yellow-300 font-extrabold text-xs items-center gap-1 shadow">
+                    <LayoutDashboard className="w-4 h-4" />
+                    <span className="hidden lg:inline uppercase tracking-wider text-[10px]">Admin</span>
+                  </button>
+                )}
+                <button onClick={() => isLoggedIn ? setCurrentView('profile') : setCurrentView('auth')} className="bg-white/20 hover:bg-white/30 text-white py-1 px-3 rounded-xl text-[11px] font-extrabold border border-white/25 transition-all">
+                  {isLoggedIn ? (user?.username || 'Account') : 'Login'}
+                </button>
+              </div>
+            </div>
+
+            {/* Address Bar (Flipkart style: "📍 516268 Add address >") */}
+            <div className="max-w-7xl mx-auto px-3 sm:px-6 py-1 flex items-center justify-between text-xs">
+              <div className="flex items-center gap-1.5 bg-black/20 hover:bg-black/30 backdrop-blur-md px-3 py-1 rounded-full border border-white/15 cursor-pointer transition-all text-white/95">
+                <MapPin className="w-3.5 h-3.5 text-yellow-300 shrink-0" />
+                <span className="font-bold text-[11px] sm:text-xs truncate">516268 <span className="underline decoration-white/60 font-extrabold ml-0.5">Add address</span></span>
+                <ChevronRight className="w-3 h-3 text-white/70 shrink-0" />
+              </div>
+            </div>
+
+            {/* Flipkart Exact Search Bar (Pure White Rounded Pill Input) */}
+            <div className="max-w-7xl mx-auto px-3 sm:px-6 py-1.5 relative">
+              <div ref={searchContainerRef} className="relative w-full">
+                <div className="relative flex items-center">
+                  <input
+                    type="text"
+                    value={searchQuery}
+                    onChange={handleSearchChange}
+                    onFocus={() => setSearchFocused(true)}
+                    onKeyDown={(e) => e.key === 'Enter' && executeSearch(searchQuery)}
+                    placeholder="Search mobiles, brands and items..."
+                    className="w-full bg-white text-slate-900 border-0 rounded-full py-2.5 pl-10 pr-10 text-xs sm:text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-yellow-400 shadow-lg placeholder:text-slate-400 transition-all"
+                  />
+                  <Search className="absolute left-3.5 top-3 w-4 h-4 text-slate-400 pointer-events-none" />
+                  <Sparkles className="absolute right-3.5 top-3 w-4 h-4 text-purple-700 pointer-events-none opacity-80" />
                 </div>
+                {/* Search suggestions */}
                 {showSuggestions && searchSuggestions.length > 0 && (
-                  <div className="absolute left-3 right-3 mt-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl shadow-2xl p-2 z-50">
-                    {searchSuggestions.map((s, idx) => (<button key={idx} onClick={() => executeSearch(s)} className="w-full text-left px-4 py-2 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-xl text-xs font-bold transition-colors">{s}</button>))}
+                  <div className="absolute top-full left-0 right-0 mt-2 bg-white text-slate-900 border border-slate-200 rounded-2xl shadow-2xl p-2 z-50">
+                    {searchSuggestions.map((s, idx) => (
+                      <button
+                        key={idx}
+                        onClick={() => { executeSearch(s); setSearchFocused(false); }}
+                        className="w-full text-left px-4 py-2 hover:bg-slate-100 rounded-xl text-xs font-bold transition-colors text-slate-800"
+                      >
+                        {s}
+                      </button>
+                    ))}
                   </div>
                 )}
               </div>
+            </div>
 
-              {/* Mobile Dropdown Menu */}
-              {mobileMenuOpen && (
-                <div className="sm:hidden mt-2 border-t border-slate-100 dark:border-slate-800 pt-3 pb-1 space-y-1">
-                  <button onClick={() => { setCurrentView('orders'); setMobileMenuOpen(false); }} className="w-full text-left px-3 py-2.5 rounded-xl hover:bg-slate-50 dark:hover:bg-slate-800 text-sm font-bold text-slate-700 dark:text-slate-200 flex items-center gap-3"><Package className="w-4 h-4 text-slate-400" />Orders</button>
-                  <a href="/sell" target="_blank" rel="noopener noreferrer" className="w-full text-left px-3 py-2.5 rounded-xl hover:bg-slate-50 dark:hover:bg-slate-800 text-sm font-bold text-slate-700 dark:text-slate-200 flex items-center gap-3"><Store className="w-4 h-4 text-slate-400" />Sell</a>
-                  <button onClick={() => { setCurrentView('wishlist'); setMobileMenuOpen(false); }} className="w-full text-left px-3 py-2.5 rounded-xl hover:bg-slate-50 dark:hover:bg-slate-800 text-sm font-bold text-slate-700 dark:text-slate-200 flex items-center gap-3"><Heart className="w-4 h-4 text-slate-400" />Wishlist {wishlist.length > 0 && `(${wishlist.length})`}</button>
-                  <button onClick={() => { isLoggedIn ? setCurrentView('profile') : setCurrentView('auth'); setMobileMenuOpen(false); }} className="w-full text-left px-3 py-2.5 rounded-xl hover:bg-slate-50 dark:hover:bg-slate-800 text-sm font-bold text-slate-700 dark:text-slate-200 flex items-center gap-3"><User className="w-4 h-4 text-slate-400" />{isLoggedIn ? 'My Account' : 'Login'}</button>
-                  {(user?.is_staff || user?.user_type === 'admin') && (
-                    <button onClick={() => { navigate('/dashboard'); setMobileMenuOpen(false); }} className="w-full text-left px-3 py-2.5 rounded-xl hover:bg-slate-50 dark:hover:bg-slate-800 text-sm font-bold text-slate-700 dark:text-slate-200 flex items-center gap-3"><LayoutDashboard className="w-4 h-4 text-orange-500" />Admin Dashboard</button>
-                  )}
-
-                </div>
-              )}
-            </nav>
-
-          {/* Ticker bar */}
+          </div>
+          {/* Ticker bar */}{/* Ticker bar */}
           <div className={`w-full bg-slate-950 transition-all duration-300 overflow-hidden ${isCategorySticky ? 'lg:max-h-40 max-h-0' : 'max-h-40'}`}>
             {isLoggedIn && user && (
               <div className={`bg-gradient-to-r from-orange-50 to-amber-50 dark:from-slate-800 dark:to-slate-800 border border-orange-100 dark:border-slate-700 rounded-none px-5 flex items-center justify-between transition-all duration-300 overflow-hidden ${isCategorySticky ? 'max-h-0 py-0 border-0' : 'max-h-20 py-2.5'}`}>
@@ -1846,22 +1789,23 @@ export default function EcommerceMarketplace({ inlineMode = false, onBackToSelec
       )}
 
       {/* Main Container */}
-      <main className="max-w-7xl mx-auto px-4 space-y-4 py-2">
+      <main className="max-w-7xl mx-auto px-4 space-y-6 py-4 bg-white dark:bg-slate-900 rounded-t-[28px] sm:rounded-t-[32px] shadow-2xl -mt-4 relative z-30 border-t border-slate-100 dark:border-slate-800">
 
         {/* VIEW: HOME */}
         {currentView === 'home' && (
           <div className="space-y-8">
 
-            {/* Flipkart Style Hero Section */}
-            <div className="space-y-2 pt-0">
-              {/* Normal Category Strip with icons */}
-              <div className="w-full bg-transparent">
-                <div style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }} className="flex items-center justify-between sm:justify-evenly overflow-x-auto overflow-y-hidden scrollbar-hide gap-4 sm:gap-6 px-4 sm:px-6 py-0.5 w-full max-w-7xl mx-auto snap-x">
+            {/* Flipkart Top Section with Exact Gradient Background & Height */}
+            <div className="-mx-4 -mt-2 px-4 pt-3 pb-8 bg-gradient-to-b from-[#3900aa] via-[#4d00c3] to-[#5800d1] text-white space-y-4 shadow-inner">
+              
+              {/* Flipkart Style Category Icons Bar */}
+              <div className="w-full">
+                <div style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }} className="flex items-center justify-between sm:justify-evenly overflow-x-auto overflow-y-hidden scrollbar-hide gap-3 sm:gap-6 px-2 sm:px-4 py-1 w-full max-w-7xl mx-auto snap-x">
                   {!categoriesLoaded ? (
                     Array.from({ length: 8 }).map((_, i) => (
                       <div key={i} className="flex flex-col items-center gap-1 min-w-[48px] animate-pulse">
-                        <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-full bg-slate-200 dark:bg-slate-700" />
-                        <div className="w-10 h-2 rounded bg-slate-200 dark:bg-slate-700" />
+                        <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-2xl bg-white/20" />
+                        <div className="w-10 h-2 rounded bg-white/20" />
                       </div>
                     ))
                   ) : (
@@ -1869,25 +1813,25 @@ export default function EcommerceMarketplace({ inlineMode = false, onBackToSelec
                       const catIconData = CAT_ICON_MAP[cat.name];
                       const { Icon } = getCatIcon(cat.name);
                       const hasSpecificIcon = !!catIconData;
+                      const isSelected = filterCategory === cat.name;
                       return (
                         <button
                           key={idx}
                           onClick={() => { setFilterCategory(cat.name); setCurrentView('listing'); }}
-                          className="flex flex-col items-center group min-w-[56px] flex-shrink-0 snap-center"
+                          className={`flex flex-col items-center group min-w-[56px] flex-shrink-0 snap-center pb-1 ${isSelected ? 'border-b-2 border-white font-black' : ''}`}
                         >
-                          <div className="w-10 h-10 flex items-center justify-center transition-transform group-hover:scale-105 relative">
-                            <div className="absolute w-5 h-5 bg-orange-400/90 dark:bg-orange-500/90 rounded-[6px] transform rotate-12 top-1.5 right-1.5 z-0"></div>
+                          <div className="w-11 h-11 sm:w-13 sm:h-13 rounded-2xl bg-white/15 backdrop-blur-md border border-white/20 flex items-center justify-center transition-transform group-hover:scale-105 shadow-sm relative">
                             {cat.image ? (
-                              <img loading="lazy" src={cat.image} alt={cat.name} className="w-full h-full object-contain relative z-10" />
+                              <img loading="lazy" src={cat.image} alt={cat.name} className="w-full h-full object-contain p-1" />
                             ) : hasSpecificIcon ? (
-                              <Icon className="w-8 h-8 text-slate-900 dark:text-slate-100 relative z-10" strokeWidth={1.25} />
+                              <Icon className="w-6 h-6 text-white" strokeWidth={1.5} />
                             ) : cat.icon ? (
-                              <span className="text-[32px] leading-none relative z-10 font-normal">{cat.icon}</span>
+                              <span className="text-[26px] leading-none font-normal">{cat.icon}</span>
                             ) : (
-                              <Icon className="w-8 h-8 text-slate-900 dark:text-slate-100 relative z-10" strokeWidth={1.25} />
+                              <Icon className="w-6 h-6 text-white" strokeWidth={1.5} />
                             )}
                           </div>
-                          <span className="text-[11px] font-semibold text-slate-700 dark:text-slate-300 group-hover:text-orange-600 transition-colors whitespace-nowrap mt-0.5">{cat.name}</span>
+                          <span className="text-[11px] font-bold text-white group-hover:text-yellow-300 transition-colors whitespace-nowrap mt-1">{cat.name}</span>
                         </button>
                       )
                     })
@@ -1895,275 +1839,78 @@ export default function EcommerceMarketplace({ inlineMode = false, onBackToSelec
                 </div>
               </div>
 
-              {/* Promo Banners Layout */}
-              <div className="flex flex-col lg:flex-row gap-4 items-stretch">
-                {/* 70% width Main Carousel */}
-                <div className="w-full lg:w-[70%] relative overflow-hidden bg-slate-100 flex-shrink-0 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-[0_4px_12px_rgba(0,0,0,0.05)]">
-                <div ref={carouselRef} style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }} className="flex overflow-x-auto snap-x snap-mandatory scrollbar-hide h-full min-h-[180px] sm:min-h-[240px]">
-                  {storeSettings.coupon_codes && storeSettings.coupon_codes.length > 0 ? (
-                    storeSettings.coupon_codes.map((coupon, i) => {
-                      // Determine image: Custom image > Product image > fallback
-                      let imageUrl = coupon.image || "";
-                      let linkedProduct = null;
-                      if (!coupon.image && coupon.product_id) {
-                          linkedProduct = productsList.find(p => String(p.id) === String(coupon.product_id));
-                          if (linkedProduct && linkedProduct.image) imageUrl = linkedProduct.image;
-                      }
-                      
-                      let finalImageUrl = imageUrl;
-                      let isFallbackImage = false;
-                      if (!finalImageUrl) {
-                          isFallbackImage = true;
-                          finalImageUrl = i % 2 === 0 ? '/ecommerce_products_collage.png' : '/wow_person_offer.png';
-                      }
+              {/* Flipkart Big Billion Days / Sale Countdown Timer Header Banner */}
+              <div className="w-full bg-gradient-to-r from-purple-900/60 to-indigo-900/60 backdrop-blur-md border border-white/15 rounded-2xl p-4 sm:p-6 shadow-xl relative overflow-hidden flex flex-col sm:flex-row items-center justify-between gap-4">
+                <div className="flex items-center gap-3">
+                  <div className="bg-yellow-400 text-slate-950 px-3 py-1.5 rounded-full font-black text-xs sm:text-sm tracking-wider uppercase shadow-md animate-pulse shrink-0">
+                    THE BIG BILLION DAYS
+                  </div>
+                  <div className="text-white">
+                    <span className="text-xs font-bold text-white/90 block">Sale starts in</span>
+                    <div className="flex items-center gap-1.5 mt-0.5 font-black text-xs sm:text-sm">
+                      <span className="bg-white/20 px-2 py-0.5 rounded border border-white/20">14 <span className="text-[9px] font-normal">Hrs</span></span>
+                      <span>:</span>
+                      <span className="bg-white/20 px-2 py-0.5 rounded border border-white/20">12 <span className="text-[9px] font-normal">Min</span></span>
+                      <span>:</span>
+                      <span className="bg-white/20 px-2 py-0.5 rounded border border-white/20">05 <span className="text-[9px] font-normal">Sec</span></span>
+                    </div>
+                  </div>
+                </div>
+                <div className="text-right hidden md:block">
+                  <span className="text-xs font-black uppercase text-yellow-300 tracking-wider">Deals revealed up to 80% OFF</span>
+                </div>
+              </div>
 
-                      return (
+              {/* Main Promo Banners Carousel */}
+              <div className="w-full h-[180px] sm:h-[240px] relative overflow-hidden bg-slate-900 flex-shrink-0 border border-white/20 rounded-2xl shadow-xl">
+                <div ref={carouselRef} style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }} className="flex overflow-x-auto snap-x snap-mandatory scrollbar-hide h-full">
+                  {storeSettings.coupon_codes && storeSettings.coupon_codes.length > 0 ? (
+                    storeSettings.coupon_codes.map((coupon, i) => (
                       <div key={i} className="flex-none w-full h-full snap-center relative group overflow-hidden">
-                        {/* Background Gradient */}
-                        <div className={`absolute inset-0 bg-gradient-to-r ${i % 2 === 0 ? 'from-orange-500 to-pink-500' : 'from-blue-600 to-indigo-600'}`} />
-                        
-                        {/* Split Layout: Left Text, Right Image */}
+                        <div className={`absolute inset-0 bg-gradient-to-r ${i % 2 === 0 ? 'from-purple-600 via-pink-600 to-indigo-700' : 'from-indigo-600 via-purple-600 to-blue-700'}`} />
                         <div className="relative flex flex-row h-full w-full">
-                          <div className="flex-1 flex flex-col items-start justify-center h-full text-white pl-6 sm:pl-16 space-y-2 z-10">
-                            <div className="inline-flex items-center gap-1.5 px-3 py-1 bg-white/20 backdrop-blur-sm rounded-full border border-white/30 text-[9px] font-bold uppercase tracking-wider mb-1">
+                          <div className="flex-1 flex flex-col items-start justify-center h-full text-white pl-4 sm:pl-16 space-y-1.5 sm:space-y-2 z-10">
+                            <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 sm:px-3 sm:py-1 bg-white/20 backdrop-blur-sm rounded-full border border-white/30 text-[8px] sm:text-[9px] font-bold uppercase tracking-wider mb-1">
                               <Zap className="w-3 h-3 text-yellow-300" fill="currentColor" />
                               Mega Savings Festival
                             </div>
-                            <h2 className="text-5xl sm:text-6xl font-black tracking-tight uppercase drop-shadow-md leading-none">{coupon.discount_percent}% OFF</h2>
-                            <h3 className="text-lg sm:text-xl font-extrabold text-white/95 drop-shadow-sm leading-tight max-w-xs">
-                              Premium Collection
+                            <h2 className="text-3xl sm:text-5xl lg:text-6xl font-black tracking-tight uppercase drop-shadow-md leading-none">{coupon.discount_percent}% OFF</h2>
+                            <h3 className="text-xs sm:text-lg font-extrabold text-white/95 drop-shadow-sm leading-tight max-w-[150px] sm:max-w-xs">
+                              Special Code: {coupon.code}
                             </h3>
-                            <button 
-                              onClick={() => {
-                                autoApplyCouponCode(coupon.code);
-                                if (linkedProduct) {
-                                  setSelectedProduct(linkedProduct);
-                                  setCurrentView('details');
-                                }
-                              }} 
-                              className="sm:hidden mt-3 bg-white text-slate-900 px-6 py-2 rounded-full font-black text-xs uppercase tracking-widest shadow-xl"
-                            >
-                              {linkedProduct ? 'Shop Now' : 'Apply Now'}
+                            <button onClick={() => autoApplyCouponCode(coupon.code)} className="mt-2 bg-yellow-400 text-slate-950 px-4 py-1.5 sm:px-8 sm:py-2.5 rounded-full font-black text-[10px] sm:text-xs uppercase tracking-widest shadow-xl hover:scale-105 transition-transform">
+                              Apply Now
                             </button>
                           </div>
-                          
-                          {/* Center: Frosted CTA Block (Visible on sm+) */}
-                          <div className="hidden sm:flex flex-col items-center justify-center z-10 space-y-3 px-4">
-                            <p className="text-[11px] lg:text-xs text-white/90 max-w-xs text-center font-medium drop-shadow-sm leading-relaxed">
-                              Upgrade your lifestyle with our top-tier catalog. Discover exclusive deals today!
-                            </p>
-                            <div className="flex items-center gap-4 bg-white/10 backdrop-blur-md p-2.5 rounded-2xl border border-white/20 shadow-xl">
-                              <div className="flex flex-col items-start pl-2">
-                                <span className="text-[9px] font-bold text-white/80 uppercase tracking-widest">Use Code</span>
-                                <span className="text-sm font-black text-white tracking-widest mt-0.5">{coupon.code}</span>
-                              </div>
-                              <button 
-                                onClick={() => {
-                                  autoApplyCouponCode(coupon.code);
-                                  if (linkedProduct) {
-                                    setSelectedProduct(linkedProduct);
-                                    setCurrentView('details');
-                                  }
-                                }} 
-                                className="bg-white text-slate-900 px-6 py-2.5 rounded-xl font-black text-xs uppercase tracking-widest shadow-lg hover:scale-105 transition-transform"
-                              >
-                                {linkedProduct ? 'Shop Now' : 'Apply Now'}
-                              </button>
-                            </div>
-                          </div>
-                          
-                          {/* Right side image */}
-                          <div className="flex-1 hidden sm:flex items-center justify-end pr-8 sm:pr-16 relative">
-                             {finalImageUrl && (
-                               <img loading="lazy" 
-                                 src={finalImageUrl} 
-                                 alt="Promo" 
-                                 className={`h-[120%] absolute right-8 top-1/2 -translate-y-1/2 object-contain drop-shadow-2xl hover:scale-105 transition-transform duration-700`} 
-                               />
-                             )}
+                          <div className="flex items-center justify-end pr-3 sm:pr-16 relative w-32 sm:w-auto sm:flex-1 h-full z-0">
+                            <img loading="lazy" src={i % 2 === 0 ? "/ecommerce_products_collage.png" : "/wow_person_offer.png"} alt="Promo" className="max-h-[95%] sm:h-[120%] sm:absolute sm:right-8 sm:top-1/2 sm:-translate-y-1/2 object-contain drop-shadow-2xl" />
                           </div>
                         </div>
                       </div>
-                    )})
+                    ))
                   ) : (
                     <div className="flex-none w-full h-full snap-center relative group overflow-hidden">
-                      <div className="absolute inset-0 bg-gradient-to-r from-orange-500 to-rose-500" />
-                        <div className="relative flex flex-row h-full w-full">
-                          <div className="flex-1 flex flex-col items-start justify-center h-full text-white pl-6 sm:pl-16 space-y-2 z-10">
-                            <div className="inline-flex items-center gap-1.5 px-3 py-1 bg-white/20 backdrop-blur-sm rounded-full border border-white/30 text-[9px] font-bold uppercase tracking-wider mb-1">
-                              <Sparkles className="w-3 h-3 text-yellow-300" fill="currentColor" />
-                              Welcome Offer
-                            </div>
-                            <h2 className="text-4xl sm:text-5xl font-black tracking-tight uppercase drop-shadow-sm leading-tight max-w-xl">{storeSettings.hero_headline}</h2>
-                            <h3 className="text-sm font-extrabold text-white/90 drop-shadow-sm leading-tight">Join today for benefits</h3>
-                            <button className="sm:hidden mt-3 bg-white text-slate-900 px-6 py-2 rounded-full font-black text-xs uppercase tracking-widest shadow-xl">Explore</button>
-                          </div>
-                          
-                          <div className="hidden sm:flex flex-col items-center justify-center z-10 space-y-3 px-4">
-                            <p className="text-[11px] lg:text-xs text-white/90 max-w-xs text-center font-medium drop-shadow-sm leading-relaxed">{storeSettings.hero_subheadline}</p>
-                            <button className="bg-white/10 backdrop-blur-md text-white border border-white/20 px-8 py-3 rounded-xl font-black text-xs uppercase tracking-widest shadow-xl hover:scale-105 transition-transform hover:bg-white hover:text-slate-900">Explore Catalog</button>
-                          </div>
-
-                          <div className="flex-1 hidden sm:flex items-center justify-end pr-8 sm:pr-16 relative h-full z-0">
-                             <img loading="lazy" src="/ecommerce_products_collage.png" alt="Tech" className="h-[130%] absolute right-8 top-1/2 -translate-y-1/2 object-contain drop-shadow-2xl hover:scale-105 transition-transform duration-700" />
-                          </div>
+                      <div className="absolute inset-0 bg-gradient-to-r from-purple-700 via-indigo-700 to-violet-800" />
+                      <div className="relative flex flex-row h-full w-full">
+                        <div className="flex-1 flex flex-col items-start justify-center h-full text-white pl-4 sm:pl-16 space-y-2 z-10">
+                          <h2 className="text-3xl sm:text-5xl font-black uppercase drop-shadow-md">{storeSettings.hero_headline || "BIG COLLABO SALE"}</h2>
+                          <p className="text-xs sm:text-base opacity-90">{storeSettings.hero_subheadline || "Deals on your favorites"}</p>
                         </div>
+                        <div className="flex items-center justify-end pr-4 sm:pr-16 relative w-36 sm:flex-1 h-full z-0">
+                          <img loading="lazy" src="/ecommerce_products_collage.png" alt="Sale" className="max-h-[95%] sm:h-[120%] object-contain drop-shadow-2xl" />
+                        </div>
+                      </div>
                     </div>
                   )}
                 </div>
               </div>
 
-              {/* 30% width Sidecar Banners Carousel */}
-              <div className="hidden lg:flex w-[30%] flex-col flex-shrink-0 relative overflow-hidden">
-                 {(() => {
-                   let sidecars = storeSettings.hero_sidecars || [];
-                   if (sidecars.length === 0) {
-                     sidecars = [
-                       { title: 'Deal of the Day', subtitle: 'Extra 50% Off Top Brands', product_id: productsList[3]?.id || productsList[0]?.id },
-                       { title: 'New Arrivals', subtitle: 'Extra 50% Off Top Brands', product_id: productsList[4]?.id || productsList[1]?.id }
-                     ];
-                   }
-                   
-                   const scIndex = activeSidecarIndex % sidecars.length;
-                   const sc = sidecars[scIndex];
-                   
-                   let linkedProduct = null;
-                   if (sc.product_id) {
-                     linkedProduct = productsList.find(p => String(p.id) === String(sc.product_id));
-                   }
-                   const title = sc.title || (linkedProduct ? linkedProduct.name.substring(0, 20) + '...' : "Offer");
-                   const subtitle = sc.subtitle || (linkedProduct ? linkedProduct.category : "Shop Now");
-                   return (
-                     <div key="sidecar-carousel" onClick={() => { if (linkedProduct) { setSelectedProduct(linkedProduct); setCurrentView('details'); } }} className={`flex-1 w-full h-full bg-[#fdfbf6] dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl flex flex-row relative shadow-[0_4px_12px_rgba(0,0,0,0.05)] overflow-hidden group transition-opacity duration-300 ${linkedProduct ? 'cursor-pointer' : ''}`}>
-                        {/* Ad Banner Content */}
-                        <div className="w-[55%] p-4 sm:p-6 flex flex-col justify-center z-10">
-                          <h3 className="text-xl sm:text-2xl font-black mb-1 leading-tight text-slate-900 dark:text-white line-clamp-2">{title}</h3>
-                          <p className="text-xs sm:text-sm font-semibold text-slate-600 dark:text-slate-400 mb-3 sm:mb-4 line-clamp-2">{subtitle}</p>
-                          
-                          <div className="mt-auto border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-2 sm:px-3 py-1 sm:py-1.5 flex items-center gap-2 w-fit rounded shadow-sm">
-                             <div className="flex flex-col">
-                               <span className="text-[9px] sm:text-[10px] font-black text-blue-800 dark:text-blue-400">BANK OFFER</span>
-                               <span className="text-[8px] sm:text-[9px] font-semibold text-slate-500 dark:text-slate-400">Up to ₹500 Discount</span>
-                             </div>
-                          </div>
-                        </div>
-                        
-                        {/* Ad Banner Image & Shapes */}
-                        <div className="w-[45%] relative z-0 flex items-center justify-center p-2 sm:p-4">
-                          <div className="absolute -right-4 -bottom-4 w-32 h-32 bg-orange-400 dark:bg-orange-500 rounded-full blur-2xl opacity-20 pointer-events-none" />
-                          <div className="absolute right-0 bottom-0 w-full h-full overflow-hidden pointer-events-none">
-                            <div className="absolute -right-10 -bottom-10 w-40 h-40 bg-orange-500 rounded-full opacity-10" />
-                          </div>
-                          
-                          {linkedProduct && linkedProduct.image ? (
-                             <img loading="lazy" src={linkedProduct.image} className="w-full h-full max-w-[110px] sm:max-w-[160px] object-contain drop-shadow-xl group-hover:scale-105 transition-transform duration-500 relative z-10" />
-                          ) : (
-                             <div className="text-orange-300 dark:text-orange-900/50 group-hover:scale-105 transition-transform relative z-10">
-                               <Zap className="w-16 h-16 sm:w-24 sm:h-24" fill="currentColor" />
-                             </div>
-                          )}
-                        </div>
-                        
-                        {/* AD Badge */}
-                        <div className="absolute bottom-2 right-2 bg-slate-200/80 dark:bg-slate-800/80 px-1.5 py-0.5 rounded text-[8px] sm:text-[9px] font-bold text-slate-500 dark:text-slate-400 z-20 backdrop-blur-sm shadow-sm">
-                          AD
-                        </div>
-                     </div>
-                   );
-                 })()}
-              </div>
             </div>
-
-              {/* 3 Smaller Offer Products Cards */}
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 pt-4">
-                {(() => {
-                  let slides = storeSettings.hero_card_slides && storeSettings.hero_card_slides.length > 0 
-                    ? storeSettings.hero_card_slides 
-                    : [];
-
-                  if (slides.length === 0 && productsList.length > 0) {
-                    slides = productsList.slice(0, 3).map(p => ({
-                      title: p.name.length > 20 ? p.name.substring(0, 20) + '...' : p.name,
-                      subtitle: p.category,
-                      image: p.image,
-                      product_id: p.id
-                    }));
-                  }
-                  
-                  if (slides.length === 0) return null;
-                      
-                  return slides.slice(0, 3).map((offer, idx) => {
-                    const colors = ['text-blue-600', 'text-rose-600', 'text-orange-600'];
-                    const colorClass = offer.color || colors[idx % 3];
-                    
-                    let linkedProduct = null;
-                    if (offer.product_id) {
-                      linkedProduct = productsList.find(p => String(p.id) === String(offer.product_id));
-                    }
-
-                    const imgSrc = offer.image || (linkedProduct ? linkedProduct.image : "");
-                    const title = offer.title || (linkedProduct ? linkedProduct.name.substring(0, 20) + '...' : "Offer");
-                    const subtitle = offer.subtitle || (linkedProduct ? linkedProduct.category : "Shop Now");
-
-                    return (
-                      <div 
-                        key={idx} 
-                        onClick={() => {
-                          if (linkedProduct) {
-                            setSelectedProduct(linkedProduct);
-                            setCurrentView('details');
-                          }
-                        }}
-                        className="relative rounded-[24px] overflow-hidden shadow-md hover:shadow-2xl transition-all duration-500 cursor-pointer group aspect-[4/3] w-full"
-                      >
-                        {/* Background Image */}
-                        <div className="absolute inset-0 bg-slate-100 dark:bg-slate-800">
-                          {imgSrc ? (
-                            <img loading="lazy" 
-                              src={imgSrc} 
-                              alt={title} 
-                              className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700 ease-out" 
-                            />
-                          ) : (
-                            <div className="w-full h-full bg-gradient-to-br from-slate-200 to-slate-300 dark:from-slate-700 dark:to-slate-800" />
-                          )}
-                        </div>
-                        
-                        {/* Gradient Overlay */}
-                        <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/30 to-black/5 opacity-80 group-hover:opacity-90 transition-opacity duration-300" />
-                        
-                        {/* Content Overlay */}
-                        <div className="absolute inset-0 p-6 flex flex-col justify-end text-white z-10 transform translate-y-2 group-hover:translate-y-0 transition-transform duration-500">
-                          <p className={`text-[10px] font-black uppercase tracking-widest mb-1.5 ${colorClass.replace('-600', '-400')}`}>
-                            {subtitle}
-                          </p>
-                          <h3 className="font-extrabold text-xl sm:text-2xl leading-tight tracking-tight mb-3">
-                            {title}
-                          </h3>
-                          <div className="mb-3 border border-white/20 bg-white/10 backdrop-blur-md px-2 py-1 flex items-center gap-2 w-fit rounded shadow-sm">
-                             <div className="flex flex-col">
-                               <span className="text-[9px] font-black text-white uppercase tracking-wider">BANK OFFER</span>
-                               <span className="text-[8px] font-semibold text-white/80">Up to ₹500 Discount</span>
-                             </div>
-                          </div>
                           <div className="inline-flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-widest border-b-2 border-white/30 hover:border-white pb-0.5 w-max transition-colors">
                             <span>Shop Now</span>
                             <ChevronRight className="w-3.5 h-3.5" />
                           </div>
                         </div>
-                        
-                        {/* AD Badge */}
-                        <div className="absolute top-3 right-3 bg-white/20 backdrop-blur-md px-1.5 py-0.5 rounded text-[9px] font-bold text-white z-20 border border-white/30 shadow-sm">
-                          AD
-                        </div>
-                      </div>
-                    );
-                  });
-                })()}      
-              </div>
-
-
-            </div>
 
             {/* Flash Sale / Deals Section */}
             <div className="bg-white dark:bg-slate-900 border border-slate-200/60 dark:border-slate-850 p-6 sm:p-8 rounded-[40px] shadow-sm space-y-6">
