@@ -1,0 +1,36 @@
+services:
+  # Backend Web Service
+  - type: web
+    name: collabo-backend
+    env: python
+    runtime: python
+    rootDirectory: backend
+    buildCommand: "bash build.sh"
+    startCommand: "bash start.sh"
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.11.0
+      - key: SECRET_KEY
+        generateValue: true
+      - key: DEBUG
+        value: False
+      - key: DB_PATH
+        value: /data/db.sqlite3
+    disk:
+      name: collabo-data
+      mountPath: /data
+      sizeGB: 1
+
+  # Frontend Static Site
+  - type: static
+    name: collabo-frontend
+    env: static
+    rootContext: frontend
+    buildCommand: "npm install && npm run build"
+    publishDir: "build"
+    envVars:
+      - key: REACT_APP_API_URL
+        value: https://collabo-backend.onrender.com/api
+
+
+

@@ -1,0 +1,300 @@
+import os
+import django
+
+os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'influencer_platform.settings')
+django.setup()
+
+from django.contrib.auth import get_user_model
+from ecommerce.models import Product
+
+User = get_user_model()
+
+seller = User.objects.filter(is_superuser=True).first() or User.objects.first()
+print(f"Using seller: {seller.username}")
+
+PHONES = [
+    {
+        'name': 'Apple iPhone 16 Pro Max',
+        'category': 'Mobiles',
+        'brand': 'Apple',
+        'price': 159900,
+        'discount_price': 149900,
+        'rating': 4.9,
+        'reviews_count': 4320,
+        'stock': 50,
+        'delivery': 'Free delivery by Tomorrow',
+        'commission_rate': 8,
+        'link_discount_percent': 5,
+        'image': 'https://images.unsplash.com/photo-1696446702183-2516da8c87e1?auto=format&fit=crop&w=600&q=80',
+        'images': [
+            'https://images.unsplash.com/photo-1696446702183-2516da8c87e1?auto=format&fit=crop&w=600&q=80',
+            'https://images.unsplash.com/photo-1511707171634-5f897ff02aa9?auto=format&fit=crop&w=600&q=80',
+        ],
+        'description': 'iPhone 16 Pro Max features the A18 Pro chip, a stunning 6.9-inch Super Retina XDR ProMotion display, and the most advanced iPhone camera system ever — with 48MP Fusion, 12MP Ultra Wide, and 5x Tetraprism telephoto. Crafted with titanium and finished with textured matte glass.',
+        'specifications': [
+            {'name': 'Display', 'value': '6.9-inch Super Retina XDR ProMotion (120Hz)'},
+            {'name': 'Chip', 'value': 'Apple A18 Pro'},
+            {'name': 'RAM', 'value': '8 GB'},
+            {'name': 'Storage', 'value': '256 GB'},
+            {'name': 'Rear Camera', 'value': '48MP + 12MP + 12MP (5x Tetraprism)'},
+            {'name': 'Front Camera', 'value': '12MP TrueDepth'},
+            {'name': 'Battery', 'value': '4685 mAh'},
+            {'name': 'OS', 'value': 'iOS 18'},
+            {'name': 'Build', 'value': 'Titanium frame, Textured matte glass back'},
+        ],
+    },
+    {
+        'name': 'Apple iPhone 15',
+        'category': 'Mobiles',
+        'brand': 'Apple',
+        'price': 79900,
+        'discount_price': 69999,
+        'rating': 4.7,
+        'reviews_count': 8540,
+        'stock': 80,
+        'delivery': 'Free delivery by Tomorrow',
+        'commission_rate': 8,
+        'link_discount_percent': 5,
+        'image': 'https://images.unsplash.com/photo-1695048133142-1a20484d2569?auto=format&fit=crop&w=600&q=80',
+        'images': [
+            'https://images.unsplash.com/photo-1695048133142-1a20484d2569?auto=format&fit=crop&w=600&q=80',
+        ],
+        'description': 'iPhone 15 brings Dynamic Island to the standard iPhone lineup, along with a 48MP main camera, USB-C, and the powerful A16 Bionic chip. Available in five gorgeous colour-infused glass finishes.',
+        'specifications': [
+            {'name': 'Display', 'value': '6.1-inch Super Retina XDR OLED'},
+            {'name': 'Chip', 'value': 'Apple A16 Bionic'},
+            {'name': 'Storage', 'value': '128 GB'},
+            {'name': 'Rear Camera', 'value': '48MP Main + 12MP Ultra Wide'},
+            {'name': 'Front Camera', 'value': '12MP TrueDepth'},
+            {'name': 'Battery', 'value': '3349 mAh'},
+            {'name': 'OS', 'value': 'iOS 17'},
+            {'name': 'Charging', 'value': 'USB-C, MagSafe 15W'},
+        ],
+    },
+    {
+        'name': 'Samsung Galaxy S24 Ultra',
+        'category': 'Mobiles',
+        'brand': 'Samsung',
+        'price': 134999,
+        'discount_price': 119999,
+        'rating': 4.8,
+        'reviews_count': 3210,
+        'stock': 60,
+        'delivery': 'Free delivery by Tomorrow',
+        'commission_rate': 10,
+        'link_discount_percent': 7,
+        'image': 'https://images.unsplash.com/photo-1610945264803-c22b62831083?auto=format&fit=crop&w=600&q=80',
+        'images': [
+            'https://images.unsplash.com/photo-1610945264803-c22b62831083?auto=format&fit=crop&w=600&q=80',
+            'https://images.unsplash.com/photo-1567581935884-3349723552ca?auto=format&fit=crop&w=600&q=80',
+        ],
+        'description': 'Galaxy S24 Ultra redefines premium with a 200MP pro camera, built-in S Pen, Snapdragon 8 Gen 3, and 6.8-inch Dynamic AMOLED 2X at 120Hz. Galaxy AI brings next-level intelligence to every moment.',
+        'specifications': [
+            {'name': 'Display', 'value': '6.8-inch Dynamic AMOLED 2X, 120Hz'},
+            {'name': 'Processor', 'value': 'Snapdragon 8 Gen 3'},
+            {'name': 'RAM', 'value': '12 GB'},
+            {'name': 'Storage', 'value': '256 GB'},
+            {'name': 'Main Camera', 'value': '200MP + 12MP + 10MP + 50MP'},
+            {'name': 'Front Camera', 'value': '12MP'},
+            {'name': 'Battery', 'value': '5000 mAh, 45W fast charge'},
+            {'name': 'OS', 'value': 'Android 14 (One UI 6.1)'},
+            {'name': 'Stylus', 'value': 'Built-in S Pen'},
+        ],
+    },
+    {
+        'name': 'Samsung Galaxy S24+',
+        'category': 'Mobiles',
+        'brand': 'Samsung',
+        'price': 99999,
+        'discount_price': 84999,
+        'rating': 4.6,
+        'reviews_count': 1875,
+        'stock': 75,
+        'delivery': 'Free delivery by Tomorrow',
+        'commission_rate': 10,
+        'link_discount_percent': 5,
+        'image': 'https://images.unsplash.com/photo-1567581935884-3349723552ca?auto=format&fit=crop&w=600&q=80',
+        'images': [
+            'https://images.unsplash.com/photo-1567581935884-3349723552ca?auto=format&fit=crop&w=600&q=80',
+        ],
+        'description': 'Galaxy S24+ delivers a large 6.7-inch display, Galaxy AI, and pro-grade cameras in a slim titanium frame. Powered by Snapdragon 8 Gen 3 for elite performance all day long.',
+        'specifications': [
+            {'name': 'Display', 'value': '6.7-inch Dynamic AMOLED 2X, 120Hz'},
+            {'name': 'Processor', 'value': 'Snapdragon 8 Gen 3'},
+            {'name': 'RAM', 'value': '12 GB'},
+            {'name': 'Storage', 'value': '256 GB'},
+            {'name': 'Main Camera', 'value': '50MP + 12MP + 10MP'},
+            {'name': 'Battery', 'value': '4900 mAh, 45W fast charge'},
+            {'name': 'OS', 'value': 'Android 14 (One UI 6.1)'},
+        ],
+    },
+    {
+        'name': 'OnePlus 12 5G',
+        'category': 'Mobiles',
+        'brand': 'OnePlus',
+        'price': 64999,
+        'discount_price': 56999,
+        'rating': 4.6,
+        'reviews_count': 2140,
+        'stock': 90,
+        'delivery': 'Free delivery by Tomorrow',
+        'commission_rate': 12,
+        'link_discount_percent': 8,
+        'image': 'https://images.unsplash.com/photo-1511707171634-5f897ff02aa9?auto=format&fit=crop&w=600&q=80',
+        'images': [
+            'https://images.unsplash.com/photo-1511707171634-5f897ff02aa9?auto=format&fit=crop&w=600&q=80',
+        ],
+        'description': 'OnePlus 12 is a flagship killer with Snapdragon 8 Gen 3, Hasselblad-tuned triple cameras, 100W SUPERVOOC charging, and a stunning 6.82-inch AMOLED display at 120Hz.',
+        'specifications': [
+            {'name': 'Display', 'value': '6.82-inch LTPO AMOLED, 1-120Hz'},
+            {'name': 'Processor', 'value': 'Snapdragon 8 Gen 3'},
+            {'name': 'RAM', 'value': '12 GB'},
+            {'name': 'Storage', 'value': '256 GB'},
+            {'name': 'Camera', 'value': '50MP (Hasselblad) + 48MP + 64MP'},
+            {'name': 'Battery', 'value': '5400 mAh, 100W SUPERVOOC'},
+            {'name': 'OS', 'value': 'OxygenOS 14 (Android 14)'},
+        ],
+    },
+    {
+        'name': 'Xiaomi 14 Pro',
+        'category': 'Mobiles',
+        'brand': 'Xiaomi',
+        'price': 89999,
+        'discount_price': 74999,
+        'rating': 4.5,
+        'reviews_count': 980,
+        'stock': 45,
+        'delivery': 'Free delivery in 2 days',
+        'commission_rate': 12,
+        'link_discount_percent': 8,
+        'image': 'https://images.unsplash.com/photo-1598327105666-5b89351aff97?auto=format&fit=crop&w=600&q=80',
+        'images': [
+            'https://images.unsplash.com/photo-1598327105666-5b89351aff97?auto=format&fit=crop&w=600&q=80',
+        ],
+        'description': 'Xiaomi 14 Pro packs Snapdragon 8 Gen 3, Leica-optics triple cameras, a 50W wireless charging, and a ceramic back in one stunning flagship package.',
+        'specifications': [
+            {'name': 'Display', 'value': '6.73-inch LTPO AMOLED, 1-120Hz'},
+            {'name': 'Processor', 'value': 'Snapdragon 8 Gen 3'},
+            {'name': 'RAM', 'value': '12 GB'},
+            {'name': 'Storage', 'value': '256 GB'},
+            {'name': 'Camera', 'value': '50MP (Leica Summilux) + 50MP + 50MP'},
+            {'name': 'Battery', 'value': '4880 mAh, 120W HyperCharge'},
+            {'name': 'OS', 'value': 'HyperOS (Android 14)'},
+        ],
+    },
+    {
+        'name': 'Google Pixel 9 Pro',
+        'category': 'Mobiles',
+        'brand': 'Google',
+        'price': 109999,
+        'discount_price': 99999,
+        'rating': 4.7,
+        'reviews_count': 1560,
+        'stock': 35,
+        'delivery': 'Free delivery by Tomorrow',
+        'commission_rate': 10,
+        'link_discount_percent': 5,
+        'image': 'https://images.unsplash.com/photo-1574944985070-8f3ebc6b79d2?auto=format&fit=crop&w=600&q=80',
+        'images': [
+            'https://images.unsplash.com/photo-1574944985070-8f3ebc6b79d2?auto=format&fit=crop&w=600&q=80',
+        ],
+        'description': 'Pixel 9 Pro brings Google AI to its fullest with Gemini Nano on-device, the best computational photography on Android, and a polished 6.3-inch Super Actua display.',
+        'specifications': [
+            {'name': 'Display', 'value': '6.3-inch Super Actua OLED, 1-120Hz'},
+            {'name': 'Processor', 'value': 'Google Tensor G4'},
+            {'name': 'RAM', 'value': '16 GB'},
+            {'name': 'Storage', 'value': '128 GB'},
+            {'name': 'Camera', 'value': '50MP + 48MP Ultra Wide + 48MP Tele'},
+            {'name': 'Battery', 'value': '4700 mAh, 27W wired'},
+            {'name': 'OS', 'value': 'Android 15'},
+            {'name': 'AI', 'value': 'Gemini Nano on-device'},
+        ],
+    },
+    {
+        'name': 'Nothing Phone (2a)',
+        'category': 'Mobiles',
+        'brand': 'Nothing',
+        'price': 23999,
+        'discount_price': 20999,
+        'rating': 4.4,
+        'reviews_count': 3200,
+        'stock': 120,
+        'delivery': 'Free delivery by Tomorrow',
+        'commission_rate': 15,
+        'link_discount_percent': 10,
+        'image': 'https://images.unsplash.com/photo-1592750475338-74b7b21085ab?auto=format&fit=crop&w=600&q=80',
+        'images': [
+            'https://images.unsplash.com/photo-1592750475338-74b7b21085ab?auto=format&fit=crop&w=600&q=80',
+        ],
+        'description': 'Nothing Phone (2a) stands out with its iconic Glyph Interface, a clean 6.7-inch AMOLED display at 120Hz, and a capable 50MP dual camera — all at a surprisingly affordable price.',
+        'specifications': [
+            {'name': 'Display', 'value': '6.7-inch AMOLED, 120Hz'},
+            {'name': 'Processor', 'value': 'MediaTek Dimensity 7200 Pro'},
+            {'name': 'RAM', 'value': '8 GB'},
+            {'name': 'Storage', 'value': '128 GB'},
+            {'name': 'Camera', 'value': '50MP + 50MP Ultra Wide'},
+            {'name': 'Battery', 'value': '5000 mAh, 45W fast charge'},
+            {'name': 'OS', 'value': 'Nothing OS 2.5 (Android 14)'},
+            {'name': 'Special', 'value': 'Glyph Interface LED'},
+        ],
+    },
+    {
+        'name': 'Realme GT 6',
+        'category': 'Mobiles',
+        'brand': 'Realme',
+        'price': 39999,
+        'discount_price': 34999,
+        'rating': 4.3,
+        'reviews_count': 1450,
+        'stock': 100,
+        'delivery': 'Free delivery in 2 days',
+        'commission_rate': 12,
+        'link_discount_percent': 8,
+        'image': 'https://images.unsplash.com/photo-1580910051074-3eb694886505?auto=format&fit=crop&w=600&q=80',
+        'images': [
+            'https://images.unsplash.com/photo-1580910051074-3eb694886505?auto=format&fit=crop&w=600&q=80',
+        ],
+        'description': 'Realme GT 6 delivers flagship-level performance with Snapdragon 8s Gen 3, a stunning 6.78-inch AMOLED at 120Hz, and 120W SUPERVOOC charging — all at a mid-range price.',
+        'specifications': [
+            {'name': 'Display', 'value': '6.78-inch AMOLED, 120Hz'},
+            {'name': 'Processor', 'value': 'Snapdragon 8s Gen 3'},
+            {'name': 'RAM', 'value': '12 GB'},
+            {'name': 'Storage', 'value': '256 GB'},
+            {'name': 'Camera', 'value': '50MP + 8MP + 2MP'},
+            {'name': 'Battery', 'value': '5500 mAh, 120W SUPERVOOC'},
+            {'name': 'OS', 'value': 'Realme UI 5.0 (Android 14)'},
+        ],
+    },
+]
+
+created = 0
+skipped = 0
+
+for data in PHONES:
+    if Product.objects.filter(name=data['name']).exists():
+        print(f"  SKIP (exists): {data['name']}")
+        skipped += 1
+        continue
+
+    Product.objects.create(
+        seller=seller,
+        name=data['name'],
+        category=data['category'],
+        brand=data['brand'],
+        price=data['price'],
+        discount_price=data['discount_price'],
+        rating=data['rating'],
+        reviews_count=data['reviews_count'],
+        stock=data['stock'],
+        delivery=data['delivery'],
+        commission_rate=data['commission_rate'],
+        link_discount_percent=data['link_discount_percent'],
+        image=data['image'],
+        images=data['images'],
+        description=data['description'],
+        specifications=data['specifications'],
+    )
+    print(f"  CREATED: {data['name']}")
+    created += 1
+
+print(f"\nDone — {created} created, {skipped} skipped.")

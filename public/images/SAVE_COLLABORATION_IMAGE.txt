@@ -1,0 +1,16 @@
+INSTRUCTIONS FOR 3RD CAROUSEL IMAGE:
+====================================
+
+Please save the social media collaboration image (the one showing people using phones with social media icons) as:
+
+carousel-collaboration.jpg
+
+in this directory: C:\Users\dell\Desktop\collab\frontend\public\images\
+
+Steps:
+1. Locate the collaboration image file on your computer
+2. Copy or save it to: C:\Users\dell\Desktop\collab\frontend\public\images\
+3. Name it exactly: carousel-collaboration.jpg
+4. Tell me "done" and I'll update the carousel!
+
+The image shows people collaborating with social media and will replace the handshake emoji (🤝) in the 3rd carousel slide.

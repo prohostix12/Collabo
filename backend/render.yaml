@@ -1,0 +1,127 @@
+services:
+  - type: web
+    name: collabo-backend
+    env: python
+    runtime: python
+    buildCommand: "bash build.sh"
+    startCommand: "bash start.sh"
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.11.0
+      - key: SECRET_KEY
+        generateValue: true
+      - key: DEBUG
+        value: False
+      - key: ALLOWED_HOSTS
+        value: "collabo-backend-uyi4.onrender.com,*.onrender.com,localhost"
+      - key: DB_NAME
+        value: postgres
+      - key: DB_USER
+        value: postgres
+      - key: DB_PASSWORD
+        sync: false
+      - key: DB_HOST
+        sync: false
+      - key: DB_PORT
+        value: "5432"
+      - key: DB_SSLMODE
+        value: require
+      # Already required by existing .delay() calls (social_media) — was
+      # previously only set by hand in the Render dashboard, not tracked here.
+      - key: REDIS_URL
+        sync: false
+
+  # Runs Celery tasks — including pricing.tasks.sync_competitor_prices — that
+  # collabo-celery-beat schedules below. Nothing here changes Collabo's own
+  # product prices; this process only fetches/records competitor prices.
+  - type: worker
+    name: collabo-celery-worker
+    env: python
+    runtime: python
+    buildCommand: "pip install -r requirements.txt"
+    startCommand: "celery -A influencer_platform worker -l info"
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.11.0
+      - key: SECRET_KEY
+        fromService:
+          name: collabo-backend
+          type: web
+          envVarKey: SECRET_KEY
+      - key: DEBUG
+        value: False
+      - key: DB_NAME
+        value: postgres
+      - key: DB_USER
+        value: postgres
+      - key: DB_PASSWORD
+        fromService:
+          name: collabo-backend
+          type: web
+          envVarKey: DB_PASSWORD
+      - key: DB_HOST
+        fromService:
+          name: collabo-backend
+          type: web
+          envVarKey: DB_HOST
+      - key: DB_PORT
+        value: "5432"
+      - key: DB_SSLMODE
+        value: require
+      - key: REDIS_URL
+        fromService:
+          name: collabo-backend
+          type: web
+          envVarKey: REDIS_URL
+      - key: BRIGHTDATA_API_KEY
+        sync: false
+      - key: BRIGHTDATA_ZONE
+        sync: false
+      - key: BRIGHTDATA_API_URL
+        value: https://api.brightdata.com/request
+      - key: BRIGHTDATA_TIMEOUT_SECS
+        value: "30"
+      - key: BRIGHTDATA_COUNTRY
+        value: in
+
+  # Only enqueues tasks on schedule (crontab in influencer_platform/celery.py)
+  # — collabo-celery-worker above is what actually executes them.
+  - type: worker
+    name: collabo-celery-beat
+    env: python
+    runtime: python
+    buildCommand: "pip install -r requirements.txt"
+    startCommand: "celery -A influencer_platform beat -l info"
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.11.0
+      - key: SECRET_KEY
+        fromService:
+          name: collabo-backend
+          type: web
+          envVarKey: SECRET_KEY
+      - key: DEBUG
+        value: False
+      - key: DB_NAME
+        value: postgres
+      - key: DB_USER
+        value: postgres
+      - key: DB_PASSWORD
+        fromService:
+          name: collabo-backend
+          type: web
+          envVarKey: DB_PASSWORD
+      - key: DB_HOST
+        fromService:
+          name: collabo-backend
+          type: web
+          envVarKey: DB_HOST
+      - key: DB_PORT
+        value: "5432"
+      - key: DB_SSLMODE
+        value: require
+      - key: REDIS_URL
+        fromService:
+          name: collabo-backend
+          type: web
+          envVarKey: REDIS_URL
