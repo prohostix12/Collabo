@@ -306,3 +306,10 @@ BRIGHTDATA_API_KEY = config('BRIGHTDATA_API_KEY', default='')
 BRIGHTDATA_ZONE = config('BRIGHTDATA_ZONE', default='')
 BRIGHTDATA_API_URL = config('BRIGHTDATA_API_URL', default='https://api.brightdata.com/request')
 BRIGHTDATA_TIMEOUT_SECS = config('BRIGHTDATA_TIMEOUT_SECS', default=30, cast=int)
+BRIGHTDATA_COUNTRY = config('BRIGHTDATA_COUNTRY', default='in')
+
+# Bright Data — Dataset API (trigger/poll a pre-built Amazon/Flipkart scraper
+# instead of Web Unlocker's raw-HTML-per-URL flow). Same API key as above,
+# one dataset per platform. See pricing/brightdata_dataset_client.py.
+BRIGHT_DATA_AMAZON_DATASET_ID = config('BRIGHT_DATA_AMAZON_DATASET_ID', default='')
+BRIGHT_DATA_FLIPKART_DATASET_ID = config('BRIGHT_DATA_FLIPKART_DATASET_ID', default='')

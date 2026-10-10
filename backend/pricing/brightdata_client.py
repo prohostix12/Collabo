@@ -48,6 +48,10 @@ def fetch_html(url: str) -> str:
                 'zone': settings.BRIGHTDATA_ZONE,
                 'url': url,
                 'format': 'raw',
+                # Amazon.in / Flipkart.com show different prices (and non-INR
+                # currency) to non-Indian IPs — pin the unlocker's exit node
+                # to India so parsers.py's ₹-only assumptions hold.
+                'country': settings.BRIGHTDATA_COUNTRY,
             },
             timeout=settings.BRIGHTDATA_TIMEOUT_SECS,
         )
