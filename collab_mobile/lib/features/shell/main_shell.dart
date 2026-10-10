@@ -125,8 +125,8 @@ class _CustomEcommerceBottomBar extends StatelessWidget {
       ),
       child: SafeArea(
         top: false,
-        child: SizedBox(
-          height: 60,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: 6),
           child: Row(
             children: [
               for (var i = 0; i < _destinations.length; i++)
