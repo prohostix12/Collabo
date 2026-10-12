@@ -671,7 +671,7 @@ class _Spotlight extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final (bg, accent) = palette;
-    final radius = playful ? 22.0 : 4.0;
+    const radius = 22.0;
     return Container(
       margin: const EdgeInsets.only(top: 8),
       color: Colors.white,
@@ -732,7 +732,7 @@ class _Spotlight extends StatelessWidget {
                       child: Container(
                         decoration: BoxDecoration(
                           color: Colors.white,
-                          borderRadius: BorderRadius.circular(playful ? 16 : 4),
+                          borderRadius: BorderRadius.circular(16),
                         ),
                         clipBehavior: Clip.antiAlias,
                         child: Column(
@@ -742,7 +742,7 @@ class _Spotlight extends StatelessWidget {
                               child: Padding(
                                 padding: const EdgeInsets.all(4),
                                 child: ClipRRect(
-                                  borderRadius: BorderRadius.circular(playful ? 14 : 2),
+                                  borderRadius: BorderRadius.circular(14),
                                   child: AppImage(p.image, fit: BoxFit.cover, cacheWidth: 220, backgroundColor: Colors.white),
                                 ),
                               ),
