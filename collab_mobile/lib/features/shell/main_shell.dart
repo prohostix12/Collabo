@@ -188,36 +188,39 @@ class _BottomNavItem extends StatelessWidget {
       splashColor: activeColor.withValues(alpha: 0.08),
       highlightColor: Colors.transparent,
       borderRadius: BorderRadius.circular(16),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          AnimatedContainer(
-            duration: const Duration(milliseconds: 220),
-            curve: Curves.easeOutCubic,
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 3),
-            decoration: BoxDecoration(
-              color: isSelected ? activeColor.withValues(alpha: 0.12) : Colors.transparent,
-              borderRadius: BorderRadius.circular(16),
+      child: FittedBox(
+        fit: BoxFit.scaleDown,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            AnimatedContainer(
+              duration: const Duration(milliseconds: 220),
+              curve: Curves.easeOutCubic,
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 3),
+              decoration: BoxDecoration(
+                color: isSelected ? activeColor.withValues(alpha: 0.12) : Colors.transparent,
+                borderRadius: BorderRadius.circular(16),
+              ),
+              child: AnimatedScale(
+                scale: isSelected ? 1.08 : 1.0,
+                duration: const Duration(milliseconds: 200),
+                curve: Curves.easeOutBack,
+                child: iconWidget,
+              ),
             ),
-            child: AnimatedScale(
-              scale: isSelected ? 1.08 : 1.0,
+            const SizedBox(height: 2),
+            AnimatedDefaultTextStyle(
               duration: const Duration(milliseconds: 200),
-              curve: Curves.easeOutBack,
-              child: iconWidget,
+              style: TextStyle(
+                fontSize: 11.0,
+                fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
+                color: isSelected ? activeColor : inactiveColor,
+              ),
+              child: Text(destination.label),
             ),
-          ),
-          const SizedBox(height: 2),
-          AnimatedDefaultTextStyle(
-            duration: const Duration(milliseconds: 200),
-            style: TextStyle(
-              fontSize: 11.0,
-              fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
-              color: isSelected ? activeColor : inactiveColor,
-            ),
-            child: Text(destination.label),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
