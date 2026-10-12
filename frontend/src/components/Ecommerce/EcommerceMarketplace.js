@@ -1784,7 +1784,6 @@ export default function EcommerceMarketplace({ inlineMode = false, onBackToSelec
             </div>
           )}
 
-          </div>
         </>
       )}
 
@@ -1906,11 +1905,6 @@ export default function EcommerceMarketplace({ inlineMode = false, onBackToSelec
               </div>
 
             </div>
-                          <div className="inline-flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-widest border-b-2 border-white/30 hover:border-white pb-0.5 w-max transition-colors">
-                            <span>Shop Now</span>
-                            <ChevronRight className="w-3.5 h-3.5" />
-                          </div>
-                        </div>
 
             {/* Flash Sale / Deals Section */}
             <div className="bg-white dark:bg-slate-900 border border-slate-200/60 dark:border-slate-850 p-6 sm:p-8 rounded-[40px] shadow-sm space-y-6">
