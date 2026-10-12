@@ -460,6 +460,7 @@ class PopularPicks extends ConsumerWidget {
           color: const Color(0xFFFFF8E1),
           padding: const EdgeInsets.all(10),
           child: GridView.builder(
+            padding: EdgeInsets.zero,
             shrinkWrap: true,
             physics: const NeverScrollableScrollPhysics(),
             gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
@@ -565,6 +566,7 @@ class BudgetStore extends ConsumerWidget {
           color: Colors.white,
           padding: const EdgeInsets.fromLTRB(10, 0, 10, 14),
           child: GridView.builder(
+            padding: EdgeInsets.zero,
             shrinkWrap: true,
             physics: const NeverScrollableScrollPhysics(),
             gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
@@ -685,6 +687,8 @@ class _Spotlight extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              crossAxisAlignment: CrossAxisAlignment.center,
               children: [
                 Expanded(
                   child: Text(
@@ -693,61 +697,73 @@ class _Spotlight extends StatelessWidget {
                   ),
                 ),
                 TextButton(
+                  style: TextButton.styleFrom(
+                    visualDensity: VisualDensity.compact,
+                    tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    minimumSize: Size.zero,
+                  ),
                   onPressed: () => context.push(_listUrl(category: name, title: name)),
                   child: Text('See all', style: TextStyle(color: accent, fontWeight: FontWeight.w700)),
                 ),
               ],
             ),
             const SizedBox(height: 6),
-            GridView.builder(
-              shrinkWrap: true,
-              physics: const NeverScrollableScrollPhysics(),
-              gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                crossAxisCount: 2,
-                mainAxisSpacing: 8,
-                crossAxisSpacing: 8,
-                childAspectRatio: 0.95,
-              ),
-              itemCount: items.length,
-              itemBuilder: (context, i) {
-                final p = items[i];
-                return PressScale(
-                  child: GestureDetector(
-                    onTap: () => _openProduct(context, p, 'spot'),
-                    child: Container(
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        borderRadius: BorderRadius.circular(playful ? 16 : 4),
-                      ),
-                      clipBehavior: Clip.antiAlias,
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.stretch,
-                        children: [
-                          Expanded(
-                            child: Padding(
-                              padding: const EdgeInsets.all(4),
-                              child: ClipRRect(
-                                borderRadius: BorderRadius.circular(playful ? 14 : 2),
-                                child: AppImage(p.image, fit: BoxFit.cover, cacheWidth: 220, backgroundColor: Colors.white),
+            MediaQuery.removePadding(
+              context: context,
+              removeTop: true,
+              removeBottom: true,
+              child: GridView.builder(
+                padding: EdgeInsets.zero,
+                shrinkWrap: true,
+                physics: const NeverScrollableScrollPhysics(),
+                gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                  crossAxisCount: 2,
+                  mainAxisSpacing: 8,
+                  crossAxisSpacing: 8,
+                  childAspectRatio: 0.95,
+                ),
+                itemCount: items.length,
+                itemBuilder: (context, i) {
+                  final p = items[i];
+                  return PressScale(
+                    child: GestureDetector(
+                      onTap: () => _openProduct(context, p, 'spot'),
+                      child: Container(
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(playful ? 16 : 4),
+                        ),
+                        clipBehavior: Clip.antiAlias,
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          children: [
+                            Expanded(
+                              child: Padding(
+                                padding: const EdgeInsets.all(4),
+                                child: ClipRRect(
+                                  borderRadius: BorderRadius.circular(playful ? 14 : 2),
+                                  child: AppImage(p.image, fit: BoxFit.cover, cacheWidth: 220, backgroundColor: Colors.white),
+                                ),
                               ),
                             ),
-                          ),
-                          Padding(
-                            padding: const EdgeInsets.fromLTRB(8, 4, 8, 8),
-                            child: Text(
-                              p.name, 
-                              maxLines: 1, 
-                              overflow: TextOverflow.ellipsis, 
-                              style: context.text.labelMedium?.copyWith(fontWeight: FontWeight.w600),
-                              textAlign: TextAlign.center,
+                            Padding(
+                              padding: const EdgeInsets.fromLTRB(8, 4, 8, 8),
+                              child: Text(
+                                p.name, 
+                                maxLines: 1, 
+                                overflow: TextOverflow.ellipsis, 
+                                style: context.text.labelMedium?.copyWith(fontWeight: FontWeight.w600),
+                                textAlign: TextAlign.center,
+                              ),
                             ),
-                          ),
-                        ],
+                          ],
+                        ),
                       ),
                     ),
-                  ),
-                );
-              },
+                  );
+                },
+              ),
             ),
           ],
         ),
