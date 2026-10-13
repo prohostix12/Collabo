@@ -2620,7 +2620,8 @@ export default function EcommerceMarketplace({ inlineMode = false, onBackToSelec
                             <img loading="lazy"
                               src={imgSrc}
                               alt={title}
-                              className="w-full h-full object-contain group-hover:scale-110 transition-transform duration-700 ease-out"
+                              onError={(e) => { e.currentTarget.style.display = 'none'; }}
+                              className="w-full h-full object-cover object-center group-hover:scale-110 transition-transform duration-700 ease-out"
                             />
                           ) : (
                             <div className="w-full h-full bg-gradient-to-br from-slate-200 to-slate-300 dark:from-slate-700 dark:to-slate-800" />
