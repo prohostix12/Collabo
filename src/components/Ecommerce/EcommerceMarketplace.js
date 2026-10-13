@@ -4279,7 +4279,7 @@ export default function EcommerceMarketplace({ inlineMode = false, onBackToSelec
                   <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-4">
                     {similar.map(prod => (
                       <div key={prod.id} onClick={() => { setSelectedProduct(prod); setActiveDetailImage(prod.image); window.scrollTo({ top: 0, behavior: 'smooth' }); }}
-                        className="bg-white dark:bg-slate-900 border border-slate-200/50 dark:border-slate-800/50 rounded-[20px] p-3 cursor-pointer hover:shadow-lg hover:border-orange-300 dark:hover:border-orange-700 transition-all group">
+                        className="bg-white dark:bg-slate-900 border border-slate-200/50 dark:border-slate-800/50 rounded-[20px] p-3 flex flex-col h-full cursor-pointer hover:shadow-lg hover:border-orange-300 dark:hover:border-orange-700 transition-all group">
                         <div className="aspect-square rounded-xl overflow-hidden bg-slate-50 dark:bg-slate-800 mb-2.5 flex items-center justify-center">
                           <img loading="lazy" src={prod.image} alt={prod.name} className="max-h-full object-contain group-hover:scale-105 transition-transform duration-300" />
                         </div>
@@ -4287,6 +4287,7 @@ export default function EcommerceMarketplace({ inlineMode = false, onBackToSelec
                         <span className="text-[10px] bg-green-600 text-white px-1 py-0.5 rounded font-bold">{prod.rating}★</span>
                         <p className="text-xs font-black text-slate-900 dark:text-white mt-1">₹{prod.discountPrice.toLocaleString()}</p>
                         {prod.discountPercent > 0 && <p className="text-[10px] font-bold text-green-600">{prod.discountPercent}% off</p>}
+                        <div className="flex-1" />
                         <button 
                           onClick={(e) => { e.stopPropagation(); addToCart(prod); }} 
                           className="mt-3 w-full bg-slate-900 dark:bg-white text-white dark:text-slate-900 py-2 rounded-xl text-xs font-black hover:bg-orange-500 transition-colors">
@@ -4309,7 +4310,7 @@ export default function EcommerceMarketplace({ inlineMode = false, onBackToSelec
                   <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-4">
                     {recent.map(prod => (
                       <div key={prod.id} onClick={() => { setSelectedProduct(prod); setActiveDetailImage(prod.image); window.scrollTo({ top: 0, behavior: 'smooth' }); }}
-                        className="bg-white dark:bg-slate-900 border border-slate-200/50 dark:border-slate-800/50 rounded-[20px] p-3 cursor-pointer hover:shadow-lg hover:border-orange-300 dark:hover:border-orange-700 transition-all group">
+                        className="bg-white dark:bg-slate-900 border border-slate-200/50 dark:border-slate-800/50 rounded-[20px] p-3 flex flex-col h-full cursor-pointer hover:shadow-lg hover:border-orange-300 dark:hover:border-orange-700 transition-all group">
                         <div className="aspect-square rounded-xl overflow-hidden bg-slate-50 dark:bg-slate-800 mb-2.5 flex items-center justify-center">
                           <img loading="lazy" src={prod.image} alt={prod.name} className="max-h-full object-contain group-hover:scale-105 transition-transform duration-300" />
                         </div>
@@ -4317,6 +4318,7 @@ export default function EcommerceMarketplace({ inlineMode = false, onBackToSelec
                         <span className="text-[10px] bg-green-600 text-white px-1 py-0.5 rounded font-bold">{prod.rating}★</span>
                         <p className="text-xs font-black text-slate-900 dark:text-white mt-1">₹{prod.discountPrice.toLocaleString()}</p>
                         {prod.discountPercent > 0 && <p className="text-[10px] font-bold text-green-600">{prod.discountPercent}% off</p>}
+                        <div className="flex-1" />
                         <button 
                           onClick={(e) => { e.stopPropagation(); addToCart(prod); }} 
                           className="mt-3 w-full bg-slate-900 dark:bg-white text-white dark:text-slate-900 py-2 rounded-xl text-xs font-black hover:bg-orange-500 transition-colors">
