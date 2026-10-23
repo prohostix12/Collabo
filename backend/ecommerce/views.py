@@ -129,7 +129,7 @@ class IsSellerOrReadOnly(permissions.BasePermission):
         return obj.seller == request.user or request.user.is_staff or request.user.user_type == 'admin'
 
 class ProductViewSet(viewsets.ModelViewSet):
-    queryset = Product.objects.select_related('seller').all()
+    queryset = Product.objects.select_related('seller', 'vendor').all()
     serializer_class = ProductSerializer
     filter_backends = [filters.SearchFilter, filters.OrderingFilter]
     search_fields = ['name', 'brand', 'description', 'category']
@@ -143,7 +143,7 @@ class ProductViewSet(viewsets.ModelViewSet):
         return [permissions.IsAuthenticated(), IsSellerOrReadOnly()]
 
     def get_queryset(self):
-        queryset = Product.objects.select_related('seller').annotate(
+        queryset = Product.objects.select_related('seller', 'vendor').annotate(
             purchase_count_annotated=db_models.Sum(
                 'orderitem__quantity',
                 filter=~db_models.Q(orderitem__order__status__in=['cancelled', 'returned']),
@@ -2318,165 +2318,219 @@ CATEGORY_ICON_MAP = {
 }
 
 
+MAX_IMPORT_BYTES = 10 * 1024 * 1024
+MAX_IMPORT_PRODUCTS = 2000
+
+
+def _first_value(row, *names):
+    """First non-empty cell among the given column names."""
+    for n in names:
+        v = (row.get(n) or '').strip()
+        if v:
+            return v
+    return ''
+
+
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])
 def import_shopify_csv(request):
     """
-    Import products from a Shopify-format CSV file.
-    Accepts multipart/form-data with a 'file' field.
-    The authenticated user becomes the seller for all imported products.
+    Bulk-add products from a Shopify-format CSV (multipart field 'file').
+    The signed-in user becomes the seller; admin uploads go live, a seller's
+    uploads wait for approval, like single products.
+
+    Optional fields:
+      dry_run=true      Only analyse the file and return a preview; saves nothing.
+      default_stock=N   Stock to use for rows whose stock in the file is 0/blank
+                        (Shopify exports often carry 0 for untracked items).
     """
-    if request.user.user_type not in ('seller', 'admin') and not request.user.is_staff:
+    user = request.user
+    is_admin = user.is_staff or user.user_type == 'admin'
+    if user.user_type not in ('seller', 'admin') and not user.is_staff:
         return Response({'error': 'Only sellers or admins can import products'}, status=status.HTTP_403_FORBIDDEN)
 
     csv_file = request.FILES.get('file')
     if not csv_file:
         return Response({'error': 'No file provided. Upload a CSV file with key "file".'}, status=status.HTTP_400_BAD_REQUEST)
-
-    if not csv_file.name.endswith('.csv'):
+    if not csv_file.name.lower().endswith('.csv'):
         return Response({'error': 'File must be a .csv file'}, status=status.HTTP_400_BAD_REQUEST)
+    if csv_file.size > MAX_IMPORT_BYTES:
+        return Response({'error': 'File is too large (max 10 MB). Split it into smaller files.'}, status=status.HTTP_400_BAD_REQUEST)
 
-    try:
-        decoded = csv_file.read().decode('utf-8-sig')
-    except UnicodeDecodeError:
+    dry_run = str(request.data.get('dry_run', '')).lower() in ('1', 'true', 'yes')
+    default_stock = None
+    raw_default = str(request.data.get('default_stock', '')).strip()
+    if raw_default != '':
         try:
-            csv_file.seek(0)
-            decoded = csv_file.read().decode('latin-1')
-        except Exception:
-            return Response({'error': 'Could not decode file. Use UTF-8 or Latin-1 encoding.'}, status=status.HTTP_400_BAD_REQUEST)
+            default_stock = max(0, min(int(raw_default), 100000))
+        except ValueError:
+            return Response({'error': 'default_stock must be a whole number'}, status=status.HTTP_400_BAD_REQUEST)
+
+    payload = csv_file.read()
+    try:
+        decoded = payload.decode('utf-8-sig')
+    except UnicodeDecodeError:
+        decoded = payload.decode('latin-1')
 
     reader = csv.DictReader(io.StringIO(decoded))
+    if not reader.fieldnames or 'Handle' not in [f.strip() for f in reader.fieldnames]:
+        return Response({'error': 'This does not look like a Shopify product CSV. It needs a "Handle" column (see the sample template).'},
+                        status=status.HTTP_400_BAD_REQUEST)
 
-    # Group rows by Handle (Shopify uses multiple rows per product for extra images)
-    products_map = {}
+    # One product spans several rows (extra images / variants share the Handle).
+    groups = {}
     for row in reader:
+        row = {(k or '').strip(): v for k, v in row.items()}
         handle = (row.get('Handle') or '').strip()
         if not handle:
             continue
-        if handle not in products_map:
-            products_map[handle] = {'main': row, 'extra_images': []}
-        else:
-            img = (row.get('Image Src') or '').strip()
-            if img:
-                products_map[handle]['extra_images'].append(img)
+        groups.setdefault(handle, []).append(row)
 
-    if not products_map:
-        return Response({'error': 'No valid products found in CSV. Make sure it has a "Handle" column.'}, status=status.HTTP_400_BAD_REQUEST)
+    if not groups:
+        return Response({'error': 'No products found in the file.'}, status=status.HTTP_400_BAD_REQUEST)
+    if len(groups) > MAX_IMPORT_PRODUCTS:
+        return Response({'error': f'Too many products ({len(groups)}). Upload at most {MAX_IMPORT_PRODUCTS} at a time.'},
+                        status=status.HTTP_400_BAD_REQUEST)
 
-    created = []
+    existing_categories = {c.name.lower(): c.name for c in Category.objects.all()}
+    # name -> the product you already have, so the preview can say which one matched
+    existing_by_title = {}
+    for pid, pname, pprice, pdisc, pstock, pimage in Product.objects.filter(seller=user).order_by('id').values_list(
+            'id', 'name', 'price', 'discount_price', 'stock', 'image'):
+        existing_by_title.setdefault(pname.lower(), {
+            'existing_id': pid, 'existing_name': pname, 'existing_price': str(pdisc or pprice),
+            'existing_stock': pstock,
+            'image': pimage if pimage and not pimage.startswith('data:') else '',
+        })
+    seen_titles = set()
+
+    items, to_create = [], []
+    for handle, rows in groups.items():
+        main = next((r for r in rows if (r.get('Title') or '').strip()), rows[0])
+        title = ' '.join((main.get('Title') or '').replace('\xa0', ' ').split())
+        item = {'handle': handle, 'name': title[:255], 'status': 'new', 'reason': ''}
+        items.append(item)
+
+        if not title:
+            item.update(status='skipped', reason='Missing title')
+            continue
+        st = (main.get('Status') or 'active').strip().lower()
+        if st and st != 'active':
+            item.update(status='skipped', reason=f'Status is "{st}" (only active products are imported)')
+            continue
+        if (main.get('Published') or '').strip().upper() == 'FALSE':
+            item.update(status='skipped', reason='Not published')
+            continue
+        if title.lower() in existing_by_title:
+            item.update(status='duplicate', reason='A product with this name already exists',
+                        **existing_by_title[title.lower()])
+            continue
+        if title.lower() in seen_titles:
+            item.update(status='duplicate', reason='Repeated earlier in this file (only the first is added)')
+            continue
+
+        try:
+            price = Decimal(_first_value(main, 'Variant Price') or '0')
+        except (InvalidOperation, ValueError):
+            price = Decimal('0')
+        if price <= 0:
+            item.update(status='skipped', reason=f'Invalid price "{_first_value(main, "Variant Price")}"')
+            continue
+        discount_price = None
+        try:
+            compare = Decimal(_first_value(main, 'Variant Compare At Price') or '0')
+            if compare > price:
+                discount_price, price = price, compare
+        except (InvalidOperation, ValueError):
+            pass
+
+        cat_raw = _first_value(main, 'Type', 'Product Category', 'Custom Product Type', 'Standardized Product Type')
+        if not cat_raw:
+            cat_raw = (_first_value(main, 'Tags').split(',')[0] or '').strip()
+        cat_raw = cat_raw.split('>')[-1].strip() or 'General'
+        cat_name = existing_categories.get(cat_raw.lower()) or (cat_raw if any(ch.isupper() for ch in cat_raw) else cat_raw.title())[:100]
+
+        try:
+            file_stock = max(0, int(float(_first_value(main, 'Variant Inventory Qty') or '0')))
+        except (ValueError, TypeError):
+            file_stock = 0
+        stock = default_stock if (file_stock == 0 and default_stock is not None) else file_stock
+
+        images = []
+        for r in rows:
+            for col in ('Image Src', 'Variant Image'):
+                u = (r.get(col) or '').strip()
+                if u and u not in images:
+                    images.append(u)
+        main_image = (_first_value(main, 'Image Src') or (images[0] if images else ''))
+        extra_images = [u for u in images if u != main_image][:9]
+
+        try:
+            weight = int(float(_first_value(main, 'Variant Grams') or '0'))
+        except (ValueError, TypeError):
+            weight = 0
+        delivery = ('Standard delivery in 5-7 days' if weight > 5000
+                    else 'Free delivery in 3-5 days' if weight > 1000
+                    else 'Free delivery by Tomorrow')
+        specs = []
+        for label, value in (('SKU', _first_value(main, 'Variant SKU')), ('Weight', f'{weight}g' if weight else ''),
+                             ('Barcode', _first_value(main, 'Variant Barcode'))):
+            if value:
+                specs.append({'name': label, 'value': value})
+
+        vendor = (_first_value(main, 'Vendor') or 'Unknown')[:100]
+        seen_titles.add(title.lower())
+        item.update(category=cat_name, brand=vendor, price=str(discount_price or price), stock=stock,
+                    images=len(images), image=main_image, new_category=cat_name.lower() not in existing_categories)
+        to_create.append(dict(title=title[:255], cat_name=cat_name, vendor=vendor, price=price, discount_price=discount_price,
+                              description=_strip_html(main.get('Body (HTML)') or '') or title, stock=stock, delivery=delivery,
+                              image=main_image, images=extra_images, specs=specs, item=item))
+
+    new_count = len(to_create)
+    summary = {
+        'total': len(items),
+        'new_count': new_count,
+        'duplicate_count': sum(1 for i in items if i['status'] == 'duplicate'),
+        'skipped_count': sum(1 for i in items if i['status'] == 'skipped'),
+        'items': items[:300],
+    }
+
+    if dry_run:
+        return Response({**summary, 'dry_run': True})
+    if not to_create:
+        return Response({**summary, 'created_count': 0, 'error': 'Nothing to import: every product was skipped or already exists.'},
+                        status=status.HTTP_400_BAD_REQUEST)
+
     errors = []
-
+    created = 0
     with transaction.atomic():
-        for handle, data in products_map.items():
-            row = data['main']
+        for spec in to_create:
             try:
-                title = (row.get('Title') or '').strip()
-                if not title:
-                    errors.append(f'{handle}: Missing title, skipped')
-                    continue
-
-                # Price
-                price_str = (row.get('Variant Price') or '0').strip()
-                try:
-                    price = Decimal(price_str)
-                except (InvalidOperation, ValueError):
-                    price = Decimal('0')
-
-                if price <= 0:
-                    errors.append(f'{handle}: Invalid price "{price_str}", skipped')
-                    continue
-
-                # Compare-at price → discount_price
-                compare_str = (row.get('Variant Compare At Price') or '').strip()
-                discount_price = None
-                if compare_str:
-                    try:
-                        compare_price = Decimal(compare_str)
-                        if compare_price > price:
-                            discount_price = price
-                            price = compare_price
-                    except (InvalidOperation, ValueError):
-                        pass
-
-                # Description
-                body_html = row.get('Body (HTML)') or ''
-                description = _strip_html(body_html) or title
-
-                # Brand / Vendor
-                vendor = (row.get('Vendor') or 'Unknown').strip()
-                brand_obj, _ = Brand.objects.get_or_create(name=vendor)
-
-                # Category
-                cat_raw = (
-                    row.get('Custom Product Type')
-                    or row.get('Standardized Product Type')
-                    or row.get('Tags')
-                    or 'General'
-                ).strip()
-                cat_name = cat_raw.split(',')[0].strip().title()[:100]
-                icon = CATEGORY_ICON_MAP.get(cat_name.lower(), '📦')
-                Category.objects.get_or_create(name=cat_name, defaults={'icon': icon})
-
-                # Stock
-                stock_str = (row.get('Variant Inventory Qty') or '0').strip()
-                try:
-                    stock = max(0, int(stock_str))
-                except (ValueError, TypeError):
-                    stock = 0
-
-                # Images
-                main_image = (row.get('Image Src') or '').strip()
-                extra_images = data['extra_images']
-
-                # Weight for delivery info
-                weight_str = (row.get('Variant Grams') or '0').strip()
-                try:
-                    weight_grams = int(float(weight_str))
-                except (ValueError, TypeError):
-                    weight_grams = 0
-
-                if weight_grams > 5000:
-                    delivery = 'Standard delivery in 5-7 days'
-                elif weight_grams > 1000:
-                    delivery = 'Free delivery in 3-5 days'
-                else:
-                    delivery = 'Free delivery by Tomorrow'
-
-                # Specifications from available CSV data
-                specs = []
-                sku = (row.get('Variant SKU') or '').strip()
-                if sku:
-                    specs.append({'name': 'SKU', 'value': sku})
-                if weight_grams:
-                    specs.append({'name': 'Weight', 'value': f'{weight_grams}g'})
-                barcode = (row.get('Variant Barcode') or '').strip()
-                if barcode:
-                    specs.append({'name': 'Barcode', 'value': barcode})
-
-                product = Product.objects.create(
-                    seller=request.user,
-                    name=title[:255],
-                    category=cat_name,
-                    brand=vendor[:100],
-                    price=price,
-                    discount_price=discount_price,
-                    description=description,
-                    stock=stock,
-                    delivery=delivery,
-                    image=main_image,
-                    images=extra_images,
-                    specifications=specs,
-                )
-                created.append({'id': product.id, 'name': product.name, 'price': str(product.price)})
-
+                with transaction.atomic():
+                    Brand.objects.get_or_create(name=spec['vendor'])
+                    icon = CATEGORY_ICON_MAP.get(spec['cat_name'].lower(), '📦')
+                    Category.objects.get_or_create(name=spec['cat_name'], defaults={'icon': icon})
+                    Product.objects.create(
+                        seller=user, status='approved' if is_admin else 'pending',
+                        name=spec['title'], category=spec['cat_name'], brand=spec['vendor'],
+                        price=spec['price'], discount_price=spec['discount_price'], description=spec['description'],
+                        stock=spec['stock'], delivery=spec['delivery'], image=spec['image'], images=spec['images'],
+                        specifications=spec['specs'],
+                    )
+                created += 1
+                spec['item']['status'] = 'created'
             except Exception as e:
-                errors.append(f'{handle}: {str(e)}')
+                spec['item'].update(status='skipped', reason=str(e)[:200])
+                errors.append(f"{spec['title'][:60]}: {e}")
+                logger.exception('Bulk import failed for %s', spec['title'])
 
+    summary['items'] = items[:300]
     return Response({
-        'message': f'Successfully imported {len(created)} products',
-        'created_count': len(created),
+        **summary,
+        'dry_run': False,
+        'message': f'Imported {created} product{"s" if created != 1 else ""}' + ('' if is_admin else ' (waiting for admin approval)'),
+        'created_count': created,
         'error_count': len(errors),
-        'created': created,
         'errors': errors[:50],
     }, status=status.HTTP_201_CREATED if created else status.HTTP_400_BAD_REQUEST)
 

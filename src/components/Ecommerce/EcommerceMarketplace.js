@@ -1169,6 +1169,56 @@ export default function EcommerceMarketplace({ inlineMode = false, onBackToSelec
   const [newCatName, setNewCatName] = useState('');
   const [newCatIcon, setNewCatIcon] = useState('📦');
   const [newCatImage, setNewCatImage] = useState('');
+  const [showBulkUpload, setShowBulkUpload] = useState(false);
+  const [bulkFile, setBulkFile] = useState(null);
+  const [bulkStock, setBulkStock] = useState('10');
+  const [bulkPreview, setBulkPreview] = useState(null);
+  const [bulkBusy, setBulkBusy] = useState(false);
+  const [bulkFilter, setBulkFilter] = useState('all');
+
+  const closeBulkUpload = () => { setShowBulkUpload(false); setBulkFile(null); setBulkPreview(null); setBulkBusy(false); setBulkFilter('all'); };
+
+  const sendBulkCsv = async (dryRun) => {
+    if (!bulkFile) { showToast('Choose a CSV file first', 'error'); return; }
+    setBulkBusy(true);
+    try {
+      const form = new FormData();
+      form.append('file', bulkFile);
+      form.append('default_stock', bulkStock === '' ? '' : String(Math.max(0, parseInt(bulkStock, 10) || 0)));
+      if (dryRun) form.append('dry_run', 'true');
+      const res = await api.post('/ecommerce/products/import-csv/', form, { headers: { 'Content-Type': 'multipart/form-data' }, timeout: 120000 });
+      if (dryRun) {
+        setBulkFilter('all');
+        setBulkPreview(res.data);
+      } else {
+        showToast(res.data.message || 'Products imported');
+        fetchSellerProducts();
+        fetchProducts();
+        fetchCategoriesAndBrands();
+        closeBulkUpload();
+      }
+    } catch (err) {
+      const d = err.response?.data;
+      if (!dryRun && d?.items) setBulkPreview(d);
+      showToast(d?.error || 'Could not read that file. Please check it and try again.', 'error');
+    } finally {
+      setBulkBusy(false);
+    }
+  };
+
+  const downloadBulkTemplate = () => {
+    const header = ['Handle', 'Title', 'Body (HTML)', 'Vendor', 'Type', 'Variant Price', 'Variant Compare At Price', 'Variant Inventory Qty', 'Image Src', 'Image Position', 'Status'];
+    const rows = [
+      ['sample-water-bottle', 'Sample Steel Water Bottle 1L', '<p>Keeps drinks cold for 24 hours.</p>', 'Your Brand', 'Home & Kitchen', '299', '499', '25', 'https://example.com/bottle-1.jpg', '1', 'active'],
+      ['sample-water-bottle', '', '', '', '', '', '', '', 'https://example.com/bottle-2.jpg', '2', ''],
+    ];
+    const esc = (v) => `"${String(v).replace(/"/g, '""')}"`;
+    const csv = [header, ...rows].map(r => r.map(esc).join(',')).join('\r\n');
+    const url = URL.createObjectURL(new Blob(['\ufeff' + csv], { type: 'text/csv;charset=utf-8;' }));
+    const a = document.createElement('a');
+    a.href = url; a.download = 'collabo-product-upload-template.csv'; a.click();
+    URL.revokeObjectURL(url);
+  };
   const [newBrandName, setNewBrandName] = useState('');
 
   // Add Product states
@@ -2164,6 +2214,8 @@ export default function EcommerceMarketplace({ inlineMode = false, onBackToSelec
       setCancellingOrder(false);
     }
   };
+
+  const isAdminUser = !!(user && (user.is_staff || user.is_superuser || user.user_type === 'admin'));
 
   // Friendly name for the welcome banner: never show a raw email address.
   const welcomeName = (() => {
@@ -6834,7 +6886,15 @@ export default function EcommerceMarketplace({ inlineMode = false, onBackToSelec
                 {/* Products list */}
                 <div className="lg:col-span-7 bg-white dark:bg-slate-900 border border-slate-200/50 dark:border-slate-800/50 p-6 rounded-3xl space-y-4 shadow-sm">
                   <div className="flex items-center justify-between gap-3">
-                    <h3 className="font-extrabold text-sm dark:text-white">Active Catalog Listing</h3>
+                    <div className="flex items-center gap-2.5">
+                      <h3 className="font-extrabold text-sm dark:text-white">Active Catalog Listing</h3>
+                      <button
+                        onClick={() => setShowBulkUpload(true)}
+                        className="flex items-center gap-1.5 bg-orange-500 hover:bg-orange-600 text-white text-[11px] font-black px-3 py-1.5 rounded-xl transition-colors"
+                      >
+                        <Upload className="w-3.5 h-3.5" /> Bulk Upload
+                      </button>
+                    </div>
                                         <div className="flex items-center gap-2 flex-1 max-w-[400px] justify-end">
                       <select
                         value={catalogVendorFilter || ''}
@@ -9430,6 +9490,111 @@ export default function EcommerceMarketplace({ inlineMode = false, onBackToSelec
           </div>
         );
       })()}
+
+      {showBulkUpload && (
+        <div className="fixed inset-0 z-[9999] bg-black/50 backdrop-blur-sm flex items-center justify-center p-4" onClick={closeBulkUpload}>
+          <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-center justify-between px-5 py-4 border-b border-slate-100 dark:border-slate-800">
+              <h3 className="font-black text-sm dark:text-white flex items-center gap-2"><Upload className="w-4 h-4 text-orange-500" /> Bulk upload products (CSV)</h3>
+              <button onClick={closeBulkUpload} className="text-slate-400 hover:text-slate-600"><X className="w-4 h-4" /></button>
+            </div>
+            <div className="p-5 space-y-4 text-xs">
+              <p className="text-slate-500 dark:text-slate-400 font-semibold leading-relaxed">
+                Upload a Shopify-style product CSV. One product can span several rows (extra photos share the same <b>Handle</b>). Products that already exist (same name) are skipped.
+                {' '}<button onClick={downloadBulkTemplate} className="text-orange-600 hover:text-orange-700 font-extrabold underline">Download sample template</button>
+              </p>
+
+              <label className="block cursor-pointer text-center bg-slate-50 dark:bg-slate-800 border border-dashed border-slate-300 dark:border-slate-600 hover:border-orange-400 rounded-xl py-5 px-3 font-bold text-slate-500 dark:text-slate-300 transition-colors">
+                {bulkFile ? `${bulkFile.name} (${(bulkFile.size / 1024).toFixed(0)} KB)` : 'Choose CSV file'}
+                <input type="file" accept=".csv,text/csv" className="hidden" onChange={(e) => { setBulkFile(e.target.files[0] || null); setBulkPreview(null); e.target.value = ''; }} />
+              </label>
+
+              <div className="flex items-center gap-3">
+                <label className="font-bold text-slate-500 dark:text-slate-400 flex-1">Stock to use when the file says 0 or blank</label>
+                <input
+                  type="number" min="0" value={bulkStock}
+                  onChange={(e) => { setBulkStock(e.target.value); setBulkPreview(null); }}
+                  className="w-24 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl py-2 px-3 font-bold focus:outline-none dark:text-white"
+                />
+              </div>
+
+              {bulkPreview && (
+                <div className="space-y-3">
+                  <div className="grid grid-cols-3 gap-2 text-center">
+                    {[
+                      { key: 'new', n: bulkPreview.new_count ?? bulkPreview.created_count ?? 0, label: bulkPreview.dry_run === false ? 'imported' : 'will be added', box: 'bg-emerald-50 dark:bg-emerald-900/20', num: 'text-emerald-600', lab: 'text-emerald-700 dark:text-emerald-300', ring: 'ring-emerald-400' },
+                      { key: 'duplicate', n: bulkPreview.duplicate_count || 0, label: 'already exist', box: 'bg-amber-50 dark:bg-amber-900/20', num: 'text-amber-600', lab: 'text-amber-700 dark:text-amber-300', ring: 'ring-amber-400' },
+                      { key: 'skipped', n: bulkPreview.skipped_count || 0, label: 'skipped', box: 'bg-slate-100 dark:bg-slate-800', num: 'text-slate-600 dark:text-slate-200', lab: 'text-slate-500', ring: 'ring-slate-400' },
+                    ].map(t => (
+                      <button
+                        key={t.key}
+                        type="button"
+                        disabled={t.n === 0}
+                        onClick={() => setBulkFilter(bulkFilter === t.key ? 'all' : t.key)}
+                        className={`rounded-xl py-2 transition-all ${t.box} ${t.n === 0 ? 'opacity-60 cursor-default' : 'hover:shadow-md cursor-pointer'} ${bulkFilter === t.key ? `ring-2 ${t.ring}` : ''}`}
+                      >
+                        <div className={`text-lg font-black ${t.num}`}>{t.n}</div>
+                        <div className={`text-[10px] font-bold ${t.lab}`}>{t.label}</div>
+                      </button>
+                    ))}
+                  </div>
+                  {bulkFilter !== 'all' && (
+                    <div className="flex items-center justify-between text-[11px] font-bold text-slate-500">
+                      <span>Showing: {bulkFilter === 'new' ? (bulkPreview.dry_run === false ? 'imported products' : 'products that will be added') : bulkFilter === 'duplicate' ? 'products that already exist' : 'skipped rows'}</span>
+                      <button onClick={() => setBulkFilter('all')} className="text-orange-600 hover:text-orange-700 underline">Show all</button>
+                    </div>
+                  )}
+                  <div className="max-h-56 overflow-y-auto rounded-xl border border-slate-100 dark:border-slate-800 divide-y divide-slate-100 dark:divide-slate-800">
+                    {(bulkPreview.items || []).filter(it => bulkFilter === 'all' || (bulkFilter === 'new' ? (it.status === 'new' || it.status === 'created') : it.status === bulkFilter)).map((it, i) => (
+                      <div key={i} className="flex items-center gap-2 px-3 py-2">
+                        <span className={`w-2 h-2 rounded-full flex-shrink-0 ${it.status === 'new' || it.status === 'created' ? 'bg-emerald-500' : it.status === 'duplicate' ? 'bg-amber-500' : 'bg-slate-400'}`} />
+                        <div className="w-11 h-11 rounded-lg bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 overflow-hidden flex items-center justify-center flex-shrink-0">
+                          {it.image ? (
+                            <img
+                              src={it.image}
+                              alt=""
+                              loading="lazy"
+                              referrerPolicy="no-referrer"
+                              className="w-full h-full object-contain"
+                              onError={(e) => { e.currentTarget.style.display = 'none'; e.currentTarget.parentNode.dataset.broken = '1'; }}
+                            />
+                          ) : null}
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          <div className="font-bold text-slate-700 dark:text-slate-200 truncate">{it.name || it.handle}</div>
+                          <div className="text-[10px] text-slate-400 font-semibold truncate">
+                            {it.status === 'new' || it.status === 'created'
+                              ? `${it.category}${it.new_category ? ' (new category)' : ''} · ₹${it.price} · stock ${it.stock} · ${it.images} photo${it.images === 1 ? '' : 's'}`
+                              : it.status === 'duplicate' && it.existing_id
+                                ? `Already in your catalog as "${it.existing_name}" (ID ${it.existing_id}) · ₹${it.existing_price} · stock ${it.existing_stock} · left unchanged`
+                                : it.reason}
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                  {!isAdminUser && (bulkPreview.new_count > 0) && (
+                    <p className="text-[11px] font-semibold text-amber-600">Your products will appear in the shop after an admin approves them.</p>
+                  )}
+                </div>
+              )}
+
+              <div className="flex items-center justify-end gap-2 pt-1">
+                <button onClick={closeBulkUpload} className="px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 font-extrabold text-slate-600 dark:text-slate-300">Cancel</button>
+                {bulkPreview && bulkPreview.dry_run && bulkPreview.new_count > 0 ? (
+                  <button disabled={bulkBusy} onClick={() => sendBulkCsv(false)} className="px-4 py-2.5 rounded-xl bg-orange-500 hover:bg-orange-600 text-white font-extrabold disabled:opacity-50">
+                    {bulkBusy ? 'Importing...' : `Import ${bulkPreview.new_count} product${bulkPreview.new_count === 1 ? '' : 's'}`}
+                  </button>
+                ) : (
+                  <button disabled={bulkBusy || !bulkFile} onClick={() => sendBulkCsv(true)} className="px-4 py-2.5 rounded-xl bg-slate-950 hover:bg-slate-900 text-white font-extrabold disabled:opacity-50">
+                    {bulkBusy ? 'Checking...' : 'Preview'}
+                  </button>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {showAddressPicker && (
         <div className="fixed inset-0 z-[9999] bg-black/50 backdrop-blur-sm flex items-center justify-center p-4" onClick={() => setShowAddressPicker(false)}>
