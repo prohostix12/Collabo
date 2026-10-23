@@ -96,7 +96,7 @@ const SellerDashboard = () => {
       const url = URL.createObjectURL(res.data);
       const a = document.createElement('a');
       a.href = url;
-      a.download = `collabo-product-upload-template.${fileFormat}`;
+      a.download = `collabo-seller-template.${fileFormat}`;
       a.click();
       URL.revokeObjectURL(url);
     } catch (e) {

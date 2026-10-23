@@ -2358,6 +2358,10 @@ TEMPLATE_REQUIRED = {c[0] for c in TEMPLATE_COLUMNS if c[1]}
 _TEMPLATE_LOOKUP = {h.lower(): h for h in TEMPLATE_HEADERS}
 TEMPLATE_EXAMPLE_PREFIX = 'EXAMPLE - '
 
+# The Inventories (admin) template is the heading row of the shop's own Shopify export ("Demo New CSV"):
+# the same 53 columns in the same order, no products. It is deliberately NOT the seller template above.
+INVENTORY_TEMPLATE_FILE = os.path.join(os.path.dirname(__file__), 'data', 'inventory_upload_template.csv')
+
 
 def _template_example(category):
     """The one sample row shown in the template. It is never imported (see TEMPLATE_EXAMPLE_PREFIX)."""
@@ -2545,12 +2549,24 @@ def _read_upload_rows(upload):
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
 def import_template(request):
-    """Download the product upload template (?file_format=xlsx or csv). Its columns are the fields
-    of the seller's Add Product form, one row per product, with one sample row."""
+    """Download a bulk upload template. Two different ones exist:
+      seller (default, ?file_format=xlsx or csv): the fields of the seller's Add Product form,
+        one row per product, with one sample row.
+      inventory (?template=inventory, admins only, CSV): the Shopify layout used on the
+        Inventories page, headings only."""
     from django.http import HttpResponse
     user = request.user
     if user.user_type not in ('seller', 'admin') and not user.is_staff:
         return Response({'error': 'Only sellers or admins can download the template'}, status=status.HTTP_403_FORBIDDEN)
+    if (request.query_params.get('template') or '').lower() == 'inventory':
+        if not (user.is_staff or user.user_type == 'admin'):
+            return Response({'error': 'The inventory template is for admins. Sellers: use the seller template in your dashboard.'},
+                            status=status.HTTP_403_FORBIDDEN)
+        with open(INVENTORY_TEMPLATE_FILE, 'rb') as f:
+            body = f.read()
+        resp = HttpResponse(body, content_type='text/csv; charset=utf-8')
+        resp['Content-Disposition'] = 'attachment; filename="collabo-inventory-template.csv"'
+        return resp
     fmt = (request.query_params.get('file_format') or request.query_params.get('format') or 'xlsx').lower()
     names = list(Category.objects.order_by('name').values_list('name', flat=True))
     example_row = _template_example(names[0] if names else 'Home & Kitchen')
@@ -2562,7 +2578,7 @@ def import_template(request):
         writer.writerow(example_row)
         # BOM so Excel opens the file as UTF-8 (keeps the rupee sign and other characters intact)
         resp = HttpResponse(('\ufeff' + buf.getvalue()).encode('utf-8'), content_type='text/csv; charset=utf-8')
-        resp['Content-Disposition'] = 'attachment; filename="collabo-product-upload-template.csv"'
+        resp['Content-Disposition'] = 'attachment; filename="collabo-seller-template.csv"'
         return resp
 
     try:
@@ -2627,7 +2643,6 @@ def import_template(request):
         ('10. Products whose name you already have are skipped. A seller\'s new products go live after admin approval.', False),
         ('', False),
         ('Limits: up to 2,000 products and 10 MB per file.', False),
-        ('Shopify product exports (Handle / Title / Body (HTML) columns) can still be uploaded as they are.', False),
     ]
     for i, (t, bold) in enumerate(lines, start=1):
         c = guide.cell(row=i, column=1, value=t)
@@ -2638,7 +2653,7 @@ def import_template(request):
     out = io.BytesIO()
     wb.save(out)
     resp = HttpResponse(out.getvalue(), content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
-    resp['Content-Disposition'] = 'attachment; filename="collabo-product-upload-template.xlsx"'
+    resp['Content-Disposition'] = 'attachment; filename="collabo-seller-template.xlsx"'
     return resp
 
 
@@ -2708,7 +2723,7 @@ def import_shopify_csv(request):
                 continue  # blank line, or the example product from the template
             groups.setdefault(handle, []).append(row)
     else:
-        return Response({'error': 'Columns not recognised. Download the template from Bulk Upload and fill it in (a Shopify product export also works).'},
+        return Response({'error': 'Columns not recognised. Download the template from Bulk Upload and fill it in.'},
                         status=status.HTTP_400_BAD_REQUEST)
 
     if not groups:
