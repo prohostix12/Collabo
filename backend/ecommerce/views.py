@@ -2331,6 +2331,165 @@ def _first_value(row, *names):
     return ''
 
 
+# The template is the heading row of the shop's own Shopify export ("Demo New CSV"):
+# the same 53 columns in the same order, with no products. Sellers add theirs underneath.
+TEMPLATE_FILE = os.path.join(os.path.dirname(__file__), 'data', 'product_upload_template.csv')
+
+TEMPLATE_HINTS = {
+    'Handle': 'Required. Unique id of the product (lowercase, dashes). Extra photos/variants go on following rows with the SAME handle.',
+    'Title': 'Required. Product name (first row of each product).',
+    'Body (HTML)': 'Required. Product description (text or simple HTML).',
+    'Vendor': 'Optional. Brand name.',
+    'Type': 'Required. Category - choose from the dropdown (must be an existing category).',
+    'Variant Inventory Qty': 'Stock quantity (whole number).',
+    'Variant Price': 'Required. Selling price in INR.',
+    'Variant Compare At Price': 'Optional. Higher MRP shown struck-through. Must be above Variant Price.',
+    'Image Src': 'Required on the first row. Photo link (https://...). More photos on extra rows with the same Handle.',
+    'Status': 'active to import; draft/archived rows are skipped.',
+}
+TEMPLATE_REQUIRED = {'Handle', 'Title', 'Body (HTML)', 'Type', 'Variant Price', 'Image Src'}
+
+
+def _template_rows():
+    with open(TEMPLATE_FILE, encoding='utf-8-sig', newline='') as f:
+        rows = list(csv.reader(f))
+    return rows[0], rows[1:]
+
+
+def _cell_text(v):
+    """Excel cells come back as numbers/dates; turn them into clean text."""
+    if v is None:
+        return ''
+    if isinstance(v, float) and v.is_integer():
+        return str(int(v))
+    return str(v).strip()
+
+
+def _read_upload_rows(upload):
+    """Return (header_names, rows) from an uploaded .csv or .xlsx file."""
+    name = upload.name.lower()
+    payload = upload.read()
+    if name.endswith('.xlsx'):
+        try:
+            import openpyxl
+        except ImportError:
+            raise ValueError('Excel files are not supported on this server yet. Please upload a CSV instead.')
+        try:
+            wb = openpyxl.load_workbook(io.BytesIO(payload), read_only=True, data_only=True)
+        except Exception:
+            raise ValueError('Could not open this Excel file. Save it as .xlsx (not .xls) and try again.')
+        ws = wb['Products'] if 'Products' in wb.sheetnames else wb.worksheets[0]
+        it = ws.iter_rows(values_only=True)
+        try:
+            header = [_cell_text(h) for h in next(it)]
+        except StopIteration:
+            return [], []
+        rows = []
+        for r in it:
+            if r is None or not any(c not in (None, '') for c in r):
+                continue
+            rows.append({header[i]: _cell_text(r[i]) for i in range(min(len(header), len(r))) if header[i]})
+            if len(rows) > 20000:
+                raise ValueError('The sheet has too many rows.')
+        return [h for h in header if h], rows
+    try:
+        text = payload.decode('utf-8-sig')
+    except UnicodeDecodeError:
+        text = payload.decode('latin-1')
+    reader = csv.DictReader(io.StringIO(text))
+    header = [(h or '').strip() for h in (reader.fieldnames or [])]
+    rows = [{(k or '').strip(): (v or '') for k, v in r.items()} for r in reader]
+    return header, rows
+
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def import_template(request):
+    """Download the product upload template (?file_format=xlsx or csv): the same
+    columns as the shop's Shopify product export, with an example product."""
+    from django.http import HttpResponse
+    user = request.user
+    if user.user_type not in ('seller', 'admin') and not user.is_staff:
+        return Response({'error': 'Only sellers or admins can download the template'}, status=status.HTTP_403_FORBIDDEN)
+    fmt = (request.query_params.get('file_format') or request.query_params.get('format') or 'xlsx').lower()
+    headers, data_rows = _template_rows()
+
+    if fmt == 'csv':
+        with open(TEMPLATE_FILE, 'rb') as f:
+            body = f.read()
+        resp = HttpResponse(body, content_type='text/csv; charset=utf-8')
+        resp['Content-Disposition'] = 'attachment; filename="collabo-product-upload-template.csv"'
+        return resp
+
+    try:
+        import openpyxl
+        from openpyxl.styles import Font, PatternFill, Alignment
+        from openpyxl.worksheet.datavalidation import DataValidation
+        from openpyxl.comments import Comment
+        from openpyxl.utils import get_column_letter
+    except ImportError:
+        return Response({'error': 'Excel templates are not available on this server. Download the CSV template instead.'},
+                        status=status.HTTP_501_NOT_IMPLEMENTED)
+
+    wb = openpyxl.Workbook()
+    ws = wb.active
+    ws.title = 'Products'
+    for i, h in enumerate(headers, start=1):
+        c = ws.cell(row=1, column=i, value=h)
+        c.font = Font(bold=True, color='FFFFFF')
+        c.fill = PatternFill('solid', fgColor='EA580C' if h in TEMPLATE_REQUIRED else '475569')
+        c.alignment = Alignment(vertical='center', wrap_text=True)
+        if h in TEMPLATE_HINTS:
+            c.comment = Comment(TEMPLATE_HINTS[h], 'Collabo')
+        ws.column_dimensions[get_column_letter(i)].width = 38 if h in ('Title', 'Body (HTML)', 'Image Src', 'Handle', 'Variant Image') else 18
+    for r_i, row in enumerate(data_rows, start=2):
+        for c_i, v in enumerate(row, start=1):
+            if v != '':
+                ws.cell(row=r_i, column=c_i, value=v)  # keep every value exactly as in the file
+    ws.row_dimensions[1].height = 30
+    ws.freeze_panes = 'C2'
+
+    names = list(Category.objects.order_by('name').values_list('name', flat=True))
+    lists = wb.create_sheet('Lists')
+    for i, n in enumerate(names, start=1):
+        lists.cell(row=i, column=1, value=n)
+    lists.sheet_state = 'hidden'
+    if names:
+        type_col = get_column_letter(headers.index('Type') + 1)
+        dv = DataValidation(type='list', formula1=f'=Lists!$A$1:$A${len(names)}', allow_blank=True, showErrorMessage=False)
+        ws.add_data_validation(dv)
+        dv.add(f'{type_col}2:{type_col}2000')
+
+    guide = wb.create_sheet('Instructions', 0)
+    lines = [
+        ('How to upload products in bulk', True),
+        ('', False),
+        ('This sheet uses the same columns as a Shopify product export. Orange headings are required; grey ones are optional.', False),
+        ('1. Open the "Products" sheet and add your products in the rows under the headings (it starts empty).', False),
+        ('2. One product = one row with Handle, Title, description (Body), Type (category), Variant Price and Variant Inventory Qty.', False),
+        ('3. A product takes several rows with the SAME Handle: the first row has the product details; further rows add photos (Image Src, Image Position) and/or sizes/colours (Option1 Value with its own SKU, price and stock).', False),
+        ('    Note: the importer currently adds each product using its FIRST row price and stock; other sizes/colours are not created as separate options yet. Photos from all rows are imported.', False),
+        ('4. Type is the category: pick from the dropdown. Sellers can only use existing categories.', False),
+        ('5. Variant Price is the selling price. Variant Compare At Price (optional) is the higher MRP and must be above the price.', False),
+        ('6. Photos must be web links (https://...). Status must be "active"; draft/archived or Published=FALSE rows are skipped.', False),
+        ('7. Save as .xlsx (or export the Products sheet as .csv) and upload it from Bulk Upload. You get a preview first; nothing is saved until you click Import.', False),
+        ('8. Products whose name you already have are skipped. A seller\'s new products go live after admin approval.', False),
+        ('', False),
+        ('Limits: up to 2,000 products and 10 MB per file.', False),
+    ]
+    for i, (t, bold) in enumerate(lines, start=1):
+        c = guide.cell(row=i, column=1, value=t)
+        c.font = Font(bold=bold, size=14 if bold else 11)
+    guide.column_dimensions['A'].width = 130
+    wb.active = 1
+
+    out = io.BytesIO()
+    wb.save(out)
+    resp = HttpResponse(out.getvalue(), content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+    resp['Content-Disposition'] = 'attachment; filename="collabo-product-upload-template.xlsx"'
+    return resp
+
+
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])
 def import_shopify_csv(request):
@@ -2352,8 +2511,8 @@ def import_shopify_csv(request):
     csv_file = request.FILES.get('file')
     if not csv_file:
         return Response({'error': 'No file provided. Upload a CSV file with key "file".'}, status=status.HTTP_400_BAD_REQUEST)
-    if not csv_file.name.lower().endswith('.csv'):
-        return Response({'error': 'File must be a .csv file'}, status=status.HTTP_400_BAD_REQUEST)
+    if not csv_file.name.lower().endswith(('.csv', '.xlsx')):
+        return Response({'error': 'Upload a .xlsx (Excel) or .csv file'}, status=status.HTTP_400_BAD_REQUEST)
     if csv_file.size > MAX_IMPORT_BYTES:
         return Response({'error': 'File is too large (max 10 MB). Split it into smaller files.'}, status=status.HTTP_400_BAD_REQUEST)
 
@@ -2366,33 +2525,33 @@ def import_shopify_csv(request):
         except ValueError:
             return Response({'error': 'default_stock must be a whole number'}, status=status.HTTP_400_BAD_REQUEST)
 
-    payload = csv_file.read()
     try:
-        decoded = payload.decode('utf-8-sig')
-    except UnicodeDecodeError:
-        decoded = payload.decode('latin-1')
+        header, file_rows = _read_upload_rows(csv_file)
+    except ValueError as e:
+        return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
 
-    reader = csv.DictReader(io.StringIO(decoded))
-    if not reader.fieldnames or 'Handle' not in [f.strip() for f in reader.fieldnames]:
-        return Response({'error': 'This does not look like a Shopify product CSV. It needs a "Handle" column (see the sample template).'},
+    existing_categories = {c.name.lower(): c.name for c in Category.objects.all()}
+
+    if 'Handle' in header:
+        file_format = 'shopify'
+        # One product spans several rows (extra images / variants share the Handle).
+        groups = {}
+        for row in file_rows:
+            handle = (row.get('Handle') or '').strip()
+            if not handle or handle.lower().startswith('example-'):
+                continue  # blank line, or the example product from the template
+            groups.setdefault(handle, []).append(row)
+    else:
+        return Response({'error': 'Columns not recognised. Use the Collabo template (or a Shopify product export): it needs a "Handle" column.'},
                         status=status.HTTP_400_BAD_REQUEST)
 
-    # One product spans several rows (extra images / variants share the Handle).
-    groups = {}
-    for row in reader:
-        row = {(k or '').strip(): v for k, v in row.items()}
-        handle = (row.get('Handle') or '').strip()
-        if not handle:
-            continue
-        groups.setdefault(handle, []).append(row)
-
     if not groups:
-        return Response({'error': 'No products found in the file.'}, status=status.HTTP_400_BAD_REQUEST)
+        return Response({'error': 'No products found in the file. Add your products in the rows under the headings, then upload again.'},
+                        status=status.HTTP_400_BAD_REQUEST)
     if len(groups) > MAX_IMPORT_PRODUCTS:
         return Response({'error': f'Too many products ({len(groups)}). Upload at most {MAX_IMPORT_PRODUCTS} at a time.'},
                         status=status.HTTP_400_BAD_REQUEST)
 
-    existing_categories = {c.name.lower(): c.name for c in Category.objects.all()}
     # name -> the product you already have, so the preview can say which one matched
     existing_by_title = {}
     for pid, pname, pprice, pdisc, pstock, pimage in Product.objects.filter(seller=user).order_by('id').values_list(
@@ -2407,6 +2566,7 @@ def import_shopify_csv(request):
     items, to_create = [], []
     for handle, rows in groups.items():
         main = next((r for r in rows if (r.get('Title') or '').strip()), rows[0])
+        variant_count = len({(r.get('Option1 Value') or '').strip() for r in rows if (r.get('Option1 Value') or '').strip()})
         title = ' '.join((main.get('Title') or '').replace('\xa0', ' ').split())
         item = {'handle': handle, 'name': title[:255], 'status': 'new', 'reason': ''}
         items.append(item)
@@ -2449,6 +2609,9 @@ def import_shopify_csv(request):
             cat_raw = (_first_value(main, 'Tags').split(',')[0] or '').strip()
         cat_raw = cat_raw.split('>')[-1].strip() or 'General'
         cat_name = existing_categories.get(cat_raw.lower()) or (cat_raw if any(ch.isupper() for ch in cat_raw) else cat_raw.title())[:100]
+        if not is_admin and cat_name.lower() not in existing_categories:
+            item.update(status='skipped', reason=f'Category "{cat_raw}" does not exist. Use one from the Category dropdown in the template.')
+            continue
 
         try:
             file_stock = max(0, int(float(_first_value(main, 'Variant Inventory Qty') or '0')))
@@ -2469,9 +2632,15 @@ def import_shopify_csv(request):
             weight = int(float(_first_value(main, 'Variant Grams') or '0'))
         except (ValueError, TypeError):
             weight = 0
-        delivery = ('Standard delivery in 5-7 days' if weight > 5000
-                    else 'Free delivery in 3-5 days' if weight > 1000
-                    else 'Free delivery by Tomorrow')
+        delivery = (_first_value(main, '_delivery') or
+                    ('Standard delivery in 5-7 days' if weight > 5000
+                     else 'Free delivery in 3-5 days' if weight > 1000
+                     else 'Free delivery by Tomorrow'))
+        highlights = [h.strip() for h in _first_value(main, '_highlights').split('|') if h.strip()][:10]
+        try:
+            ship_charge = max(Decimal('0'), Decimal(_first_value(main, '_shipping') or '0'))
+        except (InvalidOperation, ValueError):
+            ship_charge = Decimal('0')
         specs = []
         for label, value in (('SKU', _first_value(main, 'Variant SKU')), ('Weight', f'{weight}g' if weight else ''),
                              ('Barcode', _first_value(main, 'Variant Barcode'))):
@@ -2480,11 +2649,12 @@ def import_shopify_csv(request):
 
         vendor = (_first_value(main, 'Vendor') or 'Unknown')[:100]
         seen_titles.add(title.lower())
-        item.update(category=cat_name, brand=vendor, price=str(discount_price or price), stock=stock,
+        item.update(category=cat_name, brand=vendor, price=str(discount_price or price), stock=stock, variants=variant_count,
                     images=len(images), image=main_image, new_category=cat_name.lower() not in existing_categories)
         to_create.append(dict(title=title[:255], cat_name=cat_name, vendor=vendor, price=price, discount_price=discount_price,
                               description=_strip_html(main.get('Body (HTML)') or '') or title, stock=stock, delivery=delivery,
-                              image=main_image, images=extra_images, specs=specs, item=item))
+                              image=main_image, images=extra_images, specs=specs, item=item,
+                              highlights=highlights, return_policy=_first_value(main, '_return_policy'), ship_charge=ship_charge))
 
     new_count = len(to_create)
     summary = {
@@ -2496,7 +2666,7 @@ def import_shopify_csv(request):
     }
 
     if dry_run:
-        return Response({**summary, 'dry_run': True})
+        return Response({**summary, 'dry_run': True, 'file_format': file_format})
     if not to_create:
         return Response({**summary, 'created_count': 0, 'error': 'Nothing to import: every product was skipped or already exists.'},
                         status=status.HTTP_400_BAD_REQUEST)
@@ -2509,13 +2679,15 @@ def import_shopify_csv(request):
                 with transaction.atomic():
                     Brand.objects.get_or_create(name=spec['vendor'])
                     icon = CATEGORY_ICON_MAP.get(spec['cat_name'].lower(), '📦')
-                    Category.objects.get_or_create(name=spec['cat_name'], defaults={'icon': icon})
+                    if is_admin:
+                        Category.objects.get_or_create(name=spec['cat_name'], defaults={'icon': icon})
                     Product.objects.create(
                         seller=user, status='approved' if is_admin else 'pending',
                         name=spec['title'], category=spec['cat_name'], brand=spec['vendor'],
                         price=spec['price'], discount_price=spec['discount_price'], description=spec['description'],
                         stock=spec['stock'], delivery=spec['delivery'], image=spec['image'], images=spec['images'],
-                        specifications=spec['specs'],
+                        specifications=spec['specs'], highlights=spec['highlights'],
+                        return_policy=spec['return_policy'], product_shipping_charge=spec['ship_charge'],
                     )
                 created += 1
                 spec['item']['status'] = 'created'
@@ -2527,7 +2699,7 @@ def import_shopify_csv(request):
     summary['items'] = items[:300]
     return Response({
         **summary,
-        'dry_run': False,
+        'dry_run': False, 'file_format': file_format,
         'message': f'Imported {created} product{"s" if created != 1 else ""}' + ('' if is_admin else ' (waiting for admin approval)'),
         'created_count': created,
         'error_count': len(errors),

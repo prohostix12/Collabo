@@ -1206,18 +1206,18 @@ export default function EcommerceMarketplace({ inlineMode = false, onBackToSelec
     }
   };
 
-  const downloadBulkTemplate = () => {
-    const header = ['Handle', 'Title', 'Body (HTML)', 'Vendor', 'Type', 'Variant Price', 'Variant Compare At Price', 'Variant Inventory Qty', 'Image Src', 'Image Position', 'Status'];
-    const rows = [
-      ['sample-water-bottle', 'Sample Steel Water Bottle 1L', '<p>Keeps drinks cold for 24 hours.</p>', 'Your Brand', 'Home & Kitchen', '299', '499', '25', 'https://example.com/bottle-1.jpg', '1', 'active'],
-      ['sample-water-bottle', '', '', '', '', '', '', '', 'https://example.com/bottle-2.jpg', '2', ''],
-    ];
-    const esc = (v) => `"${String(v).replace(/"/g, '""')}"`;
-    const csv = [header, ...rows].map(r => r.map(esc).join(',')).join('\r\n');
-    const url = URL.createObjectURL(new Blob(['\ufeff' + csv], { type: 'text/csv;charset=utf-8;' }));
-    const a = document.createElement('a');
-    a.href = url; a.download = 'collabo-product-upload-template.csv'; a.click();
-    URL.revokeObjectURL(url);
+  const downloadBulkTemplate = async (fileFormat = 'xlsx') => {
+    try {
+      const res = await api.get('/ecommerce/products/import-template/', { params: { file_format: fileFormat }, responseType: 'blob' });
+      const url = URL.createObjectURL(res.data);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `collabo-product-upload-template.${fileFormat}`;
+      link.click();
+      URL.revokeObjectURL(url);
+    } catch (err) {
+      showToast('Could not download the template. Please try again.', 'error');
+    }
   };
   const [newBrandName, setNewBrandName] = useState('');
 
@@ -9495,18 +9495,20 @@ export default function EcommerceMarketplace({ inlineMode = false, onBackToSelec
         <div className="fixed inset-0 z-[9999] bg-black/50 backdrop-blur-sm flex items-center justify-center p-4" onClick={closeBulkUpload}>
           <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
             <div className="flex items-center justify-between px-5 py-4 border-b border-slate-100 dark:border-slate-800">
-              <h3 className="font-black text-sm dark:text-white flex items-center gap-2"><Upload className="w-4 h-4 text-orange-500" /> Bulk upload products (CSV)</h3>
+              <h3 className="font-black text-sm dark:text-white flex items-center gap-2"><Upload className="w-4 h-4 text-orange-500" /> Bulk upload products (Excel / CSV)</h3>
               <button onClick={closeBulkUpload} className="text-slate-400 hover:text-slate-600"><X className="w-4 h-4" /></button>
             </div>
             <div className="p-5 space-y-4 text-xs">
               <p className="text-slate-500 dark:text-slate-400 font-semibold leading-relaxed">
-                Upload a Shopify-style product CSV. One product can span several rows (extra photos share the same <b>Handle</b>). Products that already exist (same name) are skipped.
-                {' '}<button onClick={downloadBulkTemplate} className="text-orange-600 hover:text-orange-700 font-extrabold underline">Download sample template</button>
+                Upload an Excel (.xlsx) or CSV file made from our template (same columns as a Shopify product export). Products that already exist (same name) are skipped.
               </p>
+              <div className="flex flex-wrap gap-2">
+                <button onClick={() => downloadBulkTemplate('csv')} className="flex items-center gap-1.5 bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold px-3 py-2 rounded-lg transition-colors">Download CSV template</button>
+              </div>
 
               <label className="block cursor-pointer text-center bg-slate-50 dark:bg-slate-800 border border-dashed border-slate-300 dark:border-slate-600 hover:border-orange-400 rounded-xl py-5 px-3 font-bold text-slate-500 dark:text-slate-300 transition-colors">
-                {bulkFile ? `${bulkFile.name} (${(bulkFile.size / 1024).toFixed(0)} KB)` : 'Choose CSV file'}
-                <input type="file" accept=".csv,text/csv" className="hidden" onChange={(e) => { setBulkFile(e.target.files[0] || null); setBulkPreview(null); e.target.value = ''; }} />
+                {bulkFile ? `${bulkFile.name} (${(bulkFile.size / 1024).toFixed(0)} KB)` : 'Choose Excel (.xlsx) or CSV file'}
+                <input type="file" accept=".xlsx,.csv,text/csv" className="hidden" onChange={(e) => { setBulkFile(e.target.files[0] || null); setBulkPreview(null); e.target.value = ''; }} />
               </label>
 
               <div className="flex items-center gap-3">
@@ -9564,7 +9566,7 @@ export default function EcommerceMarketplace({ inlineMode = false, onBackToSelec
                           <div className="font-bold text-slate-700 dark:text-slate-200 truncate">{it.name || it.handle}</div>
                           <div className="text-[10px] text-slate-400 font-semibold truncate">
                             {it.status === 'new' || it.status === 'created'
-                              ? `${it.category}${it.new_category ? ' (new category)' : ''} · ₹${it.price} · stock ${it.stock} · ${it.images} photo${it.images === 1 ? '' : 's'}`
+                              ? `${it.category}${it.new_category ? ' (new category)' : ''} · ₹${it.price} · stock ${it.stock} · ${it.images} photo${it.images === 1 ? '' : 's'}${it.variants > 1 ? ` · ${it.variants} options in file (first one imported)` : ''}`
                               : it.status === 'duplicate' && it.existing_id
                                 ? `Already in your catalog as "${it.existing_name}" (ID ${it.existing_id}) · ₹${it.existing_price} · stock ${it.existing_stock} · left unchanged`
                                 : it.reason}

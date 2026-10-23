@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import {
   Store, Package, Plus, X, Clock, CheckCircle2, XCircle,
   IndianRupee, Boxes, ImagePlus, Upload, ShoppingBag, Pencil, Trash2, Truck,
-  TrendingUp, ArrowUpCircle, ArrowDownCircle, ShoppingCart, LayoutGrid,
+  TrendingUp, ArrowUpCircle, ArrowDownCircle, ShoppingCart, LayoutGrid, Download, FileSpreadsheet,
 } from 'lucide-react';
 import {
   ResponsiveContainer, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip,
@@ -79,6 +79,56 @@ const SellerDashboard = () => {
   const [stockQty, setStockQty] = useState('1');
   const [stockExact, setStockExact] = useState('');
   const [stockSubmitting, setStockSubmitting] = useState(false);
+
+  // Bulk upload (Excel / CSV)
+  const [showBulk, setShowBulk] = useState(false);
+  const [bulkFile, setBulkFile] = useState(null);
+  const [bulkStock, setBulkStock] = useState('10');
+  const [bulkPreview, setBulkPreview] = useState(null);
+  const [bulkFilter, setBulkFilter] = useState('all');
+  const [bulkBusy, setBulkBusy] = useState(false);
+
+  const closeBulk = () => { setShowBulk(false); setBulkFile(null); setBulkPreview(null); setBulkFilter('all'); setBulkBusy(false); };
+
+  const downloadTemplate = async (fileFormat) => {
+    try {
+      const res = await api.get('/ecommerce/products/import-template/', { params: { file_format: fileFormat }, responseType: 'blob' });
+      const url = URL.createObjectURL(res.data);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `collabo-product-upload-template.${fileFormat}`;
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch (e) {
+      toast.error('Could not download the template. Please try again.');
+    }
+  };
+
+  const sendBulk = async (dryRun) => {
+    if (!bulkFile) { toast.error('Choose a file first'); return; }
+    setBulkBusy(true);
+    try {
+      const body = new FormData();
+      body.append('file', bulkFile);
+      body.append('default_stock', bulkStock === '' ? '' : String(Math.max(0, parseInt(bulkStock, 10) || 0)));
+      if (dryRun) body.append('dry_run', 'true');
+      const res = await api.post('/ecommerce/products/import-csv/', body, { headers: { 'Content-Type': 'multipart/form-data' }, timeout: 120000 });
+      if (dryRun) {
+        setBulkFilter('all');
+        setBulkPreview(res.data);
+      } else {
+        toast.success(res.data.message || 'Products imported');
+        fetchProducts();
+        closeBulk();
+      }
+    } catch (err) {
+      const d = err.response?.data;
+      if (d?.items) setBulkPreview(d);
+      toast.error(d?.error || 'Could not read that file. Please check it and try again.');
+    } finally {
+      setBulkBusy(false);
+    }
+  };
 
   const fetchProducts = useCallback(() => {
     if (!user?.id) return;
@@ -277,12 +327,20 @@ const SellerDashboard = () => {
             <p className="text-xs text-gray-500 dark:text-gray-400 font-medium">Manage your product listings</p>
           </div>
         </div>
-        <button
-          onClick={openAddForm}
-          className="flex items-center justify-center gap-1.5 bg-orange-600 hover:bg-orange-700 text-white text-sm font-semibold px-4 py-2.5 rounded-xl transition-colors shadow-sm"
-        >
-          <Plus className="w-4 h-4" /> Add Product
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => setShowBulk(true)}
+            className="flex items-center justify-center gap-1.5 bg-white dark:bg-gray-800 border border-orange-300 dark:border-orange-700 text-orange-600 dark:text-orange-400 hover:bg-orange-50 dark:hover:bg-gray-700 text-sm font-semibold px-4 py-2.5 rounded-xl transition-colors"
+          >
+            <Upload className="w-4 h-4" /> Bulk Upload
+          </button>
+          <button
+            onClick={openAddForm}
+            className="flex items-center justify-center gap-1.5 bg-orange-600 hover:bg-orange-700 text-white text-sm font-semibold px-4 py-2.5 rounded-xl transition-colors shadow-sm"
+          >
+            <Plus className="w-4 h-4" /> Add Product
+          </button>
+        </div>
       </div>
 
       {/* Stats */}
@@ -467,6 +525,108 @@ const SellerDashboard = () => {
           </div>
         )}
       </div>
+      )}
+
+      {/* Bulk upload modal */}
+      {showBulk && (
+        <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50 p-4" onClick={closeBulk}>
+          <div className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 max-w-2xl w-full max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100 dark:border-gray-700">
+              <h2 className="text-sm font-bold text-gray-900 dark:text-white flex items-center gap-2"><Upload className="w-4 h-4 text-orange-500" /> Bulk upload products</h2>
+              <button onClick={closeBulk} className="text-gray-400 hover:text-gray-600"><X className="w-4 h-4" /></button>
+            </div>
+            <div className="p-5 space-y-4 text-xs">
+              <div className="rounded-xl bg-orange-50 dark:bg-orange-900/20 border border-orange-100 dark:border-orange-800 p-4 space-y-3">
+                <p className="font-semibold text-gray-700 dark:text-gray-200 leading-relaxed">
+                  1. Download the template, 2. fill in your products (Handle, Title, description, Type = category, price, stock, photo link; extra photos go on extra rows with the same Handle), 3. upload it here. You will see a preview before anything is saved.
+                </p>
+                <div className="flex flex-wrap gap-2">
+                  <button onClick={() => downloadTemplate('xlsx')} className="flex items-center gap-1.5 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold px-3 py-2 rounded-lg transition-colors">
+                    <FileSpreadsheet className="w-3.5 h-3.5" /> Excel template (.xlsx)
+                  </button>
+                  <button onClick={() => downloadTemplate('csv')} className="flex items-center gap-1.5 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-200 font-semibold px-3 py-2 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-600 transition-colors">
+                    <Download className="w-3.5 h-3.5" /> CSV template
+                  </button>
+                </div>
+              </div>
+
+              <label className="block cursor-pointer text-center bg-gray-50 dark:bg-gray-900 border border-dashed border-gray-300 dark:border-gray-600 hover:border-orange-400 rounded-xl py-5 px-3 font-semibold text-gray-500 dark:text-gray-300 transition-colors">
+                {bulkFile ? `${bulkFile.name} (${(bulkFile.size / 1024).toFixed(0)} KB)` : 'Choose your Excel (.xlsx) or CSV file'}
+                <input type="file" accept=".xlsx,.csv,text/csv" className="hidden" onChange={(e) => { setBulkFile(e.target.files[0] || null); setBulkPreview(null); e.target.value = ''; }} />
+              </label>
+
+              <div className="flex items-center gap-3">
+                <label className="font-semibold text-gray-500 dark:text-gray-400 flex-1">
+                  Stock to use when the file says 0 or blank
+                </label>
+                <input
+                  type="number" min="0" value={bulkStock}
+                  onChange={(e) => { setBulkStock(e.target.value); setBulkPreview(null); }}
+                  className="w-24 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl py-2 px-3 font-semibold focus:outline-none dark:text-white"
+                />
+              </div>
+
+              {bulkPreview && (
+                <div className="space-y-3">
+                  <div className="grid grid-cols-3 gap-2 text-center">
+                    {[
+                      { key: 'new', n: bulkPreview.new_count ?? bulkPreview.created_count ?? 0, label: bulkPreview.dry_run === false ? 'imported' : 'will be added', box: 'bg-emerald-50 dark:bg-emerald-900/20', num: 'text-emerald-600', lab: 'text-emerald-700 dark:text-emerald-300', ring: 'ring-emerald-400' },
+                      { key: 'duplicate', n: bulkPreview.duplicate_count || 0, label: 'already exist', box: 'bg-amber-50 dark:bg-amber-900/20', num: 'text-amber-600', lab: 'text-amber-700 dark:text-amber-300', ring: 'ring-amber-400' },
+                      { key: 'skipped', n: bulkPreview.skipped_count || 0, label: 'skipped (see why)', box: 'bg-gray-100 dark:bg-gray-900', num: 'text-gray-600 dark:text-gray-200', lab: 'text-gray-500', ring: 'ring-gray-400' },
+                    ].map(t => (
+                      <button
+                        key={t.key} type="button" disabled={t.n === 0}
+                        onClick={() => setBulkFilter(bulkFilter === t.key ? 'all' : t.key)}
+                        className={`rounded-xl py-2 transition-all ${t.box} ${t.n === 0 ? 'opacity-60 cursor-default' : 'hover:shadow-md cursor-pointer'} ${bulkFilter === t.key ? `ring-2 ${t.ring}` : ''}`}
+                      >
+                        <div className={`text-lg font-bold ${t.num}`}>{t.n}</div>
+                        <div className={`text-[10px] font-semibold ${t.lab}`}>{t.label}</div>
+                      </button>
+                    ))}
+                  </div>
+                  <div className="max-h-56 overflow-y-auto rounded-xl border border-gray-100 dark:border-gray-700 divide-y divide-gray-100 dark:divide-gray-700">
+                    {(bulkPreview.items || []).filter(it => bulkFilter === 'all' || (bulkFilter === 'new' ? (it.status === 'new' || it.status === 'created') : it.status === bulkFilter)).map((it, i) => (
+                      <div key={i} className="flex items-center gap-2 px-3 py-2">
+                        <span className={`w-2 h-2 rounded-full flex-shrink-0 ${it.status === 'new' || it.status === 'created' ? 'bg-emerald-500' : it.status === 'duplicate' ? 'bg-amber-500' : 'bg-gray-400'}`} />
+                        <div className="w-11 h-11 rounded-lg bg-gray-100 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 overflow-hidden flex items-center justify-center flex-shrink-0">
+                          {it.image ? (
+                            <img src={it.image} alt="" loading="lazy" referrerPolicy="no-referrer" className="w-full h-full object-contain" onError={(e) => { e.currentTarget.style.display = 'none'; }} />
+                          ) : null}
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          <div className="font-semibold text-gray-700 dark:text-gray-200 truncate">{it.name || it.handle}</div>
+                          <div className="text-[10px] text-gray-400 font-medium whitespace-normal">
+                            {it.status === 'new' || it.status === 'created'
+                              ? `${it.category} · ₹${it.price} · stock ${it.stock} · ${it.images} photo${it.images === 1 ? '' : 's'}${it.variants > 1 ? ` · ${it.variants} options in file (first one imported)` : ''}`
+                              : it.status === 'duplicate' && it.existing_id
+                                ? `Already in your products as "${it.existing_name}" (ID ${it.existing_id}) · left unchanged`
+                                : it.reason}
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                  {bulkPreview.new_count > 0 && bulkPreview.dry_run && (
+                    <p className="text-[11px] font-medium text-amber-600">New products are reviewed by our team before they go live.</p>
+                  )}
+                </div>
+              )}
+
+              <div className="flex items-center justify-end gap-2 pt-1">
+                <button onClick={closeBulk} className="px-4 py-2.5 rounded-xl border border-gray-200 dark:border-gray-700 font-semibold text-gray-600 dark:text-gray-300">Cancel</button>
+                {bulkPreview && bulkPreview.dry_run && bulkPreview.new_count > 0 ? (
+                  <button disabled={bulkBusy} onClick={() => sendBulk(false)} className="px-4 py-2.5 rounded-xl bg-orange-600 hover:bg-orange-700 text-white font-semibold disabled:opacity-50">
+                    {bulkBusy ? 'Importing...' : `Import ${bulkPreview.new_count} product${bulkPreview.new_count === 1 ? '' : 's'}`}
+                  </button>
+                ) : (
+                  <button disabled={bulkBusy || !bulkFile} onClick={() => sendBulk(true)} className="px-4 py-2.5 rounded-xl bg-gray-900 hover:bg-black text-white font-semibold disabled:opacity-50">
+                    {bulkBusy ? 'Checking...' : 'Preview'}
+                  </button>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
       )}
 
       {/* Add Product Modal */}
