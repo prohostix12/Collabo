@@ -160,6 +160,10 @@ class Order(models.Model):
     payment_status = models.CharField(max_length=20, choices=PAYMENT_STATUS_CHOICES, default='pending')
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='pending')
     order_id = models.CharField(max_length=100, unique=True)
+    # Razorpay references, so a payment can be matched to its order (webhooks, refunds,
+    # support) and one payment can never create two orders.
+    razorpay_order_id = models.CharField(max_length=100, null=True, blank=True, db_index=True)
+    razorpay_payment_id = models.CharField(max_length=100, null=True, blank=True, unique=True)
     referral_code = models.CharField(max_length=100, null=True, blank=True)
     referral_map = models.JSONField(default=dict, blank=True, help_text="Per-product referral codes: {product_id: referral_code}")
     

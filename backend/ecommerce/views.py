@@ -1976,6 +1976,13 @@ def create_razorpay_order(request):
     amount = request.data.get('amount')  # amount in rupees
     if not amount:
         return Response({'error': 'Amount is required'}, status=status.HTTP_400_BAD_REQUEST)
+    try:
+        amount_value = Decimal(str(amount))
+    except (InvalidOperation, ValueError):
+        return Response({'error': 'Invalid amount'}, status=status.HTTP_400_BAD_REQUEST)
+    if amount_value < 1 or amount_value > 500000:
+        return Response({'error': 'Amount must be between Rs 1 and Rs 5,00,000'}, status=status.HTTP_400_BAD_REQUEST)
+    amount = str(amount_value)
 
     is_dummy = (
         not settings.RAZORPAY_KEY_ID or 
@@ -2007,9 +2014,11 @@ def create_razorpay_order(request):
     try:
         client = razorpay.Client(auth=(settings.RAZORPAY_KEY_ID, settings.RAZORPAY_KEY_SECRET))
         rzp_order = client.order.create({
-            'amount': int(float(amount) * 100),  # paise
+            'amount': int((amount_value * 100).to_integral_value()),  # paise
             'currency': 'INR',
             'payment_capture': 1,
+            'receipt': f'collabo-u{request.user.id}-{int(timezone.now().timestamp())}',
+            'notes': {'user_id': str(request.user.id)},
         })
         return Response({
             'rzp_order_id': rzp_order['id'],
@@ -2054,17 +2063,46 @@ def verify_razorpay_payment(request):
 
     is_mock = looks_mock or secret_missing
 
+    paid_paise = None
     if not is_mock:
-        # Verify signature
+        if not rzp_order_id or not rzp_payment_id or not rzp_signature:
+            return Response({'error': 'Payment details are incomplete.'}, status=status.HTTP_400_BAD_REQUEST)
+
         body = f"{rzp_order_id}|{rzp_payment_id}"
         expected = hmac.new(
             bytes(settings.RAZORPAY_KEY_SECRET, 'utf-8'),
             bytes(body, 'utf-8'),
             hashlib.sha256
         ).hexdigest()
-
-        if expected != rzp_signature:
+        if not hmac.compare_digest(expected, str(rzp_signature)):
             return Response({'error': 'Payment verification failed. Invalid signature.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        # A payment id can only ever create one order: a retry, a double tap or a
+        # replayed request returns the order that already exists.
+        existing = Order.objects.filter(razorpay_payment_id=rzp_payment_id).first()
+        if existing:
+            if existing.user_id != request.user.id:
+                return Response({'error': 'Payment verification failed.'}, status=status.HTTP_400_BAD_REQUEST)
+            return Response({'order_id': existing.order_id, 'razorpay_payment_id': rzp_payment_id,
+                             'expected_delivery_date': existing.expected_delivery_date})
+
+        # Ask Razorpay what really happened instead of trusting the browser/app.
+        try:
+            client = razorpay.Client(auth=(settings.RAZORPAY_KEY_ID, settings.RAZORPAY_KEY_SECRET))
+            rzp_payment = client.payment.fetch(rzp_payment_id)
+            rzp_order = client.order.fetch(rzp_order_id)
+        except Exception:
+            logger.exception('Could not fetch payment %s from Razorpay', rzp_payment_id)
+            return Response({'error': 'We could not confirm your payment right now. If money was debited it is safe; please try again in a minute.'},
+                            status=status.HTTP_502_BAD_GATEWAY)
+
+        if rzp_payment.get('order_id') != rzp_order_id or rzp_payment.get('status') not in ('captured', 'authorized'):
+            logger.warning('Payment %s not usable: order=%s status=%s', rzp_payment_id, rzp_payment.get('order_id'), rzp_payment.get('status'))
+            return Response({'error': 'Payment was not completed.'}, status=status.HTTP_400_BAD_REQUEST)
+        if str((rzp_order.get('notes') or {}).get('user_id', '')) != str(request.user.id):
+            logger.warning('Payment %s belongs to a different user than %s', rzp_payment_id, request.user.id)
+            return Response({'error': 'Payment verification failed.'}, status=status.HTTP_400_BAD_REQUEST)
+        paid_paise = int(rzp_payment.get('amount') or 0)
 
     # Signature valid — place the actual order using the SAME logic as COD orders,
     # so referral discounts, affiliate commissions, and wallet crediting/redemption
@@ -2073,54 +2111,73 @@ def verify_razorpay_payment(request):
     try:
         with transaction.atomic():
             order = create_order_for_user(request.user, order_data)
+            if paid_paise is not None:
+                due_paise = int((order.final_amount * 100).to_integral_value())
+                if paid_paise + 100 < due_paise:   # paid less than the order total (1 rupee tolerance)
+                    logger.error('UNDERPAYMENT: payment %s paid %s paise but order total is %s paise (user %s)',
+                                 rzp_payment_id, paid_paise, due_paise, request.user.id)
+                    raise OrderCreationError(
+                        f'The amount paid does not match your order total. Your order was not placed. '
+                        f'Please contact support with payment id {rzp_payment_id}.', status.HTTP_400_BAD_REQUEST)
+                if paid_paise - 100 > due_paise:
+                    logger.warning('OVERPAYMENT: payment %s paid %s paise, order total %s paise (order %s) - review for refund',
+                                   rzp_payment_id, paid_paise, due_paise, order.order_id)
+                order.razorpay_order_id = rzp_order_id
+                order.razorpay_payment_id = rzp_payment_id
+                order.save(update_fields=['razorpay_order_id', 'razorpay_payment_id'])
     except OrderCreationError as e:
         return Response({'error': e.message}, status=e.status_code)
 
-    return Response({'order_id': order.order_id, 'razorpay_payment_id': rzp_payment_id})
+    return Response({'order_id': order.order_id, 'razorpay_payment_id': rzp_payment_id,
+                     'expected_delivery_date': order.expected_delivery_date})
 
 
 @api_view(['POST'])
 @permission_classes([permissions.AllowAny])
 def razorpay_webhook(request):
-    """Handle Razorpay webhook events for payment.captured and payment.failed."""
-    import hmac
-    import hashlib
+    """Razorpay -> server notifications (payment.captured / payment.failed).
+    Only accepted with a valid signature; without RAZORPAY_WEBHOOK_SECRET the
+    endpoint refuses everything, so nobody can fake a "paid" event."""
     import json
 
     webhook_secret = getattr(settings, 'RAZORPAY_WEBHOOK_SECRET', '')
+    if not webhook_secret:
+        logger.error('Razorpay webhook called but RAZORPAY_WEBHOOK_SECRET is not set; ignoring.')
+        return Response({'error': 'Webhook is not configured'}, status=status.HTTP_503_SERVICE_UNAVAILABLE)
+
     payload = request.body
     received_sig = request.headers.get('X-Razorpay-Signature', '')
-
-    if webhook_secret:
-        expected_sig = hmac.new(
-            webhook_secret.encode('utf-8'),
-            payload,
-            hashlib.sha256
-        ).hexdigest()
-        if not hmac.compare_digest(expected_sig, received_sig):
-            return Response({'error': 'Invalid signature'}, status=status.HTTP_400_BAD_REQUEST)
+    expected_sig = hmac.new(webhook_secret.encode('utf-8'), payload, hashlib.sha256).hexdigest()
+    if not hmac.compare_digest(expected_sig, received_sig):
+        return Response({'error': 'Invalid signature'}, status=status.HTTP_400_BAD_REQUEST)
 
     try:
         data = json.loads(payload)
         event = data.get('event')
-        payment_data = data.get('payload', {}).get('payment', {}).get('entity', {})
-        rzp_order_id = payment_data.get('order_id')
+        payment = data.get('payload', {}).get('payment', {}).get('entity', {})
+        rzp_order_id = payment.get('order_id')
+        rzp_payment_id = payment.get('id')
 
-        if event == 'payment.captured' and rzp_order_id:
+        order = None
+        if rzp_payment_id:
+            order = Order.objects.filter(razorpay_payment_id=rzp_payment_id).first()
+        if order is None and rzp_order_id:
             order = Order.objects.filter(razorpay_order_id=rzp_order_id).first()
-            if order and order.status == 'pending':
-                order.status = 'processing'
+
+        if event == 'payment.captured':
+            if order is None:
+                # Customer paid but the app/browser never completed checkout.
+                logger.warning('PAID BUT NO ORDER: payment %s (razorpay order %s, %s paise). Check the Razorpay dashboard and refund or place the order manually.',
+                               rzp_payment_id, rzp_order_id, payment.get('amount'))
+            elif order.payment_status != 'completed':
                 order.payment_status = 'completed'
-                order.save()
-
-        elif event == 'payment.failed' and rzp_order_id:
-            order = Order.objects.filter(razorpay_order_id=rzp_order_id).first()
-            if order and order.status == 'pending':
-                order.payment_status = 'failed'
-                order.save()
-
-    except Exception as e:
-        pass
+                order.save(update_fields=['payment_status'])
+        elif event == 'payment.failed' and order is not None and order.payment_status != 'completed':
+            # never downgrade an order that has already been paid
+            order.payment_status = 'failed'
+            order.save(update_fields=['payment_status'])
+    except Exception:
+        logger.exception('Error handling Razorpay webhook')
 
     return Response({'status': 'ok'})
 
