@@ -538,7 +538,7 @@ const SellerDashboard = () => {
             <div className="p-5 space-y-4 text-xs">
               <div className="rounded-xl bg-orange-50 dark:bg-orange-900/20 border border-orange-100 dark:border-orange-800 p-4 space-y-3">
                 <p className="font-semibold text-gray-700 dark:text-gray-200 leading-relaxed">
-                  1. Download the template, 2. fill in your products (Handle, Title, description, Type = category, price, stock, photo link; extra photos go on extra rows with the same Handle), 3. upload it here. You will see a preview before anything is saved.
+                  1. Download the template, 2. fill in one row per product with the same details as the Add Product form (name, category, price, sale price, stock, photo links, description, delivery, highlights, specifications and more), 3. upload it here. You will see a preview before anything is saved.
                 </p>
                 <div className="flex flex-wrap gap-2">
                   <button onClick={() => downloadTemplate('xlsx')} className="flex items-center gap-1.5 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold px-3 py-2 rounded-lg transition-colors">

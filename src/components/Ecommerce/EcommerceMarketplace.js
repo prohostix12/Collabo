@@ -9500,7 +9500,7 @@ export default function EcommerceMarketplace({ inlineMode = false, onBackToSelec
             </div>
             <div className="p-5 space-y-4 text-xs">
               <p className="text-slate-500 dark:text-slate-400 font-semibold leading-relaxed">
-                Upload an Excel (.xlsx) or CSV file made from our template (same columns as a Shopify product export). Products that already exist (same name) are skipped.
+                Upload an Excel (.xlsx) or CSV file made from our template (one row per product, with the same fields as the Add Product form; a Shopify product export also works). Products that already exist (same name) are skipped.
               </p>
               <div className="flex flex-wrap gap-2">
                 <button onClick={() => downloadBulkTemplate('csv')} className="flex items-center gap-1.5 bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold px-3 py-2 rounded-lg transition-colors">Download CSV template</button>
