@@ -6,6 +6,16 @@ from rest_framework_simplejwt.tokens import RefreshToken
 from django.contrib.auth import authenticate
 from django.contrib.auth.hashers import check_password
 from django.utils import timezone
+import logging
+from django.conf import settings
+from django.core.mail import send_mail
+from django.contrib.auth.password_validation import validate_password
+from django.contrib.auth.tokens import default_token_generator
+from django.core.exceptions import ValidationError as DjangoValidationError
+from django.utils.encoding import force_bytes, force_str
+from django.utils.http import urlsafe_base64_encode, urlsafe_base64_decode
+from rest_framework.decorators import throttle_classes
+from rest_framework.throttling import AnonRateThrottle
 from .models import User, InfluencerProfile, CompanyProfile, SellerProfile
 from .serializers import (
     UserRegistrationSerializer, UserLoginSerializer, 
@@ -14,6 +24,8 @@ from .serializers import (
     SellerProfileSerializer
 )
 from .youtube_service import VideoStatsService
+
+logger = logging.getLogger(__name__)
 
 class RegisterView(generics.CreateAPIView):
     queryset = User.objects.all()
@@ -1108,3 +1120,87 @@ def seller_audit_log(request, user_id):
     from .serializers import ApprovalAuditLogSerializer
     logs = ApprovalAuditLog.objects.filter(user_id=user_id).order_by('-timestamp')
     return Response(ApprovalAuditLogSerializer(logs, many=True).data)
+
+# ── Forgot / reset password ────────────────────────────────────────────────
+
+class PasswordResetThrottle(AnonRateThrottle):
+    """Limit reset requests per IP so the form can't be used to spam inboxes."""
+    scope = 'password_reset'
+
+    def get_rate(self):
+        return '8/hour'
+
+
+def _reset_link_base(request):
+    """Public website address used in the emailed link. FRONTEND_URL wins unless
+    it still points at localhost, in which case a trusted Origin is used."""
+    base = (getattr(settings, 'FRONTEND_URL', '') or '').rstrip('/')
+    if not base or 'localhost' in base or '127.0.0.1' in base:
+        origin = (request.headers.get('Origin') or '').rstrip('/')
+        if origin and origin in getattr(settings, 'CORS_ALLOWED_ORIGINS', []):
+            return origin
+    return base or 'http://localhost:3000'
+
+
+@api_view(['POST'])
+@permission_classes([AllowAny])
+@throttle_classes([PasswordResetThrottle])
+def password_reset_request(request):
+    """Email a one-time reset link. Always answers the same way, so it can't be
+    used to find out which email addresses have accounts."""
+    email = (request.data.get('email') or '').strip()
+    generic = Response({'message': 'If an account exists for that email, a password reset link has been sent.'})
+    if not email:
+        return Response({'email': ['Please enter your email address.']}, status=status.HTTP_400_BAD_REQUEST)
+
+    user = User.objects.filter(email__iexact=email, is_active=True).first()
+    if not user:
+        return generic
+
+    uid = urlsafe_base64_encode(force_bytes(user.pk))
+    token = default_token_generator.make_token(user)
+    link = f"{_reset_link_base(request)}/#reset-password:{uid}.{token}"
+    try:
+        send_mail(
+            subject='Reset your Collabo password',
+            message=(
+                f"Hi {user.first_name or 'there'},\n\n"
+                "We received a request to reset the password for your Collabo account.\n"
+                f"Open this link to choose a new password (valid for a short time, works once):\n\n{link}\n\n"
+                "If you didn't ask for this, you can ignore this email; your password won't change.\n\n"
+                "- Team Collabo"
+            ),
+            from_email=getattr(settings, 'DEFAULT_FROM_EMAIL', None) or None,
+            recipient_list=[user.email],
+            fail_silently=False,
+        )
+    except Exception:
+        logger.exception('Could not send password reset email to user id %s', user.pk)
+    return generic
+
+
+@api_view(['POST'])
+@permission_classes([AllowAny])
+@throttle_classes([PasswordResetThrottle])
+def password_reset_confirm(request):
+    """Set a new password from the emailed link (uid + token)."""
+    uid = request.data.get('uid') or ''
+    token = request.data.get('token') or ''
+    new_password = request.data.get('new_password') or ''
+    bad_link = Response({'error': 'This reset link is invalid or has expired. Please request a new one.'},
+                        status=status.HTTP_400_BAD_REQUEST)
+    try:
+        user = User.objects.get(pk=force_str(urlsafe_base64_decode(uid)), is_active=True)
+    except (TypeError, ValueError, OverflowError, User.DoesNotExist):
+        return bad_link
+    if not default_token_generator.check_token(user, token):
+        return bad_link
+
+    try:
+        validate_password(new_password, user)
+    except DjangoValidationError as e:
+        return Response({'error': ' '.join(e.messages)}, status=status.HTTP_400_BAD_REQUEST)
+
+    user.set_password(new_password)
+    user.save(update_fields=['password'])  # also invalidates the token (it is tied to the old hash)
+    return Response({'message': 'Your password has been reset. You can now log in.'})

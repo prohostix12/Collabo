@@ -143,7 +143,13 @@ class ProductViewSet(viewsets.ModelViewSet):
         return [permissions.IsAuthenticated(), IsSellerOrReadOnly()]
 
     def get_queryset(self):
-        queryset = Product.objects.select_related('seller').all()
+        queryset = Product.objects.select_related('seller').annotate(
+            purchase_count_annotated=db_models.Sum(
+                'orderitem__quantity',
+                filter=~db_models.Q(orderitem__order__status__in=['cancelled', 'returned']),
+                default=0,
+            )
+        )
         category = self.request.query_params.get('category', None)
         brand = self.request.query_params.get('brand', None)
         min_price = self.request.query_params.get('min_price', None)

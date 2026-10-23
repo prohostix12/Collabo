@@ -26,13 +26,14 @@ class ProductSerializer(serializers.ModelSerializer):
     seller_username = serializers.ReadOnlyField(source='seller.username')
     id = serializers.IntegerField(required=False)
     vendor_details = VendorSerializer(source='vendor', read_only=True)
+    purchase_count = serializers.SerializerMethodField()
 
     class Meta:
         model = Product
         fields = [
             'id', 'seller', 'seller_username', 'status', 'rejection_reason', 'name', 'category', 'brand',
             'vendor', 'vendor_details', 'return_policy',
-            'price', 'discount_price', 'discount_percent', 'rating', 'reviews_count',
+            'price', 'discount_price', 'discount_percent', 'rating', 'reviews_count', 'purchase_count',
             'image', 'images', 'colors', 'description', 'stock', 'delivery', 'specifications',
             'highlights', 'offers', 'seller_info', 'qa_section',
             'product_shipping_charge', 'commission_rate', 'link_discount_percent', 'created_at', 'updated_at'
@@ -40,6 +41,14 @@ class ProductSerializer(serializers.ModelSerializer):
         # status/rejection_reason are admin-controlled only — set via the approve/reject
         # actions on ProductViewSet, never directly through create/update payloads.
         read_only_fields = ['seller', 'discount_percent', 'status', 'rejection_reason']
+
+    def get_purchase_count(self, obj):
+        """Units actually bought: all non-cancelled, non-returned order lines."""
+        annotated = getattr(obj, 'purchase_count_annotated', None)
+        if annotated is not None:
+            return annotated
+        from django.db.models import Sum
+        return obj.orderitem_set.exclude(order__status__in=['cancelled', 'returned']).aggregate(n=Sum('quantity'))['n'] or 0
 
     def to_representation(self, instance):
         data = super().to_representation(instance)

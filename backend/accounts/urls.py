@@ -10,6 +10,7 @@ from .views import (
     approve_influencer, reject_influencer, bulk_approve_influencers,
     delete_influencer, approval_stats, platform_overview, mark_approval_shown,
     admin_create_influencer, admin_reset_password,
+    password_reset_request, password_reset_confirm,
     # Seller profile & admin views
     SellerProfileView, PendingSellersListView, AllSellersListView, approve_seller, reject_seller,
     seller_audit_log, admin_convert_to_influencer,
@@ -27,6 +28,8 @@ urlpatterns = [
     path('influencers/<int:id>/', InfluencerDetailView.as_view(), name='influencer-detail'),
     path('companies/', CompanyListView.as_view(), name='companies-list'),
     path('change-password/', change_password, name='change-password'),
+    path('password-reset/', password_reset_request, name='password-reset'),
+    path('password-reset/confirm/', password_reset_confirm, name='password-reset-confirm'),
     path('delete-account/', delete_account, name='delete-account'),
     path('fetch-video-stats/', fetch_video_stats, name='fetch-video-stats'),
     path('get-video-stats/', get_video_stats, name='get-video-stats'),

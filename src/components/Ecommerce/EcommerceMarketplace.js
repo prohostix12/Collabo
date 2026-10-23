@@ -11,7 +11,7 @@ import {
   LayoutGrid, Cpu, Smartphone, Shirt, ShoppingBasket, Home as HomeIcon,
   Armchair, Dumbbell, BookOpen, Gamepad2, Plug, Film, Download,
   Mail, Shield, Calendar, Headphones, HeartPulse, Bath, Truck, Share2, Menu, ChevronLeft,
-  Baby, Flower2, Gift, Gem, Wallet, ExternalLink
+  Baby, Flower2, Gift, Gem, Wallet, ExternalLink, Upload
 } from 'lucide-react';
 import api from '../../services/api';
 import { useAuth } from '../../contexts/AuthContext';
@@ -81,6 +81,90 @@ const PROMO_CARDS_DEFAULT = [
   { badge: 'BEST SELLERS', title: 'Tech Gadgets', subtitle: 'Premium electronics', cta: 'View Deals', category: 'Electronics', bg: 'from-sky-500 to-blue-600' },
   { badge: 'TRENDING', title: 'Beauty Picks', subtitle: 'Skincare must-haves', cta: 'Shop Beauty', category: 'Beauty & Personal Care', bg: 'from-rose-500 to-pink-600' },
 ];
+
+// Navbar wallet icon that draws attention to itself every 7 seconds: the lid
+// opens, the icon turns teal, the balance pops out above it and drops back
+// inside, then everything returns to the resting state.
+const WALLET_ANIM_CSS = `
+@keyframes wlt-color {
+  0%, 100% { color: currentColor; filter: none; }
+  10%, 86% { color: #0d9488; filter: drop-shadow(0 0 5px rgba(20,184,166,0.55)); }
+}
+@keyframes wlt-lid {
+  0%, 100% { transform: rotate(0deg); }
+  12%, 80% { transform: rotate(-32deg); }
+}
+@keyframes wlt-chip {
+  0%, 12% { transform: translate(-50%, 10px) scale(0.3); opacity: 0; }
+  26% { transform: translate(-50%, -16px) scale(1.06); opacity: 1; }
+  34%, 66% { transform: translate(-50%, -13px) scale(1); opacity: 1; }
+  80%, 100% { transform: translate(-50%, 8px) scale(0.3); opacity: 0; }
+}
+@keyframes wlt-ring {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(20,184,166,0); background-color: transparent; }
+  14%, 60% { box-shadow: 0 0 0 3px rgba(20,184,166,0.22); background-color: rgba(204,251,241,0.55); }
+}
+.wlt-play .wlt-svg { animation: wlt-color 3s ease-in-out 1; }
+.wlt-play .wlt-lid { animation: wlt-lid 3s cubic-bezier(.4,0,.2,1) 1; }
+.wlt-play .wlt-chip { animation: wlt-chip 3s cubic-bezier(.34,1.4,.64,1) 1; }
+.wlt-play { animation: wlt-ring 3s ease-in-out 1; }
+.wlt-lid { transform-box: fill-box; transform-origin: 0% 100%; }
+@media (prefers-reduced-motion: reduce) {
+  .wlt-play, .wlt-play .wlt-svg, .wlt-play .wlt-lid, .wlt-play .wlt-chip { animation: none !important; }
+}
+`;
+
+const AnimatedWalletIcon = ({ balance }) => {
+  const [play, setPlay] = useState(false);
+  useEffect(() => {
+    let stop;
+    const run = () => {
+      setPlay(true);
+      stop = setTimeout(() => setPlay(false), 3100);
+    };
+    const first = setTimeout(run, 1500);
+    const every = setInterval(run, 7000);
+    return () => { clearTimeout(first); clearInterval(every); clearTimeout(stop); };
+  }, []);
+  const amount = `₹${Number(balance || 0).toLocaleString('en-IN')}`;
+  return (
+    <span className={`relative inline-flex items-center justify-center w-6 h-6 rounded-lg ${play ? 'wlt-play' : ''}`}>
+      <style>{WALLET_ANIM_CSS}</style>
+      <svg className="wlt-svg w-[18px] h-[18px]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+        <rect x="3" y="9" width="18" height="11" rx="2.5" />
+        <path className="wlt-lid" d="M3 9V7.2a2.2 2.2 0 0 1 2.2-2.2H17" />
+        <circle cx="16.5" cy="14.5" r="1.2" fill="currentColor" stroke="none" />
+      </svg>
+      <span
+        className="wlt-chip pointer-events-none absolute left-1/2 top-0 z-50 px-1.5 py-px rounded-full text-[9px] leading-[14px] font-black text-white bg-gradient-to-r from-teal-500 to-emerald-500 shadow-lg whitespace-nowrap"
+        style={{ opacity: 0, transform: 'translate(-50%, 10px) scale(0.3)' }}
+      >
+        {amount}
+      </span>
+    </span>
+  );
+};
+
+// Shrinks a picked image to a small PNG data URI (keeps transparency) so
+// category pictures stay light even though they are stored with the settings.
+const resizeImageToDataUri = (file, max = 200) => new Promise((resolve, reject) => {
+  const reader = new FileReader();
+  reader.onerror = reject;
+  reader.onload = () => {
+    const img = new Image();
+    img.onerror = reject;
+    img.onload = () => {
+      const scale = Math.min(1, max / Math.max(img.width, img.height));
+      const canvas = document.createElement('canvas');
+      canvas.width = Math.max(1, Math.round(img.width * scale));
+      canvas.height = Math.max(1, Math.round(img.height * scale));
+      canvas.getContext('2d').drawImage(img, 0, 0, canvas.width, canvas.height);
+      resolve(canvas.toDataURL('image/png'));
+    };
+    img.src = reader.result;
+  };
+  reader.readAsDataURL(file);
+});
 
 const ShopByCategoryAdCarousel = ({ setFilterCategory, setCurrentView, categoryProducts, allProductsList, setSelectedProduct, promoCards }) => {
   const [adIndex, setAdIndex] = useState(0);
@@ -871,7 +955,20 @@ export default function EcommerceMarketplace({ inlineMode = false, onBackToSelec
   const [lightboxImage, setLightboxImage] = useState(null);
 
   // Auth state
-  const [authMode, setAuthMode] = useState('login'); // login | signup | otp
+  const [authMode, setAuthMode] = useState('login'); // login | signup | otp | forgot | reset
+  const [forgotEmail, setForgotEmail] = useState('');
+  const [forgotSent, setForgotSent] = useState(false);
+  const [resendIn, setResendIn] = useState(0);
+  const [resetLink, setResetLink] = useState({ uid: '', token: '' });
+  const [resetPw, setResetPw] = useState('');
+  const [resetPw2, setResetPw2] = useState('');
+  const [resetBusy, setResetBusy] = useState(false);
+  useEffect(() => {
+    if (resendIn <= 0) return undefined;
+    const t = setTimeout(() => setResendIn(resendIn - 1), 1000);
+    return () => clearTimeout(t);
+  }, [resendIn]);
+  const [resetDone, setResetDone] = useState(false);
   const [postAuthView, setPostAuthView] = useState('home'); // view to return to after successful auth
   const [authEmail, setAuthEmail] = useState('');
   const [authUsername, setAuthUsername] = useState('');
@@ -927,7 +1024,15 @@ export default function EcommerceMarketplace({ inlineMode = false, onBackToSelec
     const [hashView, hashPid] = rawHash.includes(':') ? rawHash.split(':') : [rawHash, null];
     const validViews = ['home', 'listing', 'details', 'cart', 'checkout', 'success', 'wishlist', 'profile', 'tracking', 'orders', 'dashboard', 'auth', 'support'];
 
-    if (hashView && hashView !== 'home' && validViews.includes(hashView)) {
+    if (hashView === 'reset-password' && hashPid && hashPid.includes('.')) {
+      const dot = hashPid.indexOf('.');
+      setResetLink({ uid: hashPid.slice(0, dot), token: hashPid.slice(dot + 1) });
+      setAuthMode('reset');
+      setCurrentView('auth');
+      // Drop the one-time token from the address bar and history straight away
+      window.history.replaceState({ view: 'home' }, '', window.location.pathname + window.location.search);
+      window.history.pushState({ view: 'auth' }, '', '#auth');
+    } else if (hashView && hashView !== 'home' && validViews.includes(hashView)) {
       setCurrentView(hashView);
       if (hashView === 'details' && hashPid) {
         setPendingSelectProductId(hashPid);
@@ -1063,6 +1168,7 @@ export default function EcommerceMarketplace({ inlineMode = false, onBackToSelec
   // New Category & Brand creation states
   const [newCatName, setNewCatName] = useState('');
   const [newCatIcon, setNewCatIcon] = useState('📦');
+  const [newCatImage, setNewCatImage] = useState('');
   const [newBrandName, setNewBrandName] = useState('');
 
   // Add Product states
@@ -1182,6 +1288,29 @@ export default function EcommerceMarketplace({ inlineMode = false, onBackToSelec
     }
   };
 
+  // Save (or clear) a category's picture in the store settings, which both the
+  // website and the mobile app already read as `category_images`.
+  const saveCategoryImage = async (name, dataUri) => {
+    const fresh = (await api.get('/ecommerce/store-settings/')).data;
+    const images = { ...(fresh.category_images || {}) };
+    if (dataUri) images[name] = dataUri; else delete images[name];
+    const res = await api.post('/ecommerce/store-settings/', { ...fresh, category_images: images });
+    setStoreSettings(res.data);
+    setEditSettings(res.data);
+  };
+
+  const pickCategoryImage = async (file) => {
+    if (!file) return null;
+    if (!file.type.startsWith('image/')) { showToast('Please choose an image file', 'error'); return null; }
+    if (file.size > 5 * 1024 * 1024) { showToast('Image must be under 5 MB', 'error'); return null; }
+    try {
+      return await resizeImageToDataUri(file);
+    } catch (e) {
+      showToast('Could not read that image', 'error');
+      return null;
+    }
+  };
+
   const fetchCategoriesAndBrands = async () => {
     try {
       try {
@@ -1233,6 +1362,7 @@ export default function EcommerceMarketplace({ inlineMode = false, onBackToSelec
         discountPrice: Number(p.discount_price),
         discountPercent: p.discount_percent,
         reviewsCount: p.reviews_count,
+        purchaseCount: p.purchase_count || 0,
         price: Number(p.price)
       }));
       setAllProducts(formatted);
@@ -1291,6 +1421,7 @@ export default function EcommerceMarketplace({ inlineMode = false, onBackToSelec
         discountPrice: Number(p.discount_price),
         discountPercent: p.discount_percent,
         reviewsCount: p.reviews_count,
+        purchaseCount: p.purchase_count || 0,
         price: Number(p.price)
       }));
       setSellerProducts(formatted);
@@ -2034,6 +2165,16 @@ export default function EcommerceMarketplace({ inlineMode = false, onBackToSelec
     }
   };
 
+  // Friendly name for the welcome banner: never show a raw email address.
+  const welcomeName = (() => {
+    if (!user) return '?';
+    if (user.first_name) return user.first_name;
+    if (user.is_staff || user.is_superuser || user.user_type === 'admin') return 'Admin';
+    const u = user.username || '';
+    if (u && !u.includes('@')) return u;
+    return (user.email || u || '?').split('@')[0];
+  })();
+
   return (
     <div className={`min-h-screen transition-colors duration-300 pb-20 md:pb-0 ${darkMode ? 'bg-slate-950 text-white' : 'bg-white text-slate-900'}`}>
       
@@ -2045,8 +2186,8 @@ export default function EcommerceMarketplace({ inlineMode = false, onBackToSelec
             <nav className="w-full bg-white/95 dark:bg-slate-900/95 backdrop-blur-xl border-b border-slate-200/50 dark:border-slate-800/50 py-1.5 px-3 sm:px-8 shadow-sm transition-all">
               <div className="flex items-center justify-between gap-2 sm:gap-4">
 
-                {/* Logo */}
-                <div className="flex items-center shrink-0">
+                {/* Logo (drawn ~2x via scale, so reserve its visual width to keep the search bar off it) */}
+                <div className="flex items-center shrink-0 w-[104px] sm:w-[165px]">
                   <button
                     onClick={() => setCurrentView('home')}
                     className="flex items-center group transition-all hover:opacity-90"
@@ -2056,7 +2197,7 @@ export default function EcommerceMarketplace({ inlineMode = false, onBackToSelec
                 </div>
 
                 {/* Smart Search Bar */}
-                <div ref={searchContainerRef} className="relative flex-1 max-w-md hidden md:block">
+                <div ref={searchContainerRef} className="relative flex-1 min-w-0 max-w-md hidden md:block">
                   <div className="relative">
                     <input
                       type="text"
@@ -2137,7 +2278,7 @@ export default function EcommerceMarketplace({ inlineMode = false, onBackToSelec
                       aria-label="Referral Wallet"
                       className="hidden sm:flex items-center gap-1 p-2 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-500 dark:text-slate-300 relative"
                     >
-                      <Wallet className="w-4 h-4" />
+                      <AnimatedWalletIcon balance={walletData?.balance} />
                       {walletData?.balance > 0 && (
                         <span className="text-[10px] font-black text-emerald-600 dark:text-emerald-400">₹{Number(walletData.balance).toLocaleString('en-IN')}</span>
                       )}
@@ -2205,12 +2346,12 @@ export default function EcommerceMarketplace({ inlineMode = false, onBackToSelec
               <div className={`bg-gradient-to-r from-orange-50 to-amber-50 dark:from-slate-800 dark:to-slate-800 border border-orange-100 dark:border-slate-700 rounded-none px-5 flex items-center justify-between transition-all duration-300 overflow-hidden ${isCategorySticky ? 'max-h-0 py-0 border-0' : 'max-h-20 py-1.5'}`}>
                 <div className="flex items-center gap-2.5">
                   <div className="w-7 h-7 rounded-full bg-orange-500 flex items-center justify-center text-white font-black text-xs flex-shrink-0">
-                    {(user.username || user.email || '?')[0].toUpperCase()}
+                    {welcomeName[0].toUpperCase()}
                   </div>
                   <div>
                     <span className="text-xs font-bold text-slate-700 dark:text-slate-200">
                       {isNewUser ? 'Welcome, ' : 'Welcome back, '}
-                      <span className="text-orange-500">{user.username || user.email}</span>! 👋
+                      <span className="text-orange-500">{welcomeName}</span>! 👋
                     </span>
                     <span className="hidden sm:inline text-[10px] text-slate-400 dark:text-slate-500 ml-2 font-medium">
                       {user.user_type === 'admin' ? '· Admin' : user.user_type === 'influencer' ? '· Influencer' : '· Happy shopping'}
@@ -2337,8 +2478,8 @@ export default function EcommerceMarketplace({ inlineMode = false, onBackToSelec
                         >
                           <div className="w-10 h-10 flex items-center justify-center transition-transform group-hover:scale-105 relative">
                             <div className="absolute w-5 h-5 bg-orange-400/90 dark:bg-orange-500/90 rounded-[6px] transform rotate-12 top-1.5 right-1.5 z-0"></div>
-                            {cat.image ? (
-                              <img loading="lazy" src={cat.image} alt={cat.name} className="w-full h-full object-contain relative z-10" />
+                            {(cat.image || storeSettings.category_images?.[cat.name]) ? (
+                              <img loading="lazy" src={cat.image || storeSettings.category_images[cat.name]} alt={cat.name} className="w-full h-full object-contain relative z-10" />
                             ) : hasSpecificIcon ? (
                               <Icon className="w-8 h-8 text-slate-900 dark:text-slate-100 relative z-10" strokeWidth={1.25} />
                             ) : cat.icon ? (
@@ -2730,7 +2871,7 @@ export default function EcommerceMarketplace({ inlineMode = false, onBackToSelec
                         <div className="flex items-center gap-1">
                           <Star className="w-3 h-3 fill-orange-500 text-orange-500" />
                           <span className="text-xs font-black dark:text-slate-200">{prod.rating}</span>
-                          <span className="text-[10px] font-medium text-slate-400">({prod.reviewsCount})</span>
+                          {prod.purchaseCount > 0 && <span className="text-[10px] font-medium text-slate-400">({prod.purchaseCount} bought)</span>}
                         </div>
 
                         {/* Pricing */}
@@ -2887,7 +3028,7 @@ export default function EcommerceMarketplace({ inlineMode = false, onBackToSelec
                       <div className="flex items-center gap-1">
                         <Star className="w-3 h-3 sm:w-3.5 sm:h-3.5 fill-orange-500 text-orange-500" />
                         <span className="text-xs sm:text-sm font-black dark:text-slate-200">{prod.rating}</span>
-                        <span className="hidden sm:inline text-[10px] sm:text-xs font-medium text-slate-400">({prod.reviewsCount})</span>
+                        {prod.purchaseCount > 0 && <span className="hidden sm:inline text-[10px] sm:text-xs font-medium text-slate-400">({prod.purchaseCount} bought)</span>}
                       </div>
 
                       {/* Pricing */}
@@ -2997,7 +3138,7 @@ export default function EcommerceMarketplace({ inlineMode = false, onBackToSelec
                           <div className="flex items-center gap-1 mb-1.5">
                             <Star className="w-3 h-3 fill-orange-500 text-orange-500" />
                             <span className="text-[10px] font-black dark:text-slate-200">{prod.rating}</span>
-                            <span className="text-[9px] text-slate-400">({prod.reviewsCount})</span>
+                            {prod.purchaseCount > 0 && <span className="text-[9px] text-slate-400">({prod.purchaseCount} bought)</span>}
                           </div>
                           <p className="text-sm font-black text-slate-900 dark:text-white">
                             ₹{prod.discountPrice.toLocaleString()}
@@ -3591,7 +3732,7 @@ export default function EcommerceMarketplace({ inlineMode = false, onBackToSelec
                         <div className="flex items-center gap-1">
                           <Star className="w-3 h-3 sm:w-3.5 sm:h-3.5 fill-orange-500 text-orange-500" />
                           <span className="text-xs sm:text-sm font-black dark:text-slate-200">{prod.rating}</span>
-                          <span className="hidden sm:inline text-[10px] sm:text-xs font-medium text-slate-400">({prod.reviewsCount})</span>
+                          {prod.purchaseCount > 0 && <span className="hidden sm:inline text-[10px] sm:text-xs font-medium text-slate-400">({prod.purchaseCount} bought)</span>}
                         </div>
 
                         {/* Pricing */}
@@ -4638,7 +4779,7 @@ export default function EcommerceMarketplace({ inlineMode = false, onBackToSelec
               <button onClick={() => window.history.back()} className="flex items-center justify-center w-8 h-8 rounded-full bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 transition-colors">
                 <ChevronLeft className="w-5 h-5 text-slate-600 dark:text-slate-300" />
               </button>
-              <h1 className="text-2xl font-black tracking-tight dark:text-white">Secure Checkout</h1>
+              <h1 className="text-2xl font-semibold tracking-tight dark:text-white">Secure Checkout</h1>
             </div>
 
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
@@ -5589,14 +5730,176 @@ export default function EcommerceMarketplace({ inlineMode = false, onBackToSelec
                 <ChevronLeft className="w-5 h-5 text-slate-600 dark:text-slate-300" />
               </button>
               <h2 className="text-2xl font-black tracking-tight dark:text-white">
-                {authMode === 'login' ? 'Welcome Back' : authMode === 'signup' ? 'Create Account' : 'Verify Security OTP'}
+                {authMode === 'login' ? 'Welcome Back' : authMode === 'signup' ? 'Create Account' : authMode === 'forgot' ? (forgotSent ? 'Check Your Email' : 'Forgot Password') : authMode === 'reset' ? 'Set New Password' : 'Verify Security OTP'}
               </h2>
               <p className="text-slate-400 text-xs font-semibold">
-                {authMode === 'login' ? 'Access your buyer dashboard credentials' : authMode === 'signup' ? 'Join premium rewards selection' : 'Check security code sent to phone'}
+                {authMode === 'login' ? 'Access your buyer dashboard credentials' : authMode === 'signup' ? 'Join premium rewards selection' : authMode === 'forgot' ? (forgotSent ? 'Password reset link sent' : "Enter your email and we'll send you a reset link") : authMode === 'reset' ? 'Choose a new password for your account' : 'Check security code sent to phone'}
               </p>
             </div>
 
-            {authMode === 'otp' ? (
+            {authMode === 'forgot' ? (
+              <div className="space-y-4">
+                {forgotSent ? (
+                  <div className="text-center space-y-4">
+                    <div className="mx-auto w-14 h-14 rounded-full bg-orange-50 dark:bg-orange-900/20 flex items-center justify-center">
+                      <Mail className="w-7 h-7 text-orange-500" />
+                    </div>
+                    <p className="text-xs font-semibold text-slate-500 dark:text-slate-400 leading-relaxed">
+                      If an account exists for<br />
+                      <span className="font-extrabold text-slate-800 dark:text-white break-all">{forgotEmail}</span>,<br />
+                      we've sent a link to reset your password.
+                    </p>
+                    <ul className="text-left text-[11px] font-semibold text-slate-400 space-y-1.5 bg-slate-50 dark:bg-slate-800/60 rounded-xl p-3.5">
+                      <li>• The link can be used once and expires soon.</li>
+                      <li>• Can't find it? Check your spam or junk folder.</li>
+                    </ul>
+                    <button
+                      disabled={resendIn > 0 || resetBusy}
+                      onClick={async () => {
+                        setResetBusy(true);
+                        try {
+                          await api.post('/auth/password-reset/', { email: forgotEmail.trim() });
+                          setResendIn(60);
+                          showToast('Reset link sent again');
+                        } catch (err) {
+                          showToast(err.response?.status === 429 ? 'Too many requests. Please try again later.' : 'Could not resend the link. Please try again.', 'error');
+                        } finally {
+                          setResetBusy(false);
+                        }
+                      }}
+                      className="w-full border border-slate-200 dark:border-slate-700 hover:border-orange-400 text-slate-700 dark:text-slate-200 font-extrabold text-xs py-3 rounded-xl transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      {resendIn > 0 ? `Resend link in ${resendIn}s` : 'Resend link'}
+                    </button>
+                    <button
+                      onClick={() => { setAuthMode('login'); setForgotSent(false); setResendIn(0); }}
+                      className="w-full bg-slate-950 hover:bg-slate-900 text-white font-extrabold text-xs py-3 rounded-xl shadow-md transition-colors flex items-center justify-center gap-1.5"
+                    >
+                      <LogIn className="w-4 h-4" /> Back to Log In
+                    </button>
+                  </div>
+                ) : (
+                  <>
+                    <div className="space-y-2">
+                      <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Email Address</label>
+                      <div className="relative">
+                        <input
+                          type="email"
+                          value={forgotEmail}
+                          onChange={(e) => setForgotEmail(e.target.value)}
+                          onKeyDown={(e) => { if (e.key === 'Enter') { document.getElementById('forgot-submit')?.click(); } }}
+                          placeholder="you@example.com"
+                          className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl py-2.5 pl-10 pr-4 text-xs font-bold focus:outline-none focus:ring-1 focus:ring-orange-500 dark:text-white"
+                        />
+                        <User className="absolute left-3.5 top-3 w-4 h-4 text-slate-400" />
+                      </div>
+                    </div>
+                    <button
+                      id="forgot-submit"
+                      disabled={resetBusy}
+                      onClick={async () => {
+                        if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(forgotEmail.trim())) { showToast('Please enter a valid email address', 'error'); return; }
+                        setResetBusy(true);
+                        try {
+                          await api.post('/auth/password-reset/', { email: forgotEmail.trim() });
+                          setForgotSent(true);
+                          setResendIn(60);
+                        } catch (err) {
+                          showToast(err.response?.status === 429 ? 'Too many requests. Please try again later.' : (err.response?.data?.email?.[0] || 'Could not send the reset link. Please try again.'), 'error');
+                        } finally {
+                          setResetBusy(false);
+                        }
+                      }}
+                      className="w-full bg-slate-950 hover:bg-slate-900 text-white font-extrabold text-xs py-3 rounded-xl shadow-md transition-colors disabled:opacity-50"
+                    >
+                      {resetBusy ? 'Sending...' : 'Send Reset Link'}
+                    </button>
+                  </>
+                )}
+                {!forgotSent && (
+                  <button
+                    onClick={() => { setAuthMode('login'); setForgotSent(false); }}
+                    className="w-full text-center text-[11px] font-bold text-slate-400 hover:text-orange-500 transition-colors"
+                  >
+                    Back to Log In
+                  </button>
+                )}
+              </div>
+            ) : authMode === 'reset' ? (
+              <div className="space-y-4">
+                {resetDone ? (
+                  <>
+                    <div className="rounded-xl border border-emerald-200 bg-emerald-50 dark:bg-emerald-900/20 dark:border-emerald-800 p-4 text-xs font-semibold text-emerald-700 dark:text-emerald-300">
+                      Your password has been reset. You can now log in with your new password.
+                    </div>
+                    <button
+                      onClick={() => { setAuthMode('login'); setResetDone(false); setResetPw(''); setResetPw2(''); }}
+                      className="w-full bg-slate-950 hover:bg-slate-900 text-white font-extrabold text-xs py-3 rounded-xl shadow-md transition-colors"
+                    >
+                      Go to Log In
+                    </button>
+                  </>
+                ) : (
+                  <>
+                    <div className="space-y-2">
+                      <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest">New Password</label>
+                      <div className="relative">
+                        <input
+                          type={showAuthPassword ? 'text' : 'password'}
+                          value={resetPw}
+                          onChange={(e) => setResetPw(e.target.value)}
+                          placeholder="At least 8 characters"
+                          className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl py-2.5 pl-10 pr-10 text-xs font-bold focus:outline-none focus:ring-1 focus:ring-orange-500 dark:text-white"
+                        />
+                        <Lock className="absolute left-3.5 top-3 w-4 h-4 text-slate-400" />
+                        <button type="button" onClick={() => setShowAuthPassword(!showAuthPassword)} className="absolute right-3.5 top-3 text-slate-400 hover:text-slate-600 transition-colors">
+                          {showAuthPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                        </button>
+                      </div>
+                    </div>
+                    <div className="space-y-2">
+                      <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Confirm New Password</label>
+                      <div className="relative">
+                        <input
+                          type={showAuthPassword ? 'text' : 'password'}
+                          value={resetPw2}
+                          onChange={(e) => setResetPw2(e.target.value)}
+                          placeholder="Re-enter the password"
+                          className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl py-2.5 pl-10 pr-4 text-xs font-bold focus:outline-none focus:ring-1 focus:ring-orange-500 dark:text-white"
+                        />
+                        <Lock className="absolute left-3.5 top-3 w-4 h-4 text-slate-400" />
+                      </div>
+                    </div>
+                    <button
+                      disabled={resetBusy}
+                      onClick={async () => {
+                        if (resetPw.length < 8) { showToast('Password must be at least 8 characters', 'error'); return; }
+                        if (resetPw !== resetPw2) { showToast('Passwords do not match', 'error'); return; }
+                        setResetBusy(true);
+                        try {
+                          await api.post('/auth/password-reset/confirm/', { uid: resetLink.uid, token: resetLink.token, new_password: resetPw });
+                          setResetDone(true);
+                          setResetLink({ uid: '', token: '' });
+                        } catch (err) {
+                          showToast(err.response?.data?.error || 'Could not reset the password. Please request a new link.', 'error');
+                        } finally {
+                          setResetBusy(false);
+                        }
+                      }}
+                      className="w-full bg-slate-950 hover:bg-slate-900 text-white font-extrabold text-xs py-3 rounded-xl shadow-md transition-colors disabled:opacity-50"
+                    >
+                      {resetBusy ? 'Saving...' : 'Reset Password'}
+                    </button>
+                    <button
+                      onClick={() => { setAuthMode('forgot'); setForgotSent(false); }}
+                      className="w-full text-center text-[11px] font-bold text-slate-400 hover:text-orange-500 transition-colors"
+                    >
+                      Link expired? Request a new one
+                    </button>
+                  </>
+                )}
+              </div>
+            ) : authMode === 'otp' ? (
               <div className="space-y-4">
                 <div className="space-y-2">
                   <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Security Pin</label>
@@ -5691,8 +5994,20 @@ export default function EcommerceMarketplace({ inlineMode = false, onBackToSelec
                   </div>
                 </div>
 
+                {authMode === 'login' && (
+                  <div className="flex justify-end -mt-2">
+                    <button
+                      type="button"
+                      onClick={() => { setForgotEmail(authEmail || ''); setForgotSent(false); setAuthMode('forgot'); }}
+                      className="text-[11px] font-bold text-orange-600 hover:text-orange-700 transition-colors"
+                    >
+                      Forgot password?
+                    </button>
+                  </div>
+                )}
+
                 {authMode === 'login' ? (
-                  <button 
+                  <button
                     onClick={async () => {
                       if (!authEmail || !authPassword) {
                         showToast("Please enter email and password", 'error');
@@ -6857,6 +7172,21 @@ export default function EcommerceMarketplace({ inlineMode = false, onBackToSelec
                         className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl py-2 px-3 focus:outline-none dark:text-white font-bold"
                       />
                     </div>
+                    <div className="space-y-1">
+                      <label className="font-bold text-slate-450 dark:text-slate-400">Or upload an image <span className="font-semibold text-slate-400">(optional, replaces the emoji)</span></label>
+                      <div className="flex items-center gap-3">
+                        <label className="flex-1 cursor-pointer text-center bg-slate-50 dark:bg-slate-800 border border-dashed border-slate-300 dark:border-slate-600 hover:border-orange-400 rounded-xl py-2.5 px-3 font-bold text-slate-500 dark:text-slate-300 transition-colors">
+                          {newCatImage ? 'Change image' : 'Choose image'}
+                          <input type="file" accept="image/*" className="hidden" onChange={async (e) => { const d = await pickCategoryImage(e.target.files[0]); e.target.value = ''; if (d) setNewCatImage(d); }} />
+                        </label>
+                        {newCatImage && (
+                          <div className="relative">
+                            <img src={newCatImage} alt="Category preview" className="w-11 h-11 rounded-xl object-contain bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700" />
+                            <button type="button" onClick={() => setNewCatImage('')} title="Remove image" className="absolute -top-1.5 -right-1.5 w-4 h-4 rounded-full bg-rose-500 text-white flex items-center justify-center"><X className="w-3 h-3" /></button>
+                          </div>
+                        )}
+                      </div>
+                    </div>
                     <button 
                       onClick={async () => {
                         if (newCatName.trim()) {
@@ -6865,8 +7195,13 @@ export default function EcommerceMarketplace({ inlineMode = false, onBackToSelec
                               name: newCatName,
                               icon: newCatIcon
                             });
+                            if (newCatImage) {
+                              try { await saveCategoryImage(newCatName.trim(), newCatImage); }
+                              catch (imgErr) { console.error('Category image save failed:', imgErr); showToast('Category added, but the image could not be saved', 'error'); }
+                            }
                             setNewCatName('');
                             setNewCatIcon('📦');
+                            setNewCatImage('');
                             fetchCategoriesAndBrands();
                           } catch (err) {
                             console.error("Error creating category:", err);
@@ -6891,9 +7226,29 @@ export default function EcommerceMarketplace({ inlineMode = false, onBackToSelec
                       categoriesList.map((cat, idx) => (
                         <div key={idx} className="p-3.5 bg-slate-50 dark:bg-slate-800/60 rounded-2xl flex items-center justify-between border border-slate-100 dark:border-slate-700/50 text-xs">
                           <div className="flex items-center gap-3 font-bold">
-                            <span className="text-2xl">{cat.icon}</span>
+                            {storeSettings.category_images?.[cat.name]
+                              ? <img src={storeSettings.category_images[cat.name]} alt={cat.name} className="w-8 h-8 object-contain" />
+                              : <span className="text-2xl">{cat.icon}</span>}
                             <span className="dark:text-white">{cat.name}</span>
                           </div>
+                          <div className="flex items-center gap-1.5">
+                          <label title="Upload image" className="cursor-pointer p-1.5 text-slate-500 hover:text-orange-500 hover:bg-orange-50 dark:hover:bg-slate-700 rounded-lg border border-slate-200 dark:border-slate-700">
+                            <Upload className="w-4 h-4" />
+                            <input type="file" accept="image/*" className="hidden" onChange={async (e) => {
+                              const d = await pickCategoryImage(e.target.files[0]); e.target.value = '';
+                              if (!d) return;
+                              try { await saveCategoryImage(cat.name, d); showToast('Category image updated'); }
+                              catch (err) { console.error(err); showToast('Failed to save image', 'error'); }
+                            }} />
+                          </label>
+                          {storeSettings.category_images?.[cat.name] && (
+                            <button title="Remove image" onClick={async () => {
+                              try { await saveCategoryImage(cat.name, ''); showToast('Category image removed'); }
+                              catch (err) { console.error(err); showToast('Failed to remove image', 'error'); }
+                            }} className="p-1.5 text-slate-500 hover:text-rose-500 hover:bg-rose-50 dark:hover:bg-slate-700 rounded-lg border border-slate-200 dark:border-slate-700">
+                              <X className="w-4 h-4" />
+                            </button>
+                          )}
                           <button 
                             onClick={async () => {
                               if (window.confirm(`Are you sure you want to delete category "${cat.name}"?`)) {
@@ -6910,6 +7265,7 @@ export default function EcommerceMarketplace({ inlineMode = false, onBackToSelec
                           >
                             <Trash2 className="w-4 h-4" />
                           </button>
+                          </div>
                         </div>
                       ))
                     )}
@@ -9087,20 +9443,34 @@ export default function EcommerceMarketplace({ inlineMode = false, onBackToSelec
                 <p className="text-xs text-slate-500 font-semibold">You have no saved addresses yet.</p>
               )}
               {(Array.isArray(addresses) ? addresses : []).map((addr, idx) => (
-                <button
+                <div
                   key={addr.id || idx}
+                  role="button"
+                  tabIndex={0}
                   onClick={() => { setSelectedAddress(idx); setShowAddressPicker(false); }}
-                  className={`w-full text-left p-3 rounded-xl border transition-all ${selectedAddress === idx ? 'border-orange-500 bg-orange-500/5' : 'border-slate-200 dark:border-slate-800 hover:border-slate-300'}`}
+                  onKeyDown={(e) => { if (e.key === 'Enter') { setSelectedAddress(idx); setShowAddressPicker(false); } }}
+                  className={`w-full text-left p-3 rounded-xl border transition-all cursor-pointer ${selectedAddress === idx ? 'border-orange-500 bg-orange-500/5' : 'border-slate-200 dark:border-slate-800 hover:border-slate-300'}`}
                 >
-                  <div className="flex items-center justify-between">
+                  <div className="flex items-center justify-between gap-2">
                     <span className="font-extrabold text-xs dark:text-white">{addr.name}</span>
-                    {selectedAddress === idx && <CheckCircle2 className="w-4 h-4 text-orange-500" />}
+                    <div className="flex items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={(e) => { handleEditAddress(addr, e); setShowAddressPicker(false); setCurrentView('checkout'); }}
+                        title="Edit address"
+                        aria-label="Edit address"
+                        className="p-1 rounded-md text-orange-600 hover:text-orange-700 hover:bg-orange-100/70 transition-colors"
+                      >
+                        <Edit className="w-3.5 h-3.5" />
+                      </button>
+                      {selectedAddress === idx && <CheckCircle2 className="w-4 h-4 text-orange-500" />}
+                    </div>
                   </div>
                   <p className="text-[11px] text-slate-500 font-semibold leading-relaxed mt-1">
                     {addr.street_address}, {addr.city}{addr.district ? `, ${addr.district}` : ''}, {addr.state} - {addr.postal_code}
                   </p>
                   {addr.is_default && <span className="inline-block mt-1 text-[9px] font-black uppercase tracking-wider text-slate-400">Default</span>}
-                </button>
+                </div>
               ))}
               <button
                 onClick={() => { setShowAddressPicker(false); setShowAddressForm(true); setCurrentView('checkout'); }}
