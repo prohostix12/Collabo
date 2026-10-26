@@ -432,7 +432,7 @@ The Collabo Team
 
             user = profile.user
             applicant = user.first_name or user.username
-            review_url = f"{settings.FRONTEND_URL}/admin"
+            review_url = f"{settings.FRONTEND_URL}/admin-dashboard"
             subject = f'New Seller Application: {profile.store_name}'
 
             message = f"""

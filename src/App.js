@@ -105,7 +105,8 @@ function AppRoutes() {
         </ProtectedRoute>
       } />
       
-      <Route path="/admin/*" element={
+      {/* Not /admin: on the live server nginx sends /admin/ to Django's own admin site, so a refresh there never reached this page. */}
+      <Route path="/admin-dashboard/*" element={
         <ProtectedRoute allowedUserTypes={['admin']}>
           <Layout>
             <AdminDashboard />

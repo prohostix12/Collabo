@@ -2344,7 +2344,7 @@ export default function EcommerceMarketplace({ inlineMode = false, onBackToSelec
                   </button>
 
                   {(user?.is_staff || user?.user_type === 'admin') && (
-                    <button onClick={() => navigate('/admin')} className="hidden sm:flex p-2 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-500 dark:text-slate-300 items-center gap-1">
+                    <button onClick={() => navigate('/admin-dashboard')} className="hidden sm:flex p-2 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-500 dark:text-slate-300 items-center gap-1">
                       <LayoutDashboard className="w-4 h-4 text-orange-500" />
                       <span className="hidden lg:inline text-xs font-bold uppercase tracking-wider">Admin</span>
                     </button>
@@ -2386,7 +2386,7 @@ export default function EcommerceMarketplace({ inlineMode = false, onBackToSelec
                   )}
                   <button onClick={() => { isLoggedIn ? setCurrentView('profile') : setCurrentView('auth'); setMobileMenuOpen(false); }} className="w-full text-left px-3 py-2.5 rounded-xl hover:bg-slate-50 dark:hover:bg-slate-800 text-sm font-bold text-slate-700 dark:text-slate-200 flex items-center gap-3"><User className="w-4 h-4 text-slate-400" />{isLoggedIn ? 'My Account' : 'Login'}</button>
                   {(user?.is_staff || user?.user_type === 'admin') && (
-                    <button onClick={() => { navigate('/admin'); setMobileMenuOpen(false); }} className="w-full text-left px-3 py-2.5 rounded-xl hover:bg-slate-50 dark:hover:bg-slate-800 text-sm font-bold text-slate-700 dark:text-slate-200 flex items-center gap-3"><LayoutDashboard className="w-4 h-4 text-orange-500" />Admin Dashboard</button>
+                    <button onClick={() => { navigate('/admin-dashboard'); setMobileMenuOpen(false); }} className="w-full text-left px-3 py-2.5 rounded-xl hover:bg-slate-50 dark:hover:bg-slate-800 text-sm font-bold text-slate-700 dark:text-slate-200 flex items-center gap-3"><LayoutDashboard className="w-4 h-4 text-orange-500" />Admin Dashboard</button>
                   )}
 
                 </div>
