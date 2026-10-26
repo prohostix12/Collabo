@@ -1,7 +1,28 @@
 import React, { useState } from 'react';
 import { Mail, Phone, MapPin, ArrowRight, CheckCircle2, Loader2 } from 'lucide-react';
 import { Link } from 'react-router-dom';
+import toast from 'react-hot-toast';
 import api from '../../services/api';
+
+const SUPPORT_PHONE = '+918448119359';
+const SUPPORT_PHONE_DISPLAY = '+91 84481 19359';
+
+// tel: links only work on devices that can place calls. On a desktop browser the click
+// silently does nothing, so there we copy the number and say so instead.
+const canPlaceCalls = () =>
+  typeof navigator !== 'undefined' &&
+  (navigator.userAgentData?.mobile === true || /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent || ''));
+
+const callSupport = (e) => {
+  if (canPlaceCalls()) return; // phones: let the link open the dialer
+  e.preventDefault();
+  const told = (copied) => toast(
+    copied ? `Support number ${SUPPORT_PHONE_DISPLAY} copied. Call us any time.` : `Call us on ${SUPPORT_PHONE_DISPLAY}`,
+    { icon: '📞', duration: 5000 }
+  );
+  if (navigator.clipboard?.writeText) navigator.clipboard.writeText(SUPPORT_PHONE_DISPLAY).then(() => told(true), () => told(false));
+  else told(false);
+};
 
 const Footer = () => {
   const currentYear = new Date().getFullYear();
@@ -83,7 +104,7 @@ const Footer = () => {
                   </div>
                   support@collabo.com
                 </a>
-                <a href="tel:+918448119359" className="flex items-center gap-2.5 text-[12px] text-slate-500 hover:text-[#1B5E6B] transition-colors group">
+                <a href={`tel:${SUPPORT_PHONE}`} onClick={callSupport} className="flex items-center gap-2.5 text-[12px] text-slate-500 hover:text-[#1B5E6B] transition-colors group">
                   <div className="w-8 h-8 rounded-lg bg-[#1B5E6B]/5 group-hover:bg-[#1B5E6B]/10 flex items-center justify-center shrink-0 transition-colors">
                     <Phone className="w-3.5 h-3.5 text-[#1B5E6B]" />
                   </div>
@@ -113,7 +134,7 @@ const Footer = () => {
               <h4 className="text-[11px] font-black text-[#1B5E6B] uppercase tracking-widest mb-4 pb-2 border-b-2 border-[#ff9f00] inline-block">Support</h4>
               <ul className="space-y-3">
                 <li><a href="/#support" className="text-[12px] text-slate-500 hover:text-[#1B5E6B] transition-colors font-medium">Contact Support</a></li>
-                <li><a href="tel:+918448119359" className="text-[12px] text-slate-500 hover:text-[#1B5E6B] transition-colors font-medium">Call Us</a></li>
+                <li><a href={`tel:${SUPPORT_PHONE}`} onClick={callSupport} className="text-[12px] text-slate-500 hover:text-[#1B5E6B] transition-colors font-medium">Call Us</a></li>
                 <li><Link to="/shipping-policy" className="text-[12px] text-slate-500 hover:text-[#1B5E6B] transition-colors font-medium">Shipping Info</Link></li>
                 <li><Link to="/return-policy" className="text-[12px] text-slate-500 hover:text-[#1B5E6B] transition-colors font-medium">Returns & Refunds</Link></li>
               </ul>
