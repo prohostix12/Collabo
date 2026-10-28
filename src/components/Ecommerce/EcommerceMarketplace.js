@@ -41,6 +41,17 @@ const CATEGORIES = [
 
 const BRANDS = [];
 
+// "75% off" style text shown next to the struck-through price, like Amazon / Flipkart / Nykaa.
+const discountPercentOf = (price, discounted) => {
+  const p = Number(price), d = Number(discounted);
+  if (!(p > 0) || !(d > 0) || d >= p) return 0;
+  return Math.max(1, Math.round(((p - d) / p) * 100));
+};
+const DiscountBadge = ({ price, discounted, className = '' }) => {
+  const pct = discountPercentOf(price, discounted);
+  return pct ? <span className={`font-black text-orange-500 ${className}`}>{pct}% off</span> : null;
+};
+
 const CAT_ICON_MAP = {
   'All':           { Icon: LayoutGrid,     color: 'text-slate-900 dark:text-white', bg: 'bg-slate-100 dark:bg-slate-700' },
   'Electronics':   { Icon: Cpu,            color: 'text-slate-900 dark:text-white', bg: 'bg-slate-100 dark:bg-slate-700' },
@@ -2333,7 +2344,7 @@ export default function EcommerceMarketplace({ inlineMode = false, onBackToSelec
                     >
                       <AnimatedWalletIcon balance={walletData?.balance} />
                       {walletData?.balance > 0 && (
-                        <span className="text-[10px] font-black text-emerald-600 dark:text-emerald-400">₹{Number(walletData.balance).toLocaleString('en-IN')}</span>
+                        <span className="text-[10px] font-black text-orange-500">₹{Number(walletData.balance).toLocaleString('en-IN')}</span>
                       )}
                     </button>
                   )}
@@ -2888,9 +2899,11 @@ export default function EcommerceMarketplace({ inlineMode = false, onBackToSelec
                     className="bg-white dark:bg-slate-900/90 rounded-2xl border border-slate-200/70 dark:border-slate-800 p-3 relative group hover:shadow-lg hover:border-orange-400 dark:hover:border-orange-500/60 transition-all flex flex-col justify-between"
                   >
                     {/* Discount Tag */}
-                    <div className="absolute top-2.5 left-2.5 bg-orange-500 text-white text-[9px] font-black px-2 py-0.5 rounded-full z-10 shadow-sm">
-                      -{prod.discountPercent}% OFF
-                    </div>
+                    {discountPercentOf(prod.price, prod.discountPrice) > 0 && (
+                      <div className="absolute top-2.5 left-2.5 bg-orange-500 text-white text-[9px] font-black px-2 py-0.5 rounded-full z-10 shadow-sm">
+                        -{discountPercentOf(prod.price, prod.discountPrice)}% OFF
+                      </div>
+                    )}
                     {/* Wishlist Icon */}
                     <button 
                       onClick={() => toggleWishlist(prod)}
@@ -2931,6 +2944,7 @@ export default function EcommerceMarketplace({ inlineMode = false, onBackToSelec
                         <div className="flex items-baseline gap-1.5">
                           <span className="text-sm sm:text-base font-black dark:text-white">₹{prod.discountPrice.toLocaleString()}</span>
                           <span className="text-[10px] sm:text-xs text-slate-400 line-through">₹{prod.price.toLocaleString()}</span>
+                          <DiscountBadge price={prod.price} discounted={prod.discountPrice} className="text-[10px] sm:text-xs" />
                         </div>
 
                         {/* Stock scale */}
@@ -3088,6 +3102,7 @@ export default function EcommerceMarketplace({ inlineMode = false, onBackToSelec
                       <div className="flex items-baseline gap-1 sm:gap-2">
                         <span className="text-sm sm:text-base font-black dark:text-white">₹{prod.discountPrice.toLocaleString()}</span>
                         <span className="text-[10px] sm:text-xs text-slate-400 line-through">₹{prod.price.toLocaleString()}</span>
+                        <DiscountBadge price={prod.price} discounted={prod.discountPrice} className="text-[10px] sm:text-xs" />
                       </div>
 
                       <button 
@@ -3197,7 +3212,7 @@ export default function EcommerceMarketplace({ inlineMode = false, onBackToSelec
                             ₹{prod.discountPrice.toLocaleString()}
                           </p>
                           {prod.price !== prod.discountPrice && (
-                            <p className="text-xs text-slate-400 line-through">₹{prod.price.toLocaleString()}</p>
+                            <p className="text-xs text-slate-400 line-through">₹{prod.price.toLocaleString()} <DiscountBadge price={prod.price} discounted={prod.discountPrice} /></p>
                           )}
                           <button
                             onClick={(e) => { e.stopPropagation(); addToCart(prod); }}
@@ -3479,7 +3494,7 @@ export default function EcommerceMarketplace({ inlineMode = false, onBackToSelec
                         <div className="flex items-baseline gap-1 pt-0.5">
                           <span className="text-[11px] font-black dark:text-white">₹{prod.discountPrice.toLocaleString()}</span>
                           {prod.price > prod.discountPrice && (
-                            <span className="text-[8px] text-slate-400 line-through">₹{prod.price.toLocaleString()}</span>
+                            <><span className="text-[8px] text-slate-400 line-through">₹{prod.price.toLocaleString()}</span><DiscountBadge price={prod.price} discounted={prod.discountPrice} className="text-[8px]" /></>
                           )}
                         </div>
                       </div>
@@ -3792,7 +3807,7 @@ export default function EcommerceMarketplace({ inlineMode = false, onBackToSelec
                         <div className="flex items-baseline gap-1 sm:gap-2 pt-0.5 sm:pt-1">
                           <span className="text-sm sm:text-base font-black dark:text-white">₹{prod.discountPrice.toLocaleString()}</span>
                           {prod.price > prod.discountPrice && (
-                            <span className="text-[10px] sm:text-xs text-slate-400 line-through">₹{prod.price.toLocaleString()}</span>
+                            <><span className="text-[10px] sm:text-xs text-slate-400 line-through">₹{prod.price.toLocaleString()}</span><DiscountBadge price={prod.price} discounted={prod.discountPrice} className="text-[10px] sm:text-xs" /></>
                           )}
                         </div>
 
