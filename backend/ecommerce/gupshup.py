@@ -111,8 +111,11 @@ def notify_order_placed(order):
         return
     name = _order_name(order)
     items = ', '.join(
-        item.product.name for item in order.items.select_related('product').all()
+        f"{item.product.name} x{item.quantity}" if item.quantity > 1 else item.product.name
+        for item in order.items.select_related('product').all()
     ) or 'your items'
+    if len(items) > 400:  # WhatsApp template parameters have a length limit
+        items = items[:397].rstrip(', ') + '...'
     # Gupshup template ID for order_placed_confirmation
     _send_template(phone, '00b7cd8a-87a7-4941-817b-18cf10317783', [name, str(order.order_id), items])
 

@@ -225,7 +225,16 @@ def order_post_save(sender, instance, created, **kwargs):
     try:
         from .gupshup import notify_order_placed, notify_order_delivered, notify_order_shipped
         if created:
-            notify_order_placed(instance)
+            # The order's items are saved just AFTER the order row, so wait for the
+            # transaction to commit, otherwise the message lists "your items" instead
+            # of the real products.
+            def _notify_placed():
+                try:
+                    notify_order_placed(instance)
+                except Exception:
+                    pass
+            from django.db import transaction as _tx
+            _tx.on_commit(_notify_placed)
         elif instance.status == 'shipped' and old != 'shipped':
             notify_order_shipped(instance)
         elif instance.status == 'delivered' and old != 'delivered':
