@@ -209,11 +209,13 @@ def order_pre_save(sender, instance, **kwargs):
     """Capture previous status so post_save can detect transitions."""
     if instance.pk:
         try:
-            instance._old_status = Order.objects.values_list('status', flat=True).get(pk=instance.pk)
+            instance._old_status, instance._old_payment_status = Order.objects.values_list('status', 'payment_status').get(pk=instance.pk)
         except Order.DoesNotExist:
             instance._old_status = None
+            instance._old_payment_status = None
     else:
         instance._old_status = None
+        instance._old_payment_status = None
 
 
 @receiver(post_save, sender=Order)
@@ -230,6 +232,33 @@ def order_post_save(sender, instance, created, **kwargs):
             notify_order_delivered(instance)
     except Exception:
         pass
+
+    # Email the customer (order confirmation, payment, shipping, delivery, cancel, return, refund)
+    try:
+        from . import order_emails
+        old_pay = getattr(instance, '_old_payment_status', None)
+        if created:
+            order_emails.order_placed(instance)
+        else:
+            status_mail = {
+                'shipped': order_emails.order_shipped,
+                'delivered': order_emails.order_delivered,
+                'cancelled': order_emails.order_cancelled,
+                'return_requested': order_emails.return_requested,
+                'returned': order_emails.order_returned,
+                'refunded': order_emails.order_refunded,
+                'return_rejected': order_emails.return_rejected,
+            }
+            if instance.status != old and instance.status in status_mail:
+                status_mail[instance.status](instance)
+            elif instance.payment_status != old_pay and instance.status == old:
+                if instance.payment_status == 'completed':
+                    order_emails.payment_received(instance)
+                elif instance.payment_status == 'failed':
+                    order_emails.payment_failed(instance)
+    except Exception:
+        import logging
+        logging.getLogger(__name__).exception('Order email failed for %s', getattr(instance, 'order_id', '?'))
 
 
 class OrderItem(models.Model):
@@ -637,3 +666,25 @@ class NewsletterSubscriber(models.Model):
 
     def __str__(self):
         return self.email
+
+
+@receiver(pre_save, sender=WalletPayout)
+def wallet_payout_pre_save(sender, instance, **kwargs):
+    instance._old_status = WalletPayout.objects.filter(pk=instance.pk).values_list('status', flat=True).first() if instance.pk else None
+
+
+@receiver(post_save, sender=WalletPayout)
+def wallet_payout_post_save(sender, instance, created, **kwargs):
+    """Email the user when a withdrawal is requested, paid or declined."""
+    try:
+        from . import order_emails
+        old = getattr(instance, '_old_status', None)
+        if created:
+            order_emails.payout_requested(instance)
+        elif instance.status != old and instance.status == 'completed':
+            order_emails.payout_completed(instance)
+        elif instance.status != old and instance.status == 'rejected':
+            order_emails.payout_rejected(instance)
+    except Exception:
+        import logging
+        logging.getLogger(__name__).exception('Wallet payout email failed')
