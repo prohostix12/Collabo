@@ -8,6 +8,7 @@ import 'package:go_router/go_router.dart';
 import '../../core/theme/app_theme.dart';
 import '../../data/models/product.dart';
 import '../../data/models/store_settings.dart';
+import '../../shared/widgets/animated_wallet_button.dart';
 import '../../shared/widgets/brand_logo.dart';
 import '../../shared/widgets/feedback.dart';
 import '../../shared/widgets/product_widgets.dart';
@@ -16,6 +17,7 @@ import '../../shared/widgets/visual_search.dart';
 import '../account/account_providers.dart';
 import '../account/location_picker_screen.dart';
 import '../auth/auth_controller.dart';
+import '../auth/auth_gate.dart';
 import '../catalog/catalog_providers.dart';
 import '../notifications/notifications_provider.dart';
 import '../../data/models/address.dart';
@@ -314,12 +316,22 @@ class _HomeToolbar extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final unread = ref.watch(isLoggedInProvider) ? ref.watch(unreadNotificationsProvider) : 0;
+    final loggedIn = ref.watch(isLoggedInProvider);
+    final unread = loggedIn ? ref.watch(unreadNotificationsProvider) : 0;
+    final balance = loggedIn ? (ref.watch(walletProvider).value?.balance ?? 0) : 0.0;
     return Row(
       children: [
         const SizedBox(width: 12),
         const BrandLogo(height: 22),
         const Spacer(),
+        AnimatedWalletButton(
+          balance: balance,
+          label: loggedIn ? null : 'Earn',
+          onPressed: () async {
+            if (!await ensureSignedIn(context, ref, reason: 'Sign in to see your referral wallet')) return;
+            if (context.mounted) context.push('/wallet');
+          },
+        ),
         IconButton(
           tooltip: unread > 0 ? 'Notifications, $unread new' : 'Notifications',
           onPressed: () => context.push('/notifications'),

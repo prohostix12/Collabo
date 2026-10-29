@@ -2255,165 +2255,601 @@ CATEGORY_ICON_MAP = {
 }
 
 
+MAX_IMPORT_BYTES = 10 * 1024 * 1024
+MAX_IMPORT_PRODUCTS = 2000
+
+
+def _first_value(row, *names):
+    """First non-empty cell among the given column names."""
+    for n in names:
+        v = (row.get(n) or '').strip()
+        if v:
+            return v
+    return ''
+
+
+# The template mirrors the seller's "Add Product" form field for field: one row = one product.
+# (heading, required, column width, hint shown as a note on the heading)
+TEMPLATE_COLUMNS = [
+    ('Product Name', True, 36, 'Required. Name of the product.'),
+    ('Category', True, 22, 'Required. Choose from the dropdown. Sellers can only use existing categories.'),
+    ('Brand', False, 18, 'Optional. Brand name.'),
+    ('Price', True, 12, 'Required. Regular price (MRP) in INR, numbers only.'),
+    ('Sale Price', False, 12, 'Optional. Selling price in INR. Must be lower than Price. Leave blank for no discount.'),
+    ('Stock', False, 10, 'Quantity in stock (whole number). If blank or 0, the default stock you choose when uploading is used.'),
+    ('Main Image', True, 42, 'Required. Web link to the main photo (starts with https://).'),
+    ('Additional Images', False, 42, 'Optional. More photo links (https://...), separated by commas.'),
+    ('Description', True, 52, 'Required. Product description.'),
+    ('Delivery Estimate', False, 26, 'Optional. e.g. Free delivery by Tomorrow. Blank = Free delivery by Tomorrow.'),
+    ('Shipping Charge', False, 14, 'Optional. Shipping charge for this product in INR. Blank or 0 = free shipping.'),
+    ('Seller Info & Policy', False, 36, 'Optional. e.g. 7-day replacement on manufacturing defects.'),
+    ('Highlights', False, 38, 'Optional. Key selling points: one per line (Alt+Enter in Excel) or separated by |'),
+    ('Offers', False, 38, 'Optional. One per line or separated by |. Only list offers you can actually honor.'),
+    ('Specifications', False, 38, 'Optional. "Name: Value" pairs, one per line or separated by |   e.g. Material: Stainless Steel | Color: Black'),
+] + [col for n in (1, 2, 3) for col in (
+    (f'Question {n}', False, 30, 'Optional. A question buyers often ask. Fill in the answer next to it too.'),
+    (f'Answer {n}', False, 30, 'Answer to the question next to it.'),
+)]
+TEMPLATE_HEADERS = [c[0] for c in TEMPLATE_COLUMNS]
+TEMPLATE_REQUIRED = {c[0] for c in TEMPLATE_COLUMNS if c[1]}
+_TEMPLATE_LOOKUP = {h.lower(): h for h in TEMPLATE_HEADERS}
+TEMPLATE_EXAMPLE_PREFIX = 'EXAMPLE - '
+
+# The Inventories (admin) template is the heading row of the shop's own Shopify export ("Demo New CSV"):
+# the same 53 columns in the same order, no products. It is deliberately NOT the seller template above.
+INVENTORY_TEMPLATE_FILE = os.path.join(os.path.dirname(__file__), 'data', 'inventory_upload_template.csv')
+
+
+def _template_example(category):
+    """The one sample row shown in the template. It is never imported (see TEMPLATE_EXAMPLE_PREFIX)."""
+    example = {
+        'Product Name': TEMPLATE_EXAMPLE_PREFIX + 'Steel Water Bottle (delete this row)',
+        'Category': category,
+        'Brand': 'Your Brand',
+        'Price': '399',
+        'Sale Price': '299',
+        'Stock': '25',
+        'Main Image': 'https://example.com/photos/bottle-1.jpg',
+        'Additional Images': 'https://example.com/photos/bottle-2.jpg, https://example.com/photos/bottle-3.jpg',
+        'Description': 'Double-wall insulated steel bottle that keeps drinks cold for 24 hours.',
+        'Delivery Estimate': 'Free delivery by Tomorrow',
+        'Shipping Charge': '0',
+        'Seller Info & Policy': '7-day replacement on manufacturing defects',
+        'Highlights': 'Keeps drinks cold for 24 hours | BPA free | Leak proof lid',
+        'Specifications': 'Material: Stainless Steel | Capacity: 750 ml | Color: Black',
+        'Question 1': 'Is the lid dishwasher safe?',
+        'Answer 1': 'Yes, the lid and the bottle can both go in the dishwasher.',
+    }
+    return [example.get(h, '') for h in TEMPLATE_HEADERS]
+
+
+def _canonical_template_row(row):
+    """Match headings whatever their capitalisation or spacing ('product name' -> 'Product Name')."""
+    out = {}
+    for k, v in row.items():
+        key = ' '.join((k or '').split())
+        m = re.fullmatch(r'(question|answer) (\d+)', key.lower())
+        out[_TEMPLATE_LOOKUP.get(key.lower()) or (f'{m.group(1).title()} {m.group(2)}' if m else key)] = v
+    return out
+
+
+def _to_money(raw):
+    """'1,299', 'Rs. 499' or '\u20b9250.5' -> Decimal with 2 places. Raises InvalidOperation if it is not an amount."""
+    d = Decimal(re.sub(r'(?i)\u20b9|rs\.?|inr|[,\s]', '', raw or ''))
+    if not d.is_finite() or abs(d) >= Decimal('10000000000'):
+        raise InvalidOperation
+    return d.quantize(Decimal('0.01'))
+
+
+def _split_items(text):
+    """A cell that holds several values: one per line (Alt+Enter) or separated by |."""
+    return [p.strip() for p in re.split(r'[\r\n|]+', text or '') if p.strip()]
+
+
+def _is_web_link(u):
+    return u.lower().startswith(('http://', 'https://'))
+
+
+def _collabo_product(row, existing_categories, is_admin, default_stock):
+    """Check one row of the Collabo template with the same rules as the Add Product form.
+    Returns (fields for Product, None) or (None, reason the row is skipped)."""
+    def cell(name):
+        return (row.get(name) or '').strip()
+
+    try:
+        price = _to_money(cell('Price'))
+    except (InvalidOperation, ValueError):
+        return None, ('Missing Price' if not cell('Price') else f'Invalid Price "{cell("Price")}"')
+    if price <= 0:
+        return None, f'Invalid Price "{cell("Price")}"'
+
+    discount_price = None
+    if cell('Sale Price'):
+        try:
+            sale = _to_money(cell('Sale Price'))
+        except (InvalidOperation, ValueError):
+            return None, f'Invalid Sale Price "{cell("Sale Price")}"'
+        if sale > price:
+            return None, f'Sale Price ({sale}) must be lower than Price ({price})'
+        if 0 < sale < price:
+            discount_price = sale
+
+    cat_raw = cell('Category')
+    if not cat_raw:
+        return None, 'Missing Category'
+    cat_name = existing_categories.get(cat_raw.lower())
+    if not cat_name:
+        if not is_admin:
+            return None, f'Category "{cat_raw}" does not exist. Pick one from the Category dropdown in the template.'
+        cat_name = cat_raw[:100]
+
+    main_image = cell('Main Image')
+    if not main_image:
+        return None, 'Missing Main Image link'
+    if not _is_web_link(main_image):
+        return None, 'Main Image must be a web link starting with https://'
+    extra = [u for u in re.split(r'[,\s]+', cell('Additional Images')) if u]
+    if any(not _is_web_link(u) for u in extra):
+        return None, 'Additional Images must be web links starting with https:// (separate several with commas)'
+    images = [main_image] + [u for u in dict.fromkeys(extra) if u != main_image][:9]
+
+    description = cell('Description')
+    if not description:
+        return None, 'Missing Description'
+
+    file_stock = 0
+    if cell('Stock'):
+        try:
+            file_stock = int(float(cell('Stock').replace(',', '')))
+        except ValueError:
+            return None, f'Invalid Stock "{cell("Stock")}" (use a whole number)'
+        if file_stock < 0:
+            return None, f'Invalid Stock "{cell("Stock")}" (cannot be negative)'
+    stock = default_stock if (file_stock == 0 and default_stock is not None) else file_stock
+
+    ship_charge = Decimal('0')
+    if cell('Shipping Charge'):
+        try:
+            ship_charge = _to_money(cell('Shipping Charge'))
+        except (InvalidOperation, ValueError):
+            return None, f'Invalid Shipping Charge "{cell("Shipping Charge")}"'
+        if ship_charge < 0:
+            return None, f'Invalid Shipping Charge "{cell("Shipping Charge")}"'
+
+    specs = []
+    for part in _split_items(cell('Specifications')):
+        name, sep, value = part.partition(':')
+        if sep and name.strip() and value.strip():
+            specs.append({'name': name.strip(), 'value': value.strip()})
+
+    qa = []
+    for key in sorted((k for k in row if re.fullmatch(r'Question \d+', k)), key=lambda k: int(k.split()[1])):
+        q, a = cell(key), cell('Answer ' + key.split()[1])
+        if q and a:
+            qa.append({'q': q, 'a': a})
+
+    return dict(
+        cat_name=cat_name, vendor=cell('Brand')[:100], price=price, discount_price=discount_price,
+        description=description, stock=stock, delivery=cell('Delivery Estimate')[:255] or 'Free delivery by Tomorrow',
+        image=main_image, images=images, specs=specs, highlights=_split_items(cell('Highlights'))[:20],
+        offers=_split_items(cell('Offers'))[:20], seller_info=cell('Seller Info & Policy'), qa=qa,
+        return_policy='', ship_charge=ship_charge,
+    ), None
+
+
+def _cell_text(v):
+    """Excel cells come back as numbers/dates; turn them into clean text."""
+    if v is None:
+        return ''
+    if isinstance(v, float) and v.is_integer():
+        return str(int(v))
+    return str(v).strip()
+
+
+def _read_upload_rows(upload):
+    """Return (header_names, rows) from an uploaded .csv or .xlsx file."""
+    name = upload.name.lower()
+    payload = upload.read()
+    if name.endswith('.xlsx'):
+        try:
+            import openpyxl
+        except ImportError:
+            raise ValueError('Excel files are not supported on this server yet. Please upload a CSV instead.')
+        try:
+            wb = openpyxl.load_workbook(io.BytesIO(payload), read_only=True, data_only=True)
+        except Exception:
+            raise ValueError('Could not open this Excel file. Save it as .xlsx (not .xls) and try again.')
+        ws = wb['Products'] if 'Products' in wb.sheetnames else wb.worksheets[0]
+        it = ws.iter_rows(values_only=True)
+        try:
+            header = [_cell_text(h) for h in next(it)]
+        except StopIteration:
+            return [], []
+        rows = []
+        for r in it:
+            if r is None or not any(c not in (None, '') for c in r):
+                continue
+            rows.append({header[i]: _cell_text(r[i]) for i in range(min(len(header), len(r))) if header[i]})
+            if len(rows) > 20000:
+                raise ValueError('The sheet has too many rows.')
+        return [h for h in header if h], rows
+    try:
+        text = payload.decode('utf-8-sig')
+    except UnicodeDecodeError:
+        text = payload.decode('latin-1')
+    reader = csv.DictReader(io.StringIO(text))
+    header = [(h or '').strip() for h in (reader.fieldnames or [])]
+    rows = [{(k or '').strip(): (v or '') for k, v in r.items()} for r in reader]
+    return header, rows
+
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def import_template(request):
+    """Download a bulk upload template. Two different ones exist:
+      seller (default, ?file_format=xlsx or csv): the fields of the seller's Add Product form,
+        one row per product, with one sample row.
+      inventory (?template=inventory, admins only, CSV): the Shopify layout used on the
+        Inventories page, headings only."""
+    from django.http import HttpResponse
+    user = request.user
+    if user.user_type not in ('seller', 'admin') and not user.is_staff:
+        return Response({'error': 'Only sellers or admins can download the template'}, status=status.HTTP_403_FORBIDDEN)
+    if (request.query_params.get('template') or '').lower() == 'inventory':
+        if not (user.is_staff or user.user_type == 'admin'):
+            return Response({'error': 'The inventory template is for admins. Sellers: use the seller template in your dashboard.'},
+                            status=status.HTTP_403_FORBIDDEN)
+        with open(INVENTORY_TEMPLATE_FILE, 'rb') as f:
+            body = f.read()
+        resp = HttpResponse(body, content_type='text/csv; charset=utf-8')
+        resp['Content-Disposition'] = 'attachment; filename="collabo-inventory-template.csv"'
+        return resp
+    fmt = (request.query_params.get('file_format') or request.query_params.get('format') or 'xlsx').lower()
+    names = list(Category.objects.order_by('name').values_list('name', flat=True))
+    example_row = _template_example(names[0] if names else 'Home & Kitchen')
+
+    if fmt == 'csv':
+        buf = io.StringIO(newline='')
+        writer = csv.writer(buf)
+        writer.writerow(TEMPLATE_HEADERS)
+        writer.writerow(example_row)
+        # BOM so Excel opens the file as UTF-8 (keeps the rupee sign and other characters intact)
+        resp = HttpResponse(('\ufeff' + buf.getvalue()).encode('utf-8'), content_type='text/csv; charset=utf-8')
+        resp['Content-Disposition'] = 'attachment; filename="collabo-seller-template.csv"'
+        return resp
+
+    try:
+        import openpyxl
+        from openpyxl.styles import Font, PatternFill, Alignment
+        from openpyxl.worksheet.datavalidation import DataValidation
+        from openpyxl.comments import Comment
+        from openpyxl.utils import get_column_letter
+    except ImportError:
+        return Response({'error': 'Excel templates are not available on this server. Download the CSV template instead.'},
+                        status=status.HTTP_501_NOT_IMPLEMENTED)
+
+    wb = openpyxl.Workbook()
+    ws = wb.active
+    ws.title = 'Products'
+    for i, (heading, required, width, hint) in enumerate(TEMPLATE_COLUMNS, start=1):
+        c = ws.cell(row=1, column=i, value=heading)
+        c.font = Font(bold=True, color='FFFFFF')
+        c.fill = PatternFill('solid', fgColor='EA580C' if required else '475569')
+        c.alignment = Alignment(vertical='center', wrap_text=True)
+        c.comment = Comment(hint, 'Collabo')
+        ws.column_dimensions[get_column_letter(i)].width = width
+        ex = ws.cell(row=2, column=i, value=example_row[i - 1] or None)
+        ex.font = Font(italic=True, color='6B7280')
+        ex.alignment = Alignment(vertical='top', wrap_text=True)
+    ws.row_dimensions[1].height = 30
+    ws.row_dimensions[2].height = 75
+    ws.freeze_panes = 'B2'
+
+    def column_of(heading):
+        return get_column_letter(TEMPLATE_HEADERS.index(heading) + 1)
+
+    lists = wb.create_sheet('Lists')
+    for i, n in enumerate(names, start=1):
+        lists.cell(row=i, column=1, value=n)
+    lists.sheet_state = 'hidden'
+    if names:
+        dv = DataValidation(type='list', formula1=f'=Lists!$A$1:$A${len(names)}', allow_blank=True, showErrorMessage=False)
+        ws.add_data_validation(dv)
+        dv.add(f"{column_of('Category')}2:{column_of('Category')}2000")
+    for heading, kind in (('Price', 'decimal'), ('Sale Price', 'decimal'), ('Shipping Charge', 'decimal'), ('Stock', 'whole')):
+        dv = DataValidation(type=kind, operator='greaterThanOrEqual', formula1='0', allow_blank=True,
+                            showErrorMessage=True, errorTitle=heading, error=f'{heading} must be a number, 0 or more.')
+        ws.add_data_validation(dv)
+        dv.add(f'{column_of(heading)}2:{column_of(heading)}2000')
+
+    guide = wb.create_sheet('Instructions', 0)
+    lines = [
+        ('How to upload products in bulk', True),
+        ('', False),
+        ('This sheet has the same fields as the Add Product form in your dashboard. One row = one product.', False),
+        ('1. Open the "Products" sheet. Row 2 is an EXAMPLE (its name starts with "EXAMPLE - "): overwrite it or delete it. It is never imported.', False),
+        ('2. Orange headings are required (Product Name, Category, Price, Main Image, Description). Grey headings are optional.', False),
+        ('3. Category: pick from the dropdown. Sellers can only use existing categories.', False),
+        ('4. Price is the regular price (MRP). Sale Price is the selling price and must be lower than Price; leave it blank for no discount.', False),
+        ('5. Stock is a whole number. If it is blank or 0, the default stock you choose on the upload screen is used.', False),
+        ('6. Photos must be web links (https://...). Main Image is the first photo; put more links in Additional Images, separated by commas.', False),
+        ('7. Highlights, Offers and Specifications can hold several values: put each on its own line (Alt+Enter in Excel) or separate them with |.', False),
+        ('    Specifications are "Name: Value" pairs, for example:  Material: Stainless Steel | Color: Black', False),
+        ('8. Questions & Answers: fill both cells of a pair. To add more pairs, add columns named Question 4 / Answer 4, and so on.', False),
+        ('9. Save as .xlsx (or export the Products sheet as .csv) and upload it from Bulk Upload. You get a preview first; nothing is saved until you click Import.', False),
+        ('10. Products whose name you already have are skipped. A seller\'s new products go live after admin approval.', False),
+        ('', False),
+        ('Limits: up to 2,000 products and 10 MB per file.', False),
+    ]
+    for i, (t, bold) in enumerate(lines, start=1):
+        c = guide.cell(row=i, column=1, value=t)
+        c.font = Font(bold=bold, size=14 if bold else 11)
+    guide.column_dimensions['A'].width = 140
+    wb.active = 1
+
+    out = io.BytesIO()
+    wb.save(out)
+    resp = HttpResponse(out.getvalue(), content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+    resp['Content-Disposition'] = 'attachment; filename="collabo-seller-template.xlsx"'
+    return resp
+
+
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])
 def import_shopify_csv(request):
     """
-    Import products from a Shopify-format CSV file.
-    Accepts multipart/form-data with a 'file' field.
-    The authenticated user becomes the seller for all imported products.
+    Bulk-add products from the Collabo template (.xlsx or .csv, multipart field 'file'),
+    or from a Shopify product export.
+    The signed-in user becomes the seller; admin uploads go live, a seller's
+    uploads wait for approval, like single products.
+
+    Optional fields:
+      dry_run=true      Only analyse the file and return a preview; saves nothing.
+      default_stock=N   Stock to use for rows whose stock in the file is 0/blank
+                        (Shopify exports often carry 0 for untracked items).
     """
-    if request.user.user_type not in ('seller', 'admin') and not request.user.is_staff:
+    user = request.user
+    is_admin = user.is_staff or user.user_type == 'admin'
+    if user.user_type not in ('seller', 'admin') and not user.is_staff:
         return Response({'error': 'Only sellers or admins can import products'}, status=status.HTTP_403_FORBIDDEN)
 
     csv_file = request.FILES.get('file')
     if not csv_file:
         return Response({'error': 'No file provided. Upload a CSV file with key "file".'}, status=status.HTTP_400_BAD_REQUEST)
+    if not csv_file.name.lower().endswith(('.csv', '.xlsx')):
+        return Response({'error': 'Upload a .xlsx (Excel) or .csv file'}, status=status.HTTP_400_BAD_REQUEST)
+    if csv_file.size > MAX_IMPORT_BYTES:
+        return Response({'error': 'File is too large (max 10 MB). Split it into smaller files.'}, status=status.HTTP_400_BAD_REQUEST)
 
-    if not csv_file.name.endswith('.csv'):
-        return Response({'error': 'File must be a .csv file'}, status=status.HTTP_400_BAD_REQUEST)
+    dry_run = str(request.data.get('dry_run', '')).lower() in ('1', 'true', 'yes')
+    default_stock = None
+    raw_default = str(request.data.get('default_stock', '')).strip()
+    if raw_default != '':
+        try:
+            default_stock = max(0, min(int(raw_default), 100000))
+        except ValueError:
+            return Response({'error': 'default_stock must be a whole number'}, status=status.HTTP_400_BAD_REQUEST)
 
     try:
-        decoded = csv_file.read().decode('utf-8-sig')
-    except UnicodeDecodeError:
-        try:
-            csv_file.seek(0)
-            decoded = csv_file.read().decode('latin-1')
-        except Exception:
-            return Response({'error': 'Could not decode file. Use UTF-8 or Latin-1 encoding.'}, status=status.HTTP_400_BAD_REQUEST)
+        header, file_rows = _read_upload_rows(csv_file)
+    except ValueError as e:
+        return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
 
-    reader = csv.DictReader(io.StringIO(decoded))
+    existing_categories = {c.name.lower(): c.name for c in Category.objects.all()}
 
-    # Group rows by Handle (Shopify uses multiple rows per product for extra images)
-    products_map = {}
-    for row in reader:
-        handle = (row.get('Handle') or '').strip()
-        if not handle:
+    header_names = {h.lower() for h in header}
+    if 'product name' in header_names:
+        file_format = 'collabo'
+        missing = [h for h in TEMPLATE_HEADERS if h in TEMPLATE_REQUIRED and h.lower() not in header_names]
+        if missing:
+            return Response({'error': 'Missing column(s): ' + ', '.join(missing) + '. Download the template again and keep its headings.'},
+                            status=status.HTTP_400_BAD_REQUEST)
+        # One product per row. The sample row from the template is never imported.
+        groups = {}
+        for i, row in enumerate(map(_canonical_template_row, file_rows), start=1):
+            if (row.get('Product Name') or '').strip().startswith(TEMPLATE_EXAMPLE_PREFIX):
+                continue
+            groups[f'Product #{i}'] = [row]
+    elif 'Handle' in header:
+        file_format = 'shopify'
+        # One product spans several rows (extra images / variants share the Handle).
+        groups = {}
+        for row in file_rows:
+            handle = (row.get('Handle') or '').strip()
+            if not handle or handle.lower().startswith('example-'):
+                continue  # blank line, or the example product from the template
+            groups.setdefault(handle, []).append(row)
+    else:
+        return Response({'error': 'Columns not recognised. Download the template from Bulk Upload and fill it in.'},
+                        status=status.HTTP_400_BAD_REQUEST)
+
+    if not groups:
+        return Response({'error': 'No products found in the file. Add your products in the rows under the headings, then upload again.'},
+                        status=status.HTTP_400_BAD_REQUEST)
+    if len(groups) > MAX_IMPORT_PRODUCTS:
+        return Response({'error': f'Too many products ({len(groups)}). Upload at most {MAX_IMPORT_PRODUCTS} at a time.'},
+                        status=status.HTTP_400_BAD_REQUEST)
+
+    # name -> the product you already have, so the preview can say which one matched
+    existing_by_title = {}
+    for pid, pname, pprice, pdisc, pstock, pimage in Product.objects.filter(seller=user).order_by('id').values_list(
+            'id', 'name', 'price', 'discount_price', 'stock', 'image'):
+        existing_by_title.setdefault(pname.lower(), {
+            'existing_id': pid, 'existing_name': pname, 'existing_price': str(pdisc or pprice),
+            'existing_stock': pstock,
+            'image': pimage if pimage and not pimage.startswith('data:') else '',
+        })
+    seen_titles = set()
+
+    items, to_create = [], []
+    for handle, rows in groups.items():
+        if file_format == 'collabo':
+            row = rows[0]
+            title = ' '.join((row.get('Product Name') or '').replace('\xa0', ' ').split())
+            item = {'handle': handle, 'name': title[:255], 'status': 'new', 'reason': ''}
+            items.append(item)
+            if not title:
+                item.update(status='skipped', reason='Missing Product Name')
+                continue
+            if title.lower() in existing_by_title:
+                item.update(status='duplicate', reason='A product with this name already exists',
+                            **existing_by_title[title.lower()])
+                continue
+            if title.lower() in seen_titles:
+                item.update(status='duplicate', reason='Repeated earlier in this file (only the first is added)')
+                continue
+            fields, reason = _collabo_product(row, existing_categories, is_admin, default_stock)
+            if reason:
+                item.update(status='skipped', reason=reason)
+                continue
+            seen_titles.add(title.lower())
+            item.update(category=fields['cat_name'], brand=fields['vendor'], price=str(fields['discount_price'] or fields['price']),
+                        stock=fields['stock'], variants=0, images=len(fields['images']), image=fields['image'],
+                        new_category=fields['cat_name'].lower() not in existing_categories)
+            to_create.append(dict(title=title[:255], item=item, **fields))
             continue
-        if handle not in products_map:
-            products_map[handle] = {'main': row, 'extra_images': []}
-        else:
-            img = (row.get('Image Src') or '').strip()
-            if img:
-                products_map[handle]['extra_images'].append(img)
 
-    if not products_map:
-        return Response({'error': 'No valid products found in CSV. Make sure it has a "Handle" column.'}, status=status.HTTP_400_BAD_REQUEST)
+        main = next((r for r in rows if (r.get('Title') or '').strip()), rows[0])
+        variant_count = len({(r.get('Option1 Value') or '').strip() for r in rows if (r.get('Option1 Value') or '').strip()})
+        title = ' '.join((main.get('Title') or '').replace('\xa0', ' ').split())
+        item = {'handle': handle, 'name': title[:255], 'status': 'new', 'reason': ''}
+        items.append(item)
 
-    created = []
+        if not title:
+            item.update(status='skipped', reason='Missing title')
+            continue
+        st = (main.get('Status') or 'active').strip().lower()
+        if st and st != 'active':
+            item.update(status='skipped', reason=f'Status is "{st}" (only active products are imported)')
+            continue
+        if (main.get('Published') or '').strip().upper() == 'FALSE':
+            item.update(status='skipped', reason='Not published')
+            continue
+        if title.lower() in existing_by_title:
+            item.update(status='duplicate', reason='A product with this name already exists',
+                        **existing_by_title[title.lower()])
+            continue
+        if title.lower() in seen_titles:
+            item.update(status='duplicate', reason='Repeated earlier in this file (only the first is added)')
+            continue
+
+        try:
+            price = Decimal(_first_value(main, 'Variant Price') or '0')
+        except (InvalidOperation, ValueError):
+            price = Decimal('0')
+        if price <= 0:
+            item.update(status='skipped', reason=f'Invalid price "{_first_value(main, "Variant Price")}"')
+            continue
+        discount_price = None
+        try:
+            compare = Decimal(_first_value(main, 'Variant Compare At Price') or '0')
+            if compare > price:
+                discount_price, price = price, compare
+        except (InvalidOperation, ValueError):
+            pass
+
+        cat_raw = _first_value(main, 'Type', 'Product Category', 'Custom Product Type', 'Standardized Product Type')
+        if not cat_raw:
+            cat_raw = (_first_value(main, 'Tags').split(',')[0] or '').strip()
+        cat_raw = cat_raw.split('>')[-1].strip() or 'General'
+        cat_name = existing_categories.get(cat_raw.lower()) or (cat_raw if any(ch.isupper() for ch in cat_raw) else cat_raw.title())[:100]
+        if not is_admin and cat_name.lower() not in existing_categories:
+            item.update(status='skipped', reason=f'Category "{cat_raw}" does not exist. Use one from the Category dropdown in the template.')
+            continue
+
+        try:
+            file_stock = max(0, int(float(_first_value(main, 'Variant Inventory Qty') or '0')))
+        except (ValueError, TypeError):
+            file_stock = 0
+        stock = default_stock if (file_stock == 0 and default_stock is not None) else file_stock
+
+        images = []
+        for r in rows:
+            for col in ('Image Src', 'Variant Image'):
+                u = (r.get(col) or '').strip()
+                if u and u not in images:
+                    images.append(u)
+        main_image = (_first_value(main, 'Image Src') or (images[0] if images else ''))
+        extra_images = [u for u in images if u != main_image][:9]
+
+        try:
+            weight = int(float(_first_value(main, 'Variant Grams') or '0'))
+        except (ValueError, TypeError):
+            weight = 0
+        delivery = (_first_value(main, '_delivery') or
+                    ('Standard delivery in 5-7 days' if weight > 5000
+                     else 'Free delivery in 3-5 days' if weight > 1000
+                     else 'Free delivery by Tomorrow'))
+        highlights = [h.strip() for h in _first_value(main, '_highlights').split('|') if h.strip()][:10]
+        try:
+            ship_charge = max(Decimal('0'), Decimal(_first_value(main, '_shipping') or '0'))
+        except (InvalidOperation, ValueError):
+            ship_charge = Decimal('0')
+        specs = []
+        for label, value in (('SKU', _first_value(main, 'Variant SKU')), ('Weight', f'{weight}g' if weight else ''),
+                             ('Barcode', _first_value(main, 'Variant Barcode'))):
+            if value:
+                specs.append({'name': label, 'value': value})
+
+        vendor = (_first_value(main, 'Vendor') or 'Unknown')[:100]
+        seen_titles.add(title.lower())
+        item.update(category=cat_name, brand=vendor, price=str(discount_price or price), stock=stock, variants=variant_count,
+                    images=len(images), image=main_image, new_category=cat_name.lower() not in existing_categories)
+        to_create.append(dict(title=title[:255], cat_name=cat_name, vendor=vendor, price=price, discount_price=discount_price,
+                              description=_strip_html(main.get('Body (HTML)') or '') or title, stock=stock, delivery=delivery,
+                              image=main_image, images=extra_images, specs=specs, item=item,
+                              highlights=highlights, return_policy=_first_value(main, '_return_policy'), ship_charge=ship_charge))
+
+    new_count = len(to_create)
+    summary = {
+        'total': len(items),
+        'new_count': new_count,
+        'duplicate_count': sum(1 for i in items if i['status'] == 'duplicate'),
+        'skipped_count': sum(1 for i in items if i['status'] == 'skipped'),
+        'items': items[:300],
+    }
+
+    if dry_run:
+        return Response({**summary, 'dry_run': True, 'file_format': file_format})
+    if not to_create:
+        return Response({**summary, 'created_count': 0, 'error': 'Nothing to import: every product was skipped or already exists.'},
+                        status=status.HTTP_400_BAD_REQUEST)
+
     errors = []
-
+    created = 0
     with transaction.atomic():
-        for handle, data in products_map.items():
-            row = data['main']
+        for spec in to_create:
             try:
-                title = (row.get('Title') or '').strip()
-                if not title:
-                    errors.append(f'{handle}: Missing title, skipped')
-                    continue
-
-                # Price
-                price_str = (row.get('Variant Price') or '0').strip()
-                try:
-                    price = Decimal(price_str)
-                except (InvalidOperation, ValueError):
-                    price = Decimal('0')
-
-                if price <= 0:
-                    errors.append(f'{handle}: Invalid price "{price_str}", skipped')
-                    continue
-
-                # Compare-at price → discount_price
-                compare_str = (row.get('Variant Compare At Price') or '').strip()
-                discount_price = None
-                if compare_str:
-                    try:
-                        compare_price = Decimal(compare_str)
-                        if compare_price > price:
-                            discount_price = price
-                            price = compare_price
-                    except (InvalidOperation, ValueError):
-                        pass
-
-                # Description
-                body_html = row.get('Body (HTML)') or ''
-                description = _strip_html(body_html) or title
-
-                # Brand / Vendor
-                vendor = (row.get('Vendor') or 'Unknown').strip()
-                brand_obj, _ = Brand.objects.get_or_create(name=vendor)
-
-                # Category
-                cat_raw = (
-                    row.get('Custom Product Type')
-                    or row.get('Standardized Product Type')
-                    or row.get('Tags')
-                    or 'General'
-                ).strip()
-                cat_name = cat_raw.split(',')[0].strip().title()[:100]
-                icon = CATEGORY_ICON_MAP.get(cat_name.lower(), '📦')
-                Category.objects.get_or_create(name=cat_name, defaults={'icon': icon})
-
-                # Stock
-                stock_str = (row.get('Variant Inventory Qty') or '0').strip()
-                try:
-                    stock = max(0, int(stock_str))
-                except (ValueError, TypeError):
-                    stock = 0
-
-                # Images
-                main_image = (row.get('Image Src') or '').strip()
-                extra_images = data['extra_images']
-
-                # Weight for delivery info
-                weight_str = (row.get('Variant Grams') or '0').strip()
-                try:
-                    weight_grams = int(float(weight_str))
-                except (ValueError, TypeError):
-                    weight_grams = 0
-
-                if weight_grams > 5000:
-                    delivery = 'Standard delivery in 5-7 days'
-                elif weight_grams > 1000:
-                    delivery = 'Free delivery in 3-5 days'
-                else:
-                    delivery = 'Free delivery by Tomorrow'
-
-                # Specifications from available CSV data
-                specs = []
-                sku = (row.get('Variant SKU') or '').strip()
-                if sku:
-                    specs.append({'name': 'SKU', 'value': sku})
-                if weight_grams:
-                    specs.append({'name': 'Weight', 'value': f'{weight_grams}g'})
-                barcode = (row.get('Variant Barcode') or '').strip()
-                if barcode:
-                    specs.append({'name': 'Barcode', 'value': barcode})
-
-                product = Product.objects.create(
-                    seller=request.user,
-                    name=title[:255],
-                    category=cat_name,
-                    brand=vendor[:100],
-                    price=price,
-                    discount_price=discount_price,
-                    description=description,
-                    stock=stock,
-                    delivery=delivery,
-                    image=main_image,
-                    images=extra_images,
-                    specifications=specs,
-                )
-                created.append({'id': product.id, 'name': product.name, 'price': str(product.price)})
-
+                with transaction.atomic():
+                    if spec['vendor']:
+                        Brand.objects.get_or_create(name=spec['vendor'])
+                    icon = CATEGORY_ICON_MAP.get(spec['cat_name'].lower(), '📦')
+                    if is_admin:
+                        Category.objects.get_or_create(name=spec['cat_name'], defaults={'icon': icon})
+                    Product.objects.create(
+                        seller=user, status='approved' if is_admin else 'pending',
+                        name=spec['title'], category=spec['cat_name'], brand=spec['vendor'],
+                        price=spec['price'], discount_price=spec['discount_price'], description=spec['description'],
+                        stock=spec['stock'], delivery=spec['delivery'], image=spec['image'], images=spec['images'],
+                        specifications=spec['specs'], highlights=spec['highlights'],
+                        return_policy=spec['return_policy'], product_shipping_charge=spec['ship_charge'],
+                        offers=spec.get('offers') or [], seller_info=spec.get('seller_info') or '',
+                        qa_section=spec.get('qa') or [],
+                    )
+                created += 1
+                spec['item']['status'] = 'created'
             except Exception as e:
-                errors.append(f'{handle}: {str(e)}')
+                spec['item'].update(status='skipped', reason=str(e)[:200])
+                errors.append(f"{spec['title'][:60]}: {e}")
+                logger.exception('Bulk import failed for %s', spec['title'])
 
+    summary['items'] = items[:300]
     return Response({
-        'message': f'Successfully imported {len(created)} products',
-        'created_count': len(created),
+        **summary,
+        'dry_run': False, 'file_format': file_format,
+        'message': f'Imported {created} product{"s" if created != 1 else ""}' + ('' if is_admin else ' (waiting for admin approval)'),
+        'created_count': created,
         'error_count': len(errors),
-        'created': created,
         'errors': errors[:50],
     }, status=status.HTTP_201_CREATED if created else status.HTTP_400_BAD_REQUEST)
 

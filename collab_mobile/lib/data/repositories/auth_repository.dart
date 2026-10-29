@@ -50,6 +50,16 @@ class AuthRepository {
     return _persistSession(data);
   }
 
+  /// Emails a one-time reset link. The server answers the same way whether or
+  /// not the address has an account, so this never reveals who is registered.
+  Future<void> requestPasswordReset(String email) async {
+    await _api.post(
+      'auth/password-reset/',
+      data: {'email': email.trim().toLowerCase()},
+      skipAuth: true,
+    );
+  }
+
   Future<AppUser> fetchProfile() async {
     final data = asMap(await _api.get('auth/profile/'));
     await _tokens.saveUser(data);

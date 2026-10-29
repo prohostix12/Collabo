@@ -8,7 +8,7 @@ from .views import (
     AdminAnalyticsView, create_razorpay_order, verify_razorpay_payment, razorpay_webhook,
     BroadcastOfferView,
     upload_influencer_media, list_influencer_media, delete_influencer_media,
-    import_shopify_csv,
+    import_shopify_csv, import_template,
     SellerStorefrontView, seller_reviews,
     SellerEarningsView, seller_withdraw, SellerPayoutHistoryView, SellerProductAnalyticsView,
     AdminPayoutListView, admin_process_payout,
@@ -56,6 +56,7 @@ urlpatterns = [
     path('products/<int:product_id>/influencer-media/upload/', upload_influencer_media, name='upload-influencer-media'),
     path('influencer-media/<int:media_id>/delete/', delete_influencer_media, name='delete-influencer-media'),
     path('products/import-csv/', import_shopify_csv, name='import-shopify-csv'),
+    path('products/import-template/', import_template, name='import-product-template'),
     # Seller storefront & reviews
     path('sellers/<int:seller_id>/storefront/', SellerStorefrontView.as_view(), name='seller-storefront'),
     path('sellers/<int:seller_id>/reviews/', seller_reviews, name='seller-reviews'),

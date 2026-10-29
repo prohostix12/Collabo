@@ -11,6 +11,7 @@ import '../../features/account/location_picker_screen.dart';
 import '../../features/account/profile_screens.dart';
 import '../../features/account/wallet_screen.dart';
 import '../../features/auth/auth_controller.dart';
+import '../../features/auth/forgot_password_screen.dart';
 import '../../features/auth/login_screen.dart';
 import '../../features/auth/register_screen.dart';
 import '../../features/cart/cart_screen.dart';
@@ -122,6 +123,11 @@ final routerProvider = Provider<GoRouter>((ref) {
           from: state.uri.queryParameters['from'],
           reason: state.uri.queryParameters['reason'],
         ),
+      ),
+      GoRoute(
+        parentNavigatorKey: _rootKey,
+        path: '/forgot-password',
+        builder: (_, state) => ForgotPasswordScreen(email: state.uri.queryParameters['email']),
       ),
       GoRoute(
         parentNavigatorKey: _rootKey,

@@ -112,7 +112,21 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                 ),
                 validator: Validators.loginPassword,
               ),
-              const SizedBox(height: AppSpacing.xl),
+              Align(
+                alignment: Alignment.centerRight,
+                child: TextButton(
+                  onPressed: _loading
+                      ? null
+                      : () {
+                          final typed = _email.text.trim();
+                          context.push(
+                            typed.isEmpty ? '/forgot-password' : '/forgot-password?email=${Uri.encodeQueryComponent(typed)}',
+                          );
+                        },
+                  child: const Text('Forgot password?'),
+                ),
+              ),
+              const SizedBox(height: AppSpacing.md),
               LoadingButton(label: 'Sign in', loading: _loading, onPressed: _submit),
               const SizedBox(height: AppSpacing.lg),
               Row(
