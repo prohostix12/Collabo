@@ -3986,7 +3986,6 @@ export default function EcommerceMarketplace({ inlineMode = false, onBackToSelec
                 {/* Product Info Card */}
                 <div className="bg-white dark:bg-slate-900 border border-slate-200/50 dark:border-slate-800/50 p-6 rounded-[28px] shadow-sm space-y-4">
                   <div className="space-y-2">
-                    <span className="text-[10px] font-black text-orange-500 uppercase tracking-widest">{selectedProduct.brand}</span>
                     <h1 className="text-xl sm:text-2xl font-black tracking-tight leading-tight dark:text-white">{selectedProduct.name}</h1>
                     <div className="flex items-center gap-2 flex-wrap">
                       <div className="flex items-center gap-1 bg-green-600 text-white px-1.5 py-0.5 rounded text-[11px] font-bold">
@@ -4238,7 +4237,7 @@ export default function EcommerceMarketplace({ inlineMode = false, onBackToSelec
                   {selectedProduct.seller_info && (
                     <div className="flex items-center gap-3 p-3 border border-slate-200 dark:border-slate-700 rounded-xl bg-slate-50/50 dark:bg-slate-800/20">
                       <div className="w-8 h-8 rounded-full bg-white dark:bg-slate-800 flex items-center justify-center shrink-0 border border-slate-200 dark:border-slate-700 shadow-sm"><ShieldCheck className="w-4 h-4 text-blue-500" /></div>
-                      <p className="text-[12px] font-semibold text-slate-600 dark:text-slate-300 leading-snug flex-1">{selectedProduct.brand} products come with a standard brand warranty of 6 months. {selectedProduct.seller_info}</p>
+                      <p className="text-[12px] font-semibold text-slate-600 dark:text-slate-300 leading-snug flex-1">This product comes with a standard warranty of 6 months. {selectedProduct.seller_info}</p>
                     </div>
                   )}
 
