@@ -99,23 +99,10 @@ def _order_name(order):
 
 
 def _image_url(product):
-    """A picture an email client can actually load: https URLs and /media paths only
-    (base64 data: URIs are blocked by Gmail/Outlook, so those fall back to a placeholder)."""
-    candidates = [getattr(product, 'image', '') or '']
-    extra = getattr(product, 'images', None)
-    if isinstance(extra, list):
-        candidates += [u for u in extra if isinstance(u, str)]
-    for u in candidates:
-        u = u.strip()
-        if u.startswith('//'):
-            u = 'https:' + u
-        if u.startswith('http://'):
-            u = 'https://' + u[len('http://'):]
-        if u.startswith('https://'):
-            return html.escape(u, quote=True)
-        if u.startswith('/media/'):
-            return html.escape(SITE_URL + u, quote=True)
-    return ''
+    """Thumbnail served from our own domain (see thumbs.py), so it keeps working even if
+    the supplier's image host changes, blocks hot-linking, or the picture is base64."""
+    from .thumbs import thumb_url
+    return html.escape(thumb_url(product), quote=True)
 
 
 def _items(order):

@@ -1,5 +1,6 @@
 from django.urls import path, include
 from rest_framework.routers import DefaultRouter
+from .thumbs import product_thumb
 from .views import (
     ProductViewSet, CartViewSet, AddressViewSet, OrderViewSet, WishlistViewSet,
     CategoryViewSet, BrandViewSet, ProductReviewViewSet, CustomerReviewViewSet, VendorViewSet,
@@ -55,6 +56,7 @@ urlpatterns = [
     path('products/<int:product_id>/influencer-media/', list_influencer_media, name='list-influencer-media'),
     path('products/<int:product_id>/influencer-media/upload/', upload_influencer_media, name='upload-influencer-media'),
     path('influencer-media/<int:media_id>/delete/', delete_influencer_media, name='delete-influencer-media'),
+    path('product-thumb/<int:product_id>/', product_thumb, name='product-thumb'),
     path('products/import-csv/', import_shopify_csv, name='import-shopify-csv'),
     path('products/import-template/', import_template, name='import-product-template'),
     # Seller storefront & reviews
