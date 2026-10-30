@@ -11,7 +11,7 @@ import {
   LayoutGrid, Cpu, Smartphone, Shirt, ShoppingBasket, Home as HomeIcon,
   Armchair, Dumbbell, BookOpen, Gamepad2, Plug, Film, Download,
   Mail, Shield, Calendar, Headphones, HeartPulse, Bath, Truck, Share2, Menu, ChevronLeft,
-  Baby, Flower2, Gift, Gem, Hammer, Wallet, ExternalLink, Upload
+  Baby, Flower2, Gift, Gem, Hammer, Wallet, ExternalLink, Upload, ChevronDown
 } from 'lucide-react';
 import api from '../../services/api';
 import { useAuth } from '../../contexts/AuthContext';
@@ -1182,6 +1182,7 @@ export default function EcommerceMarketplace({ inlineMode = false, onBackToSelec
   const [newCatIcon, setNewCatIcon] = useState('📦');
   const [newCatImage, setNewCatImage] = useState('');
   const [showBulkUpload, setShowBulkUpload] = useState(false);
+  const [expandedOrders, setExpandedOrders] = useState({});
   const [bulkFile, setBulkFile] = useState(null);
   const [bulkStock, setBulkStock] = useState('10');
   const [bulkPreview, setBulkPreview] = useState(null);
@@ -7047,6 +7048,7 @@ export default function EcommerceMarketplace({ inlineMode = false, onBackToSelec
                       });
 
                       if (myItems.length === 0) return null;
+                      const isOpen = !!expandedOrders[ord.id];
 
                       return (
                         <div 
@@ -7054,8 +7056,15 @@ export default function EcommerceMarketplace({ inlineMode = false, onBackToSelec
                           className="bg-white dark:bg-slate-900 border border-slate-200/50 dark:border-slate-800/50 p-6 rounded-[28px] shadow-sm hover:shadow-md transition-all space-y-4"
                         >
                           {/* Order Header */}
-                          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-100 dark:border-slate-800 pb-3">
-                            <div className="space-y-0.5">
+                          <div
+                            role="button"
+                            tabIndex={0}
+                            aria-expanded={isOpen}
+                            onClick={() => setExpandedOrders(prev => ({ ...prev, [ord.id]: !prev[ord.id] }))}
+                            onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setExpandedOrders(prev => ({ ...prev, [ord.id]: !prev[ord.id] })); } }}
+                            className={`flex flex-col sm:flex-row sm:items-center justify-between gap-3 cursor-pointer select-none ${isOpen ? 'border-b border-slate-100 dark:border-slate-800 pb-3' : ''}`}
+                          >
+                            <div className="space-y-0.5 min-w-0">
                               <div className="flex items-center gap-2">
                                 <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Order ID: {ord.order_id}</span>
                                 <span className={`text-[9px] font-black px-2.5 py-0.5 rounded-full uppercase ${
@@ -7068,12 +7077,18 @@ export default function EcommerceMarketplace({ inlineMode = false, onBackToSelec
                                 </span>
                               </div>
                               <p className="text-[11px] text-slate-500 font-semibold">{orderDate} • Customer: <span className="text-slate-800 dark:text-slate-200 font-extrabold">{ord.address_details?.name || ord.user_username}</span></p>
+                              {!isOpen && (
+                                <p className="text-[11px] text-slate-400 font-semibold truncate max-w-[520px]">
+                                  {myItems.length} item{myItems.length === 1 ? '' : 's'} &middot; {myItems.map(i => i.product_details?.name).filter(Boolean).join(', ')}
+                                </p>
+                              )}
                               {ord.payment_method === 'cod' && (
                                 <span className="inline-flex items-center gap-1 text-[9px] font-black px-2 py-0.5 rounded-full bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-400 uppercase tracking-wider mt-0.5">
                                   💵 COD — Collect Cash on Delivery
                                 </span>
                               )}
                             </div>
+                            <div className="flex items-center gap-3 sm:justify-end">
                             <div className="text-left sm:text-right">
                               <span className="text-[10px] text-slate-400 font-bold block uppercase tracking-wider">Seller Payout</span>
                               <span className="font-black text-sm text-slate-900 dark:text-white">₹{sellerSubtotal.toLocaleString()}</span>
@@ -7083,8 +7098,12 @@ export default function EcommerceMarketplace({ inlineMode = false, onBackToSelec
                                 </p>
                               )}
                             </div>
+                            <ChevronDown className={`w-5 h-5 text-slate-400 shrink-0 transition-transform ${isOpen ? 'rotate-180' : ''}`} />
+                            </div>
                           </div>
 
+                          {isOpen && (
+                          <div className="space-y-4">
                           {/* Order Items */}
                           <div className="space-y-3">
                             {myItems.map((item, itemIdx) => (
@@ -7210,6 +7229,8 @@ export default function EcommerceMarketplace({ inlineMode = false, onBackToSelec
                               </div>
                             )}
                           </div>
+                          </div>
+                          )}
                         </div>
                       );
                     })
