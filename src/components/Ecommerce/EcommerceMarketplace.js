@@ -7133,7 +7133,7 @@ export default function EcommerceMarketplace({ inlineMode = false, onBackToSelec
                     )
                     : <span className={`inline-flex rounded-full h-1.5 w-1.5 shrink-0 bg-emerald-500 ${onColour ? 'ring-1 ring-white' : ''}`} title="All clear"></span>);
                   const inputCls = 'w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl py-2 px-3 text-xs font-semibold text-slate-700 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-orange-400/50';
-                  const COLS = 'md:grid-cols-[1.25fr_0.95fr_1.35fr_1.6fr_1fr_1.15fr_28px]';
+                  const COLS = 'md:grid-cols-[1.1fr_0.95fr_1.35fr_1.6fr_1fr_1.15fr_108px]';
 
                   return (
                     <>
@@ -7262,11 +7262,8 @@ export default function EcommerceMarketplace({ inlineMode = false, onBackToSelec
                             className={`grid grid-cols-1 ${COLS} gap-x-3 gap-y-3 items-center px-5 py-4 cursor-pointer select-none transition-colors ${isOpen ? 'bg-orange-50/40 dark:bg-slate-800/40' : 'hover:bg-slate-50 dark:hover:bg-slate-800/40'}`}
                           >
                             {/* Order */}
-                            <div className="space-y-1.5 min-w-0">
+                            <div className="min-w-0">
                               <p className="font-mono text-xs font-semibold tracking-tight text-slate-700 dark:text-slate-200 truncate">{ord.order_id}</p>
-                              <span className="inline-flex items-center gap-1 text-[10px] font-extrabold text-orange-600 border border-orange-200 dark:border-orange-900/50 rounded-full px-2.5 py-0.5">
-                                {isOpen ? 'Hide details' : 'View details'} <ChevronDown className={`w-3 h-3 transition-transform ${isOpen ? 'rotate-180' : ''}`} />
-                              </span>
                             </div>
                             {/* Date */}
                             <div className="text-xs font-semibold text-slate-600 dark:text-slate-300 leading-snug">
@@ -7309,7 +7306,11 @@ export default function EcommerceMarketplace({ inlineMode = false, onBackToSelec
                               {statusPill(ord.status)}
                               {isReturn && ord.return_reason && <p className="text-[10px] font-bold text-red-600 dark:text-red-400 line-clamp-2">↩ {ord.return_reason}</p>}
                             </div>
-                            <ChevronDown className={`hidden md:block w-5 h-5 text-slate-400 transition-transform ${isOpen ? 'rotate-180' : ''}`} />
+                            <div className="md:justify-self-end">
+                              <span className="inline-flex items-center gap-1 text-[10px] font-extrabold text-orange-600 border border-orange-200 dark:border-orange-900/50 rounded-full px-2.5 py-1 whitespace-nowrap hover:bg-orange-50 dark:hover:bg-orange-950/20 transition-colors">
+                                {isOpen ? 'Hide details' : 'View details'} <ChevronDown className={`w-3 h-3 transition-transform ${isOpen ? 'rotate-180' : ''}`} />
+                              </span>
+                            </div>
                           </div>
 
                           {isOpen && (
