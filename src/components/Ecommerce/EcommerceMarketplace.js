@@ -2178,19 +2178,27 @@ export default function EcommerceMarketplace({ inlineMode = false, onBackToSelec
     setCouponDiscount(0);
   };
 
-  const updateOrderStatus = async (orderId, newStatus, trackingNumber, shippingProvider) => {
+  const updateOrderStatus = async (orderId, newStatus, trackingNumber, shippingProvider, reason) => {
     try {
       const payload = { status: newStatus };
+      if (reason) payload.reason = reason;
       if (trackingNumber) payload.tracking_number = trackingNumber;
       if (shippingProvider) payload.shipping_provider = shippingProvider;
       await api.patch(`/ecommerce/orders/${orderId}/status/`, payload);
       fetchSellerOrders();
       fetchCustomerOrders();
-      toast.success(`Order status updated to ${newStatus.toUpperCase()}`);
+      toast.success(`Order status updated to ${newStatus.replace(/_/g, ' ').toUpperCase()}`);
     } catch (err) {
       console.error("Error updating order status:", err);
       toast.error(err.response?.data?.error || "Failed to update order status");
     }
+  };
+
+  const rejectReturn = (orderId) => {
+    const reason = window.prompt('Why is this return being rejected? The customer will see this reason.');
+    if (reason === null) return;
+    if (!reason.trim()) { toast.error('A reason is required to reject a return'); return; }
+    updateOrderStatus(orderId, 'return_rejected', '', '', reason.trim());
   };
 
   const handleCancelOrder = async () => {
@@ -7018,6 +7026,14 @@ export default function EcommerceMarketplace({ inlineMode = false, onBackToSelec
             {adminView === 'orders' && (
               <div className="space-y-6">
                 <h3 className="font-extrabold text-sm dark:text-white">Customer Orders Management</h3>
+                {(() => {
+                  const pending = sellerOrders.filter(o => o.status === 'return_requested').length;
+                  return pending > 0 ? (
+                    <div className="flex items-center gap-2 bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-800 text-red-700 dark:text-red-300 rounded-2xl px-4 py-3 text-xs font-bold">
+                      <span>↩</span> {pending} return request{pending === 1 ? '' : 's'} waiting for your decision (shown first, in red)
+                    </div>
+                  ) : null;
+                })()}
                 
                 <div className="space-y-4">
                   {sellerOrders.filter(ord => {
@@ -7035,7 +7051,7 @@ export default function EcommerceMarketplace({ inlineMode = false, onBackToSelec
                       </p>
                     </div>
                   ) : (
-                    sellerOrders.map((ord, idx) => {
+                    [...sellerOrders].sort((a, b) => (b.status === 'return_requested') - (a.status === 'return_requested')).map((ord, idx) => {
                       const isAdmin = user?.is_staff || user?.user_type === 'admin';
                       const myItems = (ord.items || []).filter(item => isAdmin || item.product_details?.seller === user?.id);
                       const sellerSubtotal = myItems.reduce((sum, item) => sum + (Number(item.price) * item.quantity), 0);
@@ -7053,7 +7069,7 @@ export default function EcommerceMarketplace({ inlineMode = false, onBackToSelec
                       return (
                         <div 
                           key={idx} 
-                          className="bg-white dark:bg-slate-900 border border-slate-200/50 dark:border-slate-800/50 p-6 rounded-[28px] shadow-sm hover:shadow-md transition-all space-y-4"
+                          className={`bg-white dark:bg-slate-900 border p-6 rounded-[28px] shadow-sm hover:shadow-md transition-all space-y-4 ${ord.status === 'return_requested' ? 'border-red-300 ring-2 ring-red-200 dark:border-red-800 dark:ring-red-900/40' : 'border-slate-200/50 dark:border-slate-800/50'}`}
                         >
                           {/* Order Header */}
                           <div
@@ -7071,12 +7087,17 @@ export default function EcommerceMarketplace({ inlineMode = false, onBackToSelec
                                   ord.status === 'delivered' ? 'bg-emerald-50 dark:bg-emerald-950/20 text-emerald-500' :
                                   ord.status === 'shipped' ? 'bg-blue-50 dark:bg-blue-950/20 text-blue-500' :
                                   ord.status === 'cancelled' ? 'bg-rose-50 dark:bg-rose-950/20 text-rose-500' :
+                                  ord.status === 'return_requested' ? 'bg-red-600 text-white' :
+                                  ['returned', 'refunded', 'return_rejected'].includes(ord.status) ? 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300' :
                                   'bg-orange-50 dark:bg-orange-950/20 text-orange-500'
                                 }`}>
-                                  {ord.status}
+                                  {String(ord.status).replace(/_/g, ' ')}
                                 </span>
                               </div>
                               <p className="text-[11px] text-slate-500 font-semibold">{orderDate} • Customer: <span className="text-slate-800 dark:text-slate-200 font-extrabold">{ord.address_details?.name || ord.user_username}</span></p>
+                              {ord.status === 'return_requested' && ord.return_reason && (
+                                <p className="text-[11px] text-red-600 dark:text-red-400 font-bold truncate max-w-[520px]">↩ Return requested: {ord.return_reason}</p>
+                              )}
                               {!isOpen && (
                                 <p className="text-[11px] text-slate-400 font-semibold truncate max-w-[520px]">
                                   {myItems.length} item{myItems.length === 1 ? '' : 's'} &middot; {myItems.map(i => i.product_details?.name).filter(Boolean).join(', ')}
@@ -7174,6 +7195,39 @@ export default function EcommerceMarketplace({ inlineMode = false, onBackToSelec
                             </div>
                           )}
 
+                          {/* Return Details: shown to seller/admin once a customer has asked to return the order */}
+                          {ord.return_reason && ['return_requested', 'returned', 'refunded', 'return_rejected'].includes(ord.status) && (
+                            <div className="bg-orange-50 dark:bg-orange-950/20 border border-orange-200 dark:border-orange-800/50 rounded-2xl p-4 space-y-2">
+                              <h5 className="text-[10px] font-black text-orange-600 dark:text-orange-400 uppercase tracking-widest flex items-center gap-1.5">
+                                <span>↩</span> Return Details
+                              </h5>
+                              <div className="space-y-1.5 text-xs">
+                                <div className="flex items-start gap-2">
+                                  <span className="text-[10px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-wide shrink-0 pt-0.5">Reason:</span>
+                                  <span className="font-bold text-slate-800 dark:text-white">{ord.return_reason}</span>
+                                </div>
+                                {ord.return_comment && ord.return_comment !== ord.return_reason && (
+                                  <div className="flex items-start gap-2">
+                                    <span className="text-[10px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-wide shrink-0 pt-0.5">Details:</span>
+                                    <span className="font-semibold text-slate-600 dark:text-slate-300 whitespace-pre-line">{ord.return_comment}</span>
+                                  </div>
+                                )}
+                                {ord.return_requested_at && (
+                                  <div className="flex items-start gap-2">
+                                    <span className="text-[10px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-wide shrink-0 pt-0.5">Requested at:</span>
+                                    <span className="font-semibold text-slate-600 dark:text-slate-300">{new Date(ord.return_requested_at).toLocaleString('en-IN', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })}</span>
+                                  </div>
+                                )}
+                              </div>
+                              {ord.status === 'return_requested' && (
+                                <div className="flex flex-wrap items-center gap-2 pt-2">
+                                  <button onClick={() => updateOrderStatus(ord.id, 'returned')} className="bg-emerald-500 hover:bg-emerald-600 text-white font-extrabold text-[10px] uppercase tracking-wider px-4 py-2 rounded-xl shadow-sm transition-colors">Approve Return</button>
+                                  <button onClick={() => rejectReturn(ord.id)} className="bg-red-500 hover:bg-red-600 text-white font-extrabold text-[10px] uppercase tracking-wider px-4 py-2 rounded-xl shadow-sm transition-colors">Reject Return</button>
+                                </div>
+                              )}
+                            </div>
+                          )}
+
                           {/* Status Management Actions */}
                           <div className="space-y-3 pt-2">
                             <div className="flex flex-wrap items-center gap-3">
@@ -7181,7 +7235,7 @@ export default function EcommerceMarketplace({ inlineMode = false, onBackToSelec
                                 <span className="text-[10px] text-slate-450 font-black uppercase tracking-wider">Update Status:</span>
                                 <select
                                   value={ord.status}
-                                  onChange={(e) => updateOrderStatus(ord.id, e.target.value)}
+                                  onChange={(e) => (e.target.value === 'return_rejected' ? rejectReturn(ord.id) : updateOrderStatus(ord.id, e.target.value))}
                                   className="bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-750 rounded-xl py-1.5 px-3 text-xs font-bold text-slate-750 dark:text-white focus:outline-none"
                                 >
                                   <option value="pending">Pending</option>
@@ -7189,7 +7243,9 @@ export default function EcommerceMarketplace({ inlineMode = false, onBackToSelec
                                   <option value="shipped">Shipped</option>
                                   <option value="delivered">Delivered</option>
                                   <option value="cancelled">Cancelled</option>
-                                  <option value="returned">Returned</option>
+                                  <option value="return_requested">Return Requested</option>
+                                  <option value="returned">Return Approved</option>
+                                  <option value="return_rejected">Return Rejected</option>
                                   <option value="refunded">Refunded</option>
                                 </select>
                               </div>

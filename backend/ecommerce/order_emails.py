@@ -109,13 +109,14 @@ def _items(order):
     return list(order.items.select_related('product').all())
 
 
-def _items_text(order):
-    return '\n'.join(f"  - {it.product.name} x {it.quantity}  {_money(it.price * it.quantity)}" for it in _items(order))
+def _items_text(order, items=None):
+    return '\n'.join(f"  - {it.product.name} x {it.quantity}  {_money(it.price * it.quantity)}"
+                     for it in (items if items is not None else _items(order)))
 
 
-def _items_html(order):
+def _items_html(order, items=None):
     rows = []
-    for it in _items(order):
+    for it in (items if items is not None else _items(order)):
         img = _image_url(it.product)
         thumb = (f'<img src="{img}" width="64" height="64" alt="" style="display:block;width:64px;height:64px;object-fit:cover;'
                  'border-radius:8px;border:1px solid #e4e4e7;background:#f4f4f5;">'
@@ -247,6 +248,47 @@ def return_requested(order):
         'We have received your return request and will review it shortly. We will email you with the outcome.',
         [('Reason', order.return_reason)],
     )
+    return_requested_staff(order)
+
+
+def _admin_email():
+    return (getattr(settings, 'ADMIN_NOTIFY_EMAIL', '') or 'info@collabo.co.in').strip()
+
+
+def return_requested_staff(order):
+    """Tell the admin, and the seller of each returned item, that a customer asked to return an order.
+    The admin sees every item; each seller only sees their own."""
+    admin_to = _admin_email()
+    items = _items(order)
+    addr = order.address
+    customer = _order_name(order)
+    requested = order.return_requested_at.strftime('%d %b %Y, %I:%M %p') if order.return_requested_at else ''
+    link = f"{SITE_URL}/admin-dashboard"
+
+    def build(to, shown, greeting_name, who):
+        rows = [('Order ID', order.order_id), ('Customer', customer),
+                ('Customer phone', addr.phone if addr else ''), ('Requested on', requested),
+                ('Return reason', order.return_reason), ('Customer comment', order.return_comment)]
+        intro = f"A customer has requested to return {who}. Please review it in the Orders tab and approve or reject it."
+        text = (f"Hi {greeting_name},\n\n{intro}\n\n"
+                + '\n'.join(f"{k}: {v}" for k, v in rows if v)
+                + f"\n\nItems:\n{_items_text(order, shown)}\n\nOpen the Orders tab: {link}\n\n- Collabo")
+        body = _section('Return request', _facts_html(rows)) + _section('Items in this order', _items_html(order, shown))
+        _send(to, f"Return requested - {order.order_id}", text,
+              _wrap_html('Return request needs your review', greeting_name, _intro(intro), body, 'Open Orders', link, RED))
+
+    build(admin_to, items, 'team', 'an order')
+
+    sellers = {}
+    for it in items:
+        seller = getattr(it.product, 'seller', None)
+        if seller is not None:
+            sellers.setdefault(seller.pk, (seller, []))[1].append(it)
+    for seller, shown in sellers.values():
+        to = (getattr(seller, 'email', '') or '').strip()
+        if not to or to.lower() == admin_to.lower():
+            continue  # no address, or already notified as admin
+        build(to, shown, getattr(seller, 'first_name', '') or 'there', 'an order containing your products')
 
 
 def order_returned(order):
@@ -263,11 +305,18 @@ def order_refunded(order):
     )
 
 
+def _rejection_reason(order):
+    """The seller/admin's reason is appended to return_comment as "[Rejected: ...]"."""
+    import re
+    found = re.findall(r'\[Rejected: (.*?)\]', order.return_comment or '', flags=re.S)
+    return found[-1].strip() if found else ''
+
+
 def return_rejected(order):
     _order_mail(
         order, f"Return request update - {order.order_id}", 'Update on your return request',
         'We reviewed your return request and unfortunately we could not approve it. Reply to this email if you would like to talk to us about it.',
-        accent=RED,
+        [('Reason', _rejection_reason(order))], accent=RED,
     )
 
 
