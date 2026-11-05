@@ -5450,51 +5450,58 @@ export default function EcommerceMarketplace({ inlineMode = false, onBackToSelec
               <button onClick={() => window.history.back()} className="flex items-center justify-center w-8 h-8 rounded-full bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 transition-colors">
                 <ChevronLeft className="w-5 h-5 text-slate-600 dark:text-slate-300" />
               </button>
-              <h1 className="text-2xl font-black tracking-tight dark:text-white">My Wishlist</h1>
+              <h1 className="text-2xl font-black tracking-tight dark:text-white">My Wishlist <span className="text-sm font-bold text-slate-400">({wishlist.length})</span></h1>
             </div>
 
             {wishlist.length > 0 ? (
-              <div className="grid grid-cols-3 sm:grid-cols-3 lg:grid-cols-4 gap-2 sm:gap-6">
+              <div className="space-y-3 max-w-4xl">
                 {productsList.filter(p => wishlist.includes(p.id)).map((prod) => (
-                  <div 
-                    key={prod.id} 
-                    className="bg-white dark:bg-slate-900 rounded-[28px] border border-slate-200/50 dark:border-slate-800/50 p-4 relative group hover:shadow-xl transition-all"
+                  <div
+                    key={prod.id}
+                    className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/70 dark:border-slate-800 p-3 sm:p-4 flex items-center gap-3 sm:gap-5 hover:shadow-md transition-all"
                   >
-                    <button 
-                      onClick={() => toggleWishlist(prod)}
-                      className="absolute top-3 right-3 p-2 bg-white/90 dark:bg-slate-850/90 backdrop-blur-md rounded-xl shadow-sm text-orange-550 transition-colors z-10"
-                    >
-                      <X className="w-4 h-4" />
-                    </button>
-
-                    <div 
+                    <div
                       onClick={() => { setSelectedProduct(prod); setCurrentView('details'); }}
-                      className="w-full aspect-square rounded-2xl overflow-hidden bg-slate-50 dark:bg-slate-800 cursor-pointer mb-4"
+                      className="w-20 h-20 sm:w-28 sm:h-28 shrink-0 rounded-xl overflow-hidden bg-slate-50 dark:bg-slate-800 cursor-pointer"
                     >
                       <ProductImage src={prod.image} alt={prod.name} />
                     </div>
 
-                    <div className="space-y-1.5 sm:space-y-2">
-                      <span className="hidden sm:block text-[9px] sm:text-xs font-bold text-slate-400 uppercase tracking-widest truncate">{prod.brand}</span>
-                      <h3 
+                    <div className="flex-1 min-w-0 space-y-1">
+                      {prod.brand ? <span className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest truncate">{prod.brand}</span> : null}
+                      <h3
                         onClick={() => { setSelectedProduct(prod); setCurrentView('details'); }}
-                        className="font-bold text-xs sm:text-base tracking-tight line-clamp-2 sm:line-clamp-1 cursor-pointer hover:text-orange-500 dark:text-white"
+                        className="font-bold text-sm sm:text-base tracking-tight line-clamp-2 cursor-pointer hover:text-orange-500 dark:text-white"
                       >
                         {prod.name}
                       </h3>
-
-                      <div className="flex items-baseline gap-1 sm:gap-2">
-                        <span className="text-sm sm:text-base font-black dark:text-white">₹{prod.discountPrice.toLocaleString()}</span>
+                      <div className="flex items-baseline flex-wrap gap-x-2 gap-y-0.5">
+                        <span className="text-base sm:text-lg font-black dark:text-white">₹{prod.discountPrice.toLocaleString()}</span>
+                        {prod.price > prod.discountPrice && (
+                          <>
+                            <span className="text-xs text-slate-400 line-through">₹{prod.price.toLocaleString()}</span>
+                            <DiscountBadge price={prod.price} discounted={prod.discountPrice} className="text-xs" />
+                          </>
+                        )}
                       </div>
+                    </div>
 
-                      <button 
+                    <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 shrink-0">
+                      <button
                         onClick={() => {
                           addToCart(prod);
                           toggleWishlist(prod);
                         }}
-                        className="w-full bg-slate-950 hover:bg-slate-900 dark:bg-slate-800 dark:hover:bg-slate-700 text-white font-extrabold text-[10px] sm:text-xs uppercase tracking-wider py-2 sm:py-3 rounded-lg sm:rounded-xl transition-colors mt-1 sm:mt-2"
+                        className="bg-slate-950 hover:bg-slate-900 dark:bg-slate-800 dark:hover:bg-slate-700 text-white font-extrabold text-[10px] sm:text-xs uppercase tracking-wider px-4 py-2.5 rounded-xl transition-colors whitespace-nowrap"
                       >
                         Add to Cart
+                      </button>
+                      <button
+                        onClick={() => toggleWishlist(prod)}
+                        title="Remove from wishlist"
+                        className="inline-flex items-center justify-center gap-1.5 text-[11px] font-bold text-slate-500 hover:text-rose-600 border border-slate-200 dark:border-slate-700 hover:border-rose-200 rounded-xl px-3 py-2.5 transition-colors"
+                      >
+                        <X className="w-3.5 h-3.5" /> Remove
                       </button>
                     </div>
                   </div>
