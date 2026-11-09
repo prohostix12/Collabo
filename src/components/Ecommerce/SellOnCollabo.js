@@ -90,20 +90,17 @@ function SellerRegistrationWidget() {
       if (businessAddress.trim().length < 10) return setKycError('Please enter a complete business address');
       setKycStep(2);
     } else if (kycStep === 2) {
-      if (!taxId.trim() && !idNumber.trim()) return setKycError('Provide Tax ID (GSTIN/PAN) or Aadhaar/Voter ID number');
-      if (taxId.trim()) {
+      if (!taxId.trim()) return setKycError('GSTIN is required');
+      {
         const gstRegex = /^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z]{1}[0-9A-Z]{1}[Z]{1}[0-9A-Z]{1}$/;
-        const panRegex = /^[A-Z]{5}[0-9]{4}[A-Z]{1}$/;
-        if (!gstRegex.test(taxId.trim().toUpperCase()) && !panRegex.test(taxId.trim().toUpperCase())) {
-          return setKycError('Invalid Tax ID. Enter a valid 15-digit GSTIN or 10-character PAN (e.g. ABCDE1234F)');
+        if (!gstRegex.test(taxId.trim().toUpperCase())) {
+          return setKycError('Invalid GSTIN. Enter a valid 15-character GSTIN (e.g. 27AAAAA1111A1Z1)');
         }
       }
       if (idNumber.trim()) {
         if (idType === 'aadhaar') {
           const cleaned = idNumber.replace(/\s/g, '');
           if (!/^\d{12}$/.test(cleaned)) return setKycError('Aadhaar number must be exactly 12 digits');
-        } else if (idType === 'voter') {
-          if (!/^[A-Z]{3}\d{7}$/.test(idNumber.trim().toUpperCase())) return setKycError('Voter ID must be 3 letters followed by 7 digits (e.g. ABC1234567)');
         } else if (idType === 'pan') {
           if (!/^[A-Z]{5}\d{4}[A-Z]$/.test(idNumber.trim().toUpperCase())) return setKycError('PAN must be 10 characters: 5 letters, 4 digits, 1 letter (e.g. ABCDE1234F)');
         }
@@ -254,12 +251,12 @@ function SellerRegistrationWidget() {
       )}
       {kycStep === 2 && (
         <div className="space-y-3">
-          <div><label className={labelCls}>Tax ID (GSTIN / PAN)</label><input type="text" value={taxId} onChange={e=>setTaxId(e.target.value)} placeholder="e.g. 27AAAAA1111A1Z1" className={inputCls} />
-          <p className="text-[9px] text-gray-400 mt-0.5">Optional if you have Aadhaar/Voter ID below</p></div>
+          <div><label className={labelCls}>GSTIN *</label><input type="text" value={taxId} onChange={e=>setTaxId(e.target.value)} placeholder="e.g. 27AAAAA1111A1Z1" maxLength={15} className={inputCls} />
+          <p className="text-[9px] text-gray-400 mt-0.5">15-character GST number (required)</p></div>
           <div>
             <label className={labelCls}>Identity Verification *</label>
             <div className="flex gap-2 mb-2">
-              {[{id:'aadhaar',label:'Aadhaar Card'},{id:'voter',label:'Voter ID'},{id:'pan',label:'PAN Card'}].map(t=>(
+              {[{id:'aadhaar',label:'Aadhaar Card'},{id:'pan',label:'PAN Card'}].map(t=>(
                 <button key={t.id} type="button" onClick={()=>setIdType(t.id)}
                   className={`flex-1 py-2 rounded-lg text-[10px] font-medium transition-colors border ${
                     idType===t.id ? 'bg-orange-50 border-orange-300 text-orange-700' : 'bg-white border-gray-200 text-gray-500 hover:border-gray-300'
@@ -267,13 +264,13 @@ function SellerRegistrationWidget() {
               ))}
             </div>
             <input type="text" value={idNumber} onChange={e=>setIdNumber(e.target.value)}
-              placeholder={idType==='aadhaar'?'e.g. 1234 5678 9012':idType==='voter'?'e.g. ABC1234567':'e.g. ABCDE1234F'}
+              placeholder={idType==='aadhaar'?'e.g. 1234 5678 9012':'e.g. ABCDE1234F'}
               className={inputCls} />
-            <p className="text-[9px] text-gray-400 mt-0.5">{idType==='aadhaar'?'12-digit Aadhaar number':idType==='voter'?'Voter ID (EPIC) number':'10-character PAN number'}</p>
+            <p className="text-[9px] text-gray-400 mt-0.5">{idType==='aadhaar'?'12-digit Aadhaar number':'10-character PAN number'}</p>
           </div>
           <div><label className={labelCls}>Upload ID Proof (PDF or Image) *</label><input type="file" accept=".pdf,image/*" onChange={e=>handleFileUpload(e,setKycDoc)} className={inputCls} />
           {kycDoc && <p className="text-[10px] text-emerald-600 mt-1">Attached: {kycDoc.name}</p>}
-          <p className="text-[9px] text-gray-400 mt-0.5">Clear photo or scan of your {idType==='aadhaar'?'Aadhaar card (front & back)':idType==='voter'?'Voter ID card':' PAN card'}</p></div>
+          <p className="text-[9px] text-gray-400 mt-0.5">Clear photo or scan of your {idType==='aadhaar'?'Aadhaar card (front & back)':'PAN card'}</p></div>
         </div>
       )}
       {kycStep === 3 && (
@@ -292,7 +289,7 @@ function SellerRegistrationWidget() {
           {[
             ['Store', storeName], ['Address', businessAddress],
             ...(taxId ? [['Tax ID', taxId]] : []),
-            ...(idNumber ? [[idType === 'aadhaar' ? 'Aadhaar' : idType === 'voter' ? 'Voter ID' : 'PAN', idNumber]] : []),
+            ...(idNumber ? [[idType === 'aadhaar' ? 'Aadhaar' : 'PAN', idNumber]] : []),
             ['Bank', `${bankName} — ${bankIfsc}`], ['Account', bankAccount],
           ].map(([l,v]) => (
             <div key={l} className="flex justify-between py-1 border-b border-gray-100 last:border-0">
