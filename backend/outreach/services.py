@@ -121,8 +121,12 @@ def render(subject, body, contact=None, footer=False, **override):
     return subj, body_to_text(filled, footer), body_to_html(filled, footer)
 
 
-def build_message(subject, text, html_body, to_email, connection=None):
+def build_message(subject, text, html_body, to_email, connection=None, plain=False):
+    """plain=True: a simple text email (no HTML part, no bulk-style Unsubscribe header), which looks like
+    a normal person-to-person email and is less likely to be filed under Gmail's Promotions tab."""
     from_email = getattr(settings, 'DEFAULT_FROM_EMAIL', '') or 'Collabo <info@collabo.co.in>'
+    if plain:
+        return EmailMultiAlternatives(subject, text, from_email, [to_email], connection=connection, reply_to=[from_email])
     msg = EmailMultiAlternatives(subject, text, from_email, [to_email], connection=connection,
                                  reply_to=[from_email],
                                  headers={'List-Unsubscribe': '<mailto:info@collabo.co.in?subject=Unsubscribe>'})
@@ -194,7 +198,7 @@ def _deliver(conn, campaign, send):
     try:
         subject, text, html_body = render(campaign.subject, campaign.body, contact, campaign.add_footer,
                                           brand_name=(send.brand_name or '').strip() or 'Brand')
-        msg = build_message(subject, text, html_body, send.email, connection=conn)
+        msg = build_message(subject, text, html_body, send.email, connection=conn, plain=campaign.plain_style)
         mid = make_msgid(domain='collabo.co.in')  # unique, so the email can be found in Zoho's mail log
         msg.extra_headers['Message-ID'] = mid
         OutreachSend.objects.filter(pk=send.pk).update(message_id=mid)

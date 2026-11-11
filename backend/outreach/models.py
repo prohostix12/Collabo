@@ -55,6 +55,7 @@ class OutreachCampaign(models.Model):
     subject = models.CharField(max_length=255)
     body = models.TextField()
     add_footer = models.BooleanField(default=False)
+    plain_style = models.BooleanField(default=False, help_text='Send as simple text: no HTML styling and no one-click Unsubscribe header')
     created_by = models.ForeignKey(settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.SET_NULL, related_name='+')
     created_at = models.DateTimeField(auto_now_add=True)
     status = models.CharField(max_length=12, choices=STATUS_CHOICES, default='running')

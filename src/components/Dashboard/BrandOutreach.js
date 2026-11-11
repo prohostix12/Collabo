@@ -57,6 +57,7 @@ const SendTab = ({ templates, limits, reloadLimits, onSent }) => {
   const [templateId, setTemplateId] = useState('');
   const [subject, setSubject] = useState('');
   const [footer, setFooter] = useState(false);
+  const [plain, setPlain] = useState(false);
   const [skipContacted, setSkipContacted] = useState(true);
   const [testTo, setTestTo] = useState(user?.email || 'info@collabo.co.in');
   const [preview, setPreview] = useState(null);
@@ -106,20 +107,20 @@ const SendTab = ({ templates, limits, reloadLimits, onSent }) => {
   const selectedCount = allMatching ? Math.max(0, data.count - excluded.size) : selected.size;
 
   const buildPayload = () => {
-    const base = { template_id: Number(templateId), subject, add_footer: footer, skip_contacted: skipContacted };
+    const base = { template_id: Number(templateId), subject, add_footer: footer, plain_style: plain, skip_contacted: skipContacted };
     if (allMatching) return { ...base, select_all: true, filters: Object.fromEntries(Object.entries(filters).filter(([, v]) => v)), exclude_ids: [...excluded] };
     return { ...base, contact_ids: [...selected] };
   };
 
   const doPreview = async (contactId) => {
     try {
-      const res = await api.post('/outreach/preview/', { template_id: Number(templateId), subject, add_footer: footer, contact_id: contactId });
+      const res = await api.post('/outreach/preview/', { template_id: Number(templateId), subject, add_footer: footer, plain_style: plain, contact_id: contactId });
       setPreview(res.data);
     } catch (e) { toast.error(errMsg(e, 'Could not build the preview')); }
   };
   const doTest = async () => {
     try {
-      const res = await api.post('/outreach/test/', { template_id: Number(templateId), subject, add_footer: footer, to: testTo });
+      const res = await api.post('/outreach/test/', { template_id: Number(templateId), subject, add_footer: footer, plain_style: plain, to: testTo });
       toast.success(`Test email sent to ${res.data.sent_to}`);
     } catch (e) { toast.error(errMsg(e, 'Could not send the test email')); }
   };
@@ -252,6 +253,10 @@ const SendTab = ({ templates, limits, reloadLimits, onSent }) => {
         <label className="flex items-start gap-2 text-[11px] text-gray-600 dark:text-gray-300">
           <input type="checkbox" className="mt-0.5" checked={footer} onChange={(e) => setFooter(e.target.checked)} />
           <span>Add an "reply unsubscribe to opt out" line <span className="text-gray-400">(recommended for bulk email)</span></span>
+        </label>
+        <label className="flex items-start gap-2 text-[11px] text-gray-600 dark:text-gray-300">
+          <input type="checkbox" className="mt-0.5" checked={plain} onChange={(e) => setPlain(e.target.checked)} />
+          <span>Plain style <span className="text-gray-400">(simple text, no Unsubscribe button. Looks like a normal email and is less likely to land in Gmail's Promotions tab)</span></span>
         </label>
         <div className="flex gap-2">
           <button onClick={() => doPreview()} disabled={!templateId} className={`${btnLight} flex-1`}><Eye className="w-3 h-3" /> Preview</button>

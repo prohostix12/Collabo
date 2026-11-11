@@ -329,6 +329,9 @@ class Preview(AdminView):
         contact = OutreachContact.objects.filter(pk=request.data.get('contact_id')).first() if request.data.get('contact_id') else None
         subj, text, html_body = services.render(subject, body, contact, bool(request.data.get('add_footer')),
                                                 **({} if contact else {'brand_name': 'Sample Brand'}))
+        if request.data.get('plain_style'):
+            import html as _html
+            html_body = '<pre style="white-space:pre-wrap;font-family:Arial,Helvetica,sans-serif;font-size:14px;line-height:1.6;margin:0;">' + _html.escape(text) + '</pre>'
         return Response({'subject': subj, 'html': html_body, 'text': text,
                          'to': contact.email if contact else '', 'brand': contact.brand_name if contact else 'Sample Brand'})
 
@@ -343,7 +346,7 @@ class TestSend(AdminView):
             return Response({'error': 'Enter a valid email address to send the test to.'}, status=400)
         subj, text, html_body = services.render(subject, body, None, bool(request.data.get('add_footer')), brand_name='Sample Brand')
         try:
-            services.build_message('[TEST] ' + subj, text, html_body, to).send(fail_silently=False)
+            services.build_message('[TEST] ' + subj, text, html_body, to, plain=bool(request.data.get('plain_style'))).send(fail_silently=False)
         except Exception as exc:
             return Response({'error': f'The mail server rejected the test email: {str(exc)[:200]}'}, status=502)
         return Response({'sent_to': to})
@@ -400,7 +403,7 @@ class CampaignList(AdminView):
 
         campaign = OutreachCampaign.objects.create(
             template=t, template_name=t.name if t else 'Custom', subject=subject, body=body,
-            add_footer=bool(d.get('add_footer')), created_by=request.user, status='running', heartbeat=timezone.now())
+            add_footer=bool(d.get('add_footer')), plain_style=bool(d.get('plain_style')), created_by=request.user, status='running', heartbeat=timezone.now())
         OutreachSend.objects.bulk_create([OutreachSend(campaign=campaign, contact=c, email=c.email, brand_name=c.brand_name) for c in queue])
         services.start_campaign(campaign.pk)
         out = campaign_dict(campaign)
