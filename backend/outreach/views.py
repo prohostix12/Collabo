@@ -420,7 +420,7 @@ class CampaignDetail(AdminView):
             sends = sends.filter(status=request.query_params['status'])
         sends = sends.order_by('-id')[:300]
         d = campaign_dict(c)
-        d['sends'] = [{'id': s.id, 'email': s.email, 'brand_name': s.brand_name, 'status': s.status, 'error': s.error, 'sent_at': _dt(s.sent_at)} for s in sends]
+        d['sends'] = [{'id': s.id, 'email': s.email, 'brand_name': s.brand_name, 'status': s.status, 'error': s.error, 'message_id': s.message_id, 'sent_at': _dt(s.sent_at)} for s in sends]
         return Response(d)
 
 

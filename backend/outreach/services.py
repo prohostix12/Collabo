@@ -15,6 +15,7 @@ from datetime import timedelta
 
 from django.conf import settings
 from django.core.mail import EmailMultiAlternatives, get_connection
+from django.core.mail.message import make_msgid
 from django.db import close_old_connections
 from django.utils import timezone
 
@@ -194,6 +195,9 @@ def _deliver(conn, campaign, send):
         subject, text, html_body = render(campaign.subject, campaign.body, contact, campaign.add_footer,
                                           brand_name=(send.brand_name or '').strip() or 'Brand')
         msg = build_message(subject, text, html_body, send.email, connection=conn)
+        mid = make_msgid(domain='collabo.co.in')  # unique, so the email can be found in Zoho's mail log
+        msg.extra_headers['Message-ID'] = mid
+        OutreachSend.objects.filter(pk=send.pk).update(message_id=mid)
         try:
             msg.send(fail_silently=False)
         except (smtplib.SMTPServerDisconnected, ConnectionError):

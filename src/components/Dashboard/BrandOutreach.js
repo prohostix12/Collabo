@@ -550,6 +550,15 @@ const HistoryTab = ({ focusId, reloadLimits }) => {
                           <td className="px-2 py-1.5 text-gray-600 dark:text-gray-300">{s.email}</td>
                           <td className="px-2 py-1.5">{statusPill(s.status)}</td>
                           <td className="px-2 py-1.5 text-gray-400">{s.error || fmtDate(s.sent_at)}</td>
+                          <td className="px-2 py-1.5 text-right">
+                            {s.message_id && (
+                              <button
+                                title={`${s.message_id} (click to copy). Search for this in Zoho Admin Console > Email Log to see if it was delivered.`}
+                                onClick={() => { navigator.clipboard?.writeText(s.message_id); toast.success('Message ID copied'); }}
+                                className="text-[10px] font-semibold text-gray-400 hover:text-orange-600 whitespace-nowrap"
+                              >Copy ID</button>
+                            )}
+                          </td>
                         </tr>
                       ))}
                       {detail.sends.length === 0 && <tr><td className="px-2 py-4 text-center text-gray-400">Nothing here.</td></tr>}

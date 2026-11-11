@@ -79,6 +79,7 @@ class OutreachSend(models.Model):
     brand_name = models.CharField(max_length=255, blank=True)
     status = models.CharField(max_length=10, choices=STATUS_CHOICES, default='queued', db_index=True)
     error = models.CharField(max_length=500, blank=True)
+    message_id = models.CharField(max_length=160, blank=True, help_text='Message-ID header of the email, for tracing it in the Zoho mail logs')
     sent_at = models.DateTimeField(null=True, blank=True, db_index=True)
 
     class Meta:
