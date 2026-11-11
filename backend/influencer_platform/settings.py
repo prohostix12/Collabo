@@ -54,6 +54,7 @@ LOCAL_APPS = [
     'landing',
     'ecommerce',
     'pricing',
+    'outreach',
 ]
 
 INSTALLED_APPS = DJANGO_APPS + THIRD_PARTY_APPS + LOCAL_APPS
@@ -313,3 +314,8 @@ BRIGHTDATA_COUNTRY = config('BRIGHTDATA_COUNTRY', default='in')
 # one dataset per platform. See pricing/brightdata_dataset_client.py.
 BRIGHT_DATA_AMAZON_DATASET_ID = config('BRIGHT_DATA_AMAZON_DATASET_ID', default='')
 BRIGHT_DATA_FLIPKART_DATASET_ID = config('BRIGHT_DATA_FLIPKART_DATASET_ID', default='')
+
+# Brand outreach (bulk emails to brands): pace and daily cap. The same mailbox also sends order emails,
+# so the cap protects it from being blocked for bulk sending.
+OUTREACH_DAILY_LIMIT = config('OUTREACH_DAILY_LIMIT', default=200, cast=int)
+OUTREACH_DELAY_SECONDS = config('OUTREACH_DELAY_SECONDS', default=4, cast=float)

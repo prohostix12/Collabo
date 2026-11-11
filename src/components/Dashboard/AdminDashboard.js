@@ -20,6 +20,7 @@ import PaymentManagement from './PaymentManagement';
 import PlatformSettings from './PlatformSettings';
 import EcommerceMarketplace from '../Ecommerce/EcommerceMarketplace';
 import StoreContentEditor from './StoreContentEditor';
+import BrandOutreach from './BrandOutreach';
 
 const AdminDashboard = () => {
   const { user } = useAuth();
@@ -70,6 +71,7 @@ const AdminDashboard = () => {
     { id: 'landing', label: 'Landing Page', icon: Layout },
     { id: 'store', label: 'Store Content', icon: ShoppingBag },
     { id: 'support', label: 'Support Tickets', icon: AlertCircle },
+    { id: 'outreach', label: 'Brand Outreach', icon: Mail },
     { id: 'payments', label: 'Payment Management', icon: DollarSign },
     { id: 'settings', label: 'Platform Settings', icon: Settings },
   ];
@@ -637,6 +639,14 @@ const AdminDashboard = () => {
 
         {activeTab === 'support' && (
           <AdminSupportTickets />
+        )}
+
+        {activeTab === 'outreach' && (
+          <>
+            {user?.is_staff || user?.user_type === 'admin'
+              ? <BrandOutreach />
+              : <div className="p-4 text-center text-gray-500">Access denied. Admins only.</div>}
+          </>
         )}
 
         {activeTab === 'landing' && (

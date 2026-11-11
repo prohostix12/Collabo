@@ -33,6 +33,7 @@ urlpatterns = [
     path('api/landing/', include('landing.urls')),
     path('api/ecommerce/', include('ecommerce.urls')),
     path('api/pricing/', include('pricing.urls')),
+    path('api/outreach/', include('outreach.urls')),
 ]
 
 # Serve Media and Static files for local and production-at-scale (Render deployment fix)
