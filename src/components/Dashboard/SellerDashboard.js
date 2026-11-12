@@ -174,7 +174,13 @@ const SellerDashboard = () => {
   const closeStockPopover = () => setStockProductId(null);
 
   const applyStockUpdate = (product, delta) => {
-    if (!delta) return;
+    if (!delta) {
+      // Nothing actually changed (e.g. "Set Exact Stock" left at the current value) — say so
+      // instead of the button silently doing nothing, which looked like it was broken.
+      toast('Stock is already at that value', { icon: 'ℹ️' });
+      closeStockPopover();
+      return;
+    }
     if (product.stock + delta < 0) { toast.error(`Only ${product.stock} in stock`); return; }
     setStockSubmitting(true);
     api.post(`/ecommerce/products/${product.id}/adjust-stock/`, { delta })
