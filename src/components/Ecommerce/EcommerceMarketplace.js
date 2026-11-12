@@ -5416,24 +5416,20 @@ export default function EcommerceMarketplace({ inlineMode = false, onBackToSelec
             </div>
 
             {customerOrders.length > 0 && (
-              <div className="space-y-2.5">
-                <div className="flex gap-1 overflow-x-auto no-scrollbar bg-white dark:bg-slate-900 border border-slate-200/70 dark:border-slate-800 rounded-lg p-1">
-                  {MY_ORDER_FILTERS.map(f => {
-                    const n = customerOrders.filter(o => matches(o, f.key)).length;
-                    const active = myOrderFilter === f.key;
-                    return (
-                      <button
-                        key={f.key}
-                        onClick={() => setMyOrderFilter(f.key)}
-                        className={`shrink-0 inline-flex items-center gap-1.5 text-xs font-medium px-3 py-1.5 rounded-md transition-colors whitespace-nowrap ${active ? 'bg-orange-500 text-white' : 'text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800'}`}
-                      >
-                        {f.label}
-                        <span className={`text-[10px] font-medium px-1.5 py-0.5 rounded-full ${active ? 'bg-white/25' : 'bg-slate-100 dark:bg-slate-800 text-slate-500'}`}>{n}</span>
-                      </button>
-                    );
-                  })}
+              <div className="flex flex-col sm:flex-row gap-2">
+                <div className="relative sm:w-56 shrink-0">
+                  <select
+                    value={myOrderFilter}
+                    onChange={(e) => setMyOrderFilter(e.target.value)}
+                    className="w-full appearance-none bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg py-1.5 pl-3 pr-8 text-xs font-medium text-slate-700 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-orange-400/50"
+                  >
+                    {MY_ORDER_FILTERS.map(f => (
+                      <option key={f.key} value={f.key}>{f.label} ({customerOrders.filter(o => matches(o, f.key)).length})</option>
+                    ))}
+                  </select>
+                  <ChevronDown className="w-3.5 h-3.5 text-slate-400 absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
                 </div>
-                <div className="relative max-w-sm">
+                <div className="relative flex-1 max-w-sm">
                   <Search className="w-3.5 h-3.5 text-slate-400 absolute left-2.5 top-1/2 -translate-y-1/2" />
                   <input
                     value={myOrderSearch}
