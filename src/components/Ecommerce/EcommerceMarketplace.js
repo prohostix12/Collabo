@@ -5490,10 +5490,17 @@ export default function EcommerceMarketplace({ inlineMode = false, onBackToSelec
                         </div>
                       )}
 
-                      {/* Order Items */}
+                      {/* Order Items — click any item to see the full order details */}
                       <div className="divide-y divide-slate-100 dark:divide-slate-800">
                         {ord.items && ord.items.map((item, iIdx) => (
-                          <div key={iIdx} className="flex items-center gap-3 px-4 py-3">
+                          <div
+                            key={iIdx}
+                            role="button"
+                            tabIndex={0}
+                            onClick={() => { setTrackedOrder(ord); setCurrentView('tracking'); }}
+                            onKeyDown={(e) => { if (e.key === 'Enter') { setTrackedOrder(ord); setCurrentView('tracking'); } }}
+                            className="flex items-center gap-3 px-4 py-3 cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-800/40 transition-colors"
+                          >
                             <div className="w-12 h-12 bg-slate-50 dark:bg-slate-800 rounded-lg flex-shrink-0 flex items-center justify-center border border-slate-100 dark:border-slate-700 overflow-hidden">
                               {item.product_details?.image ? (
                                 <img loading="lazy" src={item.product_details.image} alt={item.product_details.name} className="w-full h-full object-cover" />
@@ -5506,6 +5513,7 @@ export default function EcommerceMarketplace({ inlineMode = false, onBackToSelec
                               <p className="text-[11px] text-slate-500 dark:text-slate-400">Qty: {item.quantity}</p>
                             </div>
                             <p className="text-xs font-semibold text-slate-700 dark:text-slate-200 shrink-0">₹{Number(item.price).toLocaleString()}</p>
+                            <ChevronRight className="w-3.5 h-3.5 text-slate-300 shrink-0" />
                           </div>
                         ))}
                       </div>
@@ -5691,6 +5699,94 @@ export default function EcommerceMarketplace({ inlineMode = false, onBackToSelec
                 ));
               })()}
             </div>
+
+            {/* Reason, if the order was cancelled or returned */}
+            {trackedOrder && (trackedOrder.cancel_reason || trackedOrder.return_reason) && (
+              <div className="bg-rose-50 dark:bg-rose-950/20 border border-rose-100 dark:border-rose-900/40 rounded-2xl p-4">
+                <p className="text-[10px] font-black text-rose-500 uppercase tracking-widest mb-1">
+                  {trackedOrder.status === 'cancelled' ? 'Cancellation reason' : 'Return reason'}
+                </p>
+                <p className="text-xs font-semibold text-slate-700 dark:text-slate-300">{trackedOrder.cancel_reason || trackedOrder.return_reason}</p>
+                {(trackedOrder.cancel_comment || trackedOrder.return_comment) && (
+                  <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-1">{trackedOrder.cancel_comment || trackedOrder.return_comment}</p>
+                )}
+              </div>
+            )}
+
+            {/* Items in this order */}
+            {trackedOrder?.items?.length > 0 && (
+              <div className="space-y-2">
+                <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Items in this order</h4>
+                <div className="border border-slate-100 dark:border-slate-800 rounded-2xl divide-y divide-slate-100 dark:divide-slate-800 overflow-hidden">
+                  {trackedOrder.items.map((item, iIdx) => (
+                    <div key={iIdx} className="flex items-center gap-3 p-3">
+                      <div className="w-12 h-12 bg-slate-50 dark:bg-slate-800 rounded-lg flex-shrink-0 flex items-center justify-center border border-slate-100 dark:border-slate-700 overflow-hidden">
+                        {item.product_details?.image ? (
+                          <img loading="lazy" src={item.product_details.image} alt={item.product_details.name} className="w-full h-full object-cover" />
+                        ) : (
+                          <ShoppingBag className="w-4 h-4 text-slate-300" />
+                        )}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-xs font-semibold text-slate-800 dark:text-white truncate">{item.product_details?.name || 'Product'}</p>
+                        <p className="text-[11px] text-slate-500 dark:text-slate-400">Qty: {item.quantity}</p>
+                      </div>
+                      <p className="text-xs font-bold text-slate-700 dark:text-slate-200 shrink-0">₹{Number(item.price * item.quantity).toLocaleString()}</p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Delivery address */}
+            {trackedOrder?.address_details && (
+              <div className="space-y-2">
+                <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Delivery details</h4>
+                <div className="border border-slate-100 dark:border-slate-800 rounded-2xl p-4 text-xs font-semibold text-slate-700 dark:text-slate-300 leading-relaxed">
+                  <p className="font-black text-slate-900 dark:text-white">{trackedOrder.address_details.name}</p>
+                  <p>{trackedOrder.address_details.street_address}</p>
+                  <p>
+                    {trackedOrder.address_details.city}
+                    {trackedOrder.address_details.district ? `, ${trackedOrder.address_details.district}` : ''}
+                    {`, ${trackedOrder.address_details.state} - ${trackedOrder.address_details.postal_code}`}
+                  </p>
+                  {trackedOrder.address_details.phone && <p className="text-slate-500 dark:text-slate-400 mt-1">📞 {trackedOrder.address_details.phone}</p>}
+                </div>
+              </div>
+            )}
+
+            {/* Price breakdown */}
+            {trackedOrder && (
+              <div className="space-y-2">
+                <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Order price</h4>
+                <div className="border border-slate-100 dark:border-slate-800 rounded-2xl p-4 space-y-2 text-xs">
+                  <div className="flex justify-between text-slate-500 dark:text-slate-400">
+                    <span>Subtotal</span>
+                    <span className="font-semibold text-slate-700 dark:text-slate-300">₹{Number(trackedOrder.total_amount).toLocaleString()}</span>
+                  </div>
+                  {Number(trackedOrder.discount_amount) > 0 && (
+                    <div className="flex justify-between text-emerald-600 dark:text-emerald-400">
+                      <span>Discount</span>
+                      <span className="font-semibold">-₹{Number(trackedOrder.discount_amount).toLocaleString()}</span>
+                    </div>
+                  )}
+                  <div className="flex justify-between text-slate-500 dark:text-slate-400">
+                    <span>Delivery charge</span>
+                    <span className="font-semibold text-slate-700 dark:text-slate-300">{Number(trackedOrder.delivery_charge) > 0 ? `₹${Number(trackedOrder.delivery_charge).toLocaleString()}` : 'Free'}</span>
+                  </div>
+                  <div className="flex justify-between pt-2 border-t border-slate-100 dark:border-slate-800">
+                    <span className="font-black text-slate-900 dark:text-white">Order total</span>
+                    <span className="font-black text-slate-900 dark:text-white">₹{Number(trackedOrder.final_amount).toLocaleString()}</span>
+                  </div>
+                  <div className="flex justify-between text-slate-500 dark:text-slate-400 pt-1">
+                    <span>Payment mode</span>
+                    <span className="font-semibold text-slate-700 dark:text-slate-300 uppercase">
+                      {trackedOrder.payment_method === 'cod' ? 'COD' : (trackedOrder.payment_status === 'completed' ? `${trackedOrder.payment_method} - Paid` : `${trackedOrder.payment_method} - Pending`)}
+                    </span>
+                  </div>
+                </div>
+              </div>
+            )}
 
             {trackedOrder && ['pending', 'processing', 'shipped'].includes(trackedOrder.status) && (
               <button
