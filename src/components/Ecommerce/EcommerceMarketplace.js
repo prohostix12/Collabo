@@ -5412,7 +5412,7 @@ export default function EcommerceMarketplace({ inlineMode = false, onBackToSelec
           });
 
           return (
-          <div className="space-y-4 animate-fade-in-up pb-12 pt-4 sm:pt-6 max-w-4xl mx-auto">
+          <div className="space-y-4 animate-fade-in-up pb-12 pt-3 sm:pt-4 max-w-4xl mx-auto">
             <div className="flex items-center justify-between gap-3">
               <div className="flex items-center gap-3 min-w-0">
                 <button onClick={() => window.history.back()} className="flex shrink-0 items-center justify-center w-8 h-8 rounded-full bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 transition-colors">
