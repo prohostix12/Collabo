@@ -1212,6 +1212,7 @@ export default function EcommerceMarketplace({ inlineMode = false, onBackToSelec
   // tab's orderFilter/orderSearch/etc above, which is a different screen entirely.
   const [myOrderFilter, setMyOrderFilter] = useState('all');
   const [myOrderSearch, setMyOrderSearch] = useState('');
+  const [myOrdersTab, setMyOrdersTab] = useState('orders'); // 'orders' | 'buy-again'
   const [bulkFile, setBulkFile] = useState(null);
   const [bulkStock, setBulkStock] = useState('10');
   const [bulkPreview, setBulkPreview] = useState(null);
@@ -5395,6 +5396,21 @@ export default function EcommerceMarketplace({ inlineMode = false, onBackToSelec
           };
           const canTrack = (st) => ['pending', 'processing', 'shipped', 'delivered'].includes(st);
 
+          // "Buy Again": every distinct product this customer has ever ordered, newest order first
+          // (customerOrders already comes back newest-first, so the first time a product id is
+          // seen is its most recent purchase — that's the copy of price/image we keep).
+          const boughtProducts = [];
+          const seenProductIds = new Set();
+          customerOrders.forEach((o) => {
+            (o.items || []).forEach((it) => {
+              const pd = it.product_details;
+              if (pd?.id != null && !seenProductIds.has(pd.id)) {
+                seenProductIds.add(pd.id);
+                boughtProducts.push(pd);
+              }
+            });
+          });
+
           return (
           <div className="space-y-4 animate-fade-in-up pb-12 pt-4 sm:pt-6 max-w-4xl mx-auto">
             <div className="flex items-center justify-between gap-3">
@@ -5415,6 +5431,66 @@ export default function EcommerceMarketplace({ inlineMode = false, onBackToSelec
               </button>
             </div>
 
+            {customerOrders.length > 0 && (
+              <div className="flex gap-4 border-b border-slate-200 dark:border-slate-800">
+                {[{ key: 'orders', label: 'Orders' }, { key: 'buy-again', label: `Buy Again (${boughtProducts.length})` }].map((t) => (
+                  <button
+                    key={t.key}
+                    onClick={() => setMyOrdersTab(t.key)}
+                    className={`pb-2 text-sm font-semibold border-b-2 -mb-px transition-colors ${myOrdersTab === t.key ? 'border-orange-500 text-orange-600' : 'border-transparent text-slate-500 hover:text-slate-800 dark:hover:text-slate-200'}`}
+                  >
+                    {t.label}
+                  </button>
+                ))}
+              </div>
+            )}
+
+            {myOrdersTab === 'buy-again' ? (
+              boughtProducts.length === 0 ? (
+                <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 text-center py-14">
+                  <ShoppingBag className="w-10 h-10 text-slate-300 mx-auto mb-3" />
+                  <h3 className="text-sm font-semibold text-slate-700 dark:text-slate-300">Nothing to reorder yet</h3>
+                  <p className="text-xs text-slate-500 mt-1">Products you've bought will show up here.</p>
+                </div>
+              ) : (
+                <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
+                  {boughtProducts.map((pd) => {
+                    const price = Number(pd.price);
+                    const discountPrice = Number(pd.discount_price ?? pd.price);
+                    const catalogMatch = productsList.find((p) => p.id === pd.id);
+                    return (
+                      <div key={pd.id} className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl overflow-hidden">
+                        <div
+                          onClick={() => { if (catalogMatch) { setSelectedProduct(catalogMatch); setCurrentView('details'); } }}
+                          className={`aspect-square bg-slate-50 dark:bg-slate-800 ${catalogMatch ? 'cursor-pointer' : ''}`}
+                        >
+                          {pd.image ? (
+                            <img loading="lazy" src={pd.image} alt={pd.name} className="w-full h-full object-cover" />
+                          ) : (
+                            <div className="w-full h-full flex items-center justify-center"><ShoppingBag className="w-8 h-8 text-slate-300" /></div>
+                          )}
+                        </div>
+                        <div className="p-3 space-y-1.5">
+                          <p className="text-xs font-medium text-slate-800 dark:text-white line-clamp-2 min-h-[2rem]">{pd.name}</p>
+                          <div className="flex items-baseline gap-1.5">
+                            <span className="text-sm font-bold text-slate-900 dark:text-white">₹{discountPrice.toLocaleString()}</span>
+                            {price > discountPrice && <span className="text-[11px] text-slate-400 line-through">₹{price.toLocaleString()}</span>}
+                          </div>
+                          <button
+                            onClick={() => addToCart(pd)}
+                            disabled={Number(pd.stock) <= 0}
+                            className="w-full bg-slate-950 hover:bg-slate-900 dark:bg-slate-800 dark:hover:bg-slate-700 disabled:opacity-40 disabled:cursor-not-allowed text-white font-semibold text-xs py-2 rounded-lg transition-colors"
+                          >
+                            {Number(pd.stock) <= 0 ? 'Out of stock' : 'Add to Cart'}
+                          </button>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )
+            ) : (
+            <>
             {customerOrders.length > 0 && (
               <div className="flex flex-col sm:flex-row gap-2">
                 <div className="relative sm:w-56 shrink-0">
@@ -5539,6 +5615,8 @@ export default function EcommerceMarketplace({ inlineMode = false, onBackToSelec
                   );
                 })}
               </div>
+            )}
+            </>
             )}
           </div>
           );
