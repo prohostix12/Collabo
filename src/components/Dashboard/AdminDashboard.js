@@ -32,7 +32,12 @@ const AdminDashboard = () => {
   useEffect(() => {
     try { localStorage.setItem('admin_portal_mode', portalMode); } catch { /* ignore */ }
   }, [portalMode]);
-  const [activeTab, setActiveTab] = useState('overview');
+  const [activeTab, setActiveTab] = useState(() => {
+    try { return localStorage.getItem('admin_dashboard_tab') || 'overview'; } catch { return 'overview'; }
+  });
+  useEffect(() => {
+    try { localStorage.setItem('admin_dashboard_tab', activeTab); } catch { /* ignore */ }
+  }, [activeTab]);
   const [influencers, setInfluencers] = useState([]);
   // New state for influencer creation modal
   const [showCreateModal, setShowCreateModal] = useState(false);
