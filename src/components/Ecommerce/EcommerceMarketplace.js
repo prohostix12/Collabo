@@ -5644,6 +5644,7 @@ export default function EcommerceMarketplace({ inlineMode = false, onBackToSelec
               <span className={`text-[10px] font-black px-3.5 py-1 rounded-full border uppercase ${
                 trackedOrder?.status === 'delivered' ? 'bg-emerald-50 dark:bg-emerald-950/20 text-emerald-500 border-emerald-100' :
                 trackedOrder?.status === 'cancelled' ? 'bg-rose-50 dark:bg-rose-950/20 text-rose-500 border-rose-100' :
+                ['returned', 'refunded', 'return_rejected'].includes(trackedOrder?.status) ? 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-700' :
                 'bg-orange-50 dark:bg-orange-950/20 text-orange-500 border-orange-100 animate-pulse'
               }`}>
                 {trackedOrder?.status || 'IN TRANSIT'}
@@ -5657,6 +5658,18 @@ export default function EcommerceMarketplace({ inlineMode = false, onBackToSelec
               {(() => {
                 const status = trackedOrder?.status || 'pending';
                 const isCancelled = status === 'cancelled';
+                // Returns/refunds only happen after an order was delivered — so for these, show
+                // what actually happened (Confirmed → Delivered → the return step) instead of the
+                // forward-looking "Processing / In Transit / Out for Delivery" projection below,
+                // which would otherwise show fake "Pending, expected by <future date>" steps for an
+                // order that isn't progressing toward delivery at all anymore.
+                const RETURN_STATUS_STEP = {
+                  return_requested: { title: 'Return Requested', desc: 'We are reviewing your return request.' },
+                  returned: { title: 'Return Approved', desc: 'Your return has been approved.' },
+                  refunded: { title: 'Refund Issued', desc: 'Your refund has been issued to your original payment method.' },
+                  return_rejected: { title: 'Return Rejected', desc: 'Your return request was not approved.' },
+                };
+                const isReturnFlow = Object.prototype.hasOwnProperty.call(RETURN_STATUS_STEP, status);
                 const orderDate = trackedOrder?.created_at ? new Date(trackedOrder.created_at) : new Date();
                 const fmtDate = (d) => d.toLocaleDateString('en-IN', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' });
                 const addDays = (d, n) => { const r = new Date(d); r.setDate(r.getDate() + n); return r; };
@@ -5674,6 +5687,10 @@ export default function EcommerceMarketplace({ inlineMode = false, onBackToSelec
                 const steps = isCancelled ? [
                   { title: 'Order Confirmed', time: 'Completed', desc: 'Secure checkout processed.', date: fmtDate(confirmedDate), active: true },
                   { title: 'Order Cancelled', time: 'Cancelled', desc: 'This order has been cancelled.', date: '', active: true, current: true }
+                ] : isReturnFlow ? [
+                  { title: 'Order Confirmed', time: 'Completed', desc: 'Secure checkout completed.', date: fmtDate(confirmedDate), active: true },
+                  { title: 'Delivered', time: 'Completed', desc: 'Package dropped off at destination.', date: '', active: true },
+                  { title: RETURN_STATUS_STEP[status].title, time: status === 'returned' || status === 'refunded' ? 'Completed' : status === 'return_rejected' ? 'Declined' : 'In review', desc: RETURN_STATUS_STEP[status].desc, date: '', active: true, current: true }
                 ] : [
                   { title: 'Order Confirmed', time: 'Completed', desc: 'Secure checkout completed.', date: fmtDate(confirmedDate), active: true, current: status === 'pending' },
                   { title: 'Processing', time: (status === 'processing' || status === 'shipped' || status === 'delivered') ? 'Completed' : 'Pending', desc: 'Preparing package and dispatch details.', date: fmtDate(processingDate), active: status === 'processing' || status === 'shipped' || status === 'delivered', current: status === 'processing' },
