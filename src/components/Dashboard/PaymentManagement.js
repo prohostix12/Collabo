@@ -3,6 +3,28 @@ import { DollarSign, TrendingUp, Users, Package, Clock, CheckCircle, XCircle, Se
 import api from '../../services/api';
 import toast from 'react-hot-toast';
 
+// Both /ecommerce/orders/ and /ecommerce/admin/seller-payouts/ are paginated (10 per page by
+// default), so a single request only returns the most recent page. Everything below — total
+// revenue, refund totals, the orders table, pending payouts — needs the complete list, so this
+// walks every page before handing the data back.
+const fetchAllPages = async (path, extraParams = {}) => {
+  const all = [];
+  let page = 1;
+  const pageSize = 500;
+  const MAX_PAGES = 100; // 50,000 rows — a generous ceiling, not a real limit for this platform
+  // eslint-disable-next-line no-constant-condition
+  while (true) {
+    const res = await api.get(path, { params: { ...extraParams, page, page_size: pageSize } });
+    const data = res.data;
+    if (Array.isArray(data)) return data; // endpoint isn't paginated at all
+    const rows = data.results || [];
+    all.push(...rows);
+    if (!data.next || rows.length === 0 || page >= MAX_PAGES) break;
+    page += 1;
+  }
+  return all;
+};
+
 const PaymentManagement = () => {
   const [analytics, setAnalytics] = useState(null);
   const [orders, setOrders] = useState([]);
@@ -15,14 +37,14 @@ const PaymentManagement = () => {
   const fetchAll = async () => {
     setLoading(true);
     try {
-      const [analyticsRes, ordersRes, payoutsRes] = await Promise.all([
+      const [analyticsRes, allOrders, allPayouts] = await Promise.all([
         api.get('/ecommerce/admin/analytics/'),
-        api.get('/ecommerce/orders/'),
-        api.get('/ecommerce/admin/seller-payouts/').catch(() => ({ data: [] })),
+        fetchAllPages('/ecommerce/orders/'),
+        fetchAllPages('/ecommerce/admin/seller-payouts/').catch(() => []),
       ]);
       setAnalytics(analyticsRes.data);
-      setOrders((ordersRes.data.results || ordersRes.data || []).sort((a, b) => new Date(b.created_at) - new Date(a.created_at)));
-      setSellerPayouts(payoutsRes.data?.results || payoutsRes.data || []);
+      setOrders(allOrders.sort((a, b) => new Date(b.created_at) - new Date(a.created_at)));
+      setSellerPayouts(allPayouts);
     } catch {
       toast.error('Failed to load financial data');
     } finally {
@@ -36,8 +58,11 @@ const PaymentManagement = () => {
     return <div className="flex justify-center py-12"><div className="w-5 h-5 border-2 border-gray-300 border-t-gray-600 rounded-full animate-spin" /></div>;
   }
 
-  const completedOrders = orders.filter(o => o.payment_status === 'completed');
-  const totalRevenue = completedOrders.reduce((s, o) => s + parseFloat(o.final_amount || 0), 0);
+  // Total Revenue / Platform Earnings come straight from the server's own database total
+  // (AdminAnalyticsView) rather than being re-summed client-side — it's the same number the
+  // monthly revenue chart below is built from, so the two can never disagree.
+  const completedOrdersCount = analytics?.orders?.total ?? orders.filter(o => o.payment_status === 'completed').length;
+  const totalRevenue = analytics?.orders?.total_revenue ?? orders.filter(o => o.payment_status === 'completed').reduce((s, o) => s + parseFloat(o.final_amount || 0), 0);
   const platformFee = totalRevenue * 0.10;
   const totalRefunds = orders.filter(o => o.status === 'refunded').reduce((s, o) => s + parseFloat(o.final_amount || 0), 0);
   const influencerCommissions = analytics?.commissions?.total_paid || 0;
@@ -78,7 +103,7 @@ const PaymentManagement = () => {
         <div className="space-y-4">
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
             {[
-              { label: 'Total Revenue', value: `₹${totalRevenue.toLocaleString()}`, icon: DollarSign, sub: `${completedOrders.length} completed orders` },
+              { label: 'Total Revenue', value: `₹${totalRevenue.toLocaleString()}`, icon: DollarSign, sub: `${completedOrdersCount} completed orders` },
               { label: 'Platform Earnings', value: `₹${platformFee.toLocaleString()}`, icon: TrendingUp, sub: '10% commission' },
               { label: 'Influencer Payouts', value: `₹${influencerCommissions.toLocaleString()}`, icon: Users, sub: `₹${pendingCommissions.toLocaleString()} pending` },
               { label: 'Refunds Issued', value: `₹${totalRefunds.toLocaleString()}`, icon: XCircle, sub: `${orders.filter(o => o.status === 'refunded').length} orders` },
