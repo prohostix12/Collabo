@@ -119,34 +119,30 @@ const UserAccountMenu = () => {
         {/* Avatar Button */}
         <button
           onClick={() => setIsDropdownOpen(!isDropdownOpen)}
-          className="flex items-center space-x-2 p-1 rounded-xl hover:bg-dark-700/30 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-primary-500/50 group"
+          className="flex items-center gap-2 p-1 rounded-lg hover:bg-gray-100 transition-colors duration-150 focus:outline-none focus:ring-2 focus:ring-primary-500/40 group"
           aria-label="User account menu"
           aria-expanded={isDropdownOpen}
           aria-haspopup="true"
         >
           {/* Avatar */}
-          <div className={`w-8 h-8 sm:w-10 sm:h-10 rounded-xl bg-gradient-to-br ${getUserTypeColor(user?.user_type)} flex items-center justify-center text-white font-semibold text-sm sm:text-base shadow-lg ring-2 ring-white/10 group-hover:ring-white/20 transition-all duration-200`}>
+          <div className={`w-8 h-8 rounded-full bg-gradient-to-br ${getUserTypeColor(user?.user_type)} flex items-center justify-center text-white font-semibold text-xs shrink-0`}>
             {getDisplayInitials()}
           </div>
 
           {/* User Info (Hidden on mobile) */}
-          <div className="hidden sm:flex flex-col items-start min-w-0">
-            <div className="flex items-center space-x-1">
-              <span className="text-sm font-medium text-gray-900 truncate max-w-24 lg:max-w-32">
-                {getDisplayName()}
-              </span>
-              <ChevronDown className={`w-4 h-4 text-gray-900 transition-transform duration-200 ${isDropdownOpen ? 'rotate-180' : ''}`} />
-            </div>
-            <div className="flex items-center space-x-1">
-              <UserTypeIcon className="w-3 h-3 text-gray-900" />
-              <span className="text-xs text-gray-900 capitalize">
+          <div className="hidden sm:flex flex-col items-start min-w-0 leading-tight">
+            <span className="text-xs font-semibold text-gray-900 truncate max-w-28 lg:max-w-36">
+              {getDisplayName()}
+            </span>
+            <div className="flex items-center gap-1">
+              <UserTypeIcon className="w-2.5 h-2.5 text-gray-400" />
+              <span className="text-[10px] text-gray-500 capitalize">
                 {user?.user_type}
               </span>
             </div>
           </div>
 
-          {/* Mobile Chevron */}
-          <ChevronDown className={`w-4 h-4 text-gray-900 transition-transform duration-200 sm:hidden ${isDropdownOpen ? 'rotate-180' : ''}`} />
+          <ChevronDown className={`w-3.5 h-3.5 text-gray-400 transition-transform duration-200 ${isDropdownOpen ? 'rotate-180' : ''}`} />
         </button>
 
         {/* Dropdown Menu */}
