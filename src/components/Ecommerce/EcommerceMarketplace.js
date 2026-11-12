@@ -5376,39 +5376,39 @@ export default function EcommerceMarketplace({ inlineMode = false, onBackToSelec
               refunded: ['bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300', 'bg-slate-500'],
               return_rejected: ['bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300', 'bg-slate-500'],
             };
-            const [cls, dot] = map[st] || ['bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300', 'bg-slate-500'];
+            const [cls] = map[st] || ['bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300', 'bg-slate-500'];
             const label = { pending: 'Processing', return_requested: 'Return requested', returned: 'Return approved', return_rejected: 'Return rejected' }[st] || String(st).replace(/_/g, ' ');
             return (
-              <span className={`inline-flex items-center gap-1.5 text-[10px] font-black px-2.5 py-1 rounded-full capitalize whitespace-nowrap ${cls}`}>
-                <span className={`w-1.5 h-1.5 rounded-full ${dot}`}></span>{label}
+              <span className={`text-[11px] font-semibold px-2 py-0.5 rounded capitalize whitespace-nowrap ${cls}`}>
+                {label}
               </span>
             );
           };
           const canTrack = (st) => ['pending', 'processing', 'shipped', 'delivered'].includes(st);
 
           return (
-          <div className="space-y-5 animate-fade-in-up pb-12">
+          <div className="space-y-4 animate-fade-in-up pb-12 max-w-4xl">
             <div className="flex items-center justify-between gap-3">
-              <div className="flex items-center gap-4 min-w-0">
-                <button onClick={() => window.history.back()} className="flex shrink-0 items-center justify-center w-10 h-10 rounded-full bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 transition-colors">
-                  <ChevronLeft className="w-6 h-6 text-slate-600 dark:text-slate-300" />
+              <div className="flex items-center gap-3 min-w-0">
+                <button onClick={() => window.history.back()} className="flex shrink-0 items-center justify-center w-8 h-8 rounded-full bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 transition-colors">
+                  <ChevronLeft className="w-4 h-4 text-slate-600 dark:text-slate-300" />
                 </button>
                 <div className="min-w-0">
-                  <h2 className="text-xl sm:text-2xl font-black text-slate-900 dark:text-white tracking-tight">My Orders</h2>
-                  <p className="text-sm text-slate-500 font-medium mt-1">{customerOrders.length} order{customerOrders.length === 1 ? '' : 's'} total</p>
+                  <h2 className="text-lg font-bold text-slate-900 dark:text-white">Your Orders</h2>
+                  <p className="text-xs text-slate-500 mt-0.5">{customerOrders.length} order{customerOrders.length === 1 ? '' : 's'}</p>
                 </div>
               </div>
               <button
                 onClick={() => setCurrentView('home')}
-                className="shrink-0 p-2 sm:px-4 sm:py-2 rounded-xl border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 font-bold text-xs sm:text-sm hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors"
+                className="shrink-0 text-xs font-semibold text-orange-600 hover:underline"
               >
                 Continue Shopping
               </button>
             </div>
 
             {customerOrders.length > 0 && (
-              <div className="space-y-3">
-                <div className="flex gap-1 overflow-x-auto no-scrollbar bg-white dark:bg-slate-900 border border-slate-200/70 dark:border-slate-800 rounded-2xl p-1.5">
+              <div className="space-y-2.5">
+                <div className="flex gap-1 overflow-x-auto no-scrollbar bg-white dark:bg-slate-900 border border-slate-200/70 dark:border-slate-800 rounded-lg p-1">
                   {MY_ORDER_FILTERS.map(f => {
                     const n = customerOrders.filter(o => matches(o, f.key)).length;
                     const active = myOrderFilter === f.key;
@@ -5416,59 +5416,59 @@ export default function EcommerceMarketplace({ inlineMode = false, onBackToSelec
                       <button
                         key={f.key}
                         onClick={() => setMyOrderFilter(f.key)}
-                        className={`shrink-0 inline-flex items-center gap-1.5 text-xs font-extrabold px-3.5 py-2 rounded-xl transition-colors whitespace-nowrap ${active ? 'bg-orange-500 text-white shadow-sm' : 'text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800'}`}
+                        className={`shrink-0 inline-flex items-center gap-1.5 text-xs font-medium px-3 py-1.5 rounded-md transition-colors whitespace-nowrap ${active ? 'bg-orange-500 text-white' : 'text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800'}`}
                       >
                         {f.label}
-                        <span className={`text-[10px] font-black px-1.5 py-0.5 rounded-full ${active ? 'bg-white/25' : 'bg-slate-100 dark:bg-slate-800 text-slate-500'}`}>{n}</span>
+                        <span className={`text-[10px] font-medium px-1.5 py-0.5 rounded-full ${active ? 'bg-white/25' : 'bg-slate-100 dark:bg-slate-800 text-slate-500'}`}>{n}</span>
                       </button>
                     );
                   })}
                 </div>
                 <div className="relative max-w-sm">
-                  <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+                  <Search className="w-3.5 h-3.5 text-slate-400 absolute left-2.5 top-1/2 -translate-y-1/2" />
                   <input
                     value={myOrderSearch}
                     onChange={(e) => setMyOrderSearch(e.target.value)}
                     placeholder="Search order ID or product..."
-                    className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl py-2 pl-9 pr-3 text-xs font-semibold text-slate-700 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-orange-400/50"
+                    className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg py-1.5 pl-8 pr-3 text-xs text-slate-700 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-orange-400/50"
                   />
                 </div>
               </div>
             )}
 
             {customerOrders.length === 0 ? (
-              <div className="bg-white dark:bg-slate-900 rounded-[24px] sm:rounded-[32px] p-12 border border-slate-200/50 dark:border-slate-800/50 shadow-sm text-center">
-                <ShoppingBag className="w-12 h-12 text-slate-300 mx-auto mb-4" />
-                <h3 className="text-base font-bold text-slate-700 dark:text-slate-300">No orders yet</h3>
-                <p className="text-sm text-slate-500 mt-1">When you buy items, they will appear here.</p>
+              <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 text-center py-14">
+                <ShoppingBag className="w-10 h-10 text-slate-300 mx-auto mb-3" />
+                <h3 className="text-sm font-semibold text-slate-700 dark:text-slate-300">No orders yet</h3>
+                <p className="text-xs text-slate-500 mt-1">When you buy items, they will appear here.</p>
               </div>
             ) : visibleOrders.length === 0 ? (
-              <div className="bg-white dark:bg-slate-900 rounded-[24px] sm:rounded-[32px] p-12 border border-slate-200/50 dark:border-slate-800/50 shadow-sm text-center space-y-2">
-                <p className="text-sm font-bold text-slate-700 dark:text-slate-300">No orders match this filter</p>
-                <button onClick={() => { setMyOrderFilter('all'); setMyOrderSearch(''); }} className="text-xs font-extrabold text-orange-600 hover:underline">Clear filters</button>
+              <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 text-center py-14 space-y-1.5">
+                <p className="text-sm font-semibold text-slate-700 dark:text-slate-300">No orders match this filter</p>
+                <button onClick={() => { setMyOrderFilter('all'); setMyOrderSearch(''); }} className="text-xs font-semibold text-orange-600 hover:underline">Clear filters</button>
               </div>
             ) : (
-              <div className="space-y-4">
+              <div className="space-y-3">
                 {visibleOrders.map((ord, idx) => {
-                  const orderDate = new Date(ord.created_at).toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+                  const orderDate = new Date(ord.created_at).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' });
                   const reason = ord.status === 'cancelled' ? ord.cancel_reason : ['return_requested', 'returned', 'refunded', 'return_rejected'].includes(ord.status) ? ord.return_reason : null;
 
                   return (
-                    <div key={idx} className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-2xl overflow-hidden shadow-sm">
+                    <div key={idx} className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl overflow-hidden">
                       {/* Order Header */}
-                      <div className="bg-slate-50 dark:bg-slate-800/50 px-4 sm:px-5 py-3.5 border-b border-slate-200 dark:border-slate-700 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                        <div className="flex flex-wrap items-center gap-x-5 gap-y-1">
+                      <div className="bg-slate-50 dark:bg-slate-800/50 px-4 py-2.5 border-b border-slate-200 dark:border-slate-800 flex flex-wrap items-center justify-between gap-y-2 gap-x-6">
+                        <div className="flex flex-wrap items-center gap-x-6 gap-y-1.5">
                           <div>
-                            <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest block">Order ID</span>
-                            <span className="text-xs font-mono font-semibold text-slate-700 dark:text-slate-300">{ord.order_id}</span>
+                            <p className="text-[10px] text-slate-500 dark:text-slate-400">Order placed</p>
+                            <p className="text-xs font-medium text-slate-700 dark:text-slate-300">{orderDate}</p>
                           </div>
                           <div>
-                            <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest block">Placed</span>
-                            <span className="text-xs font-bold text-slate-700 dark:text-slate-300">{orderDate}</span>
+                            <p className="text-[10px] text-slate-500 dark:text-slate-400">Total</p>
+                            <p className="text-xs font-medium text-slate-700 dark:text-slate-300">₹{Number(ord.final_amount).toLocaleString()}</p>
                           </div>
                           <div>
-                            <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest block">Total</span>
-                            <span className="text-xs font-bold text-slate-700 dark:text-slate-300">₹{Number(ord.final_amount).toLocaleString()}</span>
+                            <p className="text-[10px] text-slate-500 dark:text-slate-400">Order ID</p>
+                            <p className="text-xs font-medium text-slate-700 dark:text-slate-300">{ord.order_id}</p>
                           </div>
                         </div>
                         <div className="flex items-center gap-2 shrink-0">
@@ -5476,7 +5476,7 @@ export default function EcommerceMarketplace({ inlineMode = false, onBackToSelec
                           {canTrack(ord.status) && (
                             <button
                               onClick={() => { setTrackedOrder(ord); setCurrentView('tracking'); }}
-                              className="bg-white hover:bg-slate-100 dark:bg-slate-800 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 px-3.5 py-1.5 rounded-lg text-xs font-bold transition-colors whitespace-nowrap"
+                              className="text-xs font-semibold text-slate-700 dark:text-slate-200 border border-slate-300 dark:border-slate-600 px-3 py-1 rounded-md hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors whitespace-nowrap"
                             >
                               Track Order
                             </button>
@@ -5485,7 +5485,7 @@ export default function EcommerceMarketplace({ inlineMode = false, onBackToSelec
                       </div>
 
                       {reason && (
-                        <div className="px-4 sm:px-5 py-2 text-[11px] font-semibold text-slate-500 dark:text-slate-400 bg-slate-50/60 dark:bg-slate-800/30 border-b border-slate-100 dark:border-slate-800">
+                        <div className="px-4 py-1.5 text-[11px] text-slate-500 dark:text-slate-400 bg-slate-50/60 dark:bg-slate-800/30 border-b border-slate-100 dark:border-slate-800">
                           Reason: <span className="text-slate-700 dark:text-slate-300">{reason}</span>
                         </div>
                       )}
@@ -5493,33 +5493,33 @@ export default function EcommerceMarketplace({ inlineMode = false, onBackToSelec
                       {/* Order Items */}
                       <div className="divide-y divide-slate-100 dark:divide-slate-800">
                         {ord.items && ord.items.map((item, iIdx) => (
-                          <div key={iIdx} className="flex items-center gap-3 px-4 sm:px-5 py-3">
-                            <div className="w-14 h-14 bg-slate-50 dark:bg-slate-800 rounded-xl flex-shrink-0 flex items-center justify-center border border-slate-100 dark:border-slate-700 overflow-hidden">
+                          <div key={iIdx} className="flex items-center gap-3 px-4 py-3">
+                            <div className="w-12 h-12 bg-slate-50 dark:bg-slate-800 rounded-lg flex-shrink-0 flex items-center justify-center border border-slate-100 dark:border-slate-700 overflow-hidden">
                               {item.product_details?.image ? (
                                 <img loading="lazy" src={item.product_details.image} alt={item.product_details.name} className="w-full h-full object-cover" />
                               ) : (
-                                <ShoppingBag className="w-5 h-5 text-slate-300" />
+                                <ShoppingBag className="w-4 h-4 text-slate-300" />
                               )}
                             </div>
                             <div className="flex-1 min-w-0">
-                              <h5 className="text-xs sm:text-sm font-bold text-slate-800 dark:text-white line-clamp-1">{item.product_details?.name || 'Product'}</h5>
-                              <span className="text-[11px] text-slate-500 dark:text-slate-400 font-semibold">Qty {item.quantity}</span>
+                              <p className="text-xs font-medium text-slate-800 dark:text-white truncate">{item.product_details?.name || 'Product'}</p>
+                              <p className="text-[11px] text-slate-500 dark:text-slate-400">Qty: {item.quantity}</p>
                             </div>
-                            <span className="text-xs sm:text-sm font-bold text-slate-900 dark:text-slate-200 shrink-0">₹{Number(item.price).toLocaleString()}</span>
+                            <p className="text-xs font-semibold text-slate-700 dark:text-slate-200 shrink-0">₹{Number(item.price).toLocaleString()}</p>
                           </div>
                         ))}
                       </div>
 
-                      <div className="px-4 sm:px-5 py-2.5 bg-slate-50/60 dark:bg-slate-800/30 flex items-center gap-2">
+                      <div className="px-4 py-2 bg-slate-50/60 dark:bg-slate-800/30 flex items-center flex-wrap gap-x-3 gap-y-1">
                         {ord.payment_method === 'cod' ? (
-                          <span className="inline-flex items-center gap-1 text-[10px] font-black px-2 py-0.5 rounded-full bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-400 uppercase tracking-wider">COD</span>
+                          <span className="text-[10px] font-medium px-1.5 py-0.5 rounded bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-400">COD</span>
                         ) : (
-                          <span className={`inline-flex items-center gap-1 text-[10px] font-black px-2 py-0.5 rounded-full uppercase tracking-wider ${ord.payment_status === 'completed' ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-400' : 'bg-orange-100 text-orange-700 dark:bg-orange-900/40 dark:text-orange-400'}`}>
+                          <span className={`text-[10px] font-medium px-1.5 py-0.5 rounded ${ord.payment_status === 'completed' ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-400' : 'bg-orange-100 text-orange-700 dark:bg-orange-900/40 dark:text-orange-400'}`}>
                             {ord.payment_status === 'completed' ? 'Paid online' : 'Payment pending'}
                           </span>
                         )}
                         {ord.tracking_number && ord.status === 'shipped' && (
-                          <span className="text-[10px] font-semibold text-slate-500 dark:text-slate-400">Tracking: {ord.tracking_number}{ord.shipping_provider ? ` (${ord.shipping_provider})` : ''}</span>
+                          <span className="text-[11px] text-slate-500 dark:text-slate-400">Tracking: {ord.tracking_number}{ord.shipping_provider ? ` (${ord.shipping_provider})` : ''}</span>
                         )}
                       </div>
                     </div>
