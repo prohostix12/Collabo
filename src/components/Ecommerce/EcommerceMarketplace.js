@@ -5432,12 +5432,12 @@ export default function EcommerceMarketplace({ inlineMode = false, onBackToSelec
             </div>
 
             {customerOrders.length > 0 && (
-              <div className="flex gap-4 border-b border-slate-200 dark:border-slate-800">
-                {[{ key: 'orders', label: 'Orders' }, { key: 'buy-again', label: `Buy Again (${boughtProducts.length})` }].map((t) => (
+              <div className="flex gap-8 border-b border-slate-200 dark:border-slate-800">
+                {[{ key: 'orders', label: 'Orders' }, { key: 'buy-again', label: 'Buy Again' }].map((t) => (
                   <button
                     key={t.key}
                     onClick={() => setMyOrdersTab(t.key)}
-                    className={`pb-2 text-sm font-semibold border-b-2 -mb-px transition-colors ${myOrdersTab === t.key ? 'border-orange-500 text-orange-600' : 'border-transparent text-slate-500 hover:text-slate-800 dark:hover:text-slate-200'}`}
+                    className={`pb-2 text-xs font-semibold border-b-2 -mb-px transition-colors ${myOrdersTab === t.key ? 'border-orange-500 text-orange-600' : 'border-transparent text-slate-500 hover:text-slate-800 dark:hover:text-slate-200'}`}
                   >
                     {t.label}
                   </button>
