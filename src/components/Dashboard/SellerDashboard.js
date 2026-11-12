@@ -58,6 +58,9 @@ const STATUS_META = {
   approved: { label: 'Live', dot: 'bg-emerald-400', text: 'text-emerald-600', bg: 'bg-emerald-50 dark:bg-emerald-900/20' },
   rejected: { label: 'Rejected', dot: 'bg-red-400', text: 'text-red-500', bg: 'bg-red-50 dark:bg-red-900/20' },
 };
+// Shown instead of "Live" the moment stock hits 0, so the seller sees it's out of stock without
+// having to open the Update Stock popover. It reverts to "Live" automatically once stock is restocked.
+const OUT_OF_STOCK_META = { label: 'Out of Stock', dot: 'bg-red-400', text: 'text-red-500', bg: 'bg-red-50 dark:bg-red-900/20' };
 
 const SellerDashboard = () => {
   const { user } = useAuth();
@@ -480,13 +483,14 @@ const SellerDashboard = () => {
         ) : (
           <div className="divide-y divide-gray-100 dark:divide-gray-700">
             {products.map(p => {
-              const meta = STATUS_META[p.status] || STATUS_META.pending;
+              const outOfStock = p.status === 'approved' && Number(p.stock) <= 0;
+              const meta = outOfStock ? OUT_OF_STOCK_META : (STATUS_META[p.status] || STATUS_META.pending);
               return (
                 <div key={p.id} className="flex items-center gap-3 px-4 py-3">
                   <img src={p.image} alt={p.name} className="w-12 h-12 rounded-lg object-cover bg-gray-100 dark:bg-gray-700 shrink-0" />
                   <div className="min-w-0 flex-1">
                     <p className="text-sm font-medium text-gray-900 dark:text-white truncate">{p.name}</p>
-                    <p className="text-xs text-gray-400">{p.category} &middot; Stock: {p.stock}</p>
+                    <p className={`text-xs ${outOfStock ? 'text-red-500 font-semibold' : 'text-gray-400'}`}>{p.category} &middot; Stock: {p.stock}</p>
                     {p.status === 'rejected' && p.rejection_reason && (
                       <p className="text-[11px] text-red-500 mt-0.5">Reason: {p.rejection_reason}</p>
                     )}
