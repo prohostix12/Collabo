@@ -5387,14 +5387,14 @@ export default function EcommerceMarketplace({ inlineMode = false, onBackToSelec
           const canTrack = (st) => ['pending', 'processing', 'shipped', 'delivered'].includes(st);
 
           return (
-          <div className="space-y-4 animate-fade-in-up pb-12 max-w-4xl">
+          <div className="space-y-4 animate-fade-in-up pb-12 pt-4 sm:pt-6 max-w-4xl mx-auto">
             <div className="flex items-center justify-between gap-3">
               <div className="flex items-center gap-3 min-w-0">
                 <button onClick={() => window.history.back()} className="flex shrink-0 items-center justify-center w-8 h-8 rounded-full bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 transition-colors">
                   <ChevronLeft className="w-4 h-4 text-slate-600 dark:text-slate-300" />
                 </button>
                 <div className="min-w-0">
-                  <h2 className="text-lg font-bold text-slate-900 dark:text-white">Your Orders</h2>
+                  <h2 className="text-xl font-semibold text-slate-900 dark:text-white">Your Orders</h2>
                   <p className="text-xs text-slate-500 mt-0.5">{customerOrders.length} order{customerOrders.length === 1 ? '' : 's'}</p>
                 </div>
               </div>
