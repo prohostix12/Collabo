@@ -733,6 +733,10 @@ export default function EcommerceMarketplace({ inlineMode = false, onBackToSelec
   const [customerOrders, setCustomerOrders] = useState([]);
   const [sellerOrders, setSellerOrders] = useState([]);
   const [trackedOrder, setTrackedOrder] = useState(null);
+  // The full step-by-step courier path is collapsed by default on the order details page —
+  // only the current status shows until the shopper asks to see the whole journey.
+  const [showFullTracking, setShowFullTracking] = useState(false);
+  useEffect(() => { setShowFullTracking(false); }, [trackedOrder?.id]);
   const [createdOrderId, setCreatedOrderId] = useState('');
   const [createdOrderDelivery, setCreatedOrderDelivery] = useState('');
   const [placingOrder, setPlacingOrder] = useState(false);
@@ -5651,11 +5655,9 @@ export default function EcommerceMarketplace({ inlineMode = false, onBackToSelec
               </span>
             </div>
 
-            {/* Interactive shipping timeline */}
-            <div className="relative space-y-6 pl-8">
-              <div className="absolute left-3.5 top-2 bottom-2 w-0.5 bg-slate-200 dark:bg-slate-800" />
-
-              {(() => {
+            {/* Shipping status: just the current position by default; the full step-by-step
+                courier path only appears once the shopper asks to see it. */}
+            {(() => {
                 const status = trackedOrder?.status || 'pending';
                 const isCancelled = status === 'cancelled';
                 // Returns/refunds only happen after an order was delivered — so for these, show
@@ -5699,28 +5701,67 @@ export default function EcommerceMarketplace({ inlineMode = false, onBackToSelec
                   { title: 'Delivered Successfully', time: status === 'delivered' ? 'Arrived' : 'Expected', desc: 'Package dropped off at destination.', date: fmtDate(deliveryDate), active: status === 'delivered', current: status === 'delivered' }
                 ];
 
-                return steps.map((step, idx) => (
-                  <div key={idx} className="relative space-y-1">
-                    <div className={`absolute -left-8 top-1 w-7 h-7 rounded-full flex items-center justify-center border-4 ${step.current ? 'bg-orange-500 border-orange-100 dark:border-orange-950 text-white scale-110 shadow animate-pulse' : step.active ? 'bg-slate-950 dark:bg-white text-white dark:text-slate-950 border-slate-100 dark:border-slate-900' : 'bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-800'}`}>
-                      {step.active ? (
-                        <Check className="w-3 h-3" />
-                      ) : (
-                        <div className="w-1.5 h-1.5 bg-slate-200 dark:bg-slate-700 rounded-full" />
-                      )}
-                    </div>
+                const currentStep = steps.find((s) => s.current) || [...steps].reverse().find((s) => s.active) || steps[0];
 
-                    <h4 className={`font-black text-xs ${step.current ? 'text-orange-500' : 'text-slate-900 dark:text-white'}`}>{step.title}</h4>
-                    <span className="text-[9px] text-slate-400 font-bold">{step.time}</span>
-                    <p className="text-[10px] text-slate-500 dark:text-slate-400 font-semibold leading-relaxed">{step.desc}</p>
-                    {step.date && (
-                      <p className={`text-[10px] font-bold ${step.active ? 'text-emerald-600 dark:text-emerald-400' : 'text-slate-400 dark:text-slate-500'}`}>
-                        📅 {step.active ? '' : 'Expected by '}{step.date}
-                      </p>
-                    )}
+                if (!showFullTracking) {
+                  return (
+                    <div className="space-y-4">
+                      <div className="flex items-start gap-3">
+                        <div className={`w-8 h-8 shrink-0 rounded-full flex items-center justify-center border-4 ${currentStep.current ? 'bg-orange-500 border-orange-100 dark:border-orange-950 text-white shadow animate-pulse' : 'bg-slate-950 dark:bg-white text-white dark:text-slate-950 border-slate-100 dark:border-slate-900'}`}>
+                          <Check className="w-3.5 h-3.5" />
+                        </div>
+                        <div>
+                          <h4 className={`font-black text-sm ${currentStep.current ? 'text-orange-500' : 'text-slate-900 dark:text-white'}`}>{currentStep.title}</h4>
+                          <p className="text-xs text-slate-500 dark:text-slate-400 font-semibold mt-0.5">{currentStep.desc}</p>
+                          {currentStep.date && (
+                            <p className="text-[11px] font-bold text-emerald-600 dark:text-emerald-400 mt-1">📅 {currentStep.date}</p>
+                          )}
+                        </div>
+                      </div>
+                      <button
+                        onClick={() => setShowFullTracking(true)}
+                        className="text-xs font-extrabold text-orange-600 hover:underline"
+                      >
+                        View Full Tracking Details →
+                      </button>
+                    </div>
+                  );
+                }
+
+                return (
+                  <div className="space-y-3">
+                    <div className="relative space-y-6 pl-8">
+                      <div className="absolute left-3.5 top-2 bottom-2 w-0.5 bg-slate-200 dark:bg-slate-800" />
+                      {steps.map((step, idx) => (
+                        <div key={idx} className="relative space-y-1">
+                          <div className={`absolute -left-8 top-1 w-7 h-7 rounded-full flex items-center justify-center border-4 ${step.current ? 'bg-orange-500 border-orange-100 dark:border-orange-950 text-white scale-110 shadow animate-pulse' : step.active ? 'bg-slate-950 dark:bg-white text-white dark:text-slate-950 border-slate-100 dark:border-slate-900' : 'bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-800'}`}>
+                            {step.active ? (
+                              <Check className="w-3 h-3" />
+                            ) : (
+                              <div className="w-1.5 h-1.5 bg-slate-200 dark:bg-slate-700 rounded-full" />
+                            )}
+                          </div>
+
+                          <h4 className={`font-black text-xs ${step.current ? 'text-orange-500' : 'text-slate-900 dark:text-white'}`}>{step.title}</h4>
+                          <span className="text-[9px] text-slate-400 font-bold">{step.time}</span>
+                          <p className="text-[10px] text-slate-500 dark:text-slate-400 font-semibold leading-relaxed">{step.desc}</p>
+                          {step.date && (
+                            <p className={`text-[10px] font-bold ${step.active ? 'text-emerald-600 dark:text-emerald-400' : 'text-slate-400 dark:text-slate-500'}`}>
+                              📅 {step.active ? '' : 'Expected by '}{step.date}
+                            </p>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                    <button
+                      onClick={() => setShowFullTracking(false)}
+                      className="text-xs font-extrabold text-slate-500 hover:underline"
+                    >
+                      ← Hide tracking details
+                    </button>
                   </div>
-                ));
+                );
               })()}
-            </div>
 
             {/* Reason, if the order was cancelled or returned */}
             {trackedOrder && (trackedOrder.cancel_reason || trackedOrder.return_reason) && (
