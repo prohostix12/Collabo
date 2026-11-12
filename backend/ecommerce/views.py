@@ -743,6 +743,12 @@ class OrderViewSet(viewsets.ModelViewSet):
         user = self.request.user
         role = self.request.query_params.get('role', None)
 
+        # role=customer: always just this account's own purchases, even for staff/admin —
+        # used by "My Orders" so an admin buying something doesn't see every order on the
+        # platform on their own purchase-history page.
+        if role == 'customer':
+            return Order.objects.filter(user=user).order_by('-created_at')
+
         # If admin role
         if user.is_staff or user.user_type == 'admin':
             return Order.objects.all().order_by('-created_at')

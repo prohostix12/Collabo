@@ -1637,7 +1637,12 @@ export default function EcommerceMarketplace({ inlineMode = false, onBackToSelec
   const fetchCustomerOrders = async () => {
     if (!user) return;
     try {
-      const response = await api.get('/ecommerce/orders/');
+      // role=customer: always this account's own purchases, even if the account is also
+      // staff/admin — otherwise an admin buying something would see every order on the
+      // platform here instead of just their own. page_size is raised from the API's
+      // default of 10 so a customer with a long order history sees all of it, not just
+      // the most recent page.
+      const response = await api.get('/ecommerce/orders/', { params: { role: 'customer', page_size: 200 } });
       setCustomerOrders(response.data.results || response.data);
     } catch (err) {
       console.error("Error fetching orders:", err);
