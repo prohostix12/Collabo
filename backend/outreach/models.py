@@ -24,8 +24,14 @@ class OutreachContact(models.Model):
         ('opted_out', 'Opted out'),
         ('bounced', 'Bounced / invalid'),
     )
+    BUSINESS_TYPE_CHOICES = (
+        ('D2C', 'D2C'),
+        ('B2C', 'B2C'),
+    )
     brand_name = models.CharField(max_length=255, blank=True)
     category = models.CharField(max_length=120, blank=True, db_index=True)
+    business_type = models.CharField(max_length=3, choices=BUSINESS_TYPE_CHOICES, blank=True, default='', db_index=True,
+                                     help_text='D2C or B2C — blank if not known')
     email = models.EmailField(unique=True)
     contact_person = models.CharField(max_length=255, blank=True)
     phone = models.CharField(max_length=60, blank=True)

@@ -39,9 +39,14 @@ def template_dict(t):
 
 
 def contact_dict(c):
-    return {'id': c.id, 'brand_name': c.brand_name, 'category': c.category, 'email': c.email,
+    return {'id': c.id, 'brand_name': c.brand_name, 'category': c.category, 'business_type': c.business_type, 'email': c.email,
             'contact_person': c.contact_person, 'phone': c.phone, 'website': c.website, 'notes': c.notes,
             'status': c.status, 'last_sent_at': _dt(c.last_sent_at), 'times_sent': c.times_sent}
+
+
+def clean_business_type(value):
+    v = str(value or '').strip().upper()
+    return v if v in ('D2C', 'B2C') else ''
 
 
 def campaign_dict(c, counts=None):
@@ -113,6 +118,8 @@ def filter_contacts(params):
         qs = qs.filter(Q(brand_name__icontains=q) | Q(email__icontains=q) | Q(contact_person__icontains=q))
     if params.get('category'):
         qs = qs.filter(category=params['category'])
+    if params.get('business_type'):
+        qs = qs.filter(business_type=params['business_type'])
     if params.get('status'):
         qs = qs.filter(status=params['status'])
     if params.get('contacted') == 'never':
@@ -133,11 +140,13 @@ class ContactList(AdminView):
         total = qs.count()
         rows = qs[(page - 1) * size: page * size]
         cats = list(OutreachContact.objects.exclude(category='').values('category').annotate(n=Count('id')).order_by('category'))
+        btypes = list(OutreachContact.objects.exclude(business_type='').values('business_type').annotate(n=Count('id')).order_by('business_type'))
         allc = OutreachContact.objects.all()
         return Response({
             'count': total, 'page': page, 'page_size': size,
             'results': [contact_dict(c) for c in rows],
             'categories': [{'name': c['category'], 'count': c['n']} for c in cats],
+            'business_types': [{'name': b['business_type'], 'count': b['n']} for b in btypes],
             'summary': {'total': allc.count(), 'never_contacted': allc.filter(times_sent=0, status='active').count(),
                         'opted_out': allc.filter(status='opted_out').count(), 'bounced': allc.filter(status='bounced').count()},
         })
@@ -151,6 +160,7 @@ class ContactList(AdminView):
             return Response({'error': 'This email is already in your list.'}, status=400)
         c = OutreachContact.objects.create(
             email=email, brand_name=(d.get('brand_name') or '').strip(), category=(d.get('category') or '').strip(),
+            business_type=clean_business_type(d.get('business_type')),
             contact_person=(d.get('contact_person') or '').strip(), phone=clean_phone(d.get('phone')),
             website=(d.get('website') or '').strip())
         return Response(contact_dict(c), status=201)
@@ -173,6 +183,8 @@ class ContactDetail(AdminView):
         for f in ('brand_name', 'category', 'contact_person', 'website', 'notes'):
             if f in d:
                 setattr(c, f, str(d[f] or '').strip())
+        if 'business_type' in d:
+            c.business_type = clean_business_type(d['business_type'])
         if 'phone' in d:
             c.phone = clean_phone(d['phone'])
         if d.get('status') in ('active', 'opted_out', 'bounced'):
@@ -292,6 +304,7 @@ class ContactImport(AdminView):
         if cols['brand_name'] is None:  # (0 is a valid column, so don't use "or")
             cols['brand_name'] = find(lambda c: c in ('name', 'company', 'company name'))
         cols['category'] = find(lambda c: c == 'category' or c == 'category name')
+        cols['business_type'] = find(lambda c: 'd2c' in c or 'b2c' in c or 'business type' in c or 'brand type' in c)
         cols['contact_person'] = find(lambda c: 'contact person' in c or c in ('person', 'founder', 'founders'))
         cols['phone'] = find(lambda c: 'contact number' in c or 'mobile' in c or 'phone' in c)
         cols['website'] = find(lambda c: 'website' in c or 'store link' in c)
@@ -304,8 +317,11 @@ class ContactImport(AdminView):
             em = cell(r, 'email')
             if em in (None, ''):
                 continue
+            raw_type = str(cell(r, 'business_type') or '').strip().lower()
+            business_type = 'D2C' if 'd2c' in raw_type else 'B2C' if 'b2c' in raw_type else ''
             rec = {'brand_name': str(cell(r, 'brand_name') or '').strip()[:255],
                    'category': (str(cell(r, 'category') or '').strip() or (title if title not in ('CSV', 'Sheet1') else ''))[:120],
+                   'business_type': business_type,
                    'contact_person': str(cell(r, 'contact_person') or '').strip()[:255],
                    'phone': clean_phone(cell(r, 'phone'))[:60], 'website': str(cell(r, 'website') or '').strip()[:255]}
             out.append((rec, str(em)))

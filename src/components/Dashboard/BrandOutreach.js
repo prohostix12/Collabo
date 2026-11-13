@@ -11,18 +11,12 @@ const btnOrange = `${btn} bg-orange-500 hover:bg-orange-600 text-white`;
 const btnLight = `${btn} border border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-800`;
 const PLACEHOLDERS = ['{{brand_name}}', '{{contact_person}}', '{{category}}'];
 
-// Always offered in the category filter and the add/edit-brand category field, even before any
-// brand is tagged with it — so it's there the moment you want to use it, not only after import.
-const PINNED_CATEGORIES = ['D2C'];
-const withPinnedCategories = (apiCategories) => {
-  const byName = new Map(apiCategories.map((c) => [c.name, c]));
-  PINNED_CATEGORIES.forEach((name) => { if (!byName.has(name)) byName.set(name, { name, count: 0 }); });
-  return [...byName.values()].sort((a, b) => a.name.localeCompare(b.name));
-};
+const BUSINESS_TYPES = ['D2C', 'B2C'];
+const businessTypeCls = (t) => (t === 'D2C' ? 'bg-violet-50 text-violet-700' : t === 'B2C' ? 'bg-sky-50 text-sky-700' : 'bg-gray-100 text-gray-400');
 
 // Column headings the importer understands. Headings only, so nothing is imported by accident.
 const downloadTemplateCsv = () => {
-  const csv = String.fromCharCode(0xFEFF) + ['#', 'Brand Name', 'Category', 'Headquarters', 'Founded', 'Founders', 'Key Products', 'Official Website / Store Link', 'e-mail ID', 'Contact Number'].join(',') + String.fromCharCode(13, 10);
+  const csv = String.fromCharCode(0xFEFF) + ['#', 'Brand Name', 'Category', 'D2C or B2C', 'Headquarters', 'Founded', 'Founders', 'Key Products', 'Official Website / Store Link', 'e-mail ID', 'Contact Number'].join(',') + String.fromCharCode(13, 10);
   const url = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8' }));
   const a = document.createElement('a');
   a.href = url; a.download = 'collabo-brand-outreach-template.csv'; a.click();
@@ -59,7 +53,7 @@ const SendTab = ({ templates, limits, reloadLimits, onSent }) => {
   const [data, setData] = useState({ results: [], count: 0, categories: [], summary: {} });
   const [loading, setLoading] = useState(false);
   const [page, setPage] = useState(1);
-  const [filters, setFilters] = useState({ search: '', category: '', status: 'active', contacted: '' });
+  const [filters, setFilters] = useState({ search: '', category: '', business_type: '', status: 'active', contacted: '' });
   const [selected, setSelected] = useState(new Set());
   const [allMatching, setAllMatching] = useState(false);
   const [excluded, setExcluded] = useState(new Set());
@@ -162,7 +156,11 @@ const SendTab = ({ templates, limits, reloadLimits, onSent }) => {
             </div>
             <select value={filters.category} onChange={(e) => setFilter('category', e.target.value)} className={`${inputCls} !w-auto`}>
               <option value="">All categories</option>
-              {withPinnedCategories(data.categories).map((c) => <option key={c.name} value={c.name}>{c.name} ({c.count})</option>)}
+              {data.categories.map((c) => <option key={c.name} value={c.name}>{c.name} ({c.count})</option>)}
+            </select>
+            <select value={filters.business_type} onChange={(e) => setFilter('business_type', e.target.value)} className={`${inputCls} !w-auto`}>
+              <option value="">D2C or B2C (all)</option>
+              {(data.business_types || []).map((b) => <option key={b.name} value={b.name}>{b.name} ({b.count})</option>)}
             </select>
             <select value={filters.contacted} onChange={(e) => setFilter('contacted', e.target.value)} className={`${inputCls} !w-auto`}>
               <option value="">Emailed or not</option>
@@ -204,7 +202,7 @@ const SendTab = ({ templates, limits, reloadLimits, onSent }) => {
             <thead>
               <tr className="bg-gray-50 dark:bg-gray-900/40 text-[10px] uppercase tracking-wider text-gray-500 text-left">
                 <th className="px-3 py-2 w-8"><input type="checkbox" checked={allOnPage} onChange={togglePage} /></th>
-                <th className="px-3 py-2">Brand</th><th className="px-3 py-2">Category</th><th className="px-3 py-2">Email</th>
+                <th className="px-3 py-2">Brand</th><th className="px-3 py-2">Category</th><th className="px-3 py-2">D2C/B2C</th><th className="px-3 py-2">Email</th>
                 <th className="px-3 py-2">Contact</th><th className="px-3 py-2">Last emailed</th><th className="px-3 py-2">Status</th><th className="px-3 py-2 w-16"></th>
               </tr>
             </thead>
@@ -214,6 +212,7 @@ const SendTab = ({ templates, limits, reloadLimits, onSent }) => {
                   <td className="px-3 py-2"><input type="checkbox" checked={isChecked(c.id)} onChange={() => toggleRow(c.id)} /></td>
                   <td className="px-3 py-2 font-semibold text-gray-900 dark:text-white">{c.brand_name || '-'}</td>
                   <td className="px-3 py-2 text-gray-600 dark:text-gray-300">{c.category || '-'}</td>
+                  <td className="px-3 py-2">{c.business_type ? <span className={`px-1.5 py-0.5 rounded-full text-[10px] font-semibold ${businessTypeCls(c.business_type)}`}>{c.business_type}</span> : <span className="text-gray-400">-</span>}</td>
                   <td className="px-3 py-2 text-gray-700 dark:text-gray-200">{c.email}</td>
                   <td className="px-3 py-2 text-gray-500">{c.contact_person || '-'}</td>
                   <td className="px-3 py-2 text-gray-500 whitespace-nowrap">{c.times_sent ? `${fmtDate(c.last_sent_at)}${c.times_sent > 1 ? ` (x${c.times_sent})` : ''}` : <span className="text-gray-400">Never</span>}</td>
@@ -225,7 +224,7 @@ const SendTab = ({ templates, limits, reloadLimits, onSent }) => {
                 </tr>
               ))}
               {!loading && data.results.length === 0 && (
-                <tr><td colSpan={8} className="px-3 py-10 text-center text-gray-500">
+                <tr><td colSpan={9} className="px-3 py-10 text-center text-gray-500">
                   {summary.total ? 'No brands match these filters.' : 'No brands yet. Click "Import Excel / CSV" to upload your list, or "Add brand".'}
                 </td></tr>
               )}
@@ -315,7 +314,7 @@ const SendTab = ({ templates, limits, reloadLimits, onSent }) => {
         </Modal>
       )}
 
-      {editing && <ContactModal contact={editing} categories={withPinnedCategories(data.categories)} onClose={() => setEditing(null)} onSaved={() => { setEditing(null); load(); }} />}
+      {editing && <ContactModal contact={editing} categories={data.categories} onClose={() => setEditing(null)} onSaved={() => { setEditing(null); load(); }} />}
       {showImport && <ImportModal onClose={() => setShowImport(false)} onDone={() => { load(); }} />}
     </div>
   );
@@ -323,7 +322,7 @@ const SendTab = ({ templates, limits, reloadLimits, onSent }) => {
 
 const ContactModal = ({ contact, categories, onClose, onSaved }) => {
   const isNew = !contact.id;
-  const [f, setF] = useState({ brand_name: '', category: '', email: '', contact_person: '', phone: '', website: '', status: 'active', ...contact });
+  const [f, setF] = useState({ brand_name: '', category: '', business_type: '', email: '', contact_person: '', phone: '', website: '', status: 'active', ...contact });
   const [busy, setBusy] = useState(false);
   const set = (k) => (e) => setF((x) => ({ ...x, [k]: e.target.value }));
   const save = async () => {
@@ -348,6 +347,12 @@ const ContactModal = ({ contact, categories, onClose, onSaved }) => {
           <label className="block space-y-1"><span className="font-semibold text-gray-600">Category</span>
             <input className={inputCls} list="outreach-cats" value={f.category} onChange={set('category')} />
             <datalist id="outreach-cats">{categories.map((c) => <option key={c.name} value={c.name} />)}</datalist>
+          </label>
+          <label className="block space-y-1"><span className="font-semibold text-gray-600">D2C or B2C</span>
+            <select className={inputCls} value={f.business_type} onChange={set('business_type')}>
+              <option value="">Not set</option>
+              {BUSINESS_TYPES.map((t) => <option key={t} value={t}>{t}</option>)}
+            </select>
           </label>
           <label className="block space-y-1"><span className="font-semibold text-gray-600">Contact person</span><input className={inputCls} value={f.contact_person} onChange={set('contact_person')} /></label>
           <label className="block space-y-1"><span className="font-semibold text-gray-600">Phone</span><input className={inputCls} value={f.phone} onChange={set('phone')} /></label>
