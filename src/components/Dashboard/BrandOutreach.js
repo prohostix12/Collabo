@@ -396,7 +396,7 @@ const ImportModal = ({ onClose, onDone }) => {
         <div className="space-y-3 text-xs text-gray-600 dark:text-gray-300">
           <p>Upload an <b>.xlsx</b> or <b>.csv</b>. Every sheet with an <b>Email</b> column is read. Brand name, category (or the sheet name), contact person, phone and website columns are picked up when present.</p>
           <p className="text-gray-500">Brands already in your list are not duplicated, and nothing is deleted.</p>
-          <button onClick={downloadTemplateCsv} className="inline-flex items-center gap-1.5 text-[11px] font-semibold text-orange-600 hover:underline"><Download className="w-3 h-3" /> Download the CSV template (same columns as your brand sheet)</button>
+          <button onClick={downloadTemplateCsv} className="inline-flex items-center gap-1.5 text-[11px] font-semibold text-orange-600 hover:underline"><Download className="w-3 h-3" /> Download the CSV template</button>
           <input type="file" accept=".xlsx,.csv" onChange={(e) => setFile(e.target.files[0] || null)} className={inputCls} />
           <div className="flex justify-end gap-2"><button className={btnLight} onClick={onClose}>Cancel</button><button className={btnOrange} onClick={go} disabled={!file || busy}>{busy ? 'Importing...' : 'Import'}</button></div>
         </div>
