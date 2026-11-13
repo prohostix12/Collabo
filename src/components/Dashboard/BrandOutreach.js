@@ -323,10 +323,23 @@ const SendTab = ({ templates, limits, reloadLimits, onSent }) => {
   );
 };
 
+const ConfirmModal = ({ title, body, confirmLabel = 'Delete', onConfirm, onClose, busy }) => (
+  <Modal title={title} onClose={onClose}>
+    <div className="space-y-4 text-xs">
+      <p className="text-gray-600 dark:text-gray-300">{body}</p>
+      <div className="flex justify-end gap-2">
+        <button className={btnLight} onClick={onClose} disabled={busy}>Cancel</button>
+        <button className={`${btn} bg-red-600 hover:bg-red-700 text-white`} onClick={onConfirm} disabled={busy}>{busy ? 'Deleting...' : confirmLabel}</button>
+      </div>
+    </div>
+  </Modal>
+);
+
 const ContactModal = ({ contact, categories, onClose, onSaved }) => {
   const isNew = !contact.id;
   const [f, setF] = useState({ brand_name: '', category: '', business_type: '', email: '', contact_person: '', phone: '', website: '', status: 'active', ...contact });
   const [busy, setBusy] = useState(false);
+  const [confirmDelete, setConfirmDelete] = useState(false);
   const set = (k) => (e) => setF((x) => ({ ...x, [k]: e.target.value }));
   const save = async () => {
     setBusy(true);
@@ -338,8 +351,8 @@ const ContactModal = ({ contact, categories, onClose, onSaved }) => {
     } catch (e) { toast.error(errMsg(e, 'Could not save')); } finally { setBusy(false); }
   };
   const remove = async () => {
-    if (!window.confirm(`Delete ${f.brand_name || f.email} from your list?`)) return;
-    try { await api.delete(`/outreach/contacts/${contact.id}/`); toast.success('Deleted'); onSaved(); } catch (e) { toast.error(errMsg(e, 'Could not delete')); }
+    setBusy(true);
+    try { await api.delete(`/outreach/contacts/${contact.id}/`); toast.success('Deleted'); onSaved(); } catch (e) { toast.error(errMsg(e, 'Could not delete')); } finally { setBusy(false); }
   };
   return (
     <Modal title={isNew ? 'Add a brand' : 'Edit brand'} onClose={onClose}>
@@ -369,10 +382,19 @@ const ContactModal = ({ contact, categories, onClose, onSaved }) => {
           </label>
         )}
         <div className="flex items-center justify-between pt-2">
-          {!isNew ? <button onClick={remove} className="text-[11px] font-semibold text-red-600 hover:underline">Delete</button> : <span />}
+          {!isNew ? <button onClick={() => setConfirmDelete(true)} className="text-[11px] font-semibold text-red-600 hover:underline">Delete</button> : <span />}
           <div className="flex gap-2"><button className={btnLight} onClick={onClose}>Cancel</button><button className={btnOrange} onClick={save} disabled={busy}>{busy ? 'Saving...' : 'Save'}</button></div>
         </div>
       </div>
+      {confirmDelete && (
+        <ConfirmModal
+          title="Delete this brand?"
+          body={`"${f.brand_name || f.email}" will be removed from your list. This can't be undone.`}
+          busy={busy}
+          onClose={() => setConfirmDelete(false)}
+          onConfirm={remove}
+        />
+      )}
     </Modal>
   );
 };
