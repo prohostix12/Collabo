@@ -44,7 +44,7 @@ const Layout = ({ children }) => {
           {isMobileMenuOpen && (
             <div className="sm:hidden border-t border-dark-100/10 glass-card-dark">
               <div className="px-2 pt-2 pb-3">
-                <UserAccountMenu />
+                <UserAccountMenu embedded />
               </div>
             </div>
           )}
