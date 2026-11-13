@@ -68,6 +68,8 @@ const SendTab = ({ templates, limits, reloadLimits, onSent }) => {
   const [sending, setSending] = useState(false);
   const [editing, setEditing] = useState(null); // contact object, or {} for new
   const [showImport, setShowImport] = useState(false);
+  const [confirmBulkDelete, setConfirmBulkDelete] = useState(false);
+  const [bulkDeleting, setBulkDeleting] = useState(false);
   const PAGE_SIZE = 50;
 
   const params = useMemo(() => {
@@ -113,6 +115,18 @@ const SendTab = ({ templates, limits, reloadLimits, onSent }) => {
     const base = { template_id: Number(templateId), subject, add_footer: footer, plain_style: plain, skip_contacted: skipContacted };
     if (allMatching) return { ...base, select_all: true, filters: Object.fromEntries(Object.entries(filters).filter(([, v]) => v)), exclude_ids: [...excluded] };
     return { ...base, contact_ids: [...selected] };
+  };
+
+  const doBulkDelete = async () => {
+    setBulkDeleting(true);
+    try {
+      const payload = allMatching
+        ? { action: 'delete', select_all: true, filters: Object.fromEntries(Object.entries(filters).filter(([, v]) => v)), exclude_ids: [...excluded] }
+        : { action: 'delete', ids: [...selected] };
+      const res = await api.post('/outreach/contacts/bulk/', payload);
+      toast.success(`Deleted ${res.data.affected} brand${res.data.affected === 1 ? '' : 's'}`);
+      setConfirmBulkDelete(false); clearSelection(); load();
+    } catch (e) { toast.error(errMsg(e, 'Could not delete')); } finally { setBulkDeleting(false); }
   };
 
   const doPreview = async (contactId) => {
@@ -196,6 +210,12 @@ const SendTab = ({ templates, limits, reloadLimits, onSent }) => {
           {allMatching && (
             <div className="text-[11px] bg-orange-50 text-orange-800 rounded-lg px-3 py-1.5">
               All {data.count - excluded.size} brands matching these filters are selected. <button className="font-bold underline" onClick={clearSelection}>Clear selection</button>
+            </div>
+          )}
+          {selectedCount > 0 && (
+            <div className="flex items-center justify-between bg-red-50 text-red-800 rounded-lg px-3 py-1.5 text-[11px]">
+              <span><b>{selectedCount}</b> brand{selectedCount === 1 ? '' : 's'} selected</span>
+              <button onClick={() => setConfirmBulkDelete(true)} className="font-bold underline">Delete selected</button>
             </div>
           )}
         </div>
@@ -319,6 +339,16 @@ const SendTab = ({ templates, limits, reloadLimits, onSent }) => {
 
       {editing && <ContactModal contact={editing} categories={data.categories} onClose={() => setEditing(null)} onSaved={() => { setEditing(null); load(); }} />}
       {showImport && <ImportModal onClose={() => setShowImport(false)} onDone={() => { load(); }} />}
+      {confirmBulkDelete && (
+        <ConfirmModal
+          title="Delete these brands?"
+          body={`${selectedCount} brand${selectedCount === 1 ? '' : 's'} will be permanently removed from your list, along with their contact history. This can't be undone.`}
+          confirmLabel={`Delete ${selectedCount}`}
+          busy={bulkDeleting}
+          onClose={() => setConfirmBulkDelete(false)}
+          onConfirm={doBulkDelete}
+        />
+      )}
     </div>
   );
 };

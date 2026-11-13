@@ -198,11 +198,20 @@ class ContactDetail(AdminView):
 
 
 class ContactBulk(AdminView):
-    """POST {action: 'delete' | 'opt_out' | 'activate', ids: [...]}"""
+    """POST {action: 'delete' | 'opt_out' | 'activate', ids: [...]}
+    or {action, select_all: true, filters: {...}, exclude_ids: [...]} to act on every contact
+    matching the current list filters instead of a fixed id list."""
     def post(self, request):
-        ids = [int(i) for i in (request.data.get('ids') or []) if str(i).isdigit()]
-        action = request.data.get('action')
-        qs = OutreachContact.objects.filter(pk__in=ids)
+        d = request.data
+        if d.get('select_all'):
+            qs = filter_contacts(d.get('filters') or {})
+            excl = [int(i) for i in (d.get('exclude_ids') or []) if str(i).isdigit()]
+            if excl:
+                qs = qs.exclude(pk__in=excl)
+        else:
+            ids = [int(i) for i in (d.get('ids') or []) if str(i).isdigit()]
+            qs = OutreachContact.objects.filter(pk__in=ids)
+        action = d.get('action')
         n = qs.count()
         if action == 'delete':
             qs.delete()
