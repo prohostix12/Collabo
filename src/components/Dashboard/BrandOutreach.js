@@ -159,7 +159,7 @@ const SendTab = ({ templates, limits, reloadLimits, onSent }) => {
               {data.categories.map((c) => <option key={c.name} value={c.name}>{c.name} ({c.count})</option>)}
             </select>
             <select value={filters.business_type} onChange={(e) => setFilter('business_type', e.target.value)} className={`${inputCls} !w-auto`}>
-              <option value="">D2C or B2C (all)</option>
+              <option value="">D2C/B2C</option>
               {(data.business_types || []).map((b) => <option key={b.name} value={b.name}>{b.name} ({b.count})</option>)}
             </select>
             <select value={filters.contacted} onChange={(e) => setFilter('contacted', e.target.value)} className={`${inputCls} !w-auto`}>
