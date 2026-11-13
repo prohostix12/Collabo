@@ -11,6 +11,15 @@ const btnOrange = `${btn} bg-orange-500 hover:bg-orange-600 text-white`;
 const btnLight = `${btn} border border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-800`;
 const PLACEHOLDERS = ['{{brand_name}}', '{{contact_person}}', '{{category}}'];
 
+// Always offered in the category filter and the add/edit-brand category field, even before any
+// brand is tagged with it — so it's there the moment you want to use it, not only after import.
+const PINNED_CATEGORIES = ['D2C'];
+const withPinnedCategories = (apiCategories) => {
+  const byName = new Map(apiCategories.map((c) => [c.name, c]));
+  PINNED_CATEGORIES.forEach((name) => { if (!byName.has(name)) byName.set(name, { name, count: 0 }); });
+  return [...byName.values()].sort((a, b) => a.name.localeCompare(b.name));
+};
+
 // Column headings the importer understands. Headings only, so nothing is imported by accident.
 const downloadTemplateCsv = () => {
   const csv = String.fromCharCode(0xFEFF) + ['#', 'Brand Name', 'Category', 'Headquarters', 'Founded', 'Founders', 'Key Products', 'Official Website / Store Link', 'e-mail ID', 'Contact Number'].join(',') + String.fromCharCode(13, 10);
@@ -153,7 +162,7 @@ const SendTab = ({ templates, limits, reloadLimits, onSent }) => {
             </div>
             <select value={filters.category} onChange={(e) => setFilter('category', e.target.value)} className={`${inputCls} !w-auto`}>
               <option value="">All categories</option>
-              {data.categories.map((c) => <option key={c.name} value={c.name}>{c.name} ({c.count})</option>)}
+              {withPinnedCategories(data.categories).map((c) => <option key={c.name} value={c.name}>{c.name} ({c.count})</option>)}
             </select>
             <select value={filters.contacted} onChange={(e) => setFilter('contacted', e.target.value)} className={`${inputCls} !w-auto`}>
               <option value="">Emailed or not</option>
@@ -306,7 +315,7 @@ const SendTab = ({ templates, limits, reloadLimits, onSent }) => {
         </Modal>
       )}
 
-      {editing && <ContactModal contact={editing} categories={data.categories} onClose={() => setEditing(null)} onSaved={() => { setEditing(null); load(); }} />}
+      {editing && <ContactModal contact={editing} categories={withPinnedCategories(data.categories)} onClose={() => setEditing(null)} onSaved={() => { setEditing(null); load(); }} />}
       {showImport && <ImportModal onClose={() => setShowImport(false)} onDone={() => { load(); }} />}
     </div>
   );
