@@ -4,6 +4,7 @@ import { Store, Search, BadgeCheck, Share2, ShoppingCart, Heart, User } from 'lu
 import toast from 'react-hot-toast';
 import api from '../../services/api';
 import { useAuth } from '../../contexts/AuthContext';
+import Footer from '../Layout/Footer';
 
 const CollaboNavbar = () => {
   const { user } = useAuth();
@@ -208,6 +209,7 @@ const StorePage = () => {
         </section>
       </div>
     </div>
+    <Footer />
     </>
   );
 };
