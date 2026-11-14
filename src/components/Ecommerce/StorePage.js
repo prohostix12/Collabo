@@ -1,8 +1,9 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import { Store, ArrowLeft, Search, BadgeCheck, Share2 } from 'lucide-react';
+import { Store, Search, BadgeCheck, Share2 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import api from '../../services/api';
+import Layout from '../Layout/Layout';
 
 const StorePage = () => {
   const { slug } = useParams();
@@ -61,18 +62,22 @@ const StorePage = () => {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50">
-        <div className="w-7 h-7 border-2 border-gray-300 border-t-gray-600 rounded-full animate-spin" />
-      </div>
+      <Layout>
+        <div className="min-h-[60vh] flex items-center justify-center bg-gray-50">
+          <div className="w-7 h-7 border-2 border-gray-300 border-t-gray-600 rounded-full animate-spin" />
+        </div>
+      </Layout>
     );
   }
   if (notFound || !store) {
     return (
-      <div className="min-h-screen flex flex-col items-center justify-center gap-3 text-gray-500 bg-gray-50">
-        <Store className="w-10 h-10 text-gray-300" />
-        <p className="font-medium">This store doesn't exist or isn't live yet.</p>
-        <Link to="/" className="text-orange-600 font-semibold hover:underline text-sm">Back to Collabo</Link>
-      </div>
+      <Layout>
+        <div className="min-h-[60vh] flex flex-col items-center justify-center gap-3 text-gray-500 bg-gray-50">
+          <Store className="w-10 h-10 text-gray-300" />
+          <p className="font-medium">This store doesn't exist or isn't live yet.</p>
+          <Link to="/" className="text-orange-600 font-semibold hover:underline text-sm">Back to Collabo</Link>
+        </div>
+      </Layout>
     );
   }
 
@@ -83,16 +88,8 @@ const StorePage = () => {
   const tabs = [{ key: 'all', label: 'Home' }, ...categories.map((c) => ({ key: c, label: c }))];
 
   return (
+    <Layout>
     <div className="min-h-screen bg-gray-50">
-      {/* Minimal utility bar */}
-      <div className="bg-white border-b border-gray-100">
-        <div className="max-w-6xl mx-auto px-4 h-8 flex items-center">
-          <Link to="/" className="inline-flex items-center gap-1 text-[11px] font-semibold text-gray-400 hover:text-gray-700">
-            <ArrowLeft className="w-3 h-3" /> Back to Collabo
-          </Link>
-        </div>
-      </div>
-
       {/* Full-bleed banner */}
       <div className="relative h-36 sm:h-52 w-full overflow-hidden" style={{ background: store.store_banner ? undefined : `linear-gradient(135deg, ${theme}, ${theme}aa)` }}>
         {store.store_banner && <img src={store.store_banner} alt="" className="w-full h-full object-cover" />}
@@ -172,6 +169,7 @@ const StorePage = () => {
         </section>
       </div>
     </div>
+    </Layout>
   );
 };
 
