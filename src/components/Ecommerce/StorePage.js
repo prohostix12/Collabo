@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import { Store, ArrowLeft, Search, BadgeCheck, Package } from 'lucide-react';
+import { Store, ArrowLeft, Search, BadgeCheck, Share2 } from 'lucide-react';
+import toast from 'react-hot-toast';
 import api from '../../services/api';
 
 const StorePage = () => {
@@ -10,6 +11,7 @@ const StorePage = () => {
   const [loading, setLoading] = useState(true);
   const [notFound, setNotFound] = useState(false);
   const [q, setQ] = useState('');
+  const [activeTab, setActiveTab] = useState('all');
 
   useEffect(() => {
     let cancelled = false;
@@ -32,11 +34,30 @@ const StorePage = () => {
     return () => { cancelled = true; };
   }, [slug]);
 
+  const categories = useMemo(() => {
+    const seen = new Map();
+    products.forEach((p) => { if (p.category) seen.set(p.category, (seen.get(p.category) || 0) + 1); });
+    return [...seen.entries()].sort((a, b) => b[1] - a[1]).slice(0, 6).map(([name]) => name);
+  }, [products]);
+
   const filtered = useMemo(() => {
-    if (!q.trim()) return products;
-    const needle = q.trim().toLowerCase();
-    return products.filter((p) => (p.name || '').toLowerCase().includes(needle) || (p.category || '').toLowerCase().includes(needle));
-  }, [products, q]);
+    let list = products;
+    if (activeTab !== 'all') list = list.filter((p) => p.category === activeTab);
+    if (q.trim()) {
+      const needle = q.trim().toLowerCase();
+      list = list.filter((p) => (p.name || '').toLowerCase().includes(needle) || (p.category || '').toLowerCase().includes(needle));
+    }
+    return list;
+  }, [products, q, activeTab]);
+
+  const shareStore = async () => {
+    const url = window.location.href;
+    try {
+      if (navigator.share) { await navigator.share({ title: store.store_name, url }); return; }
+      await navigator.clipboard.writeText(url);
+      toast.success('Store link copied');
+    } catch { /* user cancelled share sheet — nothing to do */ }
+  };
 
   if (loading) {
     return (
@@ -59,59 +80,75 @@ const StorePage = () => {
   const featured = products.filter((p) => featuredIds.has(p.id));
   const theme = store.store_theme_color || '#f97316';
   const searching = q.trim().length > 0;
+  const tabs = [{ key: 'all', label: 'Home' }, ...categories.map((c) => ({ key: c, label: c }))];
 
   return (
     <div className="min-h-screen bg-gray-50">
-      {/* Top bar */}
-      <div className="bg-white border-b border-gray-200 sticky top-0 z-20">
-        <div className="max-w-6xl mx-auto px-4 h-12 flex items-center justify-between gap-4">
-          <Link to="/" className="inline-flex items-center gap-1.5 text-xs font-semibold text-gray-500 hover:text-gray-900 shrink-0">
-            <ArrowLeft className="w-3.5 h-3.5" /> Collabo
+      {/* Minimal utility bar */}
+      <div className="bg-white border-b border-gray-100">
+        <div className="max-w-6xl mx-auto px-4 h-8 flex items-center">
+          <Link to="/" className="inline-flex items-center gap-1 text-[11px] font-semibold text-gray-400 hover:text-gray-700">
+            <ArrowLeft className="w-3 h-3" /> Back to Collabo
           </Link>
-          <div className="relative flex-1 max-w-sm">
+        </div>
+      </div>
+
+      {/* Full-bleed banner */}
+      <div className="relative h-36 sm:h-52 w-full overflow-hidden" style={{ background: store.store_banner ? undefined : `linear-gradient(135deg, ${theme}, ${theme}aa)` }}>
+        {store.store_banner && <img src={store.store_banner} alt="" className="w-full h-full object-cover" />}
+      </div>
+
+      {/* Store identity + actions row */}
+      <div className="bg-white border-b border-gray-200">
+        <div className="max-w-6xl mx-auto px-4 py-3 flex flex-wrap items-center gap-3">
+          <div className="w-12 h-12 rounded-xl bg-white shadow border border-gray-100 overflow-hidden flex items-center justify-center flex-shrink-0">
+            {store.store_logo ? <img src={store.store_logo} alt={store.store_name} className="w-full h-full object-cover" /> : <Store className="w-5 h-5 text-gray-300" />}
+          </div>
+          <div className="min-w-0 mr-auto">
+            <h1 className="text-base sm:text-lg font-black text-gray-900 flex items-center gap-1.5 truncate">
+              {store.store_name}
+              <BadgeCheck className="w-4 h-4 text-orange-500 shrink-0" />
+            </h1>
+            {store.store_tagline && <p className="text-gray-500 text-xs truncate">{store.store_tagline}</p>}
+          </div>
+          <button onClick={shareStore} className="inline-flex items-center justify-center w-8 h-8 rounded-full border border-gray-200 text-gray-500 hover:bg-gray-50 transition-colors shrink-0" title="Share this store">
+            <Share2 className="w-3.5 h-3.5" />
+          </button>
+        </div>
+
+        {/* Tab nav + search, Amazon-storefront style */}
+        <div className="max-w-6xl mx-auto px-4 flex items-center gap-4 overflow-x-auto">
+          <div className="flex items-center gap-5 shrink-0">
+            {tabs.map((t) => (
+              <button
+                key={t.key}
+                onClick={() => setActiveTab(t.key)}
+                className={`py-2.5 text-xs font-bold uppercase tracking-wide whitespace-nowrap border-b-2 transition-colors ${
+                  activeTab === t.key ? 'text-gray-900' : 'text-gray-400 border-transparent hover:text-gray-600'
+                }`}
+                style={activeTab === t.key ? { borderColor: theme } : undefined}
+              >
+                {t.label}
+              </button>
+            ))}
+          </div>
+          <div className="relative flex-1 min-w-[160px] max-w-xs ml-auto my-2">
             <Search className="w-3.5 h-3.5 text-gray-400 absolute left-2.5 top-1/2 -translate-y-1/2" />
             <input
               value={q} onChange={(e) => setQ(e.target.value)}
-              placeholder={`Search in ${store.store_name}`}
+              placeholder={`Search ${store.store_name}`}
               className="w-full bg-gray-100 rounded-full pl-8 pr-3 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-orange-400/50 focus:bg-white transition-colors"
             />
           </div>
         </div>
       </div>
 
-      {/* Banner */}
-      <div className="relative h-32 sm:h-44 w-full overflow-hidden" style={{ background: store.store_banner ? undefined : `linear-gradient(135deg, ${theme}, ${theme}aa)` }}>
-        {store.store_banner && <img src={store.store_banner} alt="" className="w-full h-full object-cover" />}
-      </div>
-
-      {/* Identity card, overlapping the banner for a standard cover-photo + avatar layout */}
-      <div className="max-w-6xl mx-auto px-4">
-        <div className="relative -mt-8 sm:-mt-10 bg-white rounded-2xl shadow-sm border border-gray-200 px-5 pt-5 pb-4">
-          <div className="flex items-start gap-4">
-            <div className="w-20 h-20 sm:w-24 sm:h-24 rounded-2xl bg-white shadow-md overflow-hidden flex items-center justify-center flex-shrink-0 border-4 border-white -mt-10 sm:-mt-12">
-              {store.store_logo ? <img src={store.store_logo} alt={store.store_name} className="w-full h-full object-cover" /> : <Store className="w-8 h-8 text-gray-300" />}
-            </div>
-            <div className="min-w-0 pt-1">
-              <h1 className="text-lg sm:text-2xl font-black text-gray-900 flex items-center gap-1.5 truncate">
-                {store.store_name}
-                <BadgeCheck className="w-4 h-4 sm:w-5 sm:h-5 text-orange-500 shrink-0" />
-              </h1>
-              {store.store_tagline && <p className="text-gray-500 text-xs sm:text-sm font-medium truncate mt-0.5">{store.store_tagline}</p>}
-            </div>
-          </div>
-
-          {store.store_description && (
-            <p className="text-xs sm:text-sm text-gray-600 mt-3 max-w-2xl">{store.store_description}</p>
-          )}
-
-          <div className="flex items-center gap-1.5 mt-3 pt-3 border-t border-gray-100 text-xs text-gray-500">
-            <Package className="w-3.5 h-3.5 text-gray-400" /> <b className="text-gray-800">{products.length}</b> products
-          </div>
-        </div>
-      </div>
-
       <div className="max-w-6xl mx-auto px-4 py-6 space-y-8">
-        {!searching && featured.length > 0 && (
+        {store.store_description && activeTab === 'all' && !searching && (
+          <p className="text-sm text-gray-600 max-w-2xl">{store.store_description}</p>
+        )}
+
+        {activeTab === 'all' && !searching && featured.length > 0 && (
           <section>
             <h2 className="text-sm font-bold text-gray-900 mb-3 flex items-center gap-1.5">
               <span className="w-1 h-4 rounded-full" style={{ backgroundColor: theme }} /> Featured
@@ -122,14 +159,15 @@ const StorePage = () => {
 
         <section>
           <h2 className="text-sm font-bold text-gray-900 mb-3 flex items-center gap-1.5">
-            <span className="w-1 h-4 rounded-full bg-gray-300" /> {searching ? `Results for "${q}"` : 'All products'} ({filtered.length})
+            <span className="w-1 h-4 rounded-full bg-gray-300" />
+            {searching ? `Results for "${q}"` : activeTab === 'all' ? 'All products' : activeTab} ({filtered.length})
           </h2>
           {filtered.length === 0 ? (
             <p className="text-sm text-gray-400 py-16 text-center">
-              {products.length === 0 ? "This store hasn't listed any products yet." : 'No products match your search.'}
+              {products.length === 0 ? "This store hasn't listed any products yet." : 'No products match here.'}
             </p>
           ) : (
-            <ProductGrid products={!searching && featured.length ? filtered.filter((p) => !featuredIds.has(p.id)) : filtered} />
+            <ProductGrid products={activeTab === 'all' && !searching && featured.length ? filtered.filter((p) => !featuredIds.has(p.id)) : filtered} />
           )}
         </section>
       </div>
