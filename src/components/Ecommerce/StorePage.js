@@ -79,35 +79,35 @@ const StorePage = () => {
         </div>
       </div>
 
-      {/* Banner + identity */}
-      <div className="relative h-40 sm:h-56 w-full overflow-hidden" style={{ background: store.store_banner ? undefined : `linear-gradient(135deg, ${theme}, ${theme}aa)` }}>
+      {/* Banner */}
+      <div className="relative h-32 sm:h-44 w-full overflow-hidden" style={{ background: store.store_banner ? undefined : `linear-gradient(135deg, ${theme}, ${theme}aa)` }}>
         {store.store_banner && <img src={store.store_banner} alt="" className="w-full h-full object-cover" />}
-        <div className="absolute inset-0 bg-gradient-to-t from-black/50 via-black/10 to-transparent" />
       </div>
 
+      {/* Identity card, overlapping the banner for a standard cover-photo + avatar layout */}
       <div className="max-w-6xl mx-auto px-4">
-        <div className="flex items-end gap-4 -mt-10 sm:-mt-12 relative z-10">
-          <div className="w-20 h-20 sm:w-24 sm:h-24 rounded-2xl bg-white shadow-lg overflow-hidden flex items-center justify-center flex-shrink-0 border-4 border-white">
-            {store.store_logo ? <img src={store.store_logo} alt={store.store_name} className="w-full h-full object-cover" /> : <Store className="w-8 h-8 text-gray-300" />}
+        <div className="relative -mt-8 sm:-mt-10 bg-white rounded-2xl shadow-sm border border-gray-200 px-5 pt-5 pb-4">
+          <div className="flex items-start gap-4">
+            <div className="w-20 h-20 sm:w-24 sm:h-24 rounded-2xl bg-white shadow-md overflow-hidden flex items-center justify-center flex-shrink-0 border-4 border-white -mt-10 sm:-mt-12">
+              {store.store_logo ? <img src={store.store_logo} alt={store.store_name} className="w-full h-full object-cover" /> : <Store className="w-8 h-8 text-gray-300" />}
+            </div>
+            <div className="min-w-0 pt-1">
+              <h1 className="text-lg sm:text-2xl font-black text-gray-900 flex items-center gap-1.5 truncate">
+                {store.store_name}
+                <BadgeCheck className="w-4 h-4 sm:w-5 sm:h-5 text-orange-500 shrink-0" />
+              </h1>
+              {store.store_tagline && <p className="text-gray-500 text-xs sm:text-sm font-medium truncate mt-0.5">{store.store_tagline}</p>}
+            </div>
           </div>
-          <div className="pb-1 min-w-0">
-            <h1 className="text-xl sm:text-2xl font-black text-gray-900 flex items-center gap-1.5 truncate">
-              {store.store_name}
-              <BadgeCheck className="w-4 h-4 text-orange-500 shrink-0" />
-            </h1>
-            {store.store_tagline && <p className="text-gray-500 text-xs sm:text-sm font-medium truncate">{store.store_tagline}</p>}
-          </div>
-        </div>
 
-        {/* Stats strip */}
-        <div className="flex items-center gap-5 mt-4 pb-4 border-b border-gray-200 text-xs text-gray-500">
-          <span className="inline-flex items-center gap-1.5"><Package className="w-3.5 h-3.5 text-gray-400" /> <b className="text-gray-800">{products.length}</b> products</span>
-          {store.store_description && <span className="hidden sm:inline text-gray-400">·</span>}
-          {store.store_description && <p className="hidden sm:block text-gray-600 truncate max-w-xl">{store.store_description}</p>}
+          {store.store_description && (
+            <p className="text-xs sm:text-sm text-gray-600 mt-3 max-w-2xl">{store.store_description}</p>
+          )}
+
+          <div className="flex items-center gap-1.5 mt-3 pt-3 border-t border-gray-100 text-xs text-gray-500">
+            <Package className="w-3.5 h-3.5 text-gray-400" /> <b className="text-gray-800">{products.length}</b> products
+          </div>
         </div>
-        {store.store_description && (
-          <p className="sm:hidden text-xs text-gray-600 pt-3">{store.store_description}</p>
-        )}
       </div>
 
       <div className="max-w-6xl mx-auto px-4 py-6 space-y-8">
