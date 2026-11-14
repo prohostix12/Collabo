@@ -1077,8 +1077,12 @@ export default function EcommerceMarketplace({ inlineMode = false, onBackToSelec
         setPendingSelectProductId(window.history.state.pid);
       }
     } else {
-      // Preserve query string so referral params (?ref=&pid=) are still readable by the referral effect
-      window.history.replaceState({ view: 'home' }, '', window.location.pathname + window.location.search);
+      // Preserve query string so referral params (?ref=&pid=) are still readable by the referral effect.
+      // When arriving with ?pid= from an external link (e.g. a seller's store page), mark this entry as
+      // 'details' up front so the later currentView change doesn't push a second entry — otherwise one
+      // browser-back from the product lands on this SPA's home view instead of the page that linked here.
+      const baseState = initialPidParam ? { view: 'details', pid: initialPidParam } : { view: 'home' };
+      window.history.replaceState(baseState, '', window.location.pathname + window.location.search);
     }
 
     const handlePopState = (event) => {
