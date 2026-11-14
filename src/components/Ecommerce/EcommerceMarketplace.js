@@ -1835,6 +1835,11 @@ export default function EcommerceMarketplace({ inlineMode = false, onBackToSelec
     if (view) {
       setCurrentView(view);
     }
+    const search = new URLSearchParams(location.search).get('search');
+    if (search) {
+      executeSearch(search);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [location.search]);
 
   // Fetch reviews for the selected product

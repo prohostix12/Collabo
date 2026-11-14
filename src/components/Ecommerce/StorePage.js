@@ -1,9 +1,51 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { useParams, Link } from 'react-router-dom';
-import { Store, Search, BadgeCheck, Share2 } from 'lucide-react';
+import { useParams, Link, useNavigate } from 'react-router-dom';
+import { Store, Search, BadgeCheck, Share2, ShoppingCart, Heart, User, LayoutDashboard } from 'lucide-react';
 import toast from 'react-hot-toast';
 import api from '../../services/api';
-import Layout from '../Layout/Layout';
+import { useAuth } from '../../contexts/AuthContext';
+
+const CollaboNavbar = () => {
+  const { user } = useAuth();
+  const navigate = useNavigate();
+  const [siteSearch, setSiteSearch] = useState('');
+  const isAdmin = user?.is_staff || user?.user_type === 'admin';
+
+  const submitSearch = (e) => {
+    e.preventDefault();
+    if (siteSearch.trim()) navigate(`/?search=${encodeURIComponent(siteSearch.trim())}`);
+  };
+
+  return (
+    <div className="bg-white border-b border-gray-200 sticky top-0 z-30">
+      <div className="max-w-6xl mx-auto px-4 h-14 flex items-center gap-3 sm:gap-5">
+        <Link to="/" className="flex items-center shrink-0 w-[90px] sm:w-[130px]">
+          <img src="/collabo-logo.png" alt="Collabo" className="h-7 sm:h-9 object-contain scale-[2.0] origin-left transform" />
+        </Link>
+        <form onSubmit={submitSearch} className="relative flex-1 max-w-md hidden sm:block">
+          <input
+            value={siteSearch} onChange={(e) => setSiteSearch(e.target.value)}
+            placeholder="Search catalog..."
+            className="w-full bg-gray-50 border border-gray-200 rounded-full py-2 pl-9 pr-4 text-xs font-semibold focus:outline-none focus:ring-1 focus:ring-orange-500 transition-all"
+          />
+          <Search className="absolute left-3 top-2.5 w-3.5 h-3.5 text-gray-400" />
+        </form>
+        <div className="flex items-center gap-1 ml-auto">
+          <Link to="/?view=wishlist" className="p-2 rounded-xl hover:bg-gray-100 text-gray-500" title="Wishlist"><Heart className="w-4 h-4" /></Link>
+          <Link to="/?view=cart" className="p-2 rounded-xl hover:bg-gray-100 text-gray-500" title="Cart"><ShoppingCart className="w-4 h-4" /></Link>
+          {isAdmin && (
+            <Link to="/admin-dashboard" className="hidden sm:flex p-2 rounded-xl hover:bg-gray-100 text-gray-500 items-center gap-1" title="Admin">
+              <LayoutDashboard className="w-4 h-4 text-orange-500" />
+            </Link>
+          )}
+          <Link to={user ? '/?view=profile' : '/?view=auth'} className="hidden sm:flex items-center gap-1.5 bg-gray-100 hover:bg-gray-200 py-1.5 px-3 rounded-xl text-[11px] font-extrabold transition-colors">
+            <User className="w-3.5 h-3.5" /> {user ? 'My Account' : 'Login'}
+          </Link>
+        </div>
+      </div>
+    </div>
+  );
+};
 
 const StorePage = () => {
   const { slug } = useParams();
@@ -62,22 +104,24 @@ const StorePage = () => {
 
   if (loading) {
     return (
-      <Layout>
+      <>
+        <CollaboNavbar />
         <div className="min-h-[60vh] flex items-center justify-center bg-gray-50">
           <div className="w-7 h-7 border-2 border-gray-300 border-t-gray-600 rounded-full animate-spin" />
         </div>
-      </Layout>
+      </>
     );
   }
   if (notFound || !store) {
     return (
-      <Layout>
+      <>
+        <CollaboNavbar />
         <div className="min-h-[60vh] flex flex-col items-center justify-center gap-3 text-gray-500 bg-gray-50">
           <Store className="w-10 h-10 text-gray-300" />
           <p className="font-medium">This store doesn't exist or isn't live yet.</p>
           <Link to="/" className="text-orange-600 font-semibold hover:underline text-sm">Back to Collabo</Link>
         </div>
-      </Layout>
+      </>
     );
   }
 
@@ -88,7 +132,8 @@ const StorePage = () => {
   const tabs = [{ key: 'all', label: 'Home' }, ...categories.map((c) => ({ key: c, label: c }))];
 
   return (
-    <Layout>
+    <>
+    <CollaboNavbar />
     <div className="min-h-screen bg-gray-50">
       {/* Full-bleed banner */}
       <div className="relative h-36 sm:h-52 w-full overflow-hidden" style={{ background: store.store_banner ? undefined : `linear-gradient(135deg, ${theme}, ${theme}aa)` }}>
@@ -169,7 +214,7 @@ const StorePage = () => {
         </section>
       </div>
     </div>
-    </Layout>
+    </>
   );
 };
 
