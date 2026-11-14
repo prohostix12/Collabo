@@ -140,7 +140,7 @@ const StorePage = () => {
 const ProductGrid = ({ products }) => (
   <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3">
     {products.map((p) => (
-      <Link key={p.id} to={`/?product=${p.id}`} className="group bg-white rounded-xl border border-gray-200 overflow-hidden hover:shadow-lg hover:-translate-y-0.5 transition-all">
+      <Link key={p.id} to={`/?pid=${p.id}`} className="group bg-white rounded-xl border border-gray-200 overflow-hidden hover:shadow-lg hover:-translate-y-0.5 transition-all">
         <div className="aspect-square bg-gray-100 overflow-hidden">
           {p.image && <img src={p.image} alt={p.name} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" />}
         </div>
