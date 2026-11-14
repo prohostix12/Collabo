@@ -1,6 +1,7 @@
 from django.contrib.auth.models import AbstractUser
 from django.contrib.auth.validators import UnicodeUsernameValidator
 from django.db import models
+from django.utils.text import slugify
 
 class User(AbstractUser):
     # Overridden to drop the unique constraint AbstractUser puts on username —
@@ -192,6 +193,13 @@ class SellerProfile(models.Model):
     
     user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='seller_profile')
     store_name = models.CharField(max_length=200, unique=True)
+    store_slug = models.SlugField(max_length=220, unique=True, blank=True, null=True, help_text="Storefront URL: /store/<slug>")
+    store_logo = models.TextField(blank=True, default='', help_text="Store logo image URL or base64 data")
+    store_banner = models.TextField(blank=True, default='', help_text="Store banner image URL or base64 data")
+    store_tagline = models.CharField(max_length=200, blank=True, default='')
+    store_description = models.TextField(blank=True, default='')
+    store_theme_color = models.CharField(max_length=20, blank=True, default='#f97316')
+    featured_product_ids = models.JSONField(default=list, blank=True, help_text="Product ids to feature at the top of the storefront")
     tax_id = models.CharField(max_length=50, help_text="GSTIN / EIN / PAN")
     bank_name = models.CharField(max_length=150)
     bank_account_number = models.CharField(max_length=50)
@@ -210,6 +218,17 @@ class SellerProfile(models.Model):
     
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
+
+    def save(self, *args, **kwargs):
+        if not self.store_slug and self.store_name:
+            base = slugify(self.store_name) or 'store'
+            slug = base
+            n = 1
+            while SellerProfile.objects.exclude(pk=self.pk).filter(store_slug=slug).exists():
+                n += 1
+                slug = f'{base}-{n}'
+            self.store_slug = slug
+        super().save(*args, **kwargs)
 
     def __str__(self):
         return f"{self.store_name} ({self.user.email})"

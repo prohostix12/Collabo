@@ -18,6 +18,7 @@ import CreatorsPage from './components/Landing/CreatorsPage';
 import OAuthCallback from './components/SocialMedia/OAuthCallback';
 import EcommerceMarketplace from './components/Ecommerce/EcommerceMarketplace';
 import SellOnCollabo from './components/Ecommerce/SellOnCollabo';
+import StorePage from './components/Ecommerce/StorePage';
 import ShippingPolicy from './components/Legal/ShippingPolicy';
 import ReturnPolicy from './components/Legal/ReturnPolicy';
 import PrivacyPolicy from './components/Legal/PrivacyPolicy';
@@ -57,6 +58,7 @@ function AppRoutes() {
       {/* Public Routes */}
       <Route path="/" element={<EcommerceMarketplace />} />
       <Route path="/sell" element={<SellOnCollabo />} />
+      <Route path="/store/:slug" element={<StorePage />} />
       <Route path="/about" element={<AboutPage />} />
       <Route path="/services" element={<ServicesPage />} />
       <Route path="/creators" element={<CreatorsPage />} />

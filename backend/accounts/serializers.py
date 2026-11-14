@@ -168,6 +168,17 @@ class SellerProfileSerializer(serializers.ModelSerializer):
         return obj.bank_document or None
 
 
+class PublicStorefrontSerializer(serializers.ModelSerializer):
+    """Public-safe view of a SellerProfile: storefront display fields only.
+    Never include tax_id, bank_*, kyc/bank documents, or rejection_reason here."""
+    seller_id = serializers.IntegerField(source='user.id', read_only=True)
+
+    class Meta:
+        model = SellerProfile
+        fields = ('seller_id', 'store_name', 'store_slug', 'store_logo', 'store_banner',
+                   'store_tagline', 'store_description', 'store_theme_color', 'featured_product_ids')
+
+
 class ApprovalAuditLogSerializer(serializers.ModelSerializer):
     admin_username = serializers.ReadOnlyField(source='admin.username', default=None)
     # Plain text, not serializers.IPAddressField: DRF 3.14's auto-mapped IPAddressField

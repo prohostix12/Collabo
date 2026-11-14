@@ -21,7 +21,7 @@ from .serializers import (
     UserRegistrationSerializer, UserLoginSerializer, 
     UserSerializer, InfluencerProfileSerializer, CompanyProfileSerializer,
     ChangePasswordSerializer, PendingInfluencerSerializer, ApprovalActionSerializer,
-    SellerProfileSerializer
+    SellerProfileSerializer, PublicStorefrontSerializer
 )
 from .youtube_service import VideoStatsService
 
@@ -979,6 +979,17 @@ class SellerProfileView(generics.RetrieveUpdateAPIView):
             pass
 
         return Response(serializer.data, status=status.HTTP_200_OK)
+
+
+class StorefrontView(generics.RetrieveAPIView):
+    """GET /api/accounts/store/<slug>/ — public storefront page data. Approved sellers only."""
+    serializer_class = PublicStorefrontSerializer
+    permission_classes = [AllowAny]
+    lookup_field = 'store_slug'
+    lookup_url_kwarg = 'slug'
+
+    def get_queryset(self):
+        return SellerProfile.objects.filter(verification_status='approved').select_related('user')
 
 
 class PendingSellersListView(generics.ListAPIView):

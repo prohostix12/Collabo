@@ -13,7 +13,7 @@ from .views import (
     password_reset_request, password_reset_confirm,
     # Seller profile & admin views
     SellerProfileView, PendingSellersListView, AllSellersListView, approve_seller, reject_seller,
-    seller_audit_log, admin_convert_to_influencer,
+    seller_audit_log, admin_convert_to_influencer, StorefrontView,
 )
 
 urlpatterns = [
@@ -24,6 +24,7 @@ urlpatterns = [
     path('influencer-profile/', InfluencerProfileView.as_view(), name='influencer-profile'),
     path('company-profile/', CompanyProfileView.as_view(), name='company-profile'),
     path('seller-profile/', SellerProfileView.as_view(), name='seller-profile'),
+    path('store/<slug:slug>/', StorefrontView.as_view(), name='storefront'),
     path('influencers/', InfluencerListView.as_view(), name='influencers-list'),
     path('influencers/<int:id>/', InfluencerDetailView.as_view(), name='influencer-detail'),
     path('companies/', CompanyListView.as_view(), name='companies-list'),
