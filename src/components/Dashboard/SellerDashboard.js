@@ -914,16 +914,24 @@ const StoreBuilder = ({ products }) => {
   }, []);
 
   const set = (k) => (e) => setForm((f) => ({ ...f, [k]: e.target.value }));
+  const setVal = (k, v) => setForm((f) => ({ ...f, [k]: v }));
   const toggleFeatured = (id) => setForm((f) => {
     const has = f.featured_product_ids.includes(id);
     return { ...f, featured_product_ids: has ? f.featured_product_ids.filter((x) => x !== id) : [...f.featured_product_ids, id] };
   });
 
+  const handleImageFile = async (key, file) => {
+    if (!file) return;
+    if (file.size > MAX_IMAGE_SIZE) { toast.error('Image must be under 5MB'); return; }
+    try { setVal(key, await fileToDataUrl(file)); } catch { toast.error('Could not read that image'); }
+  };
+
   const save = async () => {
     setSaving(true);
     try {
       const { verification_status, ...payload } = form;
-      await api.patch('/auth/seller-profile/', payload);
+      const res = await api.patch('/auth/seller-profile/', payload);
+      setForm((f) => ({ ...f, store_slug: res.data.store_slug }));
       toast.success('Store saved');
     } catch (e) {
       toast.error(e.response?.data?.store_slug?.[0] || e.response?.data?.store_name?.[0] || 'Could not save your store');
@@ -936,77 +944,147 @@ const StoreBuilder = ({ products }) => {
     return <div className="flex justify-center py-12"><div className="w-6 h-6 border-2 border-gray-300 border-t-gray-600 rounded-full animate-spin" /></div>;
   }
 
-  const inputCls = 'w-full border border-gray-200 dark:border-gray-700 rounded-lg px-3 py-2 text-sm bg-white dark:bg-gray-900 focus:outline-none focus:ring-1 focus:ring-orange-400';
+  const inputCls = 'w-full border border-gray-200 dark:border-gray-700 rounded-lg px-3 py-2 text-sm bg-white dark:bg-gray-900 focus:outline-none focus:ring-2 focus:ring-orange-400/60 transition-shadow';
+  const sectionCls = 'bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 p-5 space-y-4 shadow-sm';
+  const THEME_SWATCHES = ['#f97316', '#ea580c', '#2563eb', '#059669', '#db2777', '#7c3aed', '#0f172a', '#dc2626'];
 
   return (
-    <div className="space-y-4">
-      {form.verification_status !== 'approved' && (
-        <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-100 dark:border-amber-800 rounded-xl p-3.5 text-xs text-amber-700 dark:text-amber-300">
-          Your storefront only goes live to the public once your seller account is approved. You can still set it up now.
-        </div>
-      )}
-      {form.store_slug && (
-        <p className="text-xs text-gray-500">
-          Your store page: <a href={`/store/${form.store_slug}`} target="_blank" rel="noreferrer" className="text-orange-600 font-semibold hover:underline">collabo.co.in/store/{form.store_slug}</a>
-        </p>
-      )}
-
-      <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-4 space-y-3">
-        <label className="block space-y-1">
-          <span className="text-xs font-semibold text-gray-600 dark:text-gray-300">Store name</span>
-          <input className={inputCls} value={form.store_name} onChange={set('store_name')} />
-        </label>
-        <label className="block space-y-1">
-          <span className="text-xs font-semibold text-gray-600 dark:text-gray-300">Store URL slug</span>
-          <input className={inputCls} value={form.store_slug} onChange={set('store_slug')} placeholder="auto-generated from store name if left blank" />
-        </label>
-        <label className="block space-y-1">
-          <span className="text-xs font-semibold text-gray-600 dark:text-gray-300">Tagline</span>
-          <input className={inputCls} value={form.store_tagline} onChange={set('store_tagline')} placeholder="A short line under your store name" maxLength={200} />
-        </label>
-        <label className="block space-y-1">
-          <span className="text-xs font-semibold text-gray-600 dark:text-gray-300">Description</span>
-          <textarea className={inputCls} rows={3} value={form.store_description} onChange={set('store_description')} />
-        </label>
-        <div className="grid grid-cols-2 gap-3">
-          <label className="block space-y-1">
-            <span className="text-xs font-semibold text-gray-600 dark:text-gray-300">Logo image URL</span>
-            <input className={inputCls} value={form.store_logo} onChange={set('store_logo')} placeholder="https://..." />
-          </label>
-          <label className="block space-y-1">
-            <span className="text-xs font-semibold text-gray-600 dark:text-gray-300">Banner image URL</span>
-            <input className={inputCls} value={form.store_banner} onChange={set('store_banner')} placeholder="https://..." />
-          </label>
-        </div>
-        <label className="block space-y-1">
-          <span className="text-xs font-semibold text-gray-600 dark:text-gray-300">Theme color</span>
-          <input type="color" className="h-9 w-16 border border-gray-200 dark:border-gray-700 rounded-lg" value={form.store_theme_color} onChange={set('store_theme_color')} />
-        </label>
-      </div>
-
-      <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-4">
-        <h3 className="text-xs font-semibold text-gray-900 dark:text-white mb-1">Featured products</h3>
-        <p className="text-[11px] text-gray-500 mb-3">Pick products to highlight at the top of your store page.</p>
-        {products.length === 0 ? (
-          <p className="text-xs text-gray-400">Add some products first.</p>
-        ) : (
-          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2">
-            {products.map((p) => {
-              const checked = form.featured_product_ids.includes(p.id);
-              return (
-                <label key={p.id} className={`flex items-center gap-2 border rounded-lg px-2.5 py-2 text-xs cursor-pointer ${checked ? 'border-orange-400 bg-orange-50 dark:bg-orange-900/20' : 'border-gray-200 dark:border-gray-700'}`}>
-                  <input type="checkbox" checked={checked} onChange={() => toggleFeatured(p.id)} />
-                  <span className="truncate">{p.name}</span>
-                </label>
-              );
-            })}
+    <div className="grid lg:grid-cols-[1fr_340px] gap-4 items-start">
+      <div className="space-y-4">
+        {form.verification_status !== 'approved' && (
+          <div className="flex items-start gap-2.5 bg-amber-50 dark:bg-amber-900/20 border border-amber-100 dark:border-amber-800 rounded-xl p-3.5 text-xs text-amber-700 dark:text-amber-300">
+            <Clock className="w-4 h-4 shrink-0 mt-0.5" />
+            <span>Your storefront only goes live to the public once your seller account is approved. You can still set it up now.</span>
           </div>
         )}
+
+        <div className={sectionCls}>
+          <div className="flex items-center justify-between">
+            <h3 className="text-sm font-bold text-gray-900 dark:text-white flex items-center gap-1.5"><Store className="w-4 h-4 text-orange-500" /> Store identity</h3>
+            {form.store_slug && (
+              <a href={`/store/${form.store_slug}`} target="_blank" rel="noreferrer" className="text-[11px] font-semibold text-orange-600 hover:underline whitespace-nowrap">
+                View live store ↗
+              </a>
+            )}
+          </div>
+
+          <div className="grid sm:grid-cols-2 gap-4">
+            <label className="block space-y-1">
+              <span className="text-xs font-semibold text-gray-600 dark:text-gray-300">Store name</span>
+              <input className={inputCls} value={form.store_name} onChange={set('store_name')} placeholder="e.g. Skin By Beauty" />
+            </label>
+            <label className="block space-y-1">
+              <span className="text-xs font-semibold text-gray-600 dark:text-gray-300">Store URL</span>
+              <div className="flex items-center rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 focus-within:ring-2 focus-within:ring-orange-400/60 transition-shadow overflow-hidden">
+                <span className="pl-3 text-xs text-gray-400 whitespace-nowrap">/store/</span>
+                <input className="flex-1 min-w-0 px-1.5 py-2 text-sm bg-transparent focus:outline-none" value={form.store_slug} onChange={set('store_slug')} placeholder="auto-generated" />
+              </div>
+            </label>
+          </div>
+
+          <label className="block space-y-1">
+            <span className="text-xs font-semibold text-gray-600 dark:text-gray-300">Tagline</span>
+            <input className={inputCls} value={form.store_tagline} onChange={set('store_tagline')} placeholder="A short line under your store name" maxLength={200} />
+          </label>
+          <label className="block space-y-1">
+            <span className="text-xs font-semibold text-gray-600 dark:text-gray-300">Description</span>
+            <textarea className={inputCls} rows={3} value={form.store_description} onChange={set('store_description')} placeholder="Tell buyers what your store is about" />
+          </label>
+        </div>
+
+        <div className={sectionCls}>
+          <h3 className="text-sm font-bold text-gray-900 dark:text-white flex items-center gap-1.5"><ImagePlus className="w-4 h-4 text-orange-500" /> Look &amp; feel</h3>
+
+          <div className="grid sm:grid-cols-2 gap-4">
+            <div className="space-y-1.5">
+              <span className="text-xs font-semibold text-gray-600 dark:text-gray-300">Logo</span>
+              <div className="flex items-center gap-3">
+                <div className="w-16 h-16 rounded-xl bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 flex items-center justify-center overflow-hidden shrink-0">
+                  {form.store_logo ? <img src={form.store_logo} alt="Logo" className="w-full h-full object-cover" /> : <Store className="w-6 h-6 text-gray-300" />}
+                </div>
+                <div className="flex-1 space-y-1.5 min-w-0">
+                  <label className="cursor-pointer inline-flex items-center gap-1.5 bg-gray-900 hover:bg-gray-800 text-white font-semibold text-xs px-3 py-1.5 rounded-lg transition-colors">
+                    <Upload className="w-3.5 h-3.5" /> Upload
+                    <input type="file" accept="image/*" className="hidden" onChange={(e) => { handleImageFile('store_logo', e.target.files[0]); e.target.value = ''; }} />
+                  </label>
+                  {form.store_logo && <button type="button" onClick={() => setVal('store_logo', '')} className="text-[11px] text-red-500 hover:underline block">Remove</button>}
+                </div>
+              </div>
+            </div>
+
+            <div className="space-y-1.5">
+              <span className="text-xs font-semibold text-gray-600 dark:text-gray-300">Banner</span>
+              <div className="rounded-xl overflow-hidden border border-gray-200 dark:border-gray-700 h-16 flex items-center justify-center relative"
+                   style={{ background: form.store_banner ? undefined : `linear-gradient(135deg, ${form.store_theme_color}, ${form.store_theme_color}99)` }}>
+                {form.store_banner && <img src={form.store_banner} alt="Banner" className="w-full h-full object-cover absolute inset-0" />}
+                <label className="relative cursor-pointer inline-flex items-center gap-1.5 bg-black/60 hover:bg-black/75 text-white font-semibold text-xs px-3 py-1.5 rounded-lg backdrop-blur-sm transition-colors">
+                  <Upload className="w-3.5 h-3.5" /> Upload
+                  <input type="file" accept="image/*" className="hidden" onChange={(e) => { handleImageFile('store_banner', e.target.files[0]); e.target.value = ''; }} />
+                </label>
+              </div>
+              {form.store_banner && <button type="button" onClick={() => setVal('store_banner', '')} className="text-[11px] text-red-500 hover:underline">Remove banner</button>}
+            </div>
+          </div>
+
+          <div className="space-y-1.5">
+            <span className="text-xs font-semibold text-gray-600 dark:text-gray-300">Theme color</span>
+            <div className="flex items-center gap-2 flex-wrap">
+              {THEME_SWATCHES.map((c) => (
+                <button key={c} type="button" onClick={() => setVal('store_theme_color', c)}
+                  className={`w-7 h-7 rounded-full border-2 transition-transform hover:scale-110 ${form.store_theme_color === c ? 'border-gray-900 dark:border-white' : 'border-transparent'}`}
+                  style={{ backgroundColor: c }} />
+              ))}
+              <input type="color" className="h-7 w-7 rounded-full border border-gray-200 dark:border-gray-700 cursor-pointer" value={form.store_theme_color} onChange={set('store_theme_color')} />
+            </div>
+          </div>
+        </div>
+
+        <div className={sectionCls}>
+          <div>
+            <h3 className="text-sm font-bold text-gray-900 dark:text-white">Featured products</h3>
+            <p className="text-[11px] text-gray-500 mt-0.5">Pick products to highlight at the top of your store page.</p>
+          </div>
+          {products.length === 0 ? (
+            <p className="text-xs text-gray-400">Add some products first.</p>
+          ) : (
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+              {products.map((p) => {
+                const checked = form.featured_product_ids.includes(p.id);
+                return (
+                  <label key={p.id} className={`flex items-center gap-2 border rounded-xl px-2.5 py-2 text-xs cursor-pointer transition-colors ${checked ? 'border-orange-400 bg-orange-50 dark:bg-orange-900/20' : 'border-gray-200 dark:border-gray-700 hover:border-gray-300'}`}>
+                    <input type="checkbox" checked={checked} onChange={() => toggleFeatured(p.id)} className="accent-orange-500" />
+                    {p.image && <img src={p.image} alt="" className="w-6 h-6 rounded object-cover shrink-0" />}
+                    <span className="truncate">{p.name}</span>
+                  </label>
+                );
+              })}
+            </div>
+          )}
+        </div>
+
+        <button onClick={save} disabled={saving} className="px-5 py-2.5 text-sm font-bold text-white bg-orange-600 hover:bg-orange-700 rounded-xl disabled:opacity-50 transition-colors shadow-sm">
+          {saving ? 'Saving...' : 'Save store'}
+        </button>
       </div>
 
-      <button onClick={save} disabled={saving} className="px-4 py-2 text-xs font-semibold text-white bg-orange-600 hover:bg-orange-700 rounded-lg disabled:opacity-50 transition-colors">
-        {saving ? 'Saving...' : 'Save store'}
-      </button>
+      {/* Live preview */}
+      <div className="lg:sticky lg:top-4 space-y-2">
+        <p className="text-[11px] font-bold uppercase tracking-wider text-gray-400">Preview</p>
+        <div className="rounded-2xl border border-gray-200 dark:border-gray-700 overflow-hidden bg-white dark:bg-gray-800 shadow-sm">
+          <div className="h-20 relative" style={{ background: form.store_banner ? undefined : `linear-gradient(135deg, ${form.store_theme_color}, ${form.store_theme_color}99)` }}>
+            {form.store_banner && <img src={form.store_banner} alt="" className="w-full h-full object-cover absolute inset-0" />}
+            <div className="absolute inset-0 bg-black/25" />
+          </div>
+          <div className="px-3 -mt-6 pb-4">
+            <div className="w-12 h-12 rounded-xl bg-white dark:bg-gray-800 border-2 border-white dark:border-gray-800 shadow overflow-hidden flex items-center justify-center">
+              {form.store_logo ? <img src={form.store_logo} alt="" className="w-full h-full object-cover" /> : <Store className="w-5 h-5 text-gray-300" />}
+            </div>
+            <p className="text-sm font-black text-gray-900 dark:text-white mt-2 truncate">{form.store_name || 'Your store name'}</p>
+            {form.store_tagline && <p className="text-[11px] text-gray-500 truncate">{form.store_tagline}</p>}
+            <p className="text-[10px] text-gray-400 mt-1.5 truncate">collabo.co.in/store/{form.store_slug || '...'}</p>
+          </div>
+        </div>
+      </div>
     </div>
   );
 };
