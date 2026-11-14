@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
-import { Store, Search, BadgeCheck, Share2, ShoppingCart, Heart, User, LayoutDashboard } from 'lucide-react';
+import { Store, Search, BadgeCheck, Share2, ShoppingCart, Heart, User } from 'lucide-react';
 import toast from 'react-hot-toast';
 import api from '../../services/api';
 import { useAuth } from '../../contexts/AuthContext';
@@ -9,7 +9,6 @@ const CollaboNavbar = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
   const [siteSearch, setSiteSearch] = useState('');
-  const isAdmin = user?.is_staff || user?.user_type === 'admin';
 
   const submitSearch = (e) => {
     e.preventDefault();
@@ -33,11 +32,6 @@ const CollaboNavbar = () => {
         <div className="flex items-center gap-1 ml-auto">
           <Link to="/?view=wishlist" className="p-2 rounded-xl hover:bg-gray-100 text-gray-500" title="Wishlist"><Heart className="w-4 h-4" /></Link>
           <Link to="/?view=cart" className="p-2 rounded-xl hover:bg-gray-100 text-gray-500" title="Cart"><ShoppingCart className="w-4 h-4" /></Link>
-          {isAdmin && (
-            <Link to="/admin-dashboard" className="hidden sm:flex p-2 rounded-xl hover:bg-gray-100 text-gray-500 items-center gap-1" title="Admin">
-              <LayoutDashboard className="w-4 h-4 text-orange-500" />
-            </Link>
-          )}
           <Link to={user ? '/?view=profile' : '/?view=auth'} className="hidden sm:flex items-center gap-1.5 bg-gray-100 hover:bg-gray-200 py-1.5 px-3 rounded-xl text-[11px] font-extrabold transition-colors">
             <User className="w-3.5 h-3.5" /> {user ? 'My Account' : 'Login'}
           </Link>
