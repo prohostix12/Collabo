@@ -6,13 +6,12 @@ import {
   CheckCircle, XCircle, Search, Filter, Mail,
   // eslint-disable-next-line no-unused-vars
   Calendar, Eye, AlertCircle, Shield, Settings, 
-  BarChart3, Activity, DollarSign, Layout, ShoppingBag, Store, Package
+  BarChart3, Activity, DollarSign, ShoppingBag, Store, Package
 } from 'lucide-react';
 import api from '../../services/api';
 import toast from 'react-hot-toast';
 import { useAuth } from '../../contexts/AuthContext';
 import AdminSupportTickets from '../Support/AdminSupportTickets';
-import LandingContentManager from './LandingContentManager';
 import UserManagement from './UserManagement';
 // eslint-disable-next-line no-unused-vars
 import CampaignManagement from './CampaignManagement';
@@ -75,7 +74,6 @@ const AdminDashboard = () => {
     { id: 'seller-approvals', label: 'Seller Approvals', icon: Store },
     { id: 'product-approvals', label: 'Product Approvals', icon: Package },
     { id: 'seller-payouts', label: 'Seller Payouts', icon: DollarSign },
-    { id: 'landing', label: 'Landing Page', icon: Layout },
     { id: 'store', label: 'Store Content', icon: ShoppingBag },
     { id: 'support', label: 'Support Tickets', icon: AlertCircle },
     { id: 'outreach', label: 'Brand Outreach', icon: Mail },
@@ -663,10 +661,6 @@ const AdminDashboard = () => {
               ? <BrandOutreach />
               : <div className="p-4 text-center text-gray-500">Access denied. Admins only.</div>}
           </>
-        )}
-
-        {activeTab === 'landing' && (
-          <LandingContentManager />
         )}
 
         {activeTab === 'store' && (
