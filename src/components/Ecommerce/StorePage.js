@@ -135,8 +135,8 @@ const StorePage = () => {
         {store.store_banner && <img src={store.store_banner} alt="" className="w-full h-full object-cover" />}
       </div>
 
-      {/* Store identity + actions row */}
-      <div className="bg-white border-b border-gray-200">
+      {/* Store identity + actions row, sticks below the main Collabo navbar on scroll */}
+      <div className="bg-white border-b border-gray-200 sticky top-14 z-20 shadow-sm">
         <div className="max-w-6xl mx-auto px-4 py-3 flex flex-wrap items-center gap-3">
           <div className="w-12 h-12 rounded-xl bg-white shadow border border-gray-100 overflow-hidden flex items-center justify-center flex-shrink-0">
             {store.store_logo ? <img src={store.store_logo} alt={store.store_name} className="w-full h-full object-cover" /> : <Store className="w-5 h-5 text-gray-300" />}
