@@ -933,6 +933,7 @@ const StoreBuilder = ({ products }) => {
     featured: () => ({ id: genId(), type: 'featured', title: 'Featured', product_ids: [], columns: 4 }),
     promo: () => ({ id: genId(), type: 'promo', size: 'md', image: '', title: '', subtitle: '', link: '' }),
     category_strip: () => ({ id: genId(), type: 'category_strip', categories: [] }),
+    tile_grid: () => ({ id: genId(), type: 'tile_grid', tiles: [] }),
   };
   const addSection = (type) => setForm((f) => ({ ...f, store_sections: [...f.store_sections, SECTION_DEFAULTS[type]()] }));
   const updateSection = (id, patch) => setForm((f) => ({
@@ -1100,6 +1101,7 @@ const StoreBuilder = ({ products }) => {
                   ['featured', 'Featured product grid'],
                   ['promo', 'Promo / ad banner'],
                   ['category_strip', 'Category strip'],
+                  ['tile_grid', 'Promo tile grid'],
                 ].map(([type, label]) => (
                   <button key={type} type="button" onClick={() => addSection(type)} className="w-full text-left px-3 py-2 text-xs font-semibold text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-900">
                     {label}
@@ -1156,7 +1158,7 @@ const StoreBuilder = ({ products }) => {
   );
 };
 
-const SECTION_LABELS = { carousel: 'Moving banner carousel', featured: 'Featured product grid', promo: 'Promo / ad banner', category_strip: 'Category strip' };
+const SECTION_LABELS = { carousel: 'Moving banner carousel', featured: 'Featured product grid', promo: 'Promo / ad banner', category_strip: 'Category strip', tile_grid: 'Promo tile grid' };
 
 const SectionEditor = ({ section, products, isFirst, isLast, onChange, onRemove, onMove }) => {
   const inputCls = 'w-full border border-gray-200 dark:border-gray-700 rounded-lg px-2.5 py-1.5 text-xs bg-white dark:bg-gray-900 focus:outline-none focus:ring-2 focus:ring-orange-400/60 transition-shadow';
@@ -1278,29 +1280,62 @@ const SectionEditor = ({ section, products, isFirst, isLast, onChange, onRemove,
     );
   }
 
-  // category_strip
-  const cats = section.categories || [];
-  const updateCat = (i, patch) => onChange({ categories: cats.map((c, idx) => (idx === i ? { ...c, ...patch } : c)) });
-  const removeCat = (i) => onChange({ categories: cats.filter((_, idx) => idx !== i) });
+  if (section.type === 'category_strip') {
+    const cats = section.categories || [];
+    const updateCat = (i, patch) => onChange({ categories: cats.map((c, idx) => (idx === i ? { ...c, ...patch } : c)) });
+    const removeCat = (i) => onChange({ categories: cats.filter((_, idx) => idx !== i) });
+    return (
+      <div className="border border-gray-200 dark:border-gray-700 rounded-xl p-3 space-y-3 bg-gray-50/60 dark:bg-gray-900/30">
+        <Header />
+        <p className="text-[11px] text-gray-500">Leave empty to auto-show categories from your products. Add tiles here to customize the image/order.</p>
+        <div className="space-y-2">
+          {cats.map((c, i) => (
+            <div key={i} className="flex items-center gap-2 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-2">
+              <div className="w-10 h-10 rounded bg-gray-100 dark:bg-gray-900 overflow-hidden flex items-center justify-center shrink-0">
+                {c.image ? <img src={c.image} alt="" className="w-full h-full object-cover" /> : <ImagePlus className="w-4 h-4 text-gray-300" />}
+              </div>
+              <label className="cursor-pointer text-[11px] font-semibold text-orange-600 hover:underline shrink-0">
+                Upload
+                <input type="file" accept="image/*" className="hidden" onChange={(e) => { uploadImage(e.target.files[0], (data) => updateCat(i, { image: data })); e.target.value = ''; }} />
+              </label>
+              <input className={inputCls} placeholder="Category name" value={c.name || ''} onChange={(e) => updateCat(i, { name: e.target.value })} />
+              <button type="button" onClick={() => removeCat(i)} className="text-red-400 hover:text-red-600 shrink-0"><X className="w-3.5 h-3.5" /></button>
+            </div>
+          ))}
+          <button type="button" onClick={() => onChange({ categories: [...cats, { name: '', image: '' }] })} className="text-[11px] font-semibold text-orange-600 hover:underline">+ Add category tile</button>
+        </div>
+      </div>
+    );
+  }
+
+  // tile_grid
+  const tiles = section.tiles || [];
+  const updateTile = (i, patch) => onChange({ tiles: tiles.map((t, idx) => (idx === i ? { ...t, ...patch } : t)) });
+  const removeTile = (i) => onChange({ tiles: tiles.filter((_, idx) => idx !== i) });
   return (
     <div className="border border-gray-200 dark:border-gray-700 rounded-xl p-3 space-y-3 bg-gray-50/60 dark:bg-gray-900/30">
       <Header />
-      <p className="text-[11px] text-gray-500">Leave empty to auto-show categories from your products. Add tiles here to customize the image/order.</p>
+      <p className="text-[11px] text-gray-500">Mix a large tile with smaller ones, like Amazon's store banners grid. Mark one tile "Large" to feature it.</p>
       <div className="space-y-2">
-        {cats.map((c, i) => (
+        {tiles.map((t, i) => (
           <div key={i} className="flex items-center gap-2 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-2">
-            <div className="w-10 h-10 rounded bg-gray-100 dark:bg-gray-900 overflow-hidden flex items-center justify-center shrink-0">
-              {c.image ? <img src={c.image} alt="" className="w-full h-full object-cover" /> : <ImagePlus className="w-4 h-4 text-gray-300" />}
+            <div className="w-12 h-9 rounded bg-gray-100 dark:bg-gray-900 overflow-hidden flex items-center justify-center shrink-0">
+              {t.image ? <img src={t.image} alt="" className="w-full h-full object-cover" /> : <ImagePlus className="w-4 h-4 text-gray-300" />}
             </div>
             <label className="cursor-pointer text-[11px] font-semibold text-orange-600 hover:underline shrink-0">
               Upload
-              <input type="file" accept="image/*" className="hidden" onChange={(e) => { uploadImage(e.target.files[0], (data) => updateCat(i, { image: data })); e.target.value = ''; }} />
+              <input type="file" accept="image/*" className="hidden" onChange={(e) => { uploadImage(e.target.files[0], (data) => updateTile(i, { image: data })); e.target.value = ''; }} />
             </label>
-            <input className={inputCls} placeholder="Category name" value={c.name || ''} onChange={(e) => updateCat(i, { name: e.target.value })} />
-            <button type="button" onClick={() => removeCat(i)} className="text-red-400 hover:text-red-600 shrink-0"><X className="w-3.5 h-3.5" /></button>
+            <input className={inputCls} placeholder="Title (optional)" value={t.title || ''} onChange={(e) => updateTile(i, { title: e.target.value })} />
+            <input className={inputCls} placeholder="Links to product id or /path" value={t.link || ''} onChange={(e) => updateTile(i, { link: e.target.value })} />
+            <select className={`${inputCls} w-24 shrink-0`} value={t.span || 'normal'} onChange={(e) => updateTile(i, { span: e.target.value })}>
+              <option value="normal">Normal</option>
+              <option value="large">Large</option>
+            </select>
+            <button type="button" onClick={() => removeTile(i)} className="text-red-400 hover:text-red-600 shrink-0"><X className="w-3.5 h-3.5" /></button>
           </div>
         ))}
-        <button type="button" onClick={() => onChange({ categories: [...cats, { name: '', image: '' }] })} className="text-[11px] font-semibold text-orange-600 hover:underline">+ Add category tile</button>
+        <button type="button" onClick={() => onChange({ tiles: [...tiles, { image: '', title: '', link: '', span: 'normal' }] })} className="text-[11px] font-semibold text-orange-600 hover:underline">+ Add tile</button>
       </div>
     </div>
   );

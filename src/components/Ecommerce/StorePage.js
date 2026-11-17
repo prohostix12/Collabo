@@ -331,11 +331,35 @@ const CategoryStripSection = ({ section, categories, onCategoryClick }) => {
   );
 };
 
+const TileGridSection = ({ section }) => {
+  const tiles = (section.tiles || []).filter((t) => t.image);
+  if (tiles.length === 0) return null;
+  return (
+    <div className="grid grid-cols-2 sm:grid-cols-3 auto-rows-[110px] sm:auto-rows-[140px] gap-3" style={{ gridAutoFlow: 'dense' }}>
+      {tiles.map((t, i) => (
+        <SectionLink
+          key={i}
+          link={t.link}
+          className={`relative rounded-xl overflow-hidden group block ${t.span === 'large' ? 'col-span-2 row-span-2' : 'col-span-1 row-span-1'}`}
+        >
+          <img src={t.image} alt={t.title || ''} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" />
+          {t.title && (
+            <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/60 to-transparent p-2.5">
+              <p className={`text-white font-bold ${t.span === 'large' ? 'text-sm sm:text-base' : 'text-xs'}`}>{t.title}</p>
+            </div>
+          )}
+        </SectionLink>
+      ))}
+    </div>
+  );
+};
+
 const CustomSection = ({ section, products, categories, onCategoryClick }) => {
   if (section.type === 'carousel') return <CarouselSection section={section} />;
   if (section.type === 'promo') return <PromoSection section={section} />;
   if (section.type === 'featured') return <FeaturedSection section={section} products={products} />;
   if (section.type === 'category_strip') return <CategoryStripSection section={section} categories={categories} onCategoryClick={onCategoryClick} />;
+  if (section.type === 'tile_grid') return <TileGridSection section={section} />;
   return null;
 };
 
