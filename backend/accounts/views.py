@@ -992,6 +992,17 @@ class StorefrontView(generics.RetrieveAPIView):
         return SellerProfile.objects.filter(verification_status='approved').select_related('user')
 
 
+class AdminSellerStoreView(generics.RetrieveUpdateAPIView):
+    """GET/PATCH /api/auth/admin/seller-store/<user_id>/ — lets an admin view and edit any
+    seller's storefront (identity, look & feel, sections) on their behalf."""
+    serializer_class = SellerProfileSerializer
+    permission_classes = [IsAuthenticated, IsAdminUser]
+    parser_classes = [parsers.MultiPartParser, parsers.FormParser, parsers.JSONParser]
+    lookup_field = 'user_id'
+    lookup_url_kwarg = 'user_id'
+    queryset = SellerProfile.objects.select_related('user')
+
+
 class PendingSellersListView(generics.ListAPIView):
     serializer_class = SellerProfileSerializer
     permission_classes = [IsAdminUser]

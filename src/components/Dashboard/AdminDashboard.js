@@ -21,6 +21,7 @@ import PlatformSettings from './PlatformSettings';
 import EcommerceMarketplace from '../Ecommerce/EcommerceMarketplace';
 import StoreContentEditor from './StoreContentEditor';
 import BrandOutreach from './BrandOutreach';
+import StoreBuilder from './StoreBuilder';
 
 const AdminDashboard = () => {
   const { user } = useAuth();
@@ -47,6 +48,7 @@ const AdminDashboard = () => {
   const [sellers, setSellers] = useState([]);
   const [loadingSellers, setLoadingSellers] = useState(false);
   const [selectedSellerDetails, setSelectedSellerDetails] = useState(null);
+  const [editingStoreSeller, setEditingStoreSeller] = useState(null); // seller object, to edit their storefront
   const [analytics, setAnalytics] = useState({
     total_influencers: 0,
     pending: 0,
@@ -519,7 +521,15 @@ const AdminDashboard = () => {
           </div>
         )}
 
-        {activeTab === 'seller-approvals' && (
+        {activeTab === 'seller-approvals' && editingStoreSeller && (
+          <StoreBuilder
+            sellerId={editingStoreSeller.user}
+            sellerLabel={editingStoreSeller.store_name || editingStoreSeller.username}
+            onClose={() => setEditingStoreSeller(null)}
+          />
+        )}
+
+        {activeTab === 'seller-approvals' && !editingStoreSeller && (
           <div className="space-y-3">
             <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 overflow-hidden">
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 p-3 border-b border-gray-100 dark:border-gray-700">
@@ -565,6 +575,7 @@ const AdminDashboard = () => {
                             onViewDetails={() => setSelectedSellerDetails(seller)}
                             onApprove={() => openConfirmModal(seller, 'approve-seller')}
                             onReject={() => openConfirmModal(seller, 'reject-seller')}
+                            onEditStore={() => setEditingStoreSeller(seller)}
                           />
                         ))}
                       </AnimatePresence>
@@ -872,7 +883,7 @@ const ConfirmationModal = ({ influencer, action, onConfirm, onCancel }) => {
     </motion.div>
   );
 };
-const SellerRow = ({ seller, index, onApprove, onReject, onViewDetails }) => {
+const SellerRow = ({ seller, index, onApprove, onReject, onViewDetails, onEditStore }) => {
   const status = seller.verification_status || 'pending';
   return (
     <motion.tr initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ delay: index * 0.03 }}
@@ -903,6 +914,7 @@ const SellerRow = ({ seller, index, onApprove, onReject, onViewDetails }) => {
       <td className="py-2.5 px-4">
         <div className="flex gap-1">
           <button onClick={onViewDetails} className="px-2 py-1 text-[10px] font-medium text-gray-700 bg-gray-100 rounded-md hover:bg-gray-200 transition-colors">View</button>
+          <button onClick={onEditStore} className="px-2 py-1 text-[10px] font-medium text-orange-700 bg-orange-50 rounded-md hover:bg-orange-100 transition-colors">Edit Store</button>
           {status === 'pending' && (
             <>
               <button onClick={onApprove} className="px-2 py-1 text-[10px] font-medium text-emerald-700 bg-emerald-50 rounded-md hover:bg-emerald-100 transition-colors">Approve</button>
