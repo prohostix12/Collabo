@@ -17,7 +17,7 @@ const CollaboNavbar = () => {
   };
 
   return (
-    <div className="bg-white border-b border-gray-200 sticky top-0 z-30">
+    <div className="bg-white border-b border-gray-200">
       <div className="max-w-6xl mx-auto px-4 h-14 flex items-center gap-3 sm:gap-5">
         <Link to="/" className="flex items-center shrink-0 w-[90px] sm:w-[130px]">
           <img src="/collabo-logo.png" alt="Collabo" className="h-7 sm:h-9 object-contain scale-[2.0] origin-left transform" />
@@ -136,7 +136,7 @@ const StorePage = () => {
       </div>
 
       {/* Store identity + actions row, sticks below the main Collabo navbar on scroll */}
-      <div className="bg-white border-b border-gray-200 sticky top-14 z-20 shadow-sm">
+      <div className="bg-white border-b border-gray-200 sticky top-0 z-20 shadow-sm">
         <div className="max-w-6xl mx-auto px-4 py-3 flex flex-wrap items-center gap-3">
           <div className="w-12 h-12 rounded-xl bg-white shadow border border-gray-100 overflow-hidden flex items-center justify-center flex-shrink-0">
             {store.store_logo ? <img src={store.store_logo} alt={store.store_name} className="w-full h-full object-cover" /> : <Store className="w-5 h-5 text-gray-300" />}
