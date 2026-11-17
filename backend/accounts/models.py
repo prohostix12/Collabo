@@ -200,6 +200,7 @@ class SellerProfile(models.Model):
     store_description = models.TextField(blank=True, default='')
     store_theme_color = models.CharField(max_length=20, blank=True, default='#f97316')
     featured_product_ids = models.JSONField(default=list, blank=True, help_text="Product ids to feature at the top of the storefront")
+    store_sections = models.JSONField(default=list, blank=True, help_text="Ordered list of custom storefront page sections (carousel, featured grid, promo banner, category strip)")
     tax_id = models.CharField(max_length=50, help_text="GSTIN / EIN / PAN")
     bank_name = models.CharField(max_length=150)
     bank_account_number = models.CharField(max_length=50)

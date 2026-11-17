@@ -907,6 +907,7 @@ const StoreBuilder = ({ products }) => {
         store_description: res.data.store_description || '',
         store_theme_color: res.data.store_theme_color || '#f97316',
         featured_product_ids: res.data.featured_product_ids || [],
+        store_sections: res.data.store_sections || [],
         verification_status: res.data.verification_status,
       }))
       .catch(() => toast.error('Could not load your store settings'))
@@ -925,6 +926,27 @@ const StoreBuilder = ({ products }) => {
     if (file.size > MAX_IMAGE_SIZE) { toast.error('Image must be under 5MB'); return; }
     try { setVal(key, await fileToDataUrl(file)); } catch { toast.error('Could not read that image'); }
   };
+
+  const genId = () => `sec_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`;
+  const SECTION_DEFAULTS = {
+    carousel: () => ({ id: genId(), type: 'carousel', size: 'md', slides: [] }),
+    featured: () => ({ id: genId(), type: 'featured', title: 'Featured', product_ids: [], columns: 4 }),
+    promo: () => ({ id: genId(), type: 'promo', size: 'md', image: '', title: '', subtitle: '', link: '' }),
+    category_strip: () => ({ id: genId(), type: 'category_strip', categories: [] }),
+  };
+  const addSection = (type) => setForm((f) => ({ ...f, store_sections: [...f.store_sections, SECTION_DEFAULTS[type]()] }));
+  const updateSection = (id, patch) => setForm((f) => ({
+    ...f, store_sections: f.store_sections.map((s) => (s.id === id ? { ...s, ...patch } : s)),
+  }));
+  const removeSection = (id) => setForm((f) => ({ ...f, store_sections: f.store_sections.filter((s) => s.id !== id) }));
+  const moveSection = (id, dir) => setForm((f) => {
+    const list = [...f.store_sections];
+    const i = list.findIndex((s) => s.id === id);
+    const j = i + dir;
+    if (i < 0 || j < 0 || j >= list.length) return f;
+    [list[i], list[j]] = [list[j], list[i]];
+    return { ...f, store_sections: list };
+  });
 
   const save = async () => {
     setSaving(true);
@@ -1062,6 +1084,51 @@ const StoreBuilder = ({ products }) => {
           )}
         </div>
 
+        <div className={sectionCls}>
+          <div className="flex items-center justify-between">
+            <div>
+              <h3 className="text-sm font-bold text-gray-900 dark:text-white">Page sections</h3>
+              <p className="text-[11px] text-gray-500 mt-0.5">Build out your store page with banners, promos, and product grids &mdash; like a mini homepage.</p>
+            </div>
+            <div className="relative group shrink-0">
+              <button type="button" className="inline-flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-lg border border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-900 transition-colors">
+                <Plus className="w-3.5 h-3.5" /> Add section
+              </button>
+              <div className="absolute right-0 top-full mt-1 w-48 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl shadow-lg py-1 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-opacity z-20">
+                {[
+                  ['carousel', 'Moving banner carousel'],
+                  ['featured', 'Featured product grid'],
+                  ['promo', 'Promo / ad banner'],
+                  ['category_strip', 'Category strip'],
+                ].map(([type, label]) => (
+                  <button key={type} type="button" onClick={() => addSection(type)} className="w-full text-left px-3 py-2 text-xs font-semibold text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-900">
+                    {label}
+                  </button>
+                ))}
+              </div>
+            </div>
+          </div>
+
+          {form.store_sections.length === 0 ? (
+            <p className="text-xs text-gray-400">No sections yet. Use "Add section" to build out your page.</p>
+          ) : (
+            <div className="space-y-3">
+              {form.store_sections.map((sec, i) => (
+                <SectionEditor
+                  key={sec.id}
+                  section={sec}
+                  products={products}
+                  isFirst={i === 0}
+                  isLast={i === form.store_sections.length - 1}
+                  onChange={(patch) => updateSection(sec.id, patch)}
+                  onRemove={() => removeSection(sec.id)}
+                  onMove={(dir) => moveSection(sec.id, dir)}
+                />
+              ))}
+            </div>
+          )}
+        </div>
+
         <button onClick={save} disabled={saving} className="px-5 py-2.5 text-sm font-bold text-white bg-orange-600 hover:bg-orange-700 rounded-xl disabled:opacity-50 transition-colors shadow-sm">
           {saving ? 'Saving...' : 'Save store'}
         </button>
@@ -1084,6 +1151,156 @@ const StoreBuilder = ({ products }) => {
             <p className="text-[10px] text-gray-400 mt-1.5 truncate">collabo.co.in/store/{form.store_slug || '...'}</p>
           </div>
         </div>
+      </div>
+    </div>
+  );
+};
+
+const SECTION_LABELS = { carousel: 'Moving banner carousel', featured: 'Featured product grid', promo: 'Promo / ad banner', category_strip: 'Category strip' };
+
+const SectionEditor = ({ section, products, isFirst, isLast, onChange, onRemove, onMove }) => {
+  const inputCls = 'w-full border border-gray-200 dark:border-gray-700 rounded-lg px-2.5 py-1.5 text-xs bg-white dark:bg-gray-900 focus:outline-none focus:ring-2 focus:ring-orange-400/60 transition-shadow';
+
+  const uploadImage = async (file, cb) => {
+    if (!file) return;
+    if (file.size > MAX_IMAGE_SIZE) { toast.error('Image must be under 5MB'); return; }
+    try { cb(await fileToDataUrl(file)); } catch { toast.error('Could not read that image'); }
+  };
+
+  const Header = () => (
+    <div className="flex items-center justify-between">
+      <span className="text-xs font-bold text-gray-800 dark:text-gray-100">{SECTION_LABELS[section.type]}</span>
+      <div className="flex items-center gap-1">
+        <button type="button" disabled={isFirst} onClick={() => onMove(-1)} className="p-1 rounded text-gray-400 hover:text-gray-700 disabled:opacity-30 disabled:cursor-not-allowed">↑</button>
+        <button type="button" disabled={isLast} onClick={() => onMove(1)} className="p-1 rounded text-gray-400 hover:text-gray-700 disabled:opacity-30 disabled:cursor-not-allowed">↓</button>
+        <button type="button" onClick={onRemove} className="p-1 rounded text-red-400 hover:text-red-600"><X className="w-3.5 h-3.5" /></button>
+      </div>
+    </div>
+  );
+
+  const SizeSelect = () => (
+    <label className="block space-y-1 w-28">
+      <span className="text-[11px] font-semibold text-gray-500">Height</span>
+      <select className={inputCls} value={section.size || 'md'} onChange={(e) => onChange({ size: e.target.value })}>
+        <option value="sm">Small</option>
+        <option value="md">Medium</option>
+        <option value="lg">Large</option>
+      </select>
+    </label>
+  );
+
+  if (section.type === 'carousel') {
+    const slides = section.slides || [];
+    const updateSlide = (i, patch) => onChange({ slides: slides.map((s, idx) => (idx === i ? { ...s, ...patch } : s)) });
+    const removeSlide = (i) => onChange({ slides: slides.filter((_, idx) => idx !== i) });
+    return (
+      <div className="border border-gray-200 dark:border-gray-700 rounded-xl p-3 space-y-3 bg-gray-50/60 dark:bg-gray-900/30">
+        <Header />
+        <SizeSelect />
+        <div className="space-y-2">
+          {slides.map((s, i) => (
+            <div key={i} className="flex items-center gap-2 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-2">
+              <div className="w-14 h-10 rounded bg-gray-100 dark:bg-gray-900 overflow-hidden flex items-center justify-center shrink-0">
+                {s.image ? <img src={s.image} alt="" className="w-full h-full object-cover" /> : <ImagePlus className="w-4 h-4 text-gray-300" />}
+              </div>
+              <label className="cursor-pointer text-[11px] font-semibold text-orange-600 hover:underline shrink-0">
+                Upload
+                <input type="file" accept="image/*" className="hidden" onChange={(e) => { uploadImage(e.target.files[0], (data) => updateSlide(i, { image: data })); e.target.value = ''; }} />
+              </label>
+              <input className={inputCls} placeholder="Title (optional)" value={s.title || ''} onChange={(e) => updateSlide(i, { title: e.target.value })} />
+              <input className={inputCls} placeholder="Links to product id or /path" value={s.link || ''} onChange={(e) => updateSlide(i, { link: e.target.value })} />
+              <button type="button" onClick={() => removeSlide(i)} className="text-red-400 hover:text-red-600 shrink-0"><X className="w-3.5 h-3.5" /></button>
+            </div>
+          ))}
+          <button type="button" onClick={() => onChange({ slides: [...slides, { image: '', title: '', link: '' }] })} className="text-[11px] font-semibold text-orange-600 hover:underline">+ Add slide</button>
+        </div>
+      </div>
+    );
+  }
+
+  if (section.type === 'featured') {
+    const ids = section.product_ids || [];
+    const toggle = (id) => onChange({ product_ids: ids.includes(id) ? ids.filter((x) => x !== id) : [...ids, id] });
+    return (
+      <div className="border border-gray-200 dark:border-gray-700 rounded-xl p-3 space-y-3 bg-gray-50/60 dark:bg-gray-900/30">
+        <Header />
+        <div className="flex gap-3">
+          <label className="block space-y-1 flex-1">
+            <span className="text-[11px] font-semibold text-gray-500">Section title</span>
+            <input className={inputCls} value={section.title || ''} onChange={(e) => onChange({ title: e.target.value })} placeholder="e.g. Best sellers" />
+          </label>
+          <label className="block space-y-1 w-24">
+            <span className="text-[11px] font-semibold text-gray-500">Columns</span>
+            <select className={inputCls} value={section.columns || 4} onChange={(e) => onChange({ columns: Number(e.target.value) })}>
+              <option value={3}>3</option><option value={4}>4</option><option value={5}>5</option>
+            </select>
+          </label>
+        </div>
+        {products.length === 0 ? (
+          <p className="text-xs text-gray-400">Add some products first.</p>
+        ) : (
+          <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 max-h-48 overflow-y-auto">
+            {products.map((p) => {
+              const checked = ids.includes(p.id);
+              return (
+                <label key={p.id} className={`flex items-center gap-2 border rounded-lg px-2 py-1.5 text-xs cursor-pointer transition-colors ${checked ? 'border-orange-400 bg-orange-50 dark:bg-orange-900/20' : 'border-gray-200 dark:border-gray-700'}`}>
+                  <input type="checkbox" checked={checked} onChange={() => toggle(p.id)} className="accent-orange-500" />
+                  <span className="truncate">{p.name}</span>
+                </label>
+              );
+            })}
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  if (section.type === 'promo') {
+    return (
+      <div className="border border-gray-200 dark:border-gray-700 rounded-xl p-3 space-y-3 bg-gray-50/60 dark:bg-gray-900/30">
+        <Header />
+        <div className="flex items-center gap-3">
+          <div className="w-20 h-14 rounded-lg bg-gray-100 dark:bg-gray-900 overflow-hidden flex items-center justify-center shrink-0">
+            {section.image ? <img src={section.image} alt="" className="w-full h-full object-cover" /> : <ImagePlus className="w-5 h-5 text-gray-300" />}
+          </div>
+          <label className="cursor-pointer inline-flex items-center gap-1.5 bg-gray-900 hover:bg-gray-800 text-white font-semibold text-xs px-3 py-1.5 rounded-lg transition-colors shrink-0">
+            <Upload className="w-3.5 h-3.5" /> Upload
+            <input type="file" accept="image/*" className="hidden" onChange={(e) => { uploadImage(e.target.files[0], (data) => onChange({ image: data })); e.target.value = ''; }} />
+          </label>
+          <SizeSelect />
+        </div>
+        <div className="grid sm:grid-cols-2 gap-2">
+          <input className={inputCls} placeholder="Title, e.g. Flat 20% off" value={section.title || ''} onChange={(e) => onChange({ title: e.target.value })} />
+          <input className={inputCls} placeholder="Subtitle (optional)" value={section.subtitle || ''} onChange={(e) => onChange({ subtitle: e.target.value })} />
+        </div>
+        <input className={inputCls} placeholder="Links to product id or /path (optional)" value={section.link || ''} onChange={(e) => onChange({ link: e.target.value })} />
+      </div>
+    );
+  }
+
+  // category_strip
+  const cats = section.categories || [];
+  const updateCat = (i, patch) => onChange({ categories: cats.map((c, idx) => (idx === i ? { ...c, ...patch } : c)) });
+  const removeCat = (i) => onChange({ categories: cats.filter((_, idx) => idx !== i) });
+  return (
+    <div className="border border-gray-200 dark:border-gray-700 rounded-xl p-3 space-y-3 bg-gray-50/60 dark:bg-gray-900/30">
+      <Header />
+      <p className="text-[11px] text-gray-500">Leave empty to auto-show categories from your products. Add tiles here to customize the image/order.</p>
+      <div className="space-y-2">
+        {cats.map((c, i) => (
+          <div key={i} className="flex items-center gap-2 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-2">
+            <div className="w-10 h-10 rounded bg-gray-100 dark:bg-gray-900 overflow-hidden flex items-center justify-center shrink-0">
+              {c.image ? <img src={c.image} alt="" className="w-full h-full object-cover" /> : <ImagePlus className="w-4 h-4 text-gray-300" />}
+            </div>
+            <label className="cursor-pointer text-[11px] font-semibold text-orange-600 hover:underline shrink-0">
+              Upload
+              <input type="file" accept="image/*" className="hidden" onChange={(e) => { uploadImage(e.target.files[0], (data) => updateCat(i, { image: data })); e.target.value = ''; }} />
+            </label>
+            <input className={inputCls} placeholder="Category name" value={c.name || ''} onChange={(e) => updateCat(i, { name: e.target.value })} />
+            <button type="button" onClick={() => removeCat(i)} className="text-red-400 hover:text-red-600 shrink-0"><X className="w-3.5 h-3.5" /></button>
+          </div>
+        ))}
+        <button type="button" onClick={() => onChange({ categories: [...cats, { name: '', image: '' }] })} className="text-[11px] font-semibold text-orange-600 hover:underline">+ Add category tile</button>
       </div>
     </div>
   );

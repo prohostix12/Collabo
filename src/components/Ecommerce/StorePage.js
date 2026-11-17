@@ -180,6 +180,14 @@ const StorePage = () => {
         </div>
       </div>
 
+      {activeTab === 'all' && !searching && (store.store_sections || []).length > 0 && (
+        <div className="max-w-6xl mx-auto px-4 pt-6 space-y-6">
+          {store.store_sections.map((sec) => (
+            <CustomSection key={sec.id} section={sec} products={products} categories={categories} onCategoryClick={setActiveTab} />
+          ))}
+        </div>
+      )}
+
       <div className="max-w-6xl mx-auto px-4 py-6 space-y-8">
         {store.store_description && activeTab === 'all' && !searching && (
           <p className="text-sm text-gray-600 max-w-2xl">{store.store_description}</p>
@@ -212,6 +220,123 @@ const StorePage = () => {
     <Footer />
     </>
   );
+};
+
+const SIZE_H = { sm: 'h-32 sm:h-44', md: 'h-44 sm:h-64', lg: 'h-56 sm:h-80' };
+
+const resolveLink = (link) => {
+  if (!link) return null;
+  if (/^\d+$/.test(link.trim())) return { to: `/?pid=${link.trim()}` };
+  if (/^https?:\/\//i.test(link)) return { href: link };
+  return { to: link };
+};
+
+const SectionLink = ({ link, className, children }) => {
+  const resolved = resolveLink(link);
+  if (!resolved) return <div className={className}>{children}</div>;
+  if (resolved.href) return <a href={resolved.href} target="_blank" rel="noreferrer" className={className}>{children}</a>;
+  return <Link to={resolved.to} className={className}>{children}</Link>;
+};
+
+const CarouselSection = ({ section }) => {
+  const slides = (section.slides || []).filter((s) => s.image);
+  const [idx, setIdx] = useState(0);
+  useEffect(() => {
+    if (slides.length < 2) return;
+    const t = setInterval(() => setIdx((i) => (i + 1) % slides.length), 4000);
+    return () => clearInterval(t);
+  }, [slides.length]);
+  if (slides.length === 0) return null;
+  const h = SIZE_H[section.size || 'md'];
+  return (
+    <div className={`relative ${h} w-full rounded-2xl overflow-hidden group`}>
+      {slides.map((s, i) => (
+        <SectionLink key={i} link={s.link} className={`absolute inset-0 transition-opacity duration-500 ${i === idx ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}>
+          <img src={s.image} alt={s.title || ''} className="w-full h-full object-cover" />
+          {s.title && (
+            <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/60 to-transparent p-4">
+              <p className="text-white font-bold text-sm sm:text-base">{s.title}</p>
+            </div>
+          )}
+        </SectionLink>
+      ))}
+      {slides.length > 1 && (
+        <div className="absolute bottom-2 left-1/2 -translate-x-1/2 flex gap-1.5">
+          {slides.map((_, i) => (
+            <button key={i} onClick={() => setIdx(i)} className={`w-1.5 h-1.5 rounded-full transition-all ${i === idx ? 'w-4 bg-white' : 'bg-white/50'}`} />
+          ))}
+        </div>
+      )}
+    </div>
+  );
+};
+
+const PromoSection = ({ section }) => {
+  if (!section.image) return null;
+  const h = SIZE_H[section.size || 'md'];
+  return (
+    <SectionLink link={section.link} className={`relative ${h} w-full rounded-2xl overflow-hidden block`}>
+      <img src={section.image} alt={section.title || ''} className="w-full h-full object-cover" />
+      {(section.title || section.subtitle) && (
+        <div className="absolute inset-0 bg-gradient-to-r from-black/50 via-black/10 to-transparent flex flex-col justify-center px-5 sm:px-8">
+          {section.title && <p className="text-white font-black text-lg sm:text-2xl max-w-xs">{section.title}</p>}
+          {section.subtitle && <p className="text-white/90 text-xs sm:text-sm mt-1 max-w-xs">{section.subtitle}</p>}
+        </div>
+      )}
+    </SectionLink>
+  );
+};
+
+const FeaturedSection = ({ section, products }) => {
+  const ids = section.product_ids || [];
+  const items = ids.map((id) => products.find((p) => p.id === id)).filter(Boolean);
+  if (items.length === 0) return null;
+  const colClass = { 3: 'sm:grid-cols-3', 4: 'sm:grid-cols-3 md:grid-cols-4', 5: 'sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5' }[section.columns || 4];
+  return (
+    <section>
+      {section.title && <h2 className="text-sm font-bold text-gray-900 mb-3">{section.title}</h2>}
+      <div className={`grid grid-cols-2 ${colClass} gap-3`}>
+        {items.map((p) => (
+          <Link key={p.id} to={`/?pid=${p.id}`} className="group bg-white rounded-xl border border-gray-200 overflow-hidden hover:shadow-lg hover:-translate-y-0.5 transition-all">
+            <div className="aspect-square bg-gray-100 overflow-hidden">
+              {p.image && <img src={p.image} alt={p.name} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" />}
+            </div>
+            <div className="p-2.5">
+              <p className="text-xs font-semibold text-gray-800 line-clamp-2 leading-snug min-h-[2rem]">{p.name}</p>
+              <span className="text-sm font-black text-gray-900">₹{p.discount_price || p.price}</span>
+            </div>
+          </Link>
+        ))}
+      </div>
+    </section>
+  );
+};
+
+const CategoryStripSection = ({ section, categories, onCategoryClick }) => {
+  const tiles = (section.categories || []).filter((c) => c.name).length > 0
+    ? section.categories.filter((c) => c.name)
+    : categories.map((name) => ({ name, image: '' }));
+  if (tiles.length === 0) return null;
+  return (
+    <div className="flex items-center gap-3 overflow-x-auto pb-1">
+      {tiles.map((c, i) => (
+        <button key={i} onClick={() => onCategoryClick(c.name)} className="flex flex-col items-center gap-1.5 shrink-0 group">
+          <div className="w-16 h-16 rounded-full bg-gray-100 border border-gray-200 overflow-hidden flex items-center justify-center group-hover:border-orange-300 transition-colors">
+            {c.image ? <img src={c.image} alt="" className="w-full h-full object-cover" /> : <Store className="w-5 h-5 text-gray-300" />}
+          </div>
+          <span className="text-[11px] font-semibold text-gray-700 max-w-[72px] truncate">{c.name}</span>
+        </button>
+      ))}
+    </div>
+  );
+};
+
+const CustomSection = ({ section, products, categories, onCategoryClick }) => {
+  if (section.type === 'carousel') return <CarouselSection section={section} />;
+  if (section.type === 'promo') return <PromoSection section={section} />;
+  if (section.type === 'featured') return <FeaturedSection section={section} products={products} />;
+  if (section.type === 'category_strip') return <CategoryStripSection section={section} categories={categories} onCategoryClick={onCategoryClick} />;
+  return null;
 };
 
 const ProductGrid = ({ products }) => (
