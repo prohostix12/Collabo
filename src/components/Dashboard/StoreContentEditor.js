@@ -42,6 +42,14 @@ const inputCls =
 
 const textareaCls = inputCls + ' resize-none';
 
+const MAX_IMAGE_SIZE = 5 * 1024 * 1024;
+const fileToDataUrl = (file) => new Promise((resolve, reject) => {
+  const reader = new FileReader();
+  reader.onload = () => resolve(reader.result);
+  reader.onerror = reject;
+  reader.readAsDataURL(file);
+});
+
 const Card = ({ icon: Icon, title, color = 'text-orange-500', children, fullWidth = false }) => (
   <div className={`bg-white rounded-xl border border-gray-200 p-4 space-y-3 ${fullWidth ? 'lg:col-span-2' : ''}`}>
     <div className="flex items-center gap-2 border-b border-gray-100 pb-3">
@@ -647,13 +655,35 @@ const StoreContentEditor = () => {
             {['Electronics', 'Fashion', 'Grocery', 'Home', 'Kitchen', 'Beauty', 'Books', 'Toys', 'Appliances', 'Health', 'Personal Care', 'Audio', 'Cleaning', 'Hardware', 'Accessories', 'Laundry'].map(cat => (
               <div key={cat} className="space-y-1">
                 <label className="text-xs font-semibold text-gray-500">{cat}</label>
-                <input
-                  type="text"
-                  value={(settings.category_images || {})[cat] || ''}
-                  onChange={e => set('category_images', { ...(settings.category_images || {}), [cat]: e.target.value })}
-                  placeholder="https://..."
-                  className={inputCls + ' text-xs'}
-                />
+                <div className="flex items-center gap-1.5">
+                  <input
+                    type="text"
+                    value={(settings.category_images || {})[cat] || ''}
+                    onChange={e => set('category_images', { ...(settings.category_images || {}), [cat]: e.target.value })}
+                    placeholder="https://..."
+                    className={inputCls + ' text-xs'}
+                  />
+                  <label className="flex-shrink-0 w-8 h-8 flex items-center justify-center border border-gray-200 rounded-lg cursor-pointer hover:bg-gray-50 text-gray-500" title="Upload from device">
+                    <Upload className="w-3.5 h-3.5" />
+                    <input
+                      type="file"
+                      accept="image/*"
+                      className="hidden"
+                      onChange={async (e) => {
+                        const file = e.target.files[0];
+                        e.target.value = '';
+                        if (!file) return;
+                        if (file.size > MAX_IMAGE_SIZE) { toast.error('Image must be under 5MB'); return; }
+                        try {
+                          const dataUrl = await fileToDataUrl(file);
+                          set('category_images', { ...(settings.category_images || {}), [cat]: dataUrl });
+                        } catch {
+                          toast.error('Could not read that image');
+                        }
+                      }}
+                    />
+                  </label>
+                </div>
               </div>
             ))}
           </div>
