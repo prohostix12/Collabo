@@ -137,30 +137,30 @@ const StorePage = () => {
 
       {/* Store identity + actions row, sticks below the main Collabo navbar on scroll */}
       <div className="bg-white border-b border-gray-200 sticky top-0 z-20 shadow-sm">
-        <div className="max-w-6xl mx-auto px-4 py-3 flex flex-wrap items-center gap-3">
-          <div className="w-12 h-12 rounded-xl bg-white shadow border border-gray-100 overflow-hidden flex items-center justify-center flex-shrink-0">
-            {store.store_logo ? <img src={store.store_logo} alt={store.store_name} className="w-full h-full object-cover" /> : <Store className="w-5 h-5 text-gray-300" />}
+        <div className="max-w-6xl mx-auto px-4 py-1.5 flex flex-wrap items-center gap-2.5">
+          <div className="w-8 h-8 rounded-lg bg-white shadow border border-gray-100 overflow-hidden flex items-center justify-center flex-shrink-0">
+            {store.store_logo ? <img src={store.store_logo} alt={store.store_name} className="w-full h-full object-cover" /> : <Store className="w-3.5 h-3.5 text-gray-300" />}
           </div>
           <div className="min-w-0 mr-auto">
-            <h1 className="text-base sm:text-lg font-black text-gray-900 flex items-center gap-1.5 truncate">
+            <h1 className="text-xs sm:text-sm font-black text-gray-900 flex items-center gap-1 truncate">
               {store.store_name}
-              <BadgeCheck className="w-4 h-4 text-orange-500 shrink-0" />
+              <BadgeCheck className="w-3 h-3 text-orange-500 shrink-0" />
             </h1>
-            {store.store_tagline && <p className="text-gray-500 text-xs truncate">{store.store_tagline}</p>}
+            {store.store_tagline && <p className="text-gray-500 text-[10px] truncate hidden sm:block">{store.store_tagline}</p>}
           </div>
-          <button onClick={shareStore} className="inline-flex items-center justify-center w-8 h-8 rounded-full border border-gray-200 text-gray-500 hover:bg-gray-50 transition-colors shrink-0" title="Share this store">
-            <Share2 className="w-3.5 h-3.5" />
+          <button onClick={shareStore} className="inline-flex items-center justify-center w-6 h-6 rounded-full border border-gray-200 text-gray-500 hover:bg-gray-50 transition-colors shrink-0" title="Share this store">
+            <Share2 className="w-3 h-3" />
           </button>
         </div>
 
         {/* Tab nav + search, Amazon-storefront style */}
-        <div className="max-w-6xl mx-auto px-4 flex items-center gap-4 overflow-x-auto">
-          <div className="flex items-center gap-5 shrink-0">
+        <div className="max-w-6xl mx-auto px-4 flex items-center gap-3 overflow-x-auto">
+          <div className="flex items-center gap-4 shrink-0">
             {tabs.map((t) => (
               <button
                 key={t.key}
                 onClick={() => setActiveTab(t.key)}
-                className={`py-2.5 text-xs font-bold uppercase tracking-wide whitespace-nowrap border-b-2 transition-colors ${
+                className={`py-1.5 text-[10px] font-bold uppercase tracking-wide whitespace-nowrap border-b-2 transition-colors ${
                   activeTab === t.key ? 'text-gray-900' : 'text-gray-400 border-transparent hover:text-gray-600'
                 }`}
                 style={activeTab === t.key ? { borderColor: theme } : undefined}
@@ -169,12 +169,12 @@ const StorePage = () => {
               </button>
             ))}
           </div>
-          <div className="relative flex-1 min-w-[160px] max-w-xs ml-auto my-2">
-            <Search className="w-3.5 h-3.5 text-gray-400 absolute left-2.5 top-1/2 -translate-y-1/2" />
+          <div className="relative flex-1 min-w-[140px] max-w-xs ml-auto my-1">
+            <Search className="w-3 h-3 text-gray-400 absolute left-2 top-1/2 -translate-y-1/2" />
             <input
               value={q} onChange={(e) => setQ(e.target.value)}
               placeholder={`Search ${store.store_name}`}
-              className="w-full bg-gray-100 rounded-full pl-8 pr-3 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-orange-400/50 focus:bg-white transition-colors"
+              className="w-full bg-gray-100 rounded-full pl-7 pr-3 py-1 text-[11px] focus:outline-none focus:ring-2 focus:ring-orange-400/50 focus:bg-white transition-colors"
             />
           </div>
         </div>
