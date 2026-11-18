@@ -199,7 +199,7 @@ const StoreBuilder = ({ sellerId, sellerLabel, onClose }) => {
                   <input
                     type="range"
                     min="80"
-                    max="500"
+                    max="900"
                     step="4"
                     value={form.store_banner_height || 208}
                     onChange={(e) => setVal('store_banner_height', Number(e.target.value))}
@@ -208,7 +208,7 @@ const StoreBuilder = ({ sellerId, sellerLabel, onClose }) => {
                   <input
                     type="number"
                     min="40"
-                    max="1000"
+                    max="2000"
                     value={form.store_banner_height || 208}
                     onChange={(e) => setVal('store_banner_height', Number(e.target.value) || 0)}
                     className="w-16 border border-gray-200 dark:border-gray-700 rounded-md px-1.5 py-0.5 text-[11px] bg-white dark:bg-gray-900"
