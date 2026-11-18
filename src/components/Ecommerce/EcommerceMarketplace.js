@@ -2605,11 +2605,11 @@ export default function EcommerceMarketplace({ inlineMode = false, onBackToSelec
             <div className="space-y-2 pt-0">
               {/* Normal Category Strip with icons */}
               <div className="w-full bg-transparent">
-                <div style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }} className="flex items-center justify-between sm:justify-evenly overflow-x-auto overflow-y-hidden scrollbar-hide gap-4 sm:gap-6 px-4 sm:px-6 py-0.5 w-full max-w-7xl mx-auto snap-x">
+                <div style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }} className="flex items-center justify-between sm:justify-evenly overflow-x-auto overflow-y-hidden scrollbar-hide gap-4 sm:gap-6 px-4 sm:px-6 py-0 w-full max-w-7xl mx-auto snap-x">
                   {!categoriesLoaded ? (
                     Array.from({ length: 8 }).map((_, i) => (
                       <div key={i} className="flex flex-col items-center gap-1 min-w-[48px] animate-pulse">
-                        <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-full bg-slate-200 dark:bg-slate-700" />
+                        <div className="w-9 h-9 sm:w-11 sm:h-11 rounded-full bg-slate-200 dark:bg-slate-700" />
                         <div className="w-10 h-2 rounded bg-slate-200 dark:bg-slate-700" />
                       </div>
                     ))
@@ -2622,12 +2622,12 @@ export default function EcommerceMarketplace({ inlineMode = false, onBackToSelec
                           onClick={() => { setFilterCategory(cat.name); setCurrentView('listing'); }}
                           className="flex flex-col items-center group min-w-[56px] flex-shrink-0 snap-center"
                         >
-                          <div className="w-10 h-10 flex items-center justify-center transition-transform group-hover:scale-105 relative">
-                            <div className="absolute w-5 h-5 bg-orange-400/90 dark:bg-orange-500/90 rounded-[6px] transform rotate-12 top-1.5 right-1.5 z-0"></div>
+                          <div className="w-9 h-9 flex items-center justify-center transition-transform group-hover:scale-105 relative">
+                            <div className="absolute w-4 h-4 bg-orange-400/90 dark:bg-orange-500/90 rounded-[6px] transform rotate-12 top-1 right-1 z-0"></div>
                             {(cat.image || storeSettings.category_images?.[cat.name]) ? (
                               <img loading="lazy" src={cat.image || storeSettings.category_images[cat.name]} alt={cat.name} className="w-full h-full object-contain relative z-10" />
                             ) : (
-                              <Icon className="w-8 h-8 text-slate-900 dark:text-slate-100 relative z-10" strokeWidth={1.25} />
+                              <Icon className="w-7 h-7 text-slate-900 dark:text-slate-100 relative z-10" strokeWidth={1.25} />
                             )}
                           </div>
                           <span className="text-[11px] font-semibold text-slate-700 dark:text-slate-300 group-hover:text-orange-600 transition-colors whitespace-nowrap mt-0.5">{cat.name}</span>
