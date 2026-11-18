@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
   Users, UserCheck, UserX, Clock, TrendingUp, 
@@ -64,6 +64,27 @@ const AdminDashboard = () => {
   const [products, setProducts] = useState([]);
   const [loadingProducts, setLoadingProducts] = useState(false);
   const [productTab, setProductTab] = useState('pending');
+  const [productSearch, setProductSearch] = useState('');
+  const [productCategoryFilter, setProductCategoryFilter] = useState('all');
+  const [productSellerFilter, setProductSellerFilter] = useState('all');
+
+  const productCategories = useMemo(
+    () => Array.from(new Set(products.map(p => p.category).filter(Boolean))).sort(),
+    [products]
+  );
+  const productSellers = useMemo(
+    () => Array.from(new Set(products.map(p => p.seller_username).filter(Boolean))).sort(),
+    [products]
+  );
+  const filteredProducts = useMemo(() => {
+    const q = productSearch.trim().toLowerCase();
+    return products.filter(p => {
+      if (q && !(p.name?.toLowerCase().includes(q) || p.seller_username?.toLowerCase().includes(q))) return false;
+      if (productCategoryFilter !== 'all' && p.category !== productCategoryFilter) return false;
+      if (productSellerFilter !== 'all' && p.seller_username !== productSellerFilter) return false;
+      return true;
+    });
+  }, [products, productSearch, productCategoryFilter, productSellerFilter]);
   const [selectedProductDetails, setSelectedProductDetails] = useState(null);
   const [rejectingProduct, setRejectingProduct] = useState(null);
   const [rejectReason, setRejectReason] = useState('');
@@ -597,14 +618,43 @@ const AdminDashboard = () => {
                       }`}>{tab.charAt(0).toUpperCase() + tab.slice(1)}</button>
                   ))}
                 </div>
-                <p className="text-[10px] text-gray-500">{products.length} product{products.length === 1 ? '' : 's'}</p>
+                <p className="text-[10px] text-gray-500">{filteredProducts.length} product{filteredProducts.length === 1 ? '' : 's'}</p>
+              </div>
+
+              <div className="flex flex-col sm:flex-row gap-2 p-3 border-b border-gray-100 dark:border-gray-700">
+                <div className="relative flex-1 min-w-[180px]">
+                  <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-400" />
+                  <input
+                    type="text"
+                    value={productSearch}
+                    onChange={(e) => setProductSearch(e.target.value)}
+                    placeholder="Search product or seller..."
+                    className="w-full pl-8 pr-3 py-1.5 text-[11px] rounded-md border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 dark:text-white focus:outline-none focus:ring-1 focus:ring-gray-400"
+                  />
+                </div>
+                <select
+                  value={productCategoryFilter}
+                  onChange={(e) => setProductCategoryFilter(e.target.value)}
+                  className="px-2.5 py-1.5 text-[11px] rounded-md border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 dark:text-white focus:outline-none focus:ring-1 focus:ring-gray-400"
+                >
+                  <option value="all">All Categories</option>
+                  {productCategories.map(c => <option key={c} value={c}>{c}</option>)}
+                </select>
+                <select
+                  value={productSellerFilter}
+                  onChange={(e) => setProductSellerFilter(e.target.value)}
+                  className="px-2.5 py-1.5 text-[11px] rounded-md border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 dark:text-white focus:outline-none focus:ring-1 focus:ring-gray-400"
+                >
+                  <option value="all">All Sellers</option>
+                  {productSellers.map(s => <option key={s} value={s}>{s}</option>)}
+                </select>
               </div>
 
               {loadingProducts ? (
                 <div className="flex justify-center py-10">
                   <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-violet-600"></div>
                 </div>
-              ) : products.length === 0 ? (
+              ) : filteredProducts.length === 0 ? (
                 <div className="text-center py-12">
                   <Package className="w-16 h-16 text-gray-400 mx-auto mb-4" />
                   <p className="text-gray-600 dark:text-gray-400 text-lg">
@@ -623,7 +673,7 @@ const AdminDashboard = () => {
                     </thead>
                     <tbody>
                       <AnimatePresence>
-                        {products.map((product, index) => (
+                        {filteredProducts.map((product, index) => (
                           <ProductApprovalRow
                             key={product.id}
                             product={product}
