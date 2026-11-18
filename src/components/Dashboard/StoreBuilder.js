@@ -37,6 +37,7 @@ const StoreBuilder = ({ sellerId, sellerLabel, onClose }) => {
           store_slug: profileRes.data.store_slug || '',
           store_logo: profileRes.data.store_logo || '',
           store_banner: profileRes.data.store_banner || '',
+          store_banner_height: profileRes.data.store_banner_height || 'md',
           store_tagline: profileRes.data.store_tagline || '',
           store_description: profileRes.data.store_description || '',
           store_theme_color: profileRes.data.store_theme_color || '#f97316',
@@ -191,7 +192,21 @@ const StoreBuilder = ({ sellerId, sellerLabel, onClose }) => {
                   <input type="file" accept="image/*" className="hidden" onChange={(e) => { handleImageFile('store_banner', e.target.files[0]); e.target.value = ''; }} />
                 </label>
               </div>
-              {form.store_banner && <button type="button" onClick={() => setVal('store_banner', '')} className="text-[11px] text-red-500 hover:underline">Remove banner</button>}
+              <div className="flex items-center justify-between gap-2">
+                {form.store_banner && <button type="button" onClick={() => setVal('store_banner', '')} className="text-[11px] text-red-500 hover:underline">Remove banner</button>}
+                <label className="flex items-center gap-1.5 text-[11px] text-gray-500 ml-auto">
+                  Height
+                  <select
+                    value={form.store_banner_height || 'md'}
+                    onChange={(e) => setVal('store_banner_height', e.target.value)}
+                    className="border border-gray-200 dark:border-gray-700 rounded-md px-1.5 py-0.5 text-[11px] bg-white dark:bg-gray-900"
+                  >
+                    <option value="sm">Small</option>
+                    <option value="md">Medium</option>
+                    <option value="lg">Large</option>
+                  </select>
+                </label>
+              </div>
             </div>
           </div>
 

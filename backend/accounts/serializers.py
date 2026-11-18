@@ -175,7 +175,7 @@ class PublicStorefrontSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = SellerProfile
-        fields = ('seller_id', 'store_name', 'store_slug', 'store_logo', 'store_banner',
+        fields = ('seller_id', 'store_name', 'store_slug', 'store_logo', 'store_banner', 'store_banner_height',
                    'store_tagline', 'store_description', 'store_theme_color', 'featured_product_ids', 'store_sections')
 
 

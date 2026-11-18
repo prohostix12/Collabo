@@ -196,6 +196,8 @@ class SellerProfile(models.Model):
     store_slug = models.SlugField(max_length=220, unique=True, blank=True, null=True, help_text="Storefront URL: /store/<slug>")
     store_logo = models.TextField(blank=True, default='', help_text="Store logo image URL or base64 data")
     store_banner = models.TextField(blank=True, default='', help_text="Store banner image URL or base64 data")
+    BANNER_HEIGHT_CHOICES = (('sm', 'Small'), ('md', 'Medium'), ('lg', 'Large'))
+    store_banner_height = models.CharField(max_length=10, choices=BANNER_HEIGHT_CHOICES, default='md', blank=True)
     store_tagline = models.CharField(max_length=200, blank=True, default='')
     store_description = models.TextField(blank=True, default='')
     store_theme_color = models.CharField(max_length=20, blank=True, default='#f97316')
