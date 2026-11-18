@@ -14,7 +14,7 @@ import {
   // eslint-disable-next-line no-unused-vars
   Activity, Server, HardDrive, Layout,
   // eslint-disable-next-line no-unused-vars
-  Cpu as Processor, Radio, Terminal
+  Cpu as Processor, Radio
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 
@@ -97,7 +97,6 @@ const PlatformSettings = () => {
     { id: 'general', label: 'Systems', icon: Globe },
     { id: 'security', label: 'Protections', icon: Shield },
     { id: 'infra', label: 'Database', icon: Database },
-    { id: 'logs', label: 'Handshake', icon: Terminal },
   ];
 
   const systemStatus = [
