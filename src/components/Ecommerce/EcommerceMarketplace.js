@@ -113,6 +113,9 @@ const CAT_ICON_MAP = {
   'Korean Products':   { Icon: Flower2,        color: 'text-slate-900 dark:text-white', bg: 'bg-slate-100 dark:bg-slate-700' },
   'Jewellery':         { Icon: Gem,            color: 'text-slate-900 dark:text-white', bg: 'bg-slate-100 dark:bg-slate-700' },
   'Home Improvement':  { Icon: Hammer,         color: 'text-slate-900 dark:text-white', bg: 'bg-slate-100 dark:bg-slate-700' },
+  'Toys & Games':      { Icon: Gamepad2,       color: 'text-slate-900 dark:text-white', bg: 'bg-slate-100 dark:bg-slate-700' },
+  'Industrial & Scientific': { Icon: Settings, color: 'text-slate-900 dark:text-white', bg: 'bg-slate-100 dark:bg-slate-700' },
+  'Fashion & Apparel': { Icon: Shirt,          color: 'text-slate-900 dark:text-white', bg: 'bg-slate-100 dark:bg-slate-700' },
 };
 const getCatIcon = (name) => CAT_ICON_MAP[name] || { Icon: LayoutGrid, color: 'text-slate-900 dark:text-white', bg: 'bg-slate-100 dark:bg-slate-700' };
 
@@ -2612,9 +2615,7 @@ export default function EcommerceMarketplace({ inlineMode = false, onBackToSelec
                     ))
                   ) : (
                     dynamicCategories.map((cat, idx) => {
-                      const catIconData = CAT_ICON_MAP[cat.name];
                       const { Icon } = getCatIcon(cat.name);
-                      const hasSpecificIcon = !!catIconData;
                       return (
                         <button
                           key={idx}
@@ -2625,10 +2626,6 @@ export default function EcommerceMarketplace({ inlineMode = false, onBackToSelec
                             <div className="absolute w-5 h-5 bg-orange-400/90 dark:bg-orange-500/90 rounded-[6px] transform rotate-12 top-1.5 right-1.5 z-0"></div>
                             {(cat.image || storeSettings.category_images?.[cat.name]) ? (
                               <img loading="lazy" src={cat.image || storeSettings.category_images[cat.name]} alt={cat.name} className="w-full h-full object-contain relative z-10" />
-                            ) : hasSpecificIcon ? (
-                              <Icon className="w-8 h-8 text-slate-900 dark:text-slate-100 relative z-10" strokeWidth={1.25} />
-                            ) : cat.icon ? (
-                              <span className="text-[32px] leading-none relative z-10 font-normal">{cat.icon}</span>
                             ) : (
                               <Icon className="w-8 h-8 text-slate-900 dark:text-slate-100 relative z-10" strokeWidth={1.25} />
                             )}
