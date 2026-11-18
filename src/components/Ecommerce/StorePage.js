@@ -247,11 +247,12 @@ const SectionLink = ({ link, className, children }) => {
 const CarouselSection = ({ section }) => {
   const slides = (section.slides || []).filter((s) => s.image);
   const [idx, setIdx] = useState(0);
+  const intervalMs = Math.max(1, Number(section.interval) || 4) * 1000;
   useEffect(() => {
     if (slides.length < 2) return;
-    const t = setInterval(() => setIdx((i) => (i + 1) % slides.length), 4000);
+    const t = setInterval(() => setIdx((i) => (i + 1) % slides.length), intervalMs);
     return () => clearInterval(t);
-  }, [slides.length]);
+  }, [slides.length, intervalMs]);
   if (slides.length === 0) return null;
   const h = SIZE_H[section.size || 'md'];
   return (

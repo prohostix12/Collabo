@@ -68,7 +68,7 @@ const StoreBuilder = ({ sellerId, sellerLabel, onClose }) => {
 
   const genId = () => `sec_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`;
   const SECTION_DEFAULTS = {
-    carousel: () => ({ id: genId(), type: 'carousel', size: 'md', slides: [] }),
+    carousel: () => ({ id: genId(), type: 'carousel', size: 'md', interval: 4, slides: [] }),
     featured: () => ({ id: genId(), type: 'featured', title: 'Featured', product_ids: [], columns: 4 }),
     promo: () => ({ id: genId(), type: 'promo', size: 'md', image: '', title: '', subtitle: '', link: '' }),
     category_strip: () => ({ id: genId(), type: 'category_strip', categories: [] }),
@@ -367,7 +367,21 @@ const SectionEditor = ({ section, products, isFirst, isLast, onChange, onRemove,
     return (
       <div className="border border-gray-200 dark:border-gray-700 rounded-xl p-3 space-y-3 bg-gray-50/60 dark:bg-gray-900/30">
         <Header />
-        <SizeSelect />
+        <div className="flex items-end gap-3">
+          <SizeSelect />
+          <label className="block space-y-1 w-32">
+            <span className="text-[11px] font-semibold text-gray-500">Slide interval (sec)</span>
+            <input
+              type="number"
+              min="1"
+              max="60"
+              step="1"
+              className={inputCls}
+              value={section.interval || 4}
+              onChange={(e) => onChange({ interval: Number(e.target.value) || 1 })}
+            />
+          </label>
+        </div>
         <div className="space-y-2">
           {slides.map((s, i) => (
             <div key={i} className="flex items-center gap-2 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-2">
