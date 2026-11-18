@@ -41,6 +41,32 @@ const CATEGORIES = [
 
 const BRANDS = [];
 
+// Keyword → emoji guesses for auto-suggesting a new category's icon as the admin types its name.
+// Longer/more specific keywords are listed first so "home improvement" doesn't match "home" first.
+const CATEGORY_ICON_KEYWORDS = [
+  ['home improvement', '🛠️'], ['home & kitchen', '🍳'], ['home decor', '🖼️'],
+  ['kitchen', '🍳'], ['furniture', '🪑'], ['home', '🏠'],
+  ['mobile', '📱'], ['phone', '📱'], ['electronics', '💻'], ['computer', '💻'], ['laptop', '💻'],
+  ['camera', '📷'], ['audio', '🎧'], ['headphone', '🎧'], ['speaker', '🔊'], ['gaming', '🎮'], ['game', '🎮'],
+  ['fashion', '👗'], ['clothing', '👕'], ['apparel', '👕'], ['shoe', '👟'], ['footwear', '👟'], ['bag', '👜'],
+  ['jewellery', '💍'], ['jewelry', '💍'], ['watch', '⌚'],
+  ['grocery', '🍏'], ['food', '🍎'], ['snack', '🍿'], ['beverage', '🥤'],
+  ['beauty', '💄'], ['cosmetic', '💄'], ['personal care', '🧴'], ['skincare', '🧴'], ['hair', '💇'],
+  ['health', '💊'], ['medicine', '💊'], ['pharma', '💊'], ['wellness', '🧘'], ['fitness', '🏋️'], ['sport', '⚽'],
+  ['baby', '🍼'], ['kid', '🧒'], ['toy', '🧸'],
+  ['book', '📚'], ['stationery', '✏️'], ['office', '🗂️'],
+  ['appliance', '🔌'], ['hardware', '🔧'], ['tool', '🔧'], ['cleaning', '🧹'],
+  ['pet', '🐾'], ['garden', '🌱'], ['plant', '🪴'], ['automotive', '🚗'], ['car', '🚗'], ['bike', '🏍️'],
+  ['gift', '🎁'], ['korean', '🇰🇷'], ['accessor', '🎒'], ['luggage', '🧳'], ['travel', '🧳'],
+  ['art', '🎨'], ['craft', '✂️'], ['music', '🎵'], ['festival', '🎉'],
+];
+const guessCategoryIcon = (name) => {
+  const n = (name || '').trim().toLowerCase();
+  if (!n) return '📦';
+  const match = CATEGORY_ICON_KEYWORDS.find(([kw]) => n.includes(kw));
+  return match ? match[1] : '📦';
+};
+
 // Admin Orders filter chips: which statuses each chip shows. `action` chips are the ones that need someone to do something.
 const ORDER_FILTERS = [
   { key: 'all', label: 'All', statuses: null },
@@ -1204,6 +1230,7 @@ export default function EcommerceMarketplace({ inlineMode = false, onBackToSelec
   const [newCatName, setNewCatName] = useState('');
   const [newCatIcon, setNewCatIcon] = useState('📦');
   const [newCatImage, setNewCatImage] = useState('');
+  const newCatIconEditedRef = useRef(false);
   const [showBulkUpload, setShowBulkUpload] = useState(false);
   const [expandedOrders, setExpandedOrders] = useState({});
   const [orderFilter, setOrderFilter] = useState('all');
@@ -7858,21 +7885,25 @@ export default function EcommerceMarketplace({ inlineMode = false, onBackToSelec
                   <div className="space-y-3 text-xs">
                     <div className="space-y-1">
                       <label className="font-bold text-slate-450 dark:text-slate-400">Category Name</label>
-                      <input 
-                        type="text" 
+                      <input
+                        type="text"
                         value={newCatName}
-                        onChange={(e) => setNewCatName(e.target.value)}
-                        placeholder="e.g. Health & Fitness" 
+                        onChange={(e) => {
+                          const name = e.target.value;
+                          setNewCatName(name);
+                          if (!newCatIconEditedRef.current) setNewCatIcon(guessCategoryIcon(name));
+                        }}
+                        placeholder="e.g. Health & Fitness"
                         className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl py-2 px-3 focus:outline-none dark:text-white font-bold"
                       />
                     </div>
                     <div className="space-y-1">
-                      <label className="font-bold text-slate-450 dark:text-slate-400">Icon / Emoji</label>
-                      <input 
-                        type="text" 
+                      <label className="font-bold text-slate-450 dark:text-slate-400">Icon / Emoji <span className="font-semibold text-slate-400">(auto-suggested, or type your own)</span></label>
+                      <input
+                        type="text"
                         value={newCatIcon}
-                        onChange={(e) => setNewCatIcon(e.target.value)}
-                        placeholder="e.g. 🧘" 
+                        onChange={(e) => { newCatIconEditedRef.current = true; setNewCatIcon(e.target.value); }}
+                        placeholder="e.g. 🧘"
                         className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl py-2 px-3 focus:outline-none dark:text-white font-bold"
                       />
                     </div>
@@ -7906,6 +7937,7 @@ export default function EcommerceMarketplace({ inlineMode = false, onBackToSelec
                             setNewCatName('');
                             setNewCatIcon('📦');
                             setNewCatImage('');
+                            newCatIconEditedRef.current = false;
                             fetchCategoriesAndBrands();
                           } catch (err) {
                             console.error("Error creating category:", err);
