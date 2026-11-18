@@ -7941,7 +7941,11 @@ export default function EcommerceMarketplace({ inlineMode = false, onBackToSelec
                             fetchCategoriesAndBrands();
                           } catch (err) {
                             console.error("Error creating category:", err);
-                            showToast("Failed to add category", 'error');
+                            const data = err.response?.data;
+                            const msg = data && typeof data === 'object'
+                              ? Object.values(data).flat().join(' ')
+                              : null;
+                            showToast(msg || "Failed to add category", 'error');
                           }
                         }
                       }}
