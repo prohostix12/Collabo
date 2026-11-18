@@ -131,7 +131,13 @@ const StorePage = () => {
     <CollaboNavbar />
     <div className="min-h-screen bg-gray-50">
       {/* Full-bleed banner */}
-      <div className={`relative ${BANNER_SIZE_H[store.store_banner_height || 'md']} w-full overflow-hidden`} style={{ background: store.store_banner ? undefined : `linear-gradient(135deg, ${theme}, ${theme}aa)` }}>
+      <div
+        className="relative w-full overflow-hidden"
+        style={{
+          height: `${store.store_banner_height || 208}px`,
+          background: store.store_banner ? undefined : `linear-gradient(135deg, ${theme}, ${theme}aa)`,
+        }}
+      >
         {store.store_banner && <img src={store.store_banner} alt="" className="w-full h-full object-cover" />}
       </div>
 
@@ -223,7 +229,6 @@ const StorePage = () => {
 };
 
 const SIZE_H = { sm: 'h-32 sm:h-44', md: 'h-44 sm:h-64', lg: 'h-56 sm:h-80' };
-const BANNER_SIZE_H = { sm: 'h-24 sm:h-36', md: 'h-36 sm:h-52', lg: 'h-48 sm:h-72' };
 
 const resolveLink = (link) => {
   if (!link) return null;
