@@ -27,6 +27,8 @@ class ProductSerializer(serializers.ModelSerializer):
     id = serializers.IntegerField(required=False)
     vendor_details = VendorSerializer(source='vendor', read_only=True)
     purchase_count = serializers.SerializerMethodField()
+    seller_store_slug = serializers.SerializerMethodField()
+    seller_store_name = serializers.SerializerMethodField()
 
     class Meta:
         model = Product
@@ -35,7 +37,7 @@ class ProductSerializer(serializers.ModelSerializer):
             'vendor', 'vendor_details', 'return_policy',
             'price', 'discount_price', 'discount_percent', 'rating', 'reviews_count', 'purchase_count',
             'image', 'images', 'colors', 'description', 'stock', 'delivery', 'specifications',
-            'highlights', 'offers', 'seller_info', 'qa_section',
+            'highlights', 'offers', 'seller_info', 'qa_section', 'seller_store_slug', 'seller_store_name',
             'product_shipping_charge', 'commission_rate', 'link_discount_percent', 'created_at', 'updated_at'
         ]
         # status/rejection_reason are admin-controlled only — set via the approve/reject
@@ -49,6 +51,21 @@ class ProductSerializer(serializers.ModelSerializer):
             return annotated
         from django.db.models import Sum
         return obj.orderitem_set.exclude(order__status__in=['cancelled', 'returned']).aggregate(n=Sum('quantity'))['n'] or 0
+
+    def _seller_storefront(self, obj):
+        """Only return a storefront if the seller has an approved profile with a slug."""
+        profile = getattr(obj.seller, 'seller_profile', None)
+        if profile and profile.verification_status == 'approved' and profile.store_slug:
+            return profile
+        return None
+
+    def get_seller_store_slug(self, obj):
+        profile = self._seller_storefront(obj)
+        return profile.store_slug if profile else None
+
+    def get_seller_store_name(self, obj):
+        profile = self._seller_storefront(obj)
+        return profile.store_name if profile else None
 
     def to_representation(self, instance):
         data = super().to_representation(instance)

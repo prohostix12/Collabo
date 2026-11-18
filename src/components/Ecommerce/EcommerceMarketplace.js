@@ -4040,6 +4040,14 @@ export default function EcommerceMarketplace({ inlineMode = false, onBackToSelec
                 <div className="bg-white dark:bg-slate-900 border border-slate-200/50 dark:border-slate-800/50 p-6 rounded-[28px] shadow-sm space-y-4">
                   <div className="space-y-2">
                     <h1 className="text-xl sm:text-2xl font-black tracking-tight leading-tight dark:text-white">{selectedProduct.name}</h1>
+                    {selectedProduct.seller_store_slug && (
+                      <a
+                        href={`/store/${selectedProduct.seller_store_slug}`}
+                        className="text-sm text-orange-600 hover:text-orange-700 hover:underline inline-block"
+                      >
+                        Visit the {selectedProduct.seller_store_name || selectedProduct.seller_username} Store
+                      </a>
+                    )}
                     <div className="flex items-center gap-2 flex-wrap">
                       <div className="flex items-center gap-1 bg-green-600 text-white px-1.5 py-0.5 rounded text-[11px] font-bold">
                         <span>{selectedProduct.rating}</span>
