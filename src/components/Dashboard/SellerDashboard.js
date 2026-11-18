@@ -149,7 +149,7 @@ const SellerDashboard = () => {
   useEffect(() => { fetchProducts(); }, [fetchProducts]);
 
   useEffect(() => {
-    api.get('/ecommerce/categories/')
+    api.get('/ecommerce/categories/?page_size=1000')
       .then(res => setCategories(res.data.results || res.data || []))
       .catch(() => setCategories([]));
   }, []);

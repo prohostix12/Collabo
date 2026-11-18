@@ -1444,7 +1444,7 @@ export default function EcommerceMarketplace({ inlineMode = false, onBackToSelec
       } catch (err) {
         console.error('Error fetching vendors', err);
       }
-      const catResponse = await api.get('/ecommerce/categories/');
+      const catResponse = await api.get('/ecommerce/categories/?page_size=1000');
       const catData = Array.isArray(catResponse.data) ? catResponse.data : (catResponse.data.results || []);
       setCategoriesList(catData);
       setDynamicCategories([{ name: 'All', icon: '🌟' }, ...catData]);
