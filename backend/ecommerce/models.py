@@ -5,9 +5,11 @@ from accounts.models import User
 class Category(models.Model):
     name = models.CharField(max_length=100, unique=True)
     icon = models.CharField(max_length=50, default='📦')
+    order = models.PositiveIntegerField(default=0, help_text="Display order on the storefront; lower shows first")
 
     class Meta:
         verbose_name_plural = "Categories"
+        ordering = ['order', 'id']
 
     def __str__(self):
         return self.name

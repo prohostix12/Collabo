@@ -11,7 +11,7 @@ import {
   LayoutGrid, Cpu, Smartphone, Shirt, ShoppingBasket, Home as HomeIcon,
   Armchair, Dumbbell, BookOpen, Gamepad2, Plug, Film, Download,
   Mail, Shield, Calendar, Headphones, HeartPulse, Bath, Truck, Share2, Menu, ChevronLeft,
-  Baby, Flower2, Gift, Gem, Hammer, Wallet, ExternalLink, Upload, ChevronDown
+  Baby, Flower2, Gift, Gem, Hammer, Wallet, ExternalLink, Upload, ChevronDown, ChevronUp
 } from 'lucide-react';
 import api from '../../services/api';
 import { useAuth } from '../../contexts/AuthContext';
@@ -7968,6 +7968,36 @@ export default function EcommerceMarketplace({ inlineMode = false, onBackToSelec
                             <span className="dark:text-white">{cat.name}</span>
                           </div>
                           <div className="flex items-center gap-1.5">
+                          <div className="flex flex-col -my-1">
+                            <button
+                              title="Move up"
+                              disabled={idx === 0}
+                              onClick={async () => {
+                                const reordered = [...categoriesList];
+                                [reordered[idx - 1], reordered[idx]] = [reordered[idx], reordered[idx - 1]];
+                                setCategoriesList(reordered);
+                                try { await api.post('/ecommerce/categories/reorder/', { ids: reordered.map(c => c.id) }); }
+                                catch (err) { console.error(err); showToast('Failed to save order', 'error'); fetchCategoriesAndBrands(); }
+                              }}
+                              className="p-0.5 text-slate-400 hover:text-orange-500 disabled:opacity-20 disabled:cursor-not-allowed"
+                            >
+                              <ChevronUp className="w-3.5 h-3.5" />
+                            </button>
+                            <button
+                              title="Move down"
+                              disabled={idx === categoriesList.length - 1}
+                              onClick={async () => {
+                                const reordered = [...categoriesList];
+                                [reordered[idx], reordered[idx + 1]] = [reordered[idx + 1], reordered[idx]];
+                                setCategoriesList(reordered);
+                                try { await api.post('/ecommerce/categories/reorder/', { ids: reordered.map(c => c.id) }); }
+                                catch (err) { console.error(err); showToast('Failed to save order', 'error'); fetchCategoriesAndBrands(); }
+                              }}
+                              className="p-0.5 text-slate-400 hover:text-orange-500 disabled:opacity-20 disabled:cursor-not-allowed"
+                            >
+                              <ChevronDown className="w-3.5 h-3.5" />
+                            </button>
+                          </div>
                           <label title="Upload image" className="cursor-pointer p-1.5 text-slate-500 hover:text-orange-500 hover:bg-orange-50 dark:hover:bg-slate-700 rounded-lg border border-slate-200 dark:border-slate-700">
                             <Upload className="w-4 h-4" />
                             <input type="file" accept="image/*" className="hidden" onChange={async (e) => {

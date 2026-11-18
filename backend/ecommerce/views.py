@@ -97,6 +97,21 @@ class CategoryViewSet(viewsets.ModelViewSet):
     def list(self, request, *args, **kwargs):
         return super().list(request, *args, **kwargs)
 
+    @action(detail=False, methods=['post'], url_path='reorder', permission_classes=[permissions.IsAuthenticated, IsAdminOrReadOnly])
+    def reorder(self, request):
+        """Admin-only: accepts {'ids': [cat_id, ...]} in the desired display order and
+        assigns each category's `order` field to its index in that list."""
+        ids = request.data.get('ids', [])
+        categories = {c.id: c for c in Category.objects.filter(id__in=ids)}
+        updated = []
+        for idx, cat_id in enumerate(ids):
+            cat = categories.get(cat_id)
+            if cat:
+                cat.order = idx
+                updated.append(cat)
+        Category.objects.bulk_update(updated, ['order'])
+        return Response(CategorySerializer(Category.objects.all(), many=True).data)
+
 class BrandViewSet(viewsets.ModelViewSet):
     queryset = Brand.objects.all()
     serializer_class = BrandSerializer
