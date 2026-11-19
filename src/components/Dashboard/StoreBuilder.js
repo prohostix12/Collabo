@@ -559,9 +559,9 @@ const SectionEditor = ({ section, products, isFirst, isLast, onChange, onRemove,
               Upload
               <input type="file" accept="image/*" className="hidden" onChange={(e) => { uploadImage(e.target.files[0], (data) => updateTile(i, { image: data })); e.target.value = ''; }} />
             </label>
-            <input className={inputCls} placeholder="Title (optional)" value={t.title || ''} onChange={(e) => updateTile(i, { title: e.target.value })} />
-            <input className={inputCls} placeholder="Links to product id or /path" value={t.link || ''} onChange={(e) => updateTile(i, { link: e.target.value })} />
-            <select className={`${inputCls} w-24 shrink-0`} value={t.span || 'normal'} onChange={(e) => updateTile(i, { span: e.target.value })}>
+            <input className={`${inputCls} flex-1 min-w-0`} placeholder="Title (optional)" value={t.title || ''} onChange={(e) => updateTile(i, { title: e.target.value })} />
+            <input className={`${inputCls} flex-1 min-w-0`} placeholder="Links to product id or /path" value={t.link || ''} onChange={(e) => updateTile(i, { link: e.target.value })} />
+            <select className="w-24 shrink-0 border border-gray-200 dark:border-gray-700 rounded-lg px-2.5 py-1.5 text-xs bg-white dark:bg-gray-900 focus:outline-none focus:ring-2 focus:ring-orange-400/60" value={t.span || 'normal'} onChange={(e) => updateTile(i, { span: e.target.value })}>
               <option value="normal">Normal</option>
               <option value="large">Large</option>
             </select>
