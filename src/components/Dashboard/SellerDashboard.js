@@ -1,8 +1,8 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import {
   Store, Package, Plus, X, Clock, CheckCircle2, XCircle,
   IndianRupee, Boxes, ImagePlus, Upload, ShoppingBag, Pencil, Trash2, Truck,
-  TrendingUp, ArrowUpCircle, ArrowDownCircle, ShoppingCart, LayoutGrid, Download, FileSpreadsheet,
+  TrendingUp, ArrowUpCircle, ArrowDownCircle, ShoppingCart, LayoutGrid, Download, FileSpreadsheet, Search,
 } from 'lucide-react';
 import {
   ResponsiveContainer, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip,
@@ -69,6 +69,27 @@ const SellerDashboard = () => {
   const [products, setProducts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [categories, setCategories] = useState([]);
+  const [productSearch, setProductSearch] = useState('');
+  const [productCategoryFilter, setProductCategoryFilter] = useState('all');
+  const [productStatusFilter, setProductStatusFilter] = useState('all');
+
+  const productCategories = useMemo(
+    () => Array.from(new Set(products.map(p => p.category).filter(Boolean))).sort(),
+    [products]
+  );
+  const filteredProducts = useMemo(() => {
+    const q = productSearch.trim().toLowerCase();
+    return products.filter(p => {
+      if (q && !p.name?.toLowerCase().includes(q)) return false;
+      if (productCategoryFilter !== 'all' && p.category !== productCategoryFilter) return false;
+      if (productStatusFilter !== 'all') {
+        const outOfStock = p.status === 'approved' && Number(p.stock) <= 0;
+        const effectiveStatus = outOfStock ? 'out_of_stock' : p.status;
+        if (effectiveStatus !== productStatusFilter) return false;
+      }
+      return true;
+    });
+  }, [products, productSearch, productCategoryFilter, productStatusFilter]);
   const [showAddForm, setShowAddForm] = useState(false);
   const [editingProduct, setEditingProduct] = useState(null);
   const [form, setForm] = useState(emptyForm);
@@ -524,6 +545,40 @@ const SellerDashboard = () => {
           <h3 className="text-xs font-semibold text-gray-900 dark:text-white">My Products</h3>
         </div>
 
+        {!loading && products.length > 0 && (
+          <div className="flex flex-col sm:flex-row gap-2 px-4 py-3 border-b border-gray-100 dark:border-gray-700">
+            <div className="relative flex-1 min-w-[160px]">
+              <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-400" />
+              <input
+                type="text"
+                value={productSearch}
+                onChange={(e) => setProductSearch(e.target.value)}
+                placeholder="Search products..."
+                className="w-full pl-8 pr-3 py-1.5 text-xs rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-orange-400"
+              />
+            </div>
+            <select
+              value={productCategoryFilter}
+              onChange={(e) => setProductCategoryFilter(e.target.value)}
+              className="px-2.5 py-1.5 text-xs rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-orange-400"
+            >
+              <option value="all">All Categories</option>
+              {productCategories.map(c => <option key={c} value={c}>{c}</option>)}
+            </select>
+            <select
+              value={productStatusFilter}
+              onChange={(e) => setProductStatusFilter(e.target.value)}
+              className="px-2.5 py-1.5 text-xs rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-orange-400"
+            >
+              <option value="all">All Statuses</option>
+              <option value="pending">Pending Review</option>
+              <option value="approved">Live</option>
+              <option value="out_of_stock">Out of Stock</option>
+              <option value="rejected">Rejected</option>
+            </select>
+          </div>
+        )}
+
         {loading ? (
           <div className="flex justify-center py-12">
             <div className="w-6 h-6 border-2 border-gray-300 border-t-gray-600 rounded-full animate-spin" />
@@ -536,9 +591,14 @@ const SellerDashboard = () => {
               Add your first product
             </button>
           </div>
+        ) : filteredProducts.length === 0 ? (
+          <div className="text-center py-14">
+            <Package className="w-14 h-14 text-gray-300 dark:text-gray-600 mx-auto mb-3" />
+            <p className="text-sm text-gray-500 dark:text-gray-400">No products match your filters</p>
+          </div>
         ) : (
           <div className="divide-y divide-gray-100 dark:divide-gray-700">
-            {products.map(p => {
+            {filteredProducts.map(p => {
               const outOfStock = p.status === 'approved' && Number(p.stock) <= 0;
               const meta = outOfStock ? OUT_OF_STOCK_META : (STATUS_META[p.status] || STATUS_META.pending);
               return (
