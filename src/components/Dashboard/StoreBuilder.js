@@ -20,6 +20,7 @@ const StoreBuilder = ({ sellerId, sellerLabel, onClose }) => {
   const [products, setProducts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [showAllFeaturedChoices, setShowAllFeaturedChoices] = useState(false);
 
   const profileEndpoint = sellerId ? `/auth/admin/seller-store/${sellerId}/` : '/auth/seller-profile/';
   const targetId = sellerId || user?.id;
@@ -238,20 +239,39 @@ const StoreBuilder = ({ sellerId, sellerLabel, onClose }) => {
           </div>
           {products.length === 0 ? (
             <p className="text-xs text-gray-400">No products yet.</p>
-          ) : (
-            <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-              {products.map((p) => {
-                const checked = form.featured_product_ids.includes(p.id);
-                return (
-                  <label key={p.id} className={`flex items-center gap-2 border rounded-xl px-2.5 py-2 text-xs cursor-pointer transition-colors ${checked ? 'border-orange-400 bg-orange-50 dark:bg-orange-900/20' : 'border-gray-200 dark:border-gray-700 hover:border-gray-300'}`}>
-                    <input type="checkbox" checked={checked} onChange={() => toggleFeatured(p.id)} className="accent-orange-500" />
-                    {p.image && <img src={p.image} alt="" className="w-6 h-6 rounded object-cover shrink-0" />}
-                    <span className="truncate">{p.name}</span>
-                  </label>
-                );
-              })}
-            </div>
-          )}
+          ) : (() => {
+            const FEATURED_PREVIEW_COUNT = 12;
+            const sorted = [...products].sort((a, b) =>
+              Number(form.featured_product_ids.includes(b.id)) - Number(form.featured_product_ids.includes(a.id))
+            );
+            const visible = showAllFeaturedChoices ? sorted : sorted.slice(0, FEATURED_PREVIEW_COUNT);
+            const remaining = sorted.length - FEATURED_PREVIEW_COUNT;
+            return (
+              <>
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                  {visible.map((p) => {
+                    const checked = form.featured_product_ids.includes(p.id);
+                    return (
+                      <label key={p.id} className={`flex items-center gap-2 border rounded-xl px-2.5 py-2 text-xs cursor-pointer transition-colors ${checked ? 'border-orange-400 bg-orange-50 dark:bg-orange-900/20' : 'border-gray-200 dark:border-gray-700 hover:border-gray-300'}`}>
+                        <input type="checkbox" checked={checked} onChange={() => toggleFeatured(p.id)} className="accent-orange-500" />
+                        {p.image && <img src={p.image} alt="" className="w-6 h-6 rounded object-cover shrink-0" />}
+                        <span className="truncate">{p.name}</span>
+                      </label>
+                    );
+                  })}
+                </div>
+                {remaining > 0 && (
+                  <button
+                    type="button"
+                    onClick={() => setShowAllFeaturedChoices((v) => !v)}
+                    className="text-[11px] font-semibold text-orange-600 hover:underline mt-1"
+                  >
+                    {showAllFeaturedChoices ? 'Show less' : `View more (${remaining} more products)`}
+                  </button>
+                )}
+              </>
+            );
+          })()}
         </div>
 
         <div className={sectionCls}>
