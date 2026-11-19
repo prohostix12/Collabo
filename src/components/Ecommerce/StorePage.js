@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
-import { Store, Search, BadgeCheck, ShoppingCart, Heart, User } from 'lucide-react';
+import { Store, Search, BadgeCheck, ShoppingCart, Heart, User, ArrowLeft } from 'lucide-react';
 import api from '../../services/api';
 import { useAuth } from '../../contexts/AuthContext';
 import Footer from '../Layout/Footer';
@@ -43,6 +43,7 @@ const CollaboNavbar = () => {
 
 const StorePage = () => {
   const { slug } = useParams();
+  const navigate = useNavigate();
   const [store, setStore] = useState(null);
   const [products, setProducts] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -134,6 +135,13 @@ const StorePage = () => {
       {/* Store identity + actions row, sticks below the main Collabo navbar on scroll */}
       <div className="bg-white border-b border-gray-200 sticky top-0 z-20 shadow-sm">
         <div className="max-w-6xl mx-auto px-4 py-1.5 flex flex-wrap items-center gap-2.5">
+          <button
+            onClick={() => (window.history.length > 2 ? navigate(-1) : navigate('/'))}
+            className="inline-flex items-center justify-center w-7 h-7 rounded-full border border-gray-200 text-gray-500 hover:bg-gray-50 transition-colors shrink-0"
+            title="Back"
+          >
+            <ArrowLeft className="w-3.5 h-3.5" />
+          </button>
           <div className="w-8 h-8 rounded-lg bg-white shadow border border-gray-100 overflow-hidden flex items-center justify-center flex-shrink-0">
             {store.store_logo ? <img src={store.store_logo} alt={store.store_name} className="w-full h-full object-cover" /> : <Store className="w-3.5 h-3.5 text-gray-300" />}
           </div>
