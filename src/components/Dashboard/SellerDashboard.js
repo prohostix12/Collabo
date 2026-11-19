@@ -101,6 +101,21 @@ const SellerDashboard = () => {
   const [activeTab, setActiveTab] = useState('products');
   const [analytics, setAnalytics] = useState(null);
   const [analyticsLoading, setAnalyticsLoading] = useState(false);
+  const [salesSearch, setSalesSearch] = useState('');
+  const [salesSortBy, setSalesSortBy] = useState('revenue');
+
+  const filteredSalesProducts = useMemo(() => {
+    if (!analytics?.products) return [];
+    const q = salesSearch.trim().toLowerCase();
+    const list = q ? analytics.products.filter(p => p.name?.toLowerCase().includes(q)) : [...analytics.products];
+    const sorters = {
+      revenue: (a, b) => b.revenue - a.revenue,
+      units_sold: (a, b) => b.units_sold - a.units_sold,
+      stock: (a, b) => a.stock - b.stock,
+      name: (a, b) => (a.name || '').localeCompare(b.name || ''),
+    };
+    return list.sort(sorters[salesSortBy] || sorters.revenue);
+  }, [analytics, salesSearch, salesSortBy]);
   const [stockProductId, setStockProductId] = useState(null);
   const [stockQty, setStockQty] = useState('1');
   const [stockExact, setStockExact] = useState('');
@@ -520,17 +535,45 @@ const SellerDashboard = () => {
                 {analytics.products.length === 0 ? (
                   <p className="text-sm text-gray-500 dark:text-gray-400 text-center py-10">No sales yet</p>
                 ) : (
-                  <div className="divide-y divide-gray-100 dark:divide-gray-700">
-                    {analytics.products.map(p => (
-                      <div key={p.id} className="flex items-center gap-3 px-4 py-3">
-                        <img src={p.image} alt={p.name} className="w-10 h-10 rounded-lg object-cover bg-gray-100 dark:bg-gray-700 shrink-0" />
-                        <p className="text-sm font-medium text-gray-900 dark:text-white truncate flex-1 min-w-0">{p.name}</p>
-                        <p className="text-xs text-gray-500 dark:text-gray-400 shrink-0">{p.units_sold} sold</p>
-                        <p className="text-xs text-gray-500 dark:text-gray-400 shrink-0">Stock: {p.stock}</p>
-                        <p className="text-sm font-semibold text-gray-900 dark:text-white shrink-0 w-24 text-right">₹{p.revenue.toLocaleString('en-IN')}</p>
+                  <>
+                    <div className="flex flex-col sm:flex-row gap-2 px-4 py-3 border-b border-gray-100 dark:border-gray-700">
+                      <div className="relative flex-1 min-w-[160px]">
+                        <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-400" />
+                        <input
+                          type="text"
+                          value={salesSearch}
+                          onChange={(e) => setSalesSearch(e.target.value)}
+                          placeholder="Search products..."
+                          className="w-full pl-8 pr-3 py-1.5 text-xs rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-orange-400"
+                        />
                       </div>
-                    ))}
-                  </div>
+                      <select
+                        value={salesSortBy}
+                        onChange={(e) => setSalesSortBy(e.target.value)}
+                        className="px-2.5 py-1.5 text-xs rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-orange-400"
+                      >
+                        <option value="revenue">Sort: Revenue (high to low)</option>
+                        <option value="units_sold">Sort: Units sold (high to low)</option>
+                        <option value="stock">Sort: Stock (low to high)</option>
+                        <option value="name">Sort: Name (A-Z)</option>
+                      </select>
+                    </div>
+                    {filteredSalesProducts.length === 0 ? (
+                      <p className="text-sm text-gray-500 dark:text-gray-400 text-center py-10">No products match your search</p>
+                    ) : (
+                      <div className="divide-y divide-gray-100 dark:divide-gray-700">
+                        {filteredSalesProducts.map(p => (
+                          <div key={p.id} className="flex items-center gap-3 px-4 py-3">
+                            <img src={p.image} alt={p.name} className="w-10 h-10 rounded-lg object-cover bg-gray-100 dark:bg-gray-700 shrink-0" />
+                            <p className="text-sm font-medium text-gray-900 dark:text-white truncate flex-1 min-w-0">{p.name}</p>
+                            <p className="text-xs text-gray-500 dark:text-gray-400 shrink-0">{p.units_sold} sold</p>
+                            <p className="text-xs text-gray-500 dark:text-gray-400 shrink-0">Stock: {p.stock}</p>
+                            <p className="text-sm font-semibold text-gray-900 dark:text-white shrink-0 w-24 text-right">₹{p.revenue.toLocaleString('en-IN')}</p>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </>
                 )}
               </div>
             </>
