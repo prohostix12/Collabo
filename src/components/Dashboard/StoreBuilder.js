@@ -461,24 +461,46 @@ const SectionEditor = ({ section, products, isFirst, isLast, onChange, onRemove,
   }
 
   if (section.type === 'promo') {
+    const slides = section.slides?.length ? section.slides : (section.image ? [{ image: section.image, title: section.title || '', subtitle: section.subtitle || '', link: section.link || '' }] : []);
+    const updateSlide = (i, patch) => onChange({ slides: slides.map((s, idx) => (idx === i ? { ...s, ...patch } : s)), image: undefined, title: undefined, subtitle: undefined, link: undefined });
+    const removeSlide = (i) => onChange({ slides: slides.filter((_, idx) => idx !== i) });
     return (
       <div className="border border-gray-200 dark:border-gray-700 rounded-xl p-3 space-y-3 bg-gray-50/60 dark:bg-gray-900/30">
         <Header />
-        <div className="flex items-center gap-3">
-          <div className="w-20 h-14 rounded-lg bg-gray-100 dark:bg-gray-900 overflow-hidden flex items-center justify-center shrink-0">
-            {section.image ? <img src={section.image} alt="" className="w-full h-full object-cover" /> : <ImagePlus className="w-5 h-5 text-gray-300" />}
-          </div>
-          <label className="cursor-pointer inline-flex items-center gap-1.5 bg-gray-900 hover:bg-gray-800 text-white font-semibold text-xs px-3 py-1.5 rounded-lg transition-colors shrink-0">
-            <Upload className="w-3.5 h-3.5" /> Upload
-            <input type="file" accept="image/*" className="hidden" onChange={(e) => { uploadImage(e.target.files[0], (data) => onChange({ image: data })); e.target.value = ''; }} />
-          </label>
+        <p className="text-[11px] text-gray-500">Add one banner for a static ad, or several to auto-rotate like a carousel.</p>
+        <div className="flex items-end gap-3">
           <SizeSelect />
+          <label className="block space-y-1 w-32">
+            <span className="text-[11px] font-semibold text-gray-500">Rotate every (sec)</span>
+            <input
+              type="number"
+              min="1"
+              max="60"
+              step="1"
+              className={inputCls}
+              value={section.interval || 4}
+              onChange={(e) => onChange({ interval: Number(e.target.value) || 1 })}
+            />
+          </label>
         </div>
-        <div className="grid sm:grid-cols-2 gap-2">
-          <input className={inputCls} placeholder="Title, e.g. Flat 20% off" value={section.title || ''} onChange={(e) => onChange({ title: e.target.value })} />
-          <input className={inputCls} placeholder="Subtitle (optional)" value={section.subtitle || ''} onChange={(e) => onChange({ subtitle: e.target.value })} />
+        <div className="space-y-2">
+          {slides.map((s, i) => (
+            <div key={i} className="flex items-center gap-2 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-2">
+              <div className="w-14 h-10 rounded bg-gray-100 dark:bg-gray-900 overflow-hidden flex items-center justify-center shrink-0">
+                {s.image ? <img src={s.image} alt="" className="w-full h-full object-cover" /> : <ImagePlus className="w-4 h-4 text-gray-300" />}
+              </div>
+              <label className="cursor-pointer text-[11px] font-semibold text-orange-600 hover:underline shrink-0">
+                Upload
+                <input type="file" accept="image/*" className="hidden" onChange={(e) => { uploadImage(e.target.files[0], (data) => updateSlide(i, { image: data })); e.target.value = ''; }} />
+              </label>
+              <input className={inputCls} placeholder="Title (optional)" value={s.title || ''} onChange={(e) => updateSlide(i, { title: e.target.value })} />
+              <input className={inputCls} placeholder="Subtitle (optional)" value={s.subtitle || ''} onChange={(e) => updateSlide(i, { subtitle: e.target.value })} />
+              <input className={inputCls} placeholder="Links to product id or /path" value={s.link || ''} onChange={(e) => updateSlide(i, { link: e.target.value })} />
+              <button type="button" onClick={() => removeSlide(i)} className="text-red-400 hover:text-red-600 shrink-0"><X className="w-3.5 h-3.5" /></button>
+            </div>
+          ))}
+          <button type="button" onClick={() => onChange({ slides: [...slides, { image: '', title: '', subtitle: '', link: '' }] })} className="text-[11px] font-semibold text-orange-600 hover:underline">+ Add banner</button>
         </div>
-        <input className={inputCls} placeholder="Links to product id or /path (optional)" value={section.link || ''} onChange={(e) => onChange({ link: e.target.value })} />
       </div>
     );
   }

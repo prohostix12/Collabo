@@ -279,18 +279,38 @@ const CarouselSection = ({ section }) => {
 };
 
 const PromoSection = ({ section }) => {
-  if (!section.image) return null;
+  const slides = (section.slides?.length ? section.slides : (section.image ? [{ image: section.image, title: section.title, subtitle: section.subtitle, link: section.link }] : []))
+    .filter((s) => s.image);
+  const [idx, setIdx] = useState(0);
+  const intervalMs = Math.max(1, Number(section.interval) || 4) * 1000;
+  useEffect(() => {
+    if (slides.length < 2) return;
+    const t = setInterval(() => setIdx((i) => (i + 1) % slides.length), intervalMs);
+    return () => clearInterval(t);
+  }, [slides.length, intervalMs]);
+  if (slides.length === 0) return null;
   const h = SIZE_H[section.size || 'md'];
   return (
-    <SectionLink link={section.link} className={`relative ${h} w-full rounded-2xl overflow-hidden block`}>
-      <img src={section.image} alt={section.title || ''} className="w-full h-full object-cover" />
-      {(section.title || section.subtitle) && (
-        <div className="absolute inset-0 bg-gradient-to-r from-black/50 via-black/10 to-transparent flex flex-col justify-center px-5 sm:px-8">
-          {section.title && <p className="text-white font-black text-lg sm:text-2xl max-w-xs">{section.title}</p>}
-          {section.subtitle && <p className="text-white/90 text-xs sm:text-sm mt-1 max-w-xs">{section.subtitle}</p>}
+    <div className={`relative ${h} w-full rounded-2xl overflow-hidden`}>
+      {slides.map((s, i) => (
+        <SectionLink key={i} link={s.link} className={`absolute inset-0 transition-opacity duration-500 ${i === idx ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}>
+          <img src={s.image} alt={s.title || ''} className="w-full h-full object-cover" />
+          {(s.title || s.subtitle) && (
+            <div className="absolute inset-0 bg-gradient-to-r from-black/50 via-black/10 to-transparent flex flex-col justify-center px-5 sm:px-8">
+              {s.title && <p className="text-white font-black text-lg sm:text-2xl max-w-xs">{s.title}</p>}
+              {s.subtitle && <p className="text-white/90 text-xs sm:text-sm mt-1 max-w-xs">{s.subtitle}</p>}
+            </div>
+          )}
+        </SectionLink>
+      ))}
+      {slides.length > 1 && (
+        <div className="absolute bottom-2 left-1/2 -translate-x-1/2 flex gap-1.5">
+          {slides.map((_, i) => (
+            <button key={i} onClick={() => setIdx(i)} className={`w-1.5 h-1.5 rounded-full transition-all ${i === idx ? 'w-4 bg-white' : 'bg-white/50'}`} />
+          ))}
         </div>
       )}
-    </SectionLink>
+    </div>
   );
 };
 
