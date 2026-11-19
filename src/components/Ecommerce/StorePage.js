@@ -1,7 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
-import { Store, Search, BadgeCheck, Share2, ShoppingCart, Heart, User } from 'lucide-react';
-import toast from 'react-hot-toast';
+import { Store, Search, BadgeCheck, ShoppingCart, Heart, User } from 'lucide-react';
 import api from '../../services/api';
 import { useAuth } from '../../contexts/AuthContext';
 import Footer from '../Layout/Footer';
@@ -88,15 +87,6 @@ const StorePage = () => {
     return list;
   }, [products, q, activeTab]);
 
-  const shareStore = async () => {
-    const url = window.location.href;
-    try {
-      if (navigator.share) { await navigator.share({ title: store.store_name, url }); return; }
-      await navigator.clipboard.writeText(url);
-      toast.success('Store link copied');
-    } catch { /* user cancelled share sheet — nothing to do */ }
-  };
-
   if (loading) {
     return (
       <>
@@ -154,9 +144,6 @@ const StorePage = () => {
             </h1>
             {store.store_tagline && <p className="text-gray-500 text-[10px] truncate hidden sm:block">{store.store_tagline}</p>}
           </div>
-          <button onClick={shareStore} className="inline-flex items-center justify-center w-6 h-6 rounded-full border border-gray-200 text-gray-500 hover:bg-gray-50 transition-colors shrink-0" title="Share this store">
-            <Share2 className="w-3 h-3" />
-          </button>
         </div>
 
         {/* Tab nav + search, Amazon-storefront style */}
