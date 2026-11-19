@@ -136,7 +136,7 @@ const StorePage = () => {
       <div className="bg-white border-b border-gray-200 sticky top-0 z-20 shadow-sm">
         <div className="max-w-6xl mx-auto px-4 py-1.5 flex flex-wrap items-center gap-2.5">
           <button
-            onClick={() => (window.history.length > 2 ? navigate(-1) : navigate('/'))}
+            onClick={() => (window.history.length > 1 ? navigate(-1) : navigate('/'))}
             className="inline-flex items-center justify-center w-7 h-7 rounded-full border border-gray-200 text-gray-500 hover:bg-gray-50 transition-colors shrink-0"
             title="Back"
           >
