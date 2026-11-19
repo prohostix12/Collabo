@@ -162,6 +162,11 @@ STORAGES = {
     },
 }
 
+# Base64-embedded images (product/store photos) in JSON request bodies can be several MB;
+# the Django defaults (2.5MB) reject those before our own view code runs.
+DATA_UPLOAD_MAX_MEMORY_SIZE = 25 * 1024 * 1024
+FILE_UPLOAD_MAX_MEMORY_SIZE = 25 * 1024 * 1024
+
 MEDIA_URL = '/media/'
 # Ensure Media is stored on the Persistent Disk
 MEDIA_ROOT = DATA_DIR / 'media'
