@@ -278,18 +278,42 @@ const CarouselSection = ({ section }) => {
   );
 };
 
+const PromoBanner = ({ s, h }) => (
+  <SectionLink link={s.link} className={`relative ${h} w-full rounded-2xl overflow-hidden block`}>
+    <img src={s.image} alt={s.title || ''} className="w-full h-full object-cover" />
+    {(s.title || s.subtitle) && (
+      <div className="absolute inset-0 bg-gradient-to-r from-black/50 via-black/10 to-transparent flex flex-col justify-center px-5 sm:px-8">
+        {s.title && <p className="text-white font-black text-lg sm:text-2xl max-w-xs">{s.title}</p>}
+        {s.subtitle && <p className="text-white/90 text-xs sm:text-sm mt-1 max-w-xs">{s.subtitle}</p>}
+      </div>
+    )}
+  </SectionLink>
+);
+
+const PROMO_COLS = { 1: 'grid-cols-1', 2: 'grid-cols-2', 3: 'grid-cols-3' };
+
 const PromoSection = ({ section }) => {
   const slides = (section.slides?.length ? section.slides : (section.image ? [{ image: section.image, title: section.title, subtitle: section.subtitle, link: section.link }] : []))
     .filter((s) => s.image);
+  const columns = Math.min(3, Math.max(1, Number(section.columns) || 1));
   const [idx, setIdx] = useState(0);
   const intervalMs = Math.max(1, Number(section.interval) || 4) * 1000;
   useEffect(() => {
-    if (slides.length < 2) return;
+    if (columns > 1 || slides.length < 2) return;
     const t = setInterval(() => setIdx((i) => (i + 1) % slides.length), intervalMs);
     return () => clearInterval(t);
-  }, [slides.length, intervalMs]);
+  }, [columns, slides.length, intervalMs]);
   if (slides.length === 0) return null;
   const h = SIZE_H[section.size || 'md'];
+
+  if (columns > 1) {
+    return (
+      <div className={`grid ${PROMO_COLS[columns]} gap-3`}>
+        {slides.slice(0, columns).map((s, i) => <PromoBanner key={i} s={s} h={h} />)}
+      </div>
+    );
+  }
+
   return (
     <div className={`relative ${h} w-full rounded-2xl overflow-hidden`}>
       {slides.map((s, i) => (

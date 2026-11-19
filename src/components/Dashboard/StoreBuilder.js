@@ -467,21 +467,29 @@ const SectionEditor = ({ section, products, isFirst, isLast, onChange, onRemove,
     return (
       <div className="border border-gray-200 dark:border-gray-700 rounded-xl p-3 space-y-3 bg-gray-50/60 dark:bg-gray-900/30">
         <Header />
-        <p className="text-[11px] text-gray-500">Add one banner for a static ad, or several to auto-rotate like a carousel.</p>
+        <p className="text-[11px] text-gray-500">1 column: a static banner, or several auto-rotating. 2&ndash;3 columns: banners shown side by side (no rotation).</p>
         <div className="flex items-end gap-3">
           <SizeSelect />
-          <label className="block space-y-1 w-32">
-            <span className="text-[11px] font-semibold text-gray-500">Rotate every (sec)</span>
-            <input
-              type="number"
-              min="1"
-              max="60"
-              step="1"
-              className={inputCls}
-              value={section.interval || 4}
-              onChange={(e) => onChange({ interval: Number(e.target.value) || 1 })}
-            />
+          <label className="block space-y-1 w-24">
+            <span className="text-[11px] font-semibold text-gray-500">Columns</span>
+            <select className={inputCls} value={section.columns || 1} onChange={(e) => onChange({ columns: Number(e.target.value) })}>
+              <option value={1}>1</option><option value={2}>2</option><option value={3}>3</option>
+            </select>
           </label>
+          {(section.columns || 1) === 1 && (
+            <label className="block space-y-1 w-32">
+              <span className="text-[11px] font-semibold text-gray-500">Rotate every (sec)</span>
+              <input
+                type="number"
+                min="1"
+                max="60"
+                step="1"
+                className={inputCls}
+                value={section.interval || 4}
+                onChange={(e) => onChange({ interval: Number(e.target.value) || 1 })}
+              />
+            </label>
+          )}
         </div>
         <div className="space-y-2">
           {slides.map((s, i) => (
