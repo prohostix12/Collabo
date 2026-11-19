@@ -64,7 +64,8 @@ const STATUS_META = {
 const OUT_OF_STOCK_META = { label: 'Out of Stock', dot: 'bg-red-400', text: 'text-red-500', bg: 'bg-red-50 dark:bg-red-900/20' };
 
 const SellerDashboard = () => {
-  const { user } = useAuth();
+  const { user, updateUser } = useAuth();
+  const [uploadingLogo, setUploadingLogo] = useState(false);
   const [products, setProducts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [categories, setCategories] = useState([]);
@@ -258,6 +259,23 @@ const SellerDashboard = () => {
     }
   };
 
+  const handleLogoFile = async (file) => {
+    if (!file) return;
+    if (file.size > MAX_IMAGE_SIZE) { toast.error('Image must be under 5MB'); return; }
+    setUploadingLogo(true);
+    try {
+      const dataUrl = await fileToDataUrl(file);
+      await api.patch('/auth/seller-profile/', { store_logo: dataUrl });
+      updateUser({ seller_profile: { ...user.seller_profile, store_logo: dataUrl } });
+      toast.success('Logo updated');
+    } catch (err) {
+      console.error(err);
+      toast.error('Could not update logo');
+    } finally {
+      setUploadingLogo(false);
+    }
+  };
+
   const handleMainImageFile = async (file) => {
     if (!file) return;
     if (file.size > MAX_IMAGE_SIZE) { setFormError('Image must be under 5MB'); return; }
@@ -327,9 +345,30 @@ const SellerDashboard = () => {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div className="flex items-center gap-3.5">
-          <div className="w-12 h-12 rounded-2xl bg-gradient-to-tr from-orange-500 to-amber-500 text-white flex items-center justify-center shadow-lg shadow-orange-500/20 dark:shadow-none">
-            <ShoppingBag className="w-5.5 h-5.5 stroke-[2.25]" />
-          </div>
+          <label
+            title="Upload store logo"
+            className="relative w-12 h-12 rounded-2xl bg-gradient-to-tr from-orange-500 to-amber-500 text-white flex items-center justify-center shadow-lg shadow-orange-500/20 dark:shadow-none cursor-pointer overflow-hidden group shrink-0"
+          >
+            {user?.seller_profile?.store_logo ? (
+              <img src={user.seller_profile.store_logo} alt="Store logo" className="w-full h-full object-cover" />
+            ) : (
+              <ShoppingBag className="w-5.5 h-5.5 stroke-[2.25]" />
+            )}
+            <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+              {uploadingLogo ? (
+                <div className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+              ) : (
+                <Upload className="w-4 h-4 text-white" />
+              )}
+            </div>
+            <input
+              type="file"
+              accept="image/*"
+              className="hidden"
+              disabled={uploadingLogo}
+              onChange={(e) => { handleLogoFile(e.target.files[0]); e.target.value = ''; }}
+            />
+          </label>
           <div>
             <h1 className="text-xl font-extrabold text-gray-900 dark:text-white tracking-tight">
               {user?.seller_profile?.store_name || 'Seller Dashboard'}
