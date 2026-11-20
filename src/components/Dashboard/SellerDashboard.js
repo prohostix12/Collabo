@@ -466,21 +466,21 @@ const SellerDashboard = () => {
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900 p-4 sm:p-6 space-y-5">
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-        <div className="flex items-center gap-3.5">
+        <div className="flex items-center gap-2.5">
           <label
             title="Upload store logo"
-            className="relative w-12 h-12 rounded-2xl bg-gradient-to-tr from-orange-500 to-amber-500 text-white flex items-center justify-center shadow-lg shadow-orange-500/20 dark:shadow-none cursor-pointer overflow-hidden group shrink-0"
+            className="relative w-9 h-9 rounded-xl bg-gradient-to-tr from-orange-500 to-amber-500 text-white flex items-center justify-center shadow-sm cursor-pointer overflow-hidden group shrink-0"
           >
             {user?.seller_profile?.store_logo ? (
               <img src={user.seller_profile.store_logo} alt="Store logo" className="w-full h-full object-cover" />
             ) : (
-              <ShoppingBag className="w-5.5 h-5.5 stroke-[2.25]" />
+              <ShoppingBag className="w-4 h-4 stroke-[2.25]" />
             )}
             <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
               {uploadingLogo ? (
-                <div className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                <div className="w-3 h-3 border-2 border-white border-t-transparent rounded-full animate-spin" />
               ) : (
-                <Upload className="w-4 h-4 text-white" />
+                <Upload className="w-3 h-3 text-white" />
               )}
             </div>
             <input
@@ -492,10 +492,10 @@ const SellerDashboard = () => {
             />
           </label>
           <div>
-            <h1 className="text-xl font-extrabold text-gray-900 dark:text-white tracking-tight">
+            <h1 className="text-base font-bold text-gray-900 dark:text-white tracking-tight leading-tight">
               {user?.seller_profile?.store_name || 'Seller Dashboard'}
             </h1>
-            <p className="text-xs text-gray-500 dark:text-gray-400 font-medium">Manage your product listings</p>
+            <p className="text-[11px] text-gray-500 dark:text-gray-400 font-medium">Manage your product listings</p>
           </div>
         </div>
         <div className="flex items-center gap-2">
