@@ -64,6 +64,20 @@ const STATUS_META = {
 // having to open the Update Stock popover. It reverts to "Live" automatically once stock is restocked.
 const OUT_OF_STOCK_META = { label: 'Out of Stock', dot: 'bg-red-400', text: 'text-red-500', bg: 'bg-red-50 dark:bg-red-900/20' };
 
+const RevenueChartTooltip = ({ active, payload, label }) => {
+  if (!active || !payload?.length) return null;
+  return (
+    <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg border border-gray-100 dark:border-gray-700 px-4 py-3">
+      <p className="text-sm font-bold text-gray-900 dark:text-white mb-1.5">{label}</p>
+      <div className="flex items-center gap-2 text-xs">
+        <span className="w-2 h-2 rounded-full bg-orange-500 shrink-0" />
+        <span className="text-gray-500 dark:text-gray-400">Revenue</span>
+        <span className="font-semibold text-gray-900 dark:text-white">₹{Number(payload[0].value).toLocaleString('en-IN')}</span>
+      </div>
+    </div>
+  );
+};
+
 const SellerDashboard = () => {
   const { user, updateUser } = useAuth();
   const [uploadingLogo, setUploadingLogo] = useState(false);
@@ -608,8 +622,8 @@ const SellerDashboard = () => {
                     <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false} />
                     <XAxis dataKey="month" tick={{ fontSize: 11 }} stroke="#9ca3af" axisLine={false} tickLine={false} />
                     <YAxis tick={{ fontSize: 11 }} stroke="#9ca3af" axisLine={false} tickLine={false} />
-                    <Tooltip formatter={(v) => `₹${Number(v).toLocaleString('en-IN')}`} />
-                    <Area type="monotone" dataKey="revenue" stroke="#ea580c" strokeWidth={2.5} fill="url(#sellerRevenueFill)" dot={{ r: 3, fill: '#ea580c', strokeWidth: 0 }} activeDot={{ r: 5 }} />
+                    <Tooltip content={<RevenueChartTooltip />} cursor={{ stroke: '#ea580c', strokeWidth: 1, strokeDasharray: '4 4' }} />
+                    <Area type="monotone" dataKey="revenue" stroke="#ea580c" strokeWidth={2} fill="url(#sellerRevenueFill)" dot={false} activeDot={{ r: 4, fill: '#ea580c', strokeWidth: 2, stroke: '#fff' }} />
                   </AreaChart>
                 </ResponsiveContainer>
               </div>
@@ -942,8 +956,8 @@ const SellerDashboard = () => {
                       <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false} />
                       <XAxis dataKey="month" tick={{ fontSize: 11 }} stroke="#9ca3af" axisLine={false} tickLine={false} />
                       <YAxis tick={{ fontSize: 11 }} stroke="#9ca3af" axisLine={false} tickLine={false} />
-                      <Tooltip formatter={(v) => `₹${Number(v).toLocaleString('en-IN')}`} />
-                      <Area type="monotone" dataKey="revenue" stroke="#ea580c" strokeWidth={2.5} fill="url(#sellerRevenueFillAnalytics)" dot={{ r: 3, fill: '#ea580c', strokeWidth: 0 }} activeDot={{ r: 5 }} />
+                      <Tooltip content={<RevenueChartTooltip />} cursor={{ stroke: '#ea580c', strokeWidth: 1, strokeDasharray: '4 4' }} />
+                      <Area type="monotone" dataKey="revenue" stroke="#ea580c" strokeWidth={2} fill="url(#sellerRevenueFillAnalytics)" dot={false} activeDot={{ r: 4, fill: '#ea580c', strokeWidth: 2, stroke: '#fff' }} />
                     </AreaChart>
                   </ResponsiveContainer>
                 </div>
