@@ -3,7 +3,7 @@ import {
   Store, Package, Plus, X, Clock, CheckCircle2, XCircle,
   IndianRupee, Boxes, ImagePlus, Upload, ShoppingBag, Pencil, Trash2, Truck,
   TrendingUp, ArrowUpCircle, ArrowDownCircle, ShoppingCart, LayoutGrid, Download, FileSpreadsheet, Search,
-  LayoutDashboard, ClipboardList, Tag, Wallet, Star, RotateCcw, Ban,
+  LayoutDashboard, ClipboardList, Tag, Wallet, Star, RotateCcw, Ban, Calendar,
 } from 'lucide-react';
 import {
   ResponsiveContainer, ComposedChart, Area, Line, Bar, XAxis, YAxis, CartesianGrid, Tooltip,
@@ -245,6 +245,49 @@ const SellerDashboard = () => {
   useEffect(() => {
     if ((activeTab === 'analytics' || activeTab === 'overview') && !analytics) fetchAnalytics();
   }, [activeTab, analytics, fetchAnalytics]);
+
+  const [chartRange, setChartRange] = useState('6m');
+  const [chartCustomStart, setChartCustomStart] = useState('');
+  const [chartCustomEnd, setChartCustomEnd] = useState('');
+  const [chartMonthly, setChartMonthly] = useState(null);
+  const [chartLoading, setChartLoading] = useState(false);
+
+  const fetchChartRange = useCallback((range, customStart, customEnd) => {
+    const now = new Date();
+    const toISO = (d) => d.toISOString().slice(0, 10);
+    let start_date = null;
+    let end_date = null;
+    if (range === 'custom') {
+      if (!customStart || !customEnd) return;
+      start_date = customStart;
+      end_date = customEnd;
+    } else {
+      const days = { '7d': 7, '30d': 30, '90d': 90, '6m': 183, '12m': 365 }[range] || 183;
+      const startD = new Date(now);
+      startD.setDate(startD.getDate() - days);
+      start_date = toISO(startD);
+      end_date = toISO(now);
+    }
+    setChartLoading(true);
+    api.get(`/ecommerce/seller/analytics/?start_date=${start_date}&end_date=${end_date}`)
+      .then(res => setChartMonthly(res.data.monthly))
+      .catch(() => {})
+      .finally(() => setChartLoading(false));
+  }, []);
+
+  useEffect(() => {
+    if (analytics && chartMonthly === null) setChartMonthly(analytics.monthly);
+  }, [analytics, chartMonthly]);
+
+  useEffect(() => {
+    if (activeTab !== 'analytics') return;
+    if (chartRange === '6m') {
+      if (analytics) setChartMonthly(analytics.monthly);
+    } else {
+      fetchChartRange(chartRange, chartCustomStart, chartCustomEnd);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [chartRange, chartCustomStart, chartCustomEnd, activeTab]);
 
   const fetchEarnings = useCallback(() => {
     setEarningsLoading(true);
@@ -964,16 +1007,71 @@ const SellerDashboard = () => {
               </div>
 
               <div className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 shadow-sm p-5">
-                <div className="flex items-center justify-between mb-4">
-                  <h3 className="text-sm font-bold text-gray-900 dark:text-white">Revenue — last 6 months</h3>
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4">
+                  <h3 className="text-sm font-bold text-gray-900 dark:text-white">Revenue</h3>
                   <div className="flex items-center gap-4 text-[11px] font-medium text-gray-500 dark:text-gray-400">
                     <span className="flex items-center gap-1.5"><span className="w-2 h-2 rounded-full bg-orange-500" /> Fulfilled</span>
                     <span className="flex items-center gap-1.5"><span className="w-2 h-2 rounded-full bg-gray-400" /> Cancelled</span>
                   </div>
                 </div>
-                <div className="bg-[#FFFDF9] dark:bg-gray-900/40 rounded-xl p-3">
+
+                <div className="flex flex-wrap items-center gap-2 mb-4">
+                  {[
+                    { id: '7d', label: '7D' },
+                    { id: '30d', label: '30D' },
+                    { id: '90d', label: '90D' },
+                    { id: '6m', label: '6M' },
+                    { id: '12m', label: '12M' },
+                    { id: 'custom', label: 'Custom' },
+                  ].map(r => (
+                    <button
+                      key={r.id}
+                      onClick={() => setChartRange(r.id)}
+                      className={`px-3 py-1.5 rounded-lg text-[11px] font-bold transition-colors ${
+                        chartRange === r.id
+                          ? 'bg-orange-500 text-white'
+                          : 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600'
+                      }`}
+                    >
+                      {r.label}
+                    </button>
+                  ))}
+                  {chartRange === 'custom' && (
+                    <div className="flex items-center gap-2 ml-1">
+                      <div className="relative">
+                        <Calendar className="absolute left-2 top-1/2 -translate-y-1/2 w-3 h-3 text-gray-400 pointer-events-none" />
+                        <input
+                          type="date"
+                          value={chartCustomStart}
+                          max={chartCustomEnd || undefined}
+                          onChange={(e) => setChartCustomStart(e.target.value)}
+                          className="pl-6 pr-2 py-1.5 rounded-lg text-[11px] font-semibold bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-200 border border-gray-200 dark:border-gray-600 focus:outline-none focus:ring-1 focus:ring-orange-500"
+                        />
+                      </div>
+                      <span className="text-[11px] text-gray-400">to</span>
+                      <div className="relative">
+                        <Calendar className="absolute left-2 top-1/2 -translate-y-1/2 w-3 h-3 text-gray-400 pointer-events-none" />
+                        <input
+                          type="date"
+                          value={chartCustomEnd}
+                          min={chartCustomStart || undefined}
+                          max={new Date().toISOString().slice(0, 10)}
+                          onChange={(e) => setChartCustomEnd(e.target.value)}
+                          className="pl-6 pr-2 py-1.5 rounded-lg text-[11px] font-semibold bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-200 border border-gray-200 dark:border-gray-600 focus:outline-none focus:ring-1 focus:ring-orange-500"
+                        />
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                <div className="bg-[#FFFDF9] dark:bg-gray-900/40 rounded-xl p-3 relative">
+                  {chartLoading && (
+                    <div className="absolute inset-0 bg-white/60 dark:bg-gray-900/60 flex items-center justify-center rounded-xl z-10">
+                      <div className="w-5 h-5 border-2 border-gray-300 border-t-orange-500 rounded-full animate-spin" />
+                    </div>
+                  )}
                   <ResponsiveContainer width="100%" height={240}>
-                    <ComposedChart data={analytics.monthly}>
+                    <ComposedChart data={chartMonthly || analytics.monthly}>
                       <defs>
                         <linearGradient id="sellerRevenueFillAnalytics" x1="0" y1="0" x2="0" y2="1">
                           <stop offset="5%" stopColor="#ea580c" stopOpacity={0.25} />

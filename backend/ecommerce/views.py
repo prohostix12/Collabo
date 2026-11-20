@@ -16,7 +16,7 @@ from django.conf import settings
 from django.db import models as db_models
 from django.db.models import Sum, Count, Avg, F, Q
 from django.utils import timezone
-from datetime import timedelta
+from datetime import timedelta, datetime
 from rest_framework import viewsets, permissions, status, filters, views, generics
 from rest_framework.response import Response
 from rest_framework.decorators import action, api_view, permission_classes
@@ -1950,20 +1950,81 @@ class SellerProductAnalyticsView(views.APIView):
         total_orders = completed_items.values('order').distinct().count()
 
         now = timezone.now()
+
+        # Optional date-range filter for the chart: ?start_date=YYYY-MM-DD&end_date=YYYY-MM-DD
+        # Falls back to the default "last 6 months" monthly view when not given.
+        start_param = request.query_params.get('start_date')
+        end_param = request.query_params.get('end_date')
+        range_start = range_end = None
+        if start_param:
+            try:
+                range_start = timezone.make_aware(datetime.strptime(start_param, '%Y-%m-%d'))
+            except ValueError:
+                pass
+        if end_param:
+            try:
+                range_end = timezone.make_aware(datetime.strptime(end_param, '%Y-%m-%d') + timedelta(days=1))
+            except ValueError:
+                pass
+
         monthly_data = []
-        for i in range(5, -1, -1):
-            month_start = (now.replace(day=1) - timedelta(days=i * 30)).replace(day=1)
-            month_end = (month_start.replace(day=28) + timedelta(days=4)).replace(day=1)
-            qs = completed_items.filter(order__created_at__gte=month_start, order__created_at__lt=month_end)
-            row = qs.aggregate(revenue=Sum(F('price') * F('quantity')), units=Sum('quantity'))
-            cancelled_qs = cancelled_items.filter(order__created_at__gte=month_start, order__created_at__lt=month_end)
-            cancelled_row = cancelled_qs.aggregate(revenue=Sum(F('price') * F('quantity')))
-            monthly_data.append({
-                'month': month_start.strftime('%b %Y'),
-                'revenue': float(row['revenue'] or 0),
-                'units': row['units'] or 0,
-                'cancelled_revenue': float(cancelled_row['revenue'] or 0),
-            })
+        if range_start and range_end and range_end > range_start:
+            span_days = (range_end - range_start).days
+            if span_days <= 31:
+                bucket_step = timedelta(days=1)
+                label_fmt = '%d %b'
+            elif span_days <= 120:
+                bucket_step = timedelta(days=7)
+                label_fmt = '%d %b'
+            else:
+                bucket_step = None  # monthly buckets, handled below
+
+            if bucket_step:
+                cursor = range_start
+                while cursor < range_end:
+                    bucket_end = min(cursor + bucket_step, range_end)
+                    qs = completed_items.filter(order__created_at__gte=cursor, order__created_at__lt=bucket_end)
+                    row = qs.aggregate(revenue=Sum(F('price') * F('quantity')), units=Sum('quantity'))
+                    cancelled_qs = cancelled_items.filter(order__created_at__gte=cursor, order__created_at__lt=bucket_end)
+                    cancelled_row = cancelled_qs.aggregate(revenue=Sum(F('price') * F('quantity')))
+                    monthly_data.append({
+                        'month': cursor.strftime(label_fmt),
+                        'revenue': float(row['revenue'] or 0),
+                        'units': row['units'] or 0,
+                        'cancelled_revenue': float(cancelled_row['revenue'] or 0),
+                    })
+                    cursor = bucket_end
+            else:
+                month_cursor = range_start.replace(day=1)
+                while month_cursor < range_end:
+                    month_end = (month_cursor.replace(day=28) + timedelta(days=4)).replace(day=1)
+                    bucket_start = max(month_cursor, range_start)
+                    bucket_end = min(month_end, range_end)
+                    qs = completed_items.filter(order__created_at__gte=bucket_start, order__created_at__lt=bucket_end)
+                    row = qs.aggregate(revenue=Sum(F('price') * F('quantity')), units=Sum('quantity'))
+                    cancelled_qs = cancelled_items.filter(order__created_at__gte=bucket_start, order__created_at__lt=bucket_end)
+                    cancelled_row = cancelled_qs.aggregate(revenue=Sum(F('price') * F('quantity')))
+                    monthly_data.append({
+                        'month': month_cursor.strftime('%b %Y'),
+                        'revenue': float(row['revenue'] or 0),
+                        'units': row['units'] or 0,
+                        'cancelled_revenue': float(cancelled_row['revenue'] or 0),
+                    })
+                    month_cursor = month_end
+        else:
+            for i in range(5, -1, -1):
+                month_start = (now.replace(day=1) - timedelta(days=i * 30)).replace(day=1)
+                month_end = (month_start.replace(day=28) + timedelta(days=4)).replace(day=1)
+                qs = completed_items.filter(order__created_at__gte=month_start, order__created_at__lt=month_end)
+                row = qs.aggregate(revenue=Sum(F('price') * F('quantity')), units=Sum('quantity'))
+                cancelled_qs = cancelled_items.filter(order__created_at__gte=month_start, order__created_at__lt=month_end)
+                cancelled_row = cancelled_qs.aggregate(revenue=Sum(F('price') * F('quantity')))
+                monthly_data.append({
+                    'month': month_start.strftime('%b %Y'),
+                    'revenue': float(row['revenue'] or 0),
+                    'units': row['units'] or 0,
+                    'cancelled_revenue': float(cancelled_row['revenue'] or 0),
+                })
 
         per_product_qs = (
             completed_items.values('product__id', 'product__name', 'product__image', 'product__stock')
