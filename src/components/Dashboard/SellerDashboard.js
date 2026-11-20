@@ -431,25 +431,23 @@ const SellerDashboard = () => {
       {/* Stats */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
         {[
-          { label: 'Total Listings', value: counts.all, icon: Package, color: 'text-blue-600 bg-blue-50 dark:bg-blue-900/20 dark:text-blue-400 border-blue-100 dark:border-blue-800' },
-          { label: 'Pending Review', value: counts.pending, icon: Clock, color: 'text-amber-600 bg-amber-50 dark:bg-amber-900/20 dark:text-amber-400 border-amber-100 dark:border-amber-800' },
-          { label: 'Live', value: counts.approved, icon: CheckCircle2, color: 'text-emerald-600 bg-emerald-50 dark:bg-emerald-900/20 dark:text-emerald-400 border-emerald-100 dark:border-emerald-800' },
-          { label: 'Rejected', value: counts.rejected, icon: XCircle, color: 'text-rose-600 bg-rose-50 dark:bg-rose-900/20 dark:text-rose-400 border-rose-100 dark:border-rose-800' },
+          { label: 'Total Listings', value: counts.all, icon: Package, color: 'text-blue-600 bg-blue-50 dark:bg-blue-900/20 dark:text-blue-400' },
+          { label: 'Pending Review', value: counts.pending, icon: Clock, color: 'text-amber-600 bg-amber-50 dark:bg-amber-900/20 dark:text-amber-400' },
+          { label: 'Live', value: counts.approved, icon: CheckCircle2, color: 'text-emerald-600 bg-emerald-50 dark:bg-emerald-900/20 dark:text-emerald-400' },
+          { label: 'Rejected', value: counts.rejected, icon: XCircle, color: 'text-rose-600 bg-rose-50 dark:bg-rose-900/20 dark:text-rose-400' },
         ].map(s => (
-          <div key={s.label} className="bg-white dark:bg-gray-800 rounded-2xl p-4 border border-gray-150 dark:border-gray-700 shadow-sm flex items-center gap-3.5 transition-all hover:shadow-md">
-            <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 border ${s.color}`}>
+          <div key={s.label} className="bg-white dark:bg-gray-800 rounded-2xl p-5 border border-gray-100 dark:border-gray-700 shadow-sm transition-all hover:shadow-md">
+            <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 mb-4 ${s.color}`}>
               <s.icon className="w-5 h-5 stroke-[2.25]" />
             </div>
-            <div>
-              <p className="text-2xl font-extrabold text-gray-900 dark:text-white leading-none">{s.value}</p>
-              <p className="text-xs text-gray-500 dark:text-gray-400 font-medium mt-1.5">{s.label}</p>
-            </div>
+            <p className="text-2xl font-extrabold text-gray-900 dark:text-white leading-none">{s.value}</p>
+            <p className="text-xs text-gray-500 dark:text-gray-400 font-medium mt-1.5">{s.label}</p>
           </div>
         ))}
       </div>
 
       {/* A note about the review flow */}
-      <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-100 dark:border-blue-800 rounded-xl p-3.5 text-xs text-blue-700 dark:text-blue-300">
+      <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-100 dark:border-blue-800 rounded-2xl p-3.5 text-xs text-blue-700 dark:text-blue-300">
         New products are reviewed by our team before they go live. Once approved, they'll appear in the store and buyers can purchase them right away.
       </div>
 
@@ -498,39 +496,39 @@ const SellerDashboard = () => {
             <>
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
                 {[
-                  { label: 'Total Revenue', value: `₹${analytics.summary.total_revenue.toLocaleString('en-IN')}`, icon: IndianRupee, color: 'text-emerald-600 bg-emerald-50 dark:bg-emerald-900/20 dark:text-emerald-400 border-emerald-100 dark:border-emerald-800' },
-                  { label: 'Units Sold', value: analytics.summary.total_units_sold, icon: ShoppingCart, color: 'text-blue-600 bg-blue-50 dark:bg-blue-900/20 dark:text-blue-400 border-blue-100 dark:border-blue-800' },
-                  { label: 'Orders', value: analytics.summary.total_orders, icon: Package, color: 'text-purple-600 bg-purple-50 dark:bg-purple-900/20 dark:text-purple-400 border-purple-100 dark:border-purple-800' },
-                  { label: 'Total Stock', value: analytics.summary.total_stock, icon: Boxes, color: 'text-amber-600 bg-amber-50 dark:bg-amber-900/20 dark:text-amber-400 border-amber-100 dark:border-amber-800' },
+                  { label: 'Total Revenue', value: `₹${analytics.summary.total_revenue.toLocaleString('en-IN')}`, icon: IndianRupee, color: 'text-emerald-600 bg-emerald-50 dark:bg-emerald-900/20 dark:text-emerald-400' },
+                  { label: 'Units Sold', value: analytics.summary.total_units_sold, icon: ShoppingCart, color: 'text-blue-600 bg-blue-50 dark:bg-blue-900/20 dark:text-blue-400' },
+                  { label: 'Orders', value: analytics.summary.total_orders, icon: Package, color: 'text-purple-600 bg-purple-50 dark:bg-purple-900/20 dark:text-purple-400' },
+                  { label: 'Total Stock', value: analytics.summary.total_stock, icon: Boxes, color: 'text-amber-600 bg-amber-50 dark:bg-amber-900/20 dark:text-amber-400' },
                 ].map(s => (
-                  <div key={s.label} className="bg-white dark:bg-gray-800 rounded-2xl p-4 border border-gray-150 dark:border-gray-700 shadow-sm flex items-center gap-3.5">
-                    <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 border ${s.color}`}>
+                  <div key={s.label} className="bg-white dark:bg-gray-800 rounded-2xl p-5 border border-gray-100 dark:border-gray-700 shadow-sm transition-all hover:shadow-md">
+                    <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 mb-4 ${s.color}`}>
                       <s.icon className="w-5 h-5 stroke-[2.25]" />
                     </div>
-                    <div>
-                      <p className="text-xl font-extrabold text-gray-900 dark:text-white leading-none">{s.value}</p>
-                      <p className="text-xs text-gray-500 dark:text-gray-400 font-medium mt-1.5">{s.label}</p>
-                    </div>
+                    <p className="text-2xl font-extrabold text-gray-900 dark:text-white leading-none">{s.value}</p>
+                    <p className="text-xs text-gray-500 dark:text-gray-400 font-medium mt-1.5">{s.label}</p>
                   </div>
                 ))}
               </div>
 
-              <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-4">
-                <h3 className="text-xs font-semibold text-gray-900 dark:text-white mb-3">Revenue — last 6 months</h3>
-                <ResponsiveContainer width="100%" height={220}>
-                  <BarChart data={analytics.monthly}>
-                    <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
-                    <XAxis dataKey="month" tick={{ fontSize: 11 }} stroke="#9ca3af" />
-                    <YAxis tick={{ fontSize: 11 }} stroke="#9ca3af" />
-                    <Tooltip formatter={(v) => `₹${Number(v).toLocaleString('en-IN')}`} />
-                    <Bar dataKey="revenue" fill="#ea580c" radius={[4, 4, 0, 0]} />
-                  </BarChart>
-                </ResponsiveContainer>
+              <div className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 shadow-sm p-5">
+                <h3 className="text-sm font-bold text-gray-900 dark:text-white mb-4">Revenue — last 6 months</h3>
+                <div className="bg-[#FAFAFA] dark:bg-gray-900/40 rounded-xl p-3">
+                  <ResponsiveContainer width="100%" height={220}>
+                    <BarChart data={analytics.monthly}>
+                      <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
+                      <XAxis dataKey="month" tick={{ fontSize: 11 }} stroke="#9ca3af" />
+                      <YAxis tick={{ fontSize: 11 }} stroke="#9ca3af" />
+                      <Tooltip formatter={(v) => `₹${Number(v).toLocaleString('en-IN')}`} />
+                      <Bar dataKey="revenue" fill="#ea580c" radius={[4, 4, 0, 0]} />
+                    </BarChart>
+                  </ResponsiveContainer>
+                </div>
               </div>
 
-              <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 overflow-hidden">
-                <div className="px-4 py-3 border-b border-gray-100 dark:border-gray-700">
-                  <h3 className="text-xs font-semibold text-gray-900 dark:text-white">Sales by Product</h3>
+              <div className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 shadow-sm overflow-hidden">
+                <div className="px-5 py-4 border-b border-gray-100 dark:border-gray-700">
+                  <h3 className="text-sm font-bold text-gray-900 dark:text-white">Sales by Product</h3>
                 </div>
                 {analytics.products.length === 0 ? (
                   <p className="text-sm text-gray-500 dark:text-gray-400 text-center py-10">No sales yet</p>
@@ -561,16 +559,25 @@ const SellerDashboard = () => {
                     {filteredSalesProducts.length === 0 ? (
                       <p className="text-sm text-gray-500 dark:text-gray-400 text-center py-10">No products match your search</p>
                     ) : (
-                      <div className="divide-y divide-gray-100 dark:divide-gray-700">
-                        {filteredSalesProducts.map(p => (
-                          <div key={p.id} className="flex items-center gap-3 px-4 py-3">
-                            <img src={p.image} alt={p.name} className="w-10 h-10 rounded-lg object-cover bg-gray-100 dark:bg-gray-700 shrink-0" />
-                            <p className="text-sm font-medium text-gray-900 dark:text-white truncate flex-1 min-w-0">{p.name}</p>
-                            <p className="text-xs text-gray-500 dark:text-gray-400 shrink-0">{p.units_sold} sold</p>
-                            <p className="text-xs text-gray-500 dark:text-gray-400 shrink-0">Stock: {p.stock}</p>
-                            <p className="text-sm font-semibold text-gray-900 dark:text-white shrink-0 w-24 text-right">₹{p.revenue.toLocaleString('en-IN')}</p>
-                          </div>
-                        ))}
+                      <div>
+                        <div className="hidden sm:flex items-center gap-3 px-5 py-2 text-[10px] font-bold text-gray-400 dark:text-gray-500 uppercase tracking-wider bg-gray-50/60 dark:bg-gray-900/30">
+                          <span className="w-10 shrink-0" />
+                          <span className="flex-1 min-w-0">Product</span>
+                          <span className="shrink-0 w-20 text-right">Units Sold</span>
+                          <span className="shrink-0 w-20 text-right">Stock</span>
+                          <span className="shrink-0 w-24 text-right">Revenue</span>
+                        </div>
+                        <div className="divide-y divide-gray-100 dark:divide-gray-700">
+                          {filteredSalesProducts.map(p => (
+                            <div key={p.id} className="flex items-center gap-3 px-5 py-3 hover:bg-gray-50/60 dark:hover:bg-gray-900/30 transition-colors">
+                              <img src={p.image} alt={p.name} className="w-10 h-10 rounded-lg object-cover bg-gray-100 dark:bg-gray-700 shrink-0" />
+                              <p className="text-sm font-medium text-gray-900 dark:text-white truncate flex-1 min-w-0">{p.name}</p>
+                              <p className="text-xs text-gray-500 dark:text-gray-400 shrink-0 w-20 text-right">{p.units_sold} sold</p>
+                              <p className="text-xs text-gray-500 dark:text-gray-400 shrink-0 w-20 text-right">{p.stock}</p>
+                              <p className="text-sm font-semibold text-gray-900 dark:text-white shrink-0 w-24 text-right">₹{p.revenue.toLocaleString('en-IN')}</p>
+                            </div>
+                          ))}
+                        </div>
                       </div>
                     )}
                   </>
@@ -583,13 +590,13 @@ const SellerDashboard = () => {
 
       {/* Products list */}
       {activeTab === 'products' && (
-      <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 overflow-hidden">
-        <div className="px-4 py-3 border-b border-gray-100 dark:border-gray-700">
-          <h3 className="text-xs font-semibold text-gray-900 dark:text-white">My Products</h3>
+      <div className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 shadow-sm overflow-hidden">
+        <div className="px-5 py-4 border-b border-gray-100 dark:border-gray-700">
+          <h3 className="text-sm font-bold text-gray-900 dark:text-white">My Products</h3>
         </div>
 
         {!loading && products.length > 0 && (
-          <div className="flex flex-col sm:flex-row gap-2 px-4 py-3 border-b border-gray-100 dark:border-gray-700">
+          <div className="flex flex-col sm:flex-row gap-2 px-5 py-3 border-b border-gray-100 dark:border-gray-700">
             <div className="relative flex-1 min-w-[160px]">
               <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-400" />
               <input
@@ -640,12 +647,20 @@ const SellerDashboard = () => {
             <p className="text-sm text-gray-500 dark:text-gray-400">No products match your filters</p>
           </div>
         ) : (
-          <div className="divide-y divide-gray-100 dark:divide-gray-700">
+          <div>
+            <div className="hidden sm:flex items-center gap-3 px-5 py-2 text-[10px] font-bold text-gray-400 dark:text-gray-500 uppercase tracking-wider bg-gray-50/60 dark:bg-gray-900/30">
+              <span className="w-12 shrink-0" />
+              <span className="flex-1 min-w-0">Product</span>
+              <span className="shrink-0">Price</span>
+              <span className="shrink-0 w-24 text-center">Status</span>
+              <span className="shrink-0 w-[92px] text-right">Actions</span>
+            </div>
+            <div className="divide-y divide-gray-100 dark:divide-gray-700">
             {filteredProducts.map(p => {
               const outOfStock = p.status === 'approved' && Number(p.stock) <= 0;
               const meta = outOfStock ? OUT_OF_STOCK_META : (STATUS_META[p.status] || STATUS_META.pending);
               return (
-                <div key={p.id} className="flex items-center gap-3 px-4 py-3">
+                <div key={p.id} className="flex items-center gap-3 px-5 py-3 hover:bg-gray-50/60 dark:hover:bg-gray-900/30 transition-colors">
                   <img src={p.image} alt={p.name} className="w-12 h-12 rounded-lg object-cover bg-gray-100 dark:bg-gray-700 shrink-0" />
                   <div className="min-w-0 flex-1">
                     <p className="text-sm font-medium text-gray-900 dark:text-white truncate">{p.name}</p>
@@ -685,6 +700,7 @@ const SellerDashboard = () => {
                 </div>
               );
             })}
+            </div>
           </div>
         )}
       </div>
