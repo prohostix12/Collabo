@@ -1323,6 +1323,13 @@ class WalletView(views.APIView):
 
         balance, pending = get_wallet_balance(user)
 
+        wallet_lifetime = WalletTransaction.objects.filter(user=user, status='completed').aggregate(total=Sum('amount'))['total'] or Decimal('0')
+        comm_lifetime = AffiliateCommission.objects.filter(influencer=user, status='completed').aggregate(total=Sum('amount'))['total'] or Decimal('0')
+        total_earnings = wallet_lifetime + comm_lifetime
+
+        from django.contrib.auth import get_user_model
+        referred_users_count = get_user_model().objects.filter(referred_by=user).count()
+
         wallet_txs = WalletTransaction.objects.filter(user=user).select_related('product', 'order').order_by('-created_at')[:50]
         commissions = AffiliateCommission.objects.filter(influencer=user).select_related('product', 'order').order_by('-created_at')[:50]
 
@@ -1365,6 +1372,8 @@ class WalletView(views.APIView):
         return Response({
             'balance': float(balance),
             'pending': float(pending),
+            'total_earnings': float(total_earnings),
+            'referred_users_count': referred_users_count,
             'transactions': combined[:50],
             'bank_details': saved_bank_details,
         })
