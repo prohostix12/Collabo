@@ -10371,6 +10371,18 @@ export default function EcommerceMarketplace({ inlineMode = false, onBackToSelec
               </div>
             </div>
             <div className="p-7 space-y-5">
+              {/* Total earnings & referral count */}
+              <div className="grid grid-cols-2 gap-3">
+                <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-4 shadow-sm">
+                  <p className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-wider mb-1">Total Earnings</p>
+                  <p className="text-xl font-black text-slate-800 dark:text-white">₹{walletData.total_earnings ?? 0}</p>
+                </div>
+                <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-4 shadow-sm">
+                  <p className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-wider mb-1">Referred Users</p>
+                  <p className="text-xl font-black text-slate-800 dark:text-white">{walletData.referred_users_count ?? 0}</p>
+                </div>
+              </div>
+
               {/* How it works — numbered steps */}
               <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-4 shadow-sm">
                 <p className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-wider mb-3">How it works</p>
