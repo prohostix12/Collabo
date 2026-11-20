@@ -280,7 +280,7 @@ const SellerDashboard = () => {
   }, [analytics, chartMonthly]);
 
   useEffect(() => {
-    if (activeTab !== 'analytics') return;
+    if (activeTab !== 'analytics' && activeTab !== 'overview') return;
     if (chartRange === '6m') {
       if (analytics) setChartMonthly(analytics.monthly);
     } else {
@@ -288,6 +288,92 @@ const SellerDashboard = () => {
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [chartRange, chartCustomStart, chartCustomEnd, activeTab]);
+
+  const renderRevenueChart = (gradientId) => (
+    <div className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 shadow-sm p-5">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4">
+        <h3 className="text-sm font-bold text-gray-900 dark:text-white">Revenue</h3>
+        <div className="flex items-center gap-4 text-[11px] font-medium text-gray-500 dark:text-gray-400">
+          <span className="flex items-center gap-1.5"><span className="w-2 h-2 rounded-full bg-orange-500" /> Fulfilled</span>
+          <span className="flex items-center gap-1.5"><span className="w-2 h-2 rounded-full bg-gray-400" /> Cancelled</span>
+        </div>
+      </div>
+
+      <div className="flex flex-wrap items-center gap-2 mb-4">
+        {[
+          { id: '1d', label: '1D' },
+          { id: '7d', label: '7D' },
+          { id: '30d', label: '30D' },
+          { id: '6m', label: '6M' },
+          { id: '12m', label: '12M' },
+          { id: 'custom', label: 'Custom' },
+        ].map(r => (
+          <button
+            key={r.id}
+            onClick={() => setChartRange(r.id)}
+            className={`px-3 py-1.5 rounded-lg text-[11px] font-bold transition-colors ${
+              chartRange === r.id
+                ? 'bg-orange-500 text-white'
+                : 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600'
+            }`}
+          >
+            {r.label}
+          </button>
+        ))}
+        {chartRange === 'custom' && (
+          <div className="flex items-center gap-2 ml-1">
+            <div className="relative">
+              <Calendar className="absolute left-2 top-1/2 -translate-y-1/2 w-3 h-3 text-gray-400 pointer-events-none" />
+              <input
+                type="date"
+                value={chartCustomStart}
+                max={chartCustomEnd || undefined}
+                onChange={(e) => setChartCustomStart(e.target.value)}
+                className="pl-6 pr-2 py-1.5 rounded-lg text-[11px] font-semibold bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-200 border border-gray-200 dark:border-gray-600 focus:outline-none focus:ring-1 focus:ring-orange-500"
+              />
+            </div>
+            <span className="text-[11px] text-gray-400">to</span>
+            <div className="relative">
+              <Calendar className="absolute left-2 top-1/2 -translate-y-1/2 w-3 h-3 text-gray-400 pointer-events-none" />
+              <input
+                type="date"
+                value={chartCustomEnd}
+                min={chartCustomStart || undefined}
+                max={new Date().toISOString().slice(0, 10)}
+                onChange={(e) => setChartCustomEnd(e.target.value)}
+                className="pl-6 pr-2 py-1.5 rounded-lg text-[11px] font-semibold bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-200 border border-gray-200 dark:border-gray-600 focus:outline-none focus:ring-1 focus:ring-orange-500"
+              />
+            </div>
+          </div>
+        )}
+      </div>
+
+      <div className="bg-[#FFFDF9] dark:bg-gray-900/40 rounded-xl p-3 relative">
+        {chartLoading && (
+          <div className="absolute inset-0 bg-white/60 dark:bg-gray-900/60 flex items-center justify-center rounded-xl z-10">
+            <div className="w-5 h-5 border-2 border-gray-300 border-t-orange-500 rounded-full animate-spin" />
+          </div>
+        )}
+        <ResponsiveContainer width="100%" height={240}>
+          <ComposedChart data={chartMonthly || analytics.monthly}>
+            <defs>
+              <linearGradient id={gradientId} x1="0" y1="0" x2="0" y2="1">
+                <stop offset="5%" stopColor="#ea580c" stopOpacity={0.25} />
+                <stop offset="95%" stopColor="#ea580c" stopOpacity={0} />
+              </linearGradient>
+            </defs>
+            <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false} />
+            <XAxis dataKey="month" tick={{ fontSize: 11 }} stroke="#9ca3af" axisLine={false} tickLine={false} />
+            <YAxis tick={{ fontSize: 11 }} stroke="#9ca3af" axisLine={false} tickLine={false} />
+            <Tooltip content={<RevenueChartTooltip />} cursor={{ stroke: '#ea580c', strokeWidth: 1, strokeDasharray: '4 4' }} />
+            <Bar dataKey="units" barSize={10} fill="#e5e7eb" radius={[2, 2, 0, 0]} />
+            <Area type="monotone" dataKey="revenue" stroke="#ea580c" strokeWidth={2} fill={`url(#${gradientId})`} dot={false} activeDot={{ r: 4, fill: '#ea580c', strokeWidth: 2, stroke: '#fff' }} />
+            <Line type="monotone" dataKey="cancelled_revenue" stroke="#9ca3af" strokeWidth={2} dot={false} activeDot={{ r: 4, fill: '#9ca3af', strokeWidth: 2, stroke: '#fff' }} />
+          </ComposedChart>
+        </ResponsiveContainer>
+      </div>
+    </div>
+  );
 
   const fetchEarnings = useCallback(() => {
     setEarningsLoading(true);
@@ -663,36 +749,7 @@ const SellerDashboard = () => {
             </div>
           )}
 
-          {analytics?.monthly && (
-            <div className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 shadow-sm p-5">
-              <div className="flex items-center justify-between mb-4">
-                <h3 className="text-sm font-bold text-gray-900 dark:text-white">Revenue — last 6 months</h3>
-                <div className="flex items-center gap-4 text-[11px] font-medium text-gray-500 dark:text-gray-400">
-                  <span className="flex items-center gap-1.5"><span className="w-2 h-2 rounded-full bg-orange-500" /> Fulfilled</span>
-                  <span className="flex items-center gap-1.5"><span className="w-2 h-2 rounded-full bg-gray-400" /> Cancelled</span>
-                </div>
-              </div>
-              <div className="bg-[#FFFDF9] dark:bg-gray-900/40 rounded-xl p-3">
-                <ResponsiveContainer width="100%" height={240}>
-                  <ComposedChart data={analytics.monthly}>
-                    <defs>
-                      <linearGradient id="sellerRevenueFill" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="5%" stopColor="#ea580c" stopOpacity={0.25} />
-                        <stop offset="95%" stopColor="#ea580c" stopOpacity={0} />
-                      </linearGradient>
-                    </defs>
-                    <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false} />
-                    <XAxis dataKey="month" tick={{ fontSize: 11 }} stroke="#9ca3af" axisLine={false} tickLine={false} />
-                    <YAxis tick={{ fontSize: 11 }} stroke="#9ca3af" axisLine={false} tickLine={false} />
-                    <Tooltip content={<RevenueChartTooltip />} cursor={{ stroke: '#ea580c', strokeWidth: 1, strokeDasharray: '4 4' }} />
-                    <Bar dataKey="units" barSize={10} fill="#e5e7eb" radius={[2, 2, 0, 0]} />
-                    <Area type="monotone" dataKey="revenue" stroke="#ea580c" strokeWidth={2} fill="url(#sellerRevenueFill)" dot={false} activeDot={{ r: 4, fill: '#ea580c', strokeWidth: 2, stroke: '#fff' }} />
-                    <Line type="monotone" dataKey="cancelled_revenue" stroke="#9ca3af" strokeWidth={2} dot={false} activeDot={{ r: 4, fill: '#9ca3af', strokeWidth: 2, stroke: '#fff' }} />
-                  </ComposedChart>
-                </ResponsiveContainer>
-              </div>
-            </div>
-          )}
+          {analytics?.monthly && renderRevenueChart('sellerRevenueFill')}
         </div>
       )}
 
@@ -1006,90 +1063,7 @@ const SellerDashboard = () => {
                 ))}
               </div>
 
-              <div className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 shadow-sm p-5">
-                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4">
-                  <h3 className="text-sm font-bold text-gray-900 dark:text-white">Revenue</h3>
-                  <div className="flex items-center gap-4 text-[11px] font-medium text-gray-500 dark:text-gray-400">
-                    <span className="flex items-center gap-1.5"><span className="w-2 h-2 rounded-full bg-orange-500" /> Fulfilled</span>
-                    <span className="flex items-center gap-1.5"><span className="w-2 h-2 rounded-full bg-gray-400" /> Cancelled</span>
-                  </div>
-                </div>
-
-                <div className="flex flex-wrap items-center gap-2 mb-4">
-                  {[
-                    { id: '1d', label: '1D' },
-                    { id: '7d', label: '7D' },
-                    { id: '30d', label: '30D' },
-                    { id: '90d', label: '90D' },
-                    { id: '6m', label: '6M' },
-                    { id: '12m', label: '12M' },
-                    { id: 'custom', label: 'Custom' },
-                  ].map(r => (
-                    <button
-                      key={r.id}
-                      onClick={() => setChartRange(r.id)}
-                      className={`px-3 py-1.5 rounded-lg text-[11px] font-bold transition-colors ${
-                        chartRange === r.id
-                          ? 'bg-orange-500 text-white'
-                          : 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600'
-                      }`}
-                    >
-                      {r.label}
-                    </button>
-                  ))}
-                  {chartRange === 'custom' && (
-                    <div className="flex items-center gap-2 ml-1">
-                      <div className="relative">
-                        <Calendar className="absolute left-2 top-1/2 -translate-y-1/2 w-3 h-3 text-gray-400 pointer-events-none" />
-                        <input
-                          type="date"
-                          value={chartCustomStart}
-                          max={chartCustomEnd || undefined}
-                          onChange={(e) => setChartCustomStart(e.target.value)}
-                          className="pl-6 pr-2 py-1.5 rounded-lg text-[11px] font-semibold bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-200 border border-gray-200 dark:border-gray-600 focus:outline-none focus:ring-1 focus:ring-orange-500"
-                        />
-                      </div>
-                      <span className="text-[11px] text-gray-400">to</span>
-                      <div className="relative">
-                        <Calendar className="absolute left-2 top-1/2 -translate-y-1/2 w-3 h-3 text-gray-400 pointer-events-none" />
-                        <input
-                          type="date"
-                          value={chartCustomEnd}
-                          min={chartCustomStart || undefined}
-                          max={new Date().toISOString().slice(0, 10)}
-                          onChange={(e) => setChartCustomEnd(e.target.value)}
-                          className="pl-6 pr-2 py-1.5 rounded-lg text-[11px] font-semibold bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-200 border border-gray-200 dark:border-gray-600 focus:outline-none focus:ring-1 focus:ring-orange-500"
-                        />
-                      </div>
-                    </div>
-                  )}
-                </div>
-
-                <div className="bg-[#FFFDF9] dark:bg-gray-900/40 rounded-xl p-3 relative">
-                  {chartLoading && (
-                    <div className="absolute inset-0 bg-white/60 dark:bg-gray-900/60 flex items-center justify-center rounded-xl z-10">
-                      <div className="w-5 h-5 border-2 border-gray-300 border-t-orange-500 rounded-full animate-spin" />
-                    </div>
-                  )}
-                  <ResponsiveContainer width="100%" height={240}>
-                    <ComposedChart data={chartMonthly || analytics.monthly}>
-                      <defs>
-                        <linearGradient id="sellerRevenueFillAnalytics" x1="0" y1="0" x2="0" y2="1">
-                          <stop offset="5%" stopColor="#ea580c" stopOpacity={0.25} />
-                          <stop offset="95%" stopColor="#ea580c" stopOpacity={0} />
-                        </linearGradient>
-                      </defs>
-                      <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false} />
-                      <XAxis dataKey="month" tick={{ fontSize: 11 }} stroke="#9ca3af" axisLine={false} tickLine={false} />
-                      <YAxis tick={{ fontSize: 11 }} stroke="#9ca3af" axisLine={false} tickLine={false} />
-                      <Tooltip content={<RevenueChartTooltip />} cursor={{ stroke: '#ea580c', strokeWidth: 1, strokeDasharray: '4 4' }} />
-                      <Bar dataKey="units" barSize={10} fill="#e5e7eb" radius={[2, 2, 0, 0]} />
-                      <Area type="monotone" dataKey="revenue" stroke="#ea580c" strokeWidth={2} fill="url(#sellerRevenueFillAnalytics)" dot={false} activeDot={{ r: 4, fill: '#ea580c', strokeWidth: 2, stroke: '#fff' }} />
-                      <Line type="monotone" dataKey="cancelled_revenue" stroke="#9ca3af" strokeWidth={2} dot={false} activeDot={{ r: 4, fill: '#9ca3af', strokeWidth: 2, stroke: '#fff' }} />
-                    </ComposedChart>
-                  </ResponsiveContainer>
-                </div>
-              </div>
+              {renderRevenueChart('sellerRevenueFillAnalytics')}
 
               <div className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 shadow-sm overflow-hidden">
                 <div className="px-5 py-4 border-b border-gray-100 dark:border-gray-700">
