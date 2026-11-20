@@ -1988,6 +1988,50 @@ class SellerProductAnalyticsView(views.APIView):
         })
 
 
+class SellerOrdersView(views.APIView):
+    """GET: Authenticated seller. Orders containing this seller's products, with status counts."""
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request):
+        user = request.user
+        all_items = OrderItem.objects.filter(product__seller=user).select_related('order')
+
+        counts_qs = all_items.values('order__status').annotate(n=Count('order', distinct=True))
+        counts = {row['order__status']: row['n'] for row in counts_qs}
+
+        status_filter = request.query_params.get('status')
+        items = all_items
+        if status_filter:
+            items = items.filter(order__status=status_filter)
+
+        items = items.select_related('order', 'order__user', 'product').order_by('-order__created_at')
+
+        try:
+            page_size = min(int(request.query_params.get('page_size', 50)), 200)
+        except (TypeError, ValueError):
+            page_size = 50
+        items = items[:page_size]
+
+        results = [
+            {
+                'order_item_id': it.id,
+                'order_id': it.order.order_id,
+                'order_status': it.order.status,
+                'payment_status': it.order.payment_status,
+                'created_at': it.order.created_at,
+                'buyer_username': it.order.user.username if it.order.user_id else None,
+                'product_id': it.product_id,
+                'product_name': it.product.name,
+                'product_image': it.product.image,
+                'price': str(it.price),
+                'quantity': it.quantity,
+            }
+            for it in items
+        ]
+
+        return Response({'counts': counts, 'results': results})
+
+
 # ── Razorpay Payment Views ──────────────────────────────────────────────────
 
 @api_view(['POST'])
