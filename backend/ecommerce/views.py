@@ -1932,6 +1932,7 @@ class SellerProductAnalyticsView(views.APIView):
         user = request.user
         products = Product.objects.filter(seller=user)
         completed_items = OrderItem.objects.filter(product__seller=user, order__payment_status='completed')
+        cancelled_items = OrderItem.objects.filter(product__seller=user, order__status__in=['cancelled', 'returned', 'refunded'])
 
         totals = completed_items.aggregate(
             revenue=Sum(F('price') * F('quantity')),
@@ -1946,10 +1947,13 @@ class SellerProductAnalyticsView(views.APIView):
             month_end = (month_start.replace(day=28) + timedelta(days=4)).replace(day=1)
             qs = completed_items.filter(order__created_at__gte=month_start, order__created_at__lt=month_end)
             row = qs.aggregate(revenue=Sum(F('price') * F('quantity')), units=Sum('quantity'))
+            cancelled_qs = cancelled_items.filter(order__created_at__gte=month_start, order__created_at__lt=month_end)
+            cancelled_row = cancelled_qs.aggregate(revenue=Sum(F('price') * F('quantity')))
             monthly_data.append({
                 'month': month_start.strftime('%b %Y'),
                 'revenue': float(row['revenue'] or 0),
                 'units': row['units'] or 0,
+                'cancelled_revenue': float(cancelled_row['revenue'] or 0),
             })
 
         per_product_qs = (

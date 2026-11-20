@@ -6,7 +6,7 @@ import {
   LayoutDashboard, ClipboardList, Tag, Wallet, Star, RotateCcw, Ban,
 } from 'lucide-react';
 import {
-  ResponsiveContainer, AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip,
+  ResponsiveContainer, ComposedChart, Area, Line, Bar, XAxis, YAxis, CartesianGrid, Tooltip,
 } from 'recharts';
 import api from '../../services/api';
 import toast from 'react-hot-toast';
@@ -66,14 +66,25 @@ const OUT_OF_STOCK_META = { label: 'Out of Stock', dot: 'bg-red-400', text: 'tex
 
 const RevenueChartTooltip = ({ active, payload, label }) => {
   if (!active || !payload?.length) return null;
+  const fulfilled = payload.find(p => p.dataKey === 'revenue');
+  const cancelled = payload.find(p => p.dataKey === 'cancelled_revenue');
   return (
-    <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg border border-gray-100 dark:border-gray-700 px-4 py-3">
-      <p className="text-sm font-bold text-gray-900 dark:text-white mb-1.5">{label}</p>
-      <div className="flex items-center gap-2 text-xs">
-        <span className="w-2 h-2 rounded-full bg-orange-500 shrink-0" />
-        <span className="text-gray-500 dark:text-gray-400">Revenue</span>
-        <span className="font-semibold text-gray-900 dark:text-white">₹{Number(payload[0].value).toLocaleString('en-IN')}</span>
-      </div>
+    <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg border border-gray-100 dark:border-gray-700 px-4 py-3 space-y-1.5">
+      <p className="text-sm font-bold text-gray-900 dark:text-white mb-0.5">{label}</p>
+      {fulfilled && (
+        <div className="flex items-center gap-2 text-xs">
+          <span className="w-2 h-2 rounded-full bg-orange-500 shrink-0" />
+          <span className="text-gray-500 dark:text-gray-400">Fulfilled</span>
+          <span className="font-semibold text-gray-900 dark:text-white ml-auto">₹{Number(fulfilled.value).toLocaleString('en-IN')}</span>
+        </div>
+      )}
+      {cancelled && (
+        <div className="flex items-center gap-2 text-xs">
+          <span className="w-2 h-2 rounded-full bg-gray-400 shrink-0" />
+          <span className="text-gray-500 dark:text-gray-400">Cancelled</span>
+          <span className="font-semibold text-gray-900 dark:text-white ml-auto">₹{Number(cancelled.value).toLocaleString('en-IN')}</span>
+        </div>
+      )}
     </div>
   );
 };
@@ -609,10 +620,16 @@ const SellerDashboard = () => {
 
           {analytics?.monthly && (
             <div className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 shadow-sm p-5">
-              <h3 className="text-sm font-bold text-gray-900 dark:text-white mb-4">Revenue — last 6 months</h3>
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-sm font-bold text-gray-900 dark:text-white">Revenue — last 6 months</h3>
+                <div className="flex items-center gap-4 text-[11px] font-medium text-gray-500 dark:text-gray-400">
+                  <span className="flex items-center gap-1.5"><span className="w-2 h-2 rounded-full bg-orange-500" /> Fulfilled</span>
+                  <span className="flex items-center gap-1.5"><span className="w-2 h-2 rounded-full bg-gray-400" /> Cancelled</span>
+                </div>
+              </div>
               <div className="bg-[#FFFDF9] dark:bg-gray-900/40 rounded-xl p-3">
-                <ResponsiveContainer width="100%" height={220}>
-                  <AreaChart data={analytics.monthly}>
+                <ResponsiveContainer width="100%" height={240}>
+                  <ComposedChart data={analytics.monthly}>
                     <defs>
                       <linearGradient id="sellerRevenueFill" x1="0" y1="0" x2="0" y2="1">
                         <stop offset="5%" stopColor="#ea580c" stopOpacity={0.25} />
@@ -623,8 +640,10 @@ const SellerDashboard = () => {
                     <XAxis dataKey="month" tick={{ fontSize: 11 }} stroke="#9ca3af" axisLine={false} tickLine={false} />
                     <YAxis tick={{ fontSize: 11 }} stroke="#9ca3af" axisLine={false} tickLine={false} />
                     <Tooltip content={<RevenueChartTooltip />} cursor={{ stroke: '#ea580c', strokeWidth: 1, strokeDasharray: '4 4' }} />
+                    <Bar dataKey="units" barSize={10} fill="#e5e7eb" radius={[2, 2, 0, 0]} />
                     <Area type="monotone" dataKey="revenue" stroke="#ea580c" strokeWidth={2} fill="url(#sellerRevenueFill)" dot={false} activeDot={{ r: 4, fill: '#ea580c', strokeWidth: 2, stroke: '#fff' }} />
-                  </AreaChart>
+                    <Line type="monotone" dataKey="cancelled_revenue" stroke="#9ca3af" strokeWidth={2} dot={false} activeDot={{ r: 4, fill: '#9ca3af', strokeWidth: 2, stroke: '#fff' }} />
+                  </ComposedChart>
                 </ResponsiveContainer>
               </div>
             </div>
@@ -943,10 +962,16 @@ const SellerDashboard = () => {
               </div>
 
               <div className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 shadow-sm p-5">
-                <h3 className="text-sm font-bold text-gray-900 dark:text-white mb-4">Revenue — last 6 months</h3>
+                <div className="flex items-center justify-between mb-4">
+                  <h3 className="text-sm font-bold text-gray-900 dark:text-white">Revenue — last 6 months</h3>
+                  <div className="flex items-center gap-4 text-[11px] font-medium text-gray-500 dark:text-gray-400">
+                    <span className="flex items-center gap-1.5"><span className="w-2 h-2 rounded-full bg-orange-500" /> Fulfilled</span>
+                    <span className="flex items-center gap-1.5"><span className="w-2 h-2 rounded-full bg-gray-400" /> Cancelled</span>
+                  </div>
+                </div>
                 <div className="bg-[#FFFDF9] dark:bg-gray-900/40 rounded-xl p-3">
-                  <ResponsiveContainer width="100%" height={220}>
-                    <AreaChart data={analytics.monthly}>
+                  <ResponsiveContainer width="100%" height={240}>
+                    <ComposedChart data={analytics.monthly}>
                       <defs>
                         <linearGradient id="sellerRevenueFillAnalytics" x1="0" y1="0" x2="0" y2="1">
                           <stop offset="5%" stopColor="#ea580c" stopOpacity={0.25} />
@@ -957,8 +982,10 @@ const SellerDashboard = () => {
                       <XAxis dataKey="month" tick={{ fontSize: 11 }} stroke="#9ca3af" axisLine={false} tickLine={false} />
                       <YAxis tick={{ fontSize: 11 }} stroke="#9ca3af" axisLine={false} tickLine={false} />
                       <Tooltip content={<RevenueChartTooltip />} cursor={{ stroke: '#ea580c', strokeWidth: 1, strokeDasharray: '4 4' }} />
+                      <Bar dataKey="units" barSize={10} fill="#e5e7eb" radius={[2, 2, 0, 0]} />
                       <Area type="monotone" dataKey="revenue" stroke="#ea580c" strokeWidth={2} fill="url(#sellerRevenueFillAnalytics)" dot={false} activeDot={{ r: 4, fill: '#ea580c', strokeWidth: 2, stroke: '#fff' }} />
-                    </AreaChart>
+                      <Line type="monotone" dataKey="cancelled_revenue" stroke="#9ca3af" strokeWidth={2} dot={false} activeDot={{ r: 4, fill: '#9ca3af', strokeWidth: 2, stroke: '#fff' }} />
+                    </ComposedChart>
                   </ResponsiveContainer>
                 </div>
               </div>
