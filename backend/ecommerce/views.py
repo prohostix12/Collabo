@@ -1970,7 +1970,10 @@ class SellerProductAnalyticsView(views.APIView):
         monthly_data = []
         if range_start and range_end and range_end > range_start:
             span_days = (range_end - range_start).days
-            if span_days <= 31:
+            if span_days <= 1:
+                bucket_step = timedelta(hours=2)
+                label_fmt = '%I %p'
+            elif span_days <= 31:
                 bucket_step = timedelta(days=1)
                 label_fmt = '%d %b'
             elif span_days <= 120:

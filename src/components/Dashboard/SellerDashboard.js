@@ -262,7 +262,7 @@ const SellerDashboard = () => {
       start_date = customStart;
       end_date = customEnd;
     } else {
-      const days = { '7d': 7, '30d': 30, '90d': 90, '6m': 183, '12m': 365 }[range] || 183;
+      const days = { '1d': 1, '7d': 7, '30d': 30, '90d': 90, '6m': 183, '12m': 365 }[range] || 183;
       const startD = new Date(now);
       startD.setDate(startD.getDate() - days);
       start_date = toISO(startD);
@@ -1017,6 +1017,7 @@ const SellerDashboard = () => {
 
                 <div className="flex flex-wrap items-center gap-2 mb-4">
                   {[
+                    { id: '1d', label: '1D' },
                     { id: '7d', label: '7D' },
                     { id: '30d', label: '30D' },
                     { id: '90d', label: '90D' },
