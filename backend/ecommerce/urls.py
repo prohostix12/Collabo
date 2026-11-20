@@ -1,5 +1,6 @@
 from django.urls import path, include
 from rest_framework.routers import DefaultRouter
+from .thumbs import product_thumb
 from .views import (
     ProductViewSet, CartViewSet, AddressViewSet, OrderViewSet, WishlistViewSet,
     CategoryViewSet, BrandViewSet, ProductReviewViewSet, CustomerReviewViewSet, VendorViewSet,
@@ -10,7 +11,7 @@ from .views import (
     upload_influencer_media, list_influencer_media, delete_influencer_media,
     import_shopify_csv, import_template,
     SellerStorefrontView, seller_reviews,
-    SellerEarningsView, seller_withdraw, SellerPayoutHistoryView, SellerProductAnalyticsView,
+    SellerEarningsView, seller_withdraw, SellerPayoutHistoryView, SellerProductAnalyticsView, SellerOrdersView,
     AdminPayoutListView, admin_process_payout,
     NewsletterSubscribeView,
     NewsletterBroadcastView,
@@ -55,6 +56,7 @@ urlpatterns = [
     path('products/<int:product_id>/influencer-media/', list_influencer_media, name='list-influencer-media'),
     path('products/<int:product_id>/influencer-media/upload/', upload_influencer_media, name='upload-influencer-media'),
     path('influencer-media/<int:media_id>/delete/', delete_influencer_media, name='delete-influencer-media'),
+    path('product-thumb/<int:product_id>/', product_thumb, name='product-thumb'),
     path('products/import-csv/', import_shopify_csv, name='import-shopify-csv'),
     path('products/import-template/', import_template, name='import-product-template'),
     # Seller storefront & reviews
@@ -65,6 +67,7 @@ urlpatterns = [
     path('seller/withdraw/', seller_withdraw, name='seller-withdraw'),
     path('seller/payouts/', SellerPayoutHistoryView.as_view(), name='seller-payouts'),
     path('seller/analytics/', SellerProductAnalyticsView.as_view(), name='seller-product-analytics'),
+    path('seller/orders/', SellerOrdersView.as_view(), name='seller-orders'),
     # Admin payout management
     path('admin/seller-payouts/', AdminPayoutListView.as_view(), name='admin-seller-payouts'),
     path('admin/seller-payouts/<int:payout_id>/process/', admin_process_payout, name='admin-process-payout'),

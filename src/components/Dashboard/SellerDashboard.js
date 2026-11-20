@@ -3,6 +3,7 @@ import {
   Store, Package, Plus, X, Clock, CheckCircle2, XCircle,
   IndianRupee, Boxes, ImagePlus, Upload, ShoppingBag, Pencil, Trash2, Truck,
   TrendingUp, ArrowUpCircle, ArrowDownCircle, ShoppingCart, LayoutGrid, Download, FileSpreadsheet, Search,
+  LayoutDashboard, ClipboardList, Tag, Wallet, Star, RotateCcw, Ban,
 } from 'lucide-react';
 import {
   ResponsiveContainer, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip,
@@ -98,11 +99,28 @@ const SellerDashboard = () => {
   const [submitting, setSubmitting] = useState(false);
   const [formError, setFormError] = useState('');
   const [deletingId, setDeletingId] = useState(null);
-  const [activeTab, setActiveTab] = useState('products');
+  const [activeTab, setActiveTab] = useState('overview');
   const [analytics, setAnalytics] = useState(null);
   const [analyticsLoading, setAnalyticsLoading] = useState(false);
   const [salesSearch, setSalesSearch] = useState('');
   const [salesSortBy, setSalesSortBy] = useState('revenue');
+
+  // Earnings & payouts
+  const [earnings, setEarnings] = useState(null);
+  const [earningsLoading, setEarningsLoading] = useState(false);
+  const [payouts, setPayouts] = useState(null);
+  const [payoutsLoading, setPayoutsLoading] = useState(false);
+  const [withdrawAmount, setWithdrawAmount] = useState('');
+  const [withdrawing, setWithdrawing] = useState(false);
+
+  // Reviews
+  const [reviews, setReviews] = useState(null);
+  const [reviewsLoading, setReviewsLoading] = useState(false);
+
+  // Orders
+  const [orders, setOrders] = useState(null);
+  const [ordersLoading, setOrdersLoading] = useState(false);
+  const [orderStatusFilter, setOrderStatusFilter] = useState('all');
 
   const filteredSalesProducts = useMemo(() => {
     if (!analytics?.products) return [];
@@ -200,8 +218,76 @@ const SellerDashboard = () => {
   }, []);
 
   useEffect(() => {
-    if (activeTab === 'analytics' && !analytics) fetchAnalytics();
+    if ((activeTab === 'analytics' || activeTab === 'overview') && !analytics) fetchAnalytics();
   }, [activeTab, analytics, fetchAnalytics]);
+
+  const fetchEarnings = useCallback(() => {
+    setEarningsLoading(true);
+    api.get('/ecommerce/seller/earnings/')
+      .then(res => setEarnings(res.data))
+      .catch(() => setEarnings(null))
+      .finally(() => setEarningsLoading(false));
+  }, []);
+
+  useEffect(() => {
+    if ((activeTab === 'payouts' || activeTab === 'overview') && !earnings) fetchEarnings();
+  }, [activeTab, earnings, fetchEarnings]);
+
+  const fetchPayouts = useCallback(() => {
+    setPayoutsLoading(true);
+    api.get('/ecommerce/seller/payouts/')
+      .then(res => setPayouts(res.data.results || res.data || []))
+      .catch(() => setPayouts([]))
+      .finally(() => setPayoutsLoading(false));
+  }, []);
+
+  useEffect(() => {
+    if (activeTab === 'payouts' && !payouts) fetchPayouts();
+  }, [activeTab, payouts, fetchPayouts]);
+
+  const handleWithdraw = async () => {
+    const amount = Number(withdrawAmount);
+    if (!amount || amount < 100) { toast.error('Minimum withdrawal is ₹100'); return; }
+    if (earnings && amount > Number(earnings.available_balance)) { toast.error('Amount exceeds your available balance'); return; }
+    setWithdrawing(true);
+    try {
+      await api.post('/ecommerce/seller/withdraw/', { amount });
+      toast.success('Payout requested');
+      setWithdrawAmount('');
+      fetchEarnings();
+      fetchPayouts();
+    } catch (err) {
+      toast.error(err.response?.data?.error || 'Could not request payout');
+    } finally {
+      setWithdrawing(false);
+    }
+  };
+
+  const fetchReviews = useCallback(() => {
+    if (!user?.id) return;
+    setReviewsLoading(true);
+    api.get(`/ecommerce/sellers/${user.id}/reviews/`)
+      .then(res => setReviews(Array.isArray(res.data) ? res.data : []))
+      .catch(() => setReviews([]))
+      .finally(() => setReviewsLoading(false));
+  }, [user?.id]);
+
+  useEffect(() => {
+    if (activeTab === 'reviews' && !reviews) fetchReviews();
+  }, [activeTab, reviews, fetchReviews]);
+
+  const fetchOrders = useCallback((statusFilter) => {
+    setOrdersLoading(true);
+    const params = statusFilter && statusFilter !== 'all' ? { status: statusFilter } : {};
+    api.get('/ecommerce/seller/orders/', { params })
+      .then(res => setOrders(res.data))
+      .catch(() => setOrders({ counts: {}, results: [] }))
+      .finally(() => setOrdersLoading(false));
+  }, []);
+
+  useEffect(() => {
+    if (activeTab === 'orders') fetchOrders(orderStatusFilter);
+  }, [activeTab, orderStatusFilter, fetchOrders]);
 
   const openStockPopover = (product) => {
     setStockProductId(product.id);
@@ -428,56 +514,381 @@ const SellerDashboard = () => {
         </div>
       </div>
 
-      {/* Stats */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-        {[
-          { label: 'Total Listings', value: counts.all, icon: Package, card: 'bg-violet-100 dark:bg-violet-900/30', iconColor: 'text-violet-700 dark:text-violet-300' },
-          { label: 'Pending Review', value: counts.pending, icon: Clock, card: 'bg-sky-100 dark:bg-sky-900/30', iconColor: 'text-sky-700 dark:text-sky-300' },
-          { label: 'Live', value: counts.approved, icon: CheckCircle2, card: 'bg-orange-100 dark:bg-orange-900/30', iconColor: 'text-orange-700 dark:text-orange-300' },
-          { label: 'Rejected', value: counts.rejected, icon: XCircle, card: 'bg-slate-200 dark:bg-slate-700/60', iconColor: 'text-slate-700 dark:text-slate-200' },
-        ].map(s => (
-          <div key={s.label} className={`rounded-2xl p-5 shadow-sm transition-all hover:shadow-md ${s.card}`}>
-            <div className="flex items-start justify-between mb-4">
-              <span className="text-[11px] font-bold text-gray-700/70 dark:text-gray-200/70 uppercase tracking-wide">{s.label}</span>
-              <s.icon className={`w-4 h-4 shrink-0 ${s.iconColor}`} />
-            </div>
-            <p className="text-2xl font-extrabold text-gray-900 dark:text-white leading-none">{s.value}</p>
+      <div className="flex flex-col lg:flex-row gap-5 items-start">
+        {/* Sidebar */}
+        <aside className="w-full lg:w-52 shrink-0 bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 shadow-sm p-2 lg:sticky lg:top-4">
+          <nav className="flex lg:flex-col gap-1 overflow-x-auto lg:overflow-visible">
+            {[
+              { id: 'overview', label: 'Overview', icon: LayoutDashboard },
+              { id: 'orders', label: 'Orders', icon: ClipboardList },
+              { id: 'products', label: 'Products', icon: LayoutGrid },
+              { id: 'inventory', label: 'Inventory', icon: Boxes },
+              { id: 'pricing', label: 'Pricing & Discounts', icon: Tag },
+              { id: 'payouts', label: 'Payouts', icon: Wallet },
+              { id: 'reviews', label: 'Reviews', icon: Star },
+              { id: 'analytics', label: 'Analytics', icon: TrendingUp },
+              { id: 'store', label: 'My Store', icon: Store },
+            ].map(item => (
+              <button
+                key={item.id}
+                onClick={() => setActiveTab(item.id)}
+                className={`flex items-center gap-2 px-3 py-2.5 rounded-xl text-xs font-semibold whitespace-nowrap transition-colors shrink-0 ${
+                  activeTab === item.id
+                    ? 'bg-orange-50 dark:bg-orange-900/20 text-orange-700 dark:text-orange-400'
+                    : 'text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700/50'
+                }`}
+              >
+                <item.icon className="w-4 h-4 shrink-0" /> {item.label}
+              </button>
+            ))}
+          </nav>
+        </aside>
+
+        {/* Content */}
+        <div className="flex-1 min-w-0 space-y-5">
+
+      {activeTab === 'overview' && (
+        <div className="space-y-5">
+          <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-100 dark:border-blue-800 rounded-2xl p-3.5 text-xs text-blue-700 dark:text-blue-300">
+            New products are reviewed by our team before they go live. Once approved, they'll appear in the store and buyers can purchase them right away.
           </div>
-        ))}
-      </div>
 
-      {/* A note about the review flow */}
-      <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-100 dark:border-blue-800 rounded-2xl p-3.5 text-xs text-blue-700 dark:text-blue-300">
-        New products are reviewed by our team before they go live. Once approved, they'll appear in the store and buyers can purchase them right away.
-      </div>
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+            {[
+              { label: 'Total Listings', value: counts.all, icon: Package, card: 'bg-violet-100 dark:bg-violet-900/30', iconColor: 'text-violet-700 dark:text-violet-300' },
+              { label: 'Pending Review', value: counts.pending, icon: Clock, card: 'bg-sky-100 dark:bg-sky-900/30', iconColor: 'text-sky-700 dark:text-sky-300' },
+              { label: 'Live', value: counts.approved, icon: CheckCircle2, card: 'bg-orange-100 dark:bg-orange-900/30', iconColor: 'text-orange-700 dark:text-orange-300' },
+              { label: 'Rejected', value: counts.rejected, icon: XCircle, card: 'bg-slate-200 dark:bg-slate-700/60', iconColor: 'text-slate-700 dark:text-slate-200' },
+            ].map(s => (
+              <div key={s.label} className={`rounded-2xl p-5 shadow-sm transition-all hover:shadow-md ${s.card}`}>
+                <div className="flex items-start justify-between mb-4">
+                  <span className="text-[11px] font-bold text-gray-700/70 dark:text-gray-200/70 uppercase tracking-wide">{s.label}</span>
+                  <s.icon className={`w-4 h-4 shrink-0 ${s.iconColor}`} />
+                </div>
+                <p className="text-2xl font-extrabold text-gray-900 dark:text-white leading-none">{s.value}</p>
+              </div>
+            ))}
+          </div>
 
-      {/* Tab switcher */}
-      <div className="flex gap-1 bg-gray-100 dark:bg-gray-800 p-1 rounded-xl w-fit">
-        <button
-          onClick={() => setActiveTab('products')}
-          className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg text-xs font-semibold transition-colors ${
-            activeTab === 'products' ? 'bg-white dark:bg-gray-700 text-gray-900 dark:text-white shadow-sm' : 'text-gray-500 dark:text-gray-400'
-          }`}
-        >
-          <LayoutGrid className="w-3.5 h-3.5" /> Products
-        </button>
-        <button
-          onClick={() => setActiveTab('analytics')}
-          className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg text-xs font-semibold transition-colors ${
-            activeTab === 'analytics' ? 'bg-white dark:bg-gray-700 text-gray-900 dark:text-white shadow-sm' : 'text-gray-500 dark:text-gray-400'
-          }`}
-        >
-          <TrendingUp className="w-3.5 h-3.5" /> Analytics
-        </button>
-        <button
-          onClick={() => setActiveTab('store')}
-          className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg text-xs font-semibold transition-colors ${
-            activeTab === 'store' ? 'bg-white dark:bg-gray-700 text-gray-900 dark:text-white shadow-sm' : 'text-gray-500 dark:text-gray-400'
-          }`}
-        >
-          <Store className="w-3.5 h-3.5" /> My Store
-        </button>
-      </div>
+          {earningsLoading ? (
+            <div className="flex justify-center py-6">
+              <div className="w-5 h-5 border-2 border-gray-300 border-t-gray-600 rounded-full animate-spin" />
+            </div>
+          ) : earnings && (
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+              {[
+                { label: 'Available Balance', value: `₹${Number(earnings.available_balance).toLocaleString('en-IN')}`, icon: Wallet, card: 'bg-emerald-100 dark:bg-emerald-900/30', iconColor: 'text-emerald-700 dark:text-emerald-300' },
+                { label: 'Net Earnings', value: `₹${Number(earnings.net_earnings).toLocaleString('en-IN')}`, icon: IndianRupee, card: 'bg-violet-100 dark:bg-violet-900/30', iconColor: 'text-violet-700 dark:text-violet-300' },
+                { label: 'Platform Commission', value: `${earnings.commission_rate}%`, icon: Tag, card: 'bg-sky-100 dark:bg-sky-900/30', iconColor: 'text-sky-700 dark:text-sky-300' },
+                { label: 'Gross Revenue', value: `₹${Number(earnings.total_revenue).toLocaleString('en-IN')}`, icon: TrendingUp, card: 'bg-orange-100 dark:bg-orange-900/30', iconColor: 'text-orange-700 dark:text-orange-300' },
+              ].map(s => (
+                <div key={s.label} className={`rounded-2xl p-5 shadow-sm transition-all hover:shadow-md ${s.card}`}>
+                  <div className="flex items-start justify-between mb-4">
+                    <span className="text-[11px] font-bold text-gray-700/70 dark:text-gray-200/70 uppercase tracking-wide">{s.label}</span>
+                    <s.icon className={`w-4 h-4 shrink-0 ${s.iconColor}`} />
+                  </div>
+                  <p className="text-xl font-extrabold text-gray-900 dark:text-white leading-none">{s.value}</p>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {analytics?.monthly && (
+            <div className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 shadow-sm p-5">
+              <h3 className="text-sm font-bold text-gray-900 dark:text-white mb-4">Revenue — last 6 months</h3>
+              <div className="bg-[#FAFAFA] dark:bg-gray-900/40 rounded-xl p-3">
+                <ResponsiveContainer width="100%" height={220}>
+                  <BarChart data={analytics.monthly}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
+                    <XAxis dataKey="month" tick={{ fontSize: 11 }} stroke="#9ca3af" />
+                    <YAxis tick={{ fontSize: 11 }} stroke="#9ca3af" />
+                    <Tooltip formatter={(v) => `₹${Number(v).toLocaleString('en-IN')}`} />
+                    <Bar dataKey="revenue" fill="#ea580c" radius={[4, 4, 0, 0]} />
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
+      {activeTab === 'orders' && (
+        <div className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 shadow-sm overflow-hidden">
+          <div className="px-5 py-4 border-b border-gray-100 dark:border-gray-700">
+            <h3 className="text-sm font-bold text-gray-900 dark:text-white">Orders</h3>
+          </div>
+          <div className="flex items-center gap-2 px-5 py-3 border-b border-gray-100 dark:border-gray-700 overflow-x-auto">
+            {[
+              { id: 'all', label: 'All', icon: ClipboardList },
+              { id: 'pending', label: 'Pending', icon: Clock },
+              { id: 'processing', label: 'Processing', icon: Clock },
+              { id: 'shipped', label: 'Shipped', icon: Truck },
+              { id: 'delivered', label: 'Completed', icon: CheckCircle2 },
+              { id: 'cancelled', label: 'Cancelled', icon: Ban },
+              { id: 'return_requested', label: 'Return Requests', icon: RotateCcw },
+            ].map(f => {
+              const n = f.id === 'all'
+                ? Object.values(orders?.counts || {}).reduce((a, b) => a + b, 0)
+                : (orders?.counts?.[f.id] || 0);
+              return (
+                <button
+                  key={f.id}
+                  onClick={() => setOrderStatusFilter(f.id)}
+                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap transition-colors shrink-0 ${
+                    orderStatusFilter === f.id
+                      ? 'bg-gray-900 dark:bg-gray-700 text-white'
+                      : 'bg-gray-100 dark:bg-gray-900 text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700'
+                  }`}
+                >
+                  <f.icon className="w-3.5 h-3.5" /> {f.label} <span className="opacity-70">({n})</span>
+                </button>
+              );
+            })}
+          </div>
+          {ordersLoading ? (
+            <div className="flex justify-center py-12">
+              <div className="w-6 h-6 border-2 border-gray-300 border-t-gray-600 rounded-full animate-spin" />
+            </div>
+          ) : !orders?.results?.length ? (
+            <div className="text-center py-14">
+              <ClipboardList className="w-14 h-14 text-gray-300 dark:text-gray-600 mx-auto mb-3" />
+              <p className="text-sm text-gray-500 dark:text-gray-400">No orders here yet</p>
+            </div>
+          ) : (
+            <div>
+              <div className="hidden sm:flex items-center gap-3 px-5 py-2 text-[10px] font-bold text-gray-400 dark:text-gray-500 uppercase tracking-wider bg-gray-50/60 dark:bg-gray-900/30">
+                <span className="w-10 shrink-0" />
+                <span className="flex-1 min-w-0">Product</span>
+                <span className="shrink-0 w-28">Order ID</span>
+                <span className="shrink-0 w-20 text-right">Qty</span>
+                <span className="shrink-0 w-24 text-right">Amount</span>
+                <span className="shrink-0 w-28 text-right">Status</span>
+              </div>
+              <div className="divide-y divide-gray-100 dark:divide-gray-700">
+                {orders.results.map(it => (
+                  <div key={it.order_item_id} className="flex items-center gap-3 px-5 py-3 hover:bg-gray-50/60 dark:hover:bg-gray-900/30 transition-colors">
+                    <img src={it.product_image} alt={it.product_name} className="w-10 h-10 rounded-lg object-cover bg-gray-100 dark:bg-gray-700 shrink-0" />
+                    <p className="text-sm font-medium text-gray-900 dark:text-white truncate flex-1 min-w-0">{it.product_name}</p>
+                    <p className="text-xs text-gray-500 dark:text-gray-400 shrink-0 w-28 truncate">{it.order_id}</p>
+                    <p className="text-xs text-gray-500 dark:text-gray-400 shrink-0 w-20 text-right">{it.quantity}</p>
+                    <p className="text-sm font-semibold text-gray-900 dark:text-white shrink-0 w-24 text-right">₹{(it.price * it.quantity).toLocaleString('en-IN')}</p>
+                    <span className="shrink-0 w-28 text-right text-[10px] font-medium capitalize px-2 py-1 rounded-full bg-gray-100 dark:bg-gray-900 text-gray-600 dark:text-gray-300">{it.order_status.replace('_', ' ')}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
+      {activeTab === 'inventory' && (
+        <div className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 shadow-sm overflow-hidden">
+          <div className="px-5 py-4 border-b border-gray-100 dark:border-gray-700">
+            <h3 className="text-sm font-bold text-gray-900 dark:text-white">Inventory</h3>
+          </div>
+          {loading ? (
+            <div className="flex justify-center py-12">
+              <div className="w-6 h-6 border-2 border-gray-300 border-t-gray-600 rounded-full animate-spin" />
+            </div>
+          ) : products.length === 0 ? (
+            <div className="text-center py-14">
+              <Boxes className="w-14 h-14 text-gray-300 dark:text-gray-600 mx-auto mb-3" />
+              <p className="text-sm text-gray-500 dark:text-gray-400">You haven't listed any products yet</p>
+            </div>
+          ) : (
+            <div>
+              <div className="hidden sm:flex items-center gap-3 px-5 py-2 text-[10px] font-bold text-gray-400 dark:text-gray-500 uppercase tracking-wider bg-gray-50/60 dark:bg-gray-900/30">
+                <span className="w-12 shrink-0" />
+                <span className="flex-1 min-w-0">Product</span>
+                <span className="shrink-0 w-24 text-right">Stock</span>
+                <span className="shrink-0 w-28 text-right">Action</span>
+              </div>
+              <div className="divide-y divide-gray-100 dark:divide-gray-700">
+                {[...products].sort((a, b) => Number(a.stock) - Number(b.stock)).map(p => (
+                  <div key={p.id} className="flex items-center gap-3 px-5 py-3 hover:bg-gray-50/60 dark:hover:bg-gray-900/30 transition-colors">
+                    <img src={p.image} alt={p.name} className="w-12 h-12 rounded-lg object-cover bg-gray-100 dark:bg-gray-700 shrink-0" />
+                    <div className="min-w-0 flex-1">
+                      <p className="text-sm font-medium text-gray-900 dark:text-white truncate">{p.name}</p>
+                      <p className="text-xs text-gray-400">{p.category}</p>
+                    </div>
+                    <p className={`text-sm font-semibold shrink-0 w-24 text-right ${Number(p.stock) <= 0 ? 'text-red-500' : Number(p.stock) < 10 ? 'text-amber-600' : 'text-gray-900 dark:text-white'}`}>
+                      {p.stock}
+                    </p>
+                    <div className="shrink-0 w-28 text-right">
+                      <button
+                        onClick={() => openStockPopover(p)}
+                        className="inline-flex items-center gap-1 text-xs font-semibold text-orange-600 hover:underline"
+                      >
+                        <Boxes className="w-3.5 h-3.5" /> Update
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
+      {activeTab === 'pricing' && (
+        <div className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 shadow-sm overflow-hidden">
+          <div className="px-5 py-4 border-b border-gray-100 dark:border-gray-700">
+            <h3 className="text-sm font-bold text-gray-900 dark:text-white">Pricing & Discounts</h3>
+          </div>
+          {loading ? (
+            <div className="flex justify-center py-12">
+              <div className="w-6 h-6 border-2 border-gray-300 border-t-gray-600 rounded-full animate-spin" />
+            </div>
+          ) : products.length === 0 ? (
+            <div className="text-center py-14">
+              <Tag className="w-14 h-14 text-gray-300 dark:text-gray-600 mx-auto mb-3" />
+              <p className="text-sm text-gray-500 dark:text-gray-400">You haven't listed any products yet</p>
+            </div>
+          ) : (
+            <div>
+              <div className="hidden sm:flex items-center gap-3 px-5 py-2 text-[10px] font-bold text-gray-400 dark:text-gray-500 uppercase tracking-wider bg-gray-50/60 dark:bg-gray-900/30">
+                <span className="w-12 shrink-0" />
+                <span className="flex-1 min-w-0">Product</span>
+                <span className="shrink-0 w-20 text-right">Price</span>
+                <span className="shrink-0 w-20 text-right">Sale Price</span>
+                <span className="shrink-0 w-16 text-right">Off</span>
+                <span className="shrink-0 w-20 text-right">Edit</span>
+              </div>
+              <div className="divide-y divide-gray-100 dark:divide-gray-700">
+                {products.map(p => {
+                  const price = Number(p.price) || 0;
+                  const salePrice = Number(p.discount_price ?? p.price) || 0;
+                  const off = price > 0 && salePrice < price ? Math.round(((price - salePrice) / price) * 100) : 0;
+                  return (
+                    <div key={p.id} className="flex items-center gap-3 px-5 py-3 hover:bg-gray-50/60 dark:hover:bg-gray-900/30 transition-colors">
+                      <img src={p.image} alt={p.name} className="w-12 h-12 rounded-lg object-cover bg-gray-100 dark:bg-gray-700 shrink-0" />
+                      <p className="text-sm font-medium text-gray-900 dark:text-white truncate flex-1 min-w-0">{p.name}</p>
+                      <p className="text-xs text-gray-400 shrink-0 w-20 text-right line-through">{price !== salePrice ? `₹${price}` : ''}</p>
+                      <p className="text-sm font-semibold text-gray-900 dark:text-white shrink-0 w-20 text-right">₹{salePrice}</p>
+                      <p className="text-xs text-emerald-600 font-semibold shrink-0 w-16 text-right">{off > 0 ? `${off}%` : '—'}</p>
+                      <div className="shrink-0 w-20 text-right">
+                        <button onClick={() => openEditForm(p)} className="inline-flex items-center gap-1 text-xs font-semibold text-orange-600 hover:underline">
+                          <Pencil className="w-3.5 h-3.5" /> Edit
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
+      {activeTab === 'payouts' && (
+        <div className="space-y-5">
+          {earningsLoading ? (
+            <div className="flex justify-center py-6">
+              <div className="w-5 h-5 border-2 border-gray-300 border-t-gray-600 rounded-full animate-spin" />
+            </div>
+          ) : earnings && (
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+              {[
+                { label: 'Available Balance', value: `₹${Number(earnings.available_balance).toLocaleString('en-IN')}`, icon: Wallet, card: 'bg-emerald-100 dark:bg-emerald-900/30', iconColor: 'text-emerald-700 dark:text-emerald-300' },
+                { label: 'Pending Payouts', value: `₹${Number(earnings.pending_payouts).toLocaleString('en-IN')}`, icon: Clock, card: 'bg-sky-100 dark:bg-sky-900/30', iconColor: 'text-sky-700 dark:text-sky-300' },
+                { label: 'Completed Payouts', value: `₹${Number(earnings.completed_payouts).toLocaleString('en-IN')}`, icon: CheckCircle2, card: 'bg-orange-100 dark:bg-orange-900/30', iconColor: 'text-orange-700 dark:text-orange-300' },
+                { label: 'Platform Commission', value: `${earnings.commission_rate}%`, icon: Tag, card: 'bg-slate-200 dark:bg-slate-700/60', iconColor: 'text-slate-700 dark:text-slate-200' },
+              ].map(s => (
+                <div key={s.label} className={`rounded-2xl p-5 shadow-sm transition-all hover:shadow-md ${s.card}`}>
+                  <div className="flex items-start justify-between mb-4">
+                    <span className="text-[11px] font-bold text-gray-700/70 dark:text-gray-200/70 uppercase tracking-wide">{s.label}</span>
+                    <s.icon className={`w-4 h-4 shrink-0 ${s.iconColor}`} />
+                  </div>
+                  <p className="text-xl font-extrabold text-gray-900 dark:text-white leading-none">{s.value}</p>
+                </div>
+              ))}
+            </div>
+          )}
+
+          <div className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 shadow-sm p-5">
+            <h3 className="text-sm font-bold text-gray-900 dark:text-white mb-3">Request a payout</h3>
+            <div className="flex flex-col sm:flex-row gap-2">
+              <input
+                type="number" min="100" value={withdrawAmount}
+                onChange={(e) => setWithdrawAmount(e.target.value)}
+                placeholder="Amount (min ₹100)"
+                className="flex-1 border border-gray-200 dark:border-gray-700 rounded-lg px-3 py-2 text-sm bg-white dark:bg-gray-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-orange-400"
+              />
+              <button
+                disabled={withdrawing}
+                onClick={handleWithdraw}
+                className="px-5 py-2 text-sm font-semibold text-white bg-orange-600 hover:bg-orange-700 rounded-lg disabled:opacity-50 transition-colors shrink-0"
+              >
+                {withdrawing ? 'Requesting...' : 'Request Payout'}
+              </button>
+            </div>
+          </div>
+
+          <div className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 shadow-sm overflow-hidden">
+            <div className="px-5 py-4 border-b border-gray-100 dark:border-gray-700">
+              <h3 className="text-sm font-bold text-gray-900 dark:text-white">Payout History</h3>
+            </div>
+            {payoutsLoading ? (
+              <div className="flex justify-center py-12">
+                <div className="w-6 h-6 border-2 border-gray-300 border-t-gray-600 rounded-full animate-spin" />
+              </div>
+            ) : !payouts?.length ? (
+              <p className="text-sm text-gray-500 dark:text-gray-400 text-center py-10">No payout requests yet</p>
+            ) : (
+              <div className="divide-y divide-gray-100 dark:divide-gray-700">
+                {payouts.map(p => (
+                  <div key={p.id} className="flex items-center gap-3 px-5 py-3">
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-semibold text-gray-900 dark:text-white">₹{Number(p.amount).toLocaleString('en-IN')}</p>
+                      <p className="text-xs text-gray-400">{new Date(p.requested_at).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}</p>
+                    </div>
+                    <span className={`text-[10px] font-medium capitalize px-2 py-1 rounded-full shrink-0 ${
+                      p.status === 'completed' ? 'bg-emerald-50 dark:bg-emerald-900/20 text-emerald-600' :
+                      p.status === 'rejected' ? 'bg-red-50 dark:bg-red-900/20 text-red-500' :
+                      'bg-amber-50 dark:bg-amber-900/20 text-amber-600'
+                    }`}>{p.status}</span>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {activeTab === 'reviews' && (
+        <div className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 shadow-sm overflow-hidden">
+          <div className="px-5 py-4 border-b border-gray-100 dark:border-gray-700">
+            <h3 className="text-sm font-bold text-gray-900 dark:text-white">Customer Reviews</h3>
+          </div>
+          {reviewsLoading ? (
+            <div className="flex justify-center py-12">
+              <div className="w-6 h-6 border-2 border-gray-300 border-t-gray-600 rounded-full animate-spin" />
+            </div>
+          ) : !reviews?.length ? (
+            <div className="text-center py-14">
+              <Star className="w-14 h-14 text-gray-300 dark:text-gray-600 mx-auto mb-3" />
+              <p className="text-sm text-gray-500 dark:text-gray-400">No reviews yet</p>
+            </div>
+          ) : (
+            <div className="divide-y divide-gray-100 dark:divide-gray-700">
+              {reviews.map(r => (
+                <div key={r.id} className="px-5 py-3.5">
+                  <div className="flex items-center justify-between">
+                    <p className="text-sm font-semibold text-gray-900 dark:text-white">{r.buyer_username}</p>
+                    <div className="flex items-center gap-0.5">
+                      {Array.from({ length: 5 }).map((_, i) => (
+                        <Star key={i} className={`w-3.5 h-3.5 ${i < r.rating ? 'fill-amber-400 text-amber-400' : 'text-gray-200 dark:text-gray-600'}`} />
+                      ))}
+                    </div>
+                  </div>
+                  {r.comment && <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">{r.comment}</p>}
+                  <p className="text-[10px] text-gray-400 mt-1">{new Date(r.created_at).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}</p>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
 
       {activeTab === 'store' && <StoreBuilder />}
 
@@ -705,6 +1116,9 @@ const SellerDashboard = () => {
         )}
       </div>
       )}
+
+        </div>
+      </div>
 
       {/* Bulk upload modal */}
       {showBulk && (
