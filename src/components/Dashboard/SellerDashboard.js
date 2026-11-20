@@ -431,17 +431,17 @@ const SellerDashboard = () => {
       {/* Stats */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
         {[
-          { label: 'Total Listings', value: counts.all, icon: Package, color: 'text-blue-600 bg-blue-50 dark:bg-blue-900/20 dark:text-blue-400' },
-          { label: 'Pending Review', value: counts.pending, icon: Clock, color: 'text-amber-600 bg-amber-50 dark:bg-amber-900/20 dark:text-amber-400' },
-          { label: 'Live', value: counts.approved, icon: CheckCircle2, color: 'text-emerald-600 bg-emerald-50 dark:bg-emerald-900/20 dark:text-emerald-400' },
-          { label: 'Rejected', value: counts.rejected, icon: XCircle, color: 'text-rose-600 bg-rose-50 dark:bg-rose-900/20 dark:text-rose-400' },
+          { label: 'Total Listings', value: counts.all, icon: Package, card: 'bg-violet-100 dark:bg-violet-900/30', iconColor: 'text-violet-700 dark:text-violet-300' },
+          { label: 'Pending Review', value: counts.pending, icon: Clock, card: 'bg-sky-100 dark:bg-sky-900/30', iconColor: 'text-sky-700 dark:text-sky-300' },
+          { label: 'Live', value: counts.approved, icon: CheckCircle2, card: 'bg-orange-100 dark:bg-orange-900/30', iconColor: 'text-orange-700 dark:text-orange-300' },
+          { label: 'Rejected', value: counts.rejected, icon: XCircle, card: 'bg-slate-200 dark:bg-slate-700/60', iconColor: 'text-slate-700 dark:text-slate-200' },
         ].map(s => (
-          <div key={s.label} className="bg-white dark:bg-gray-800 rounded-2xl p-5 border border-gray-100 dark:border-gray-700 shadow-sm transition-all hover:shadow-md">
-            <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 mb-4 ${s.color}`}>
-              <s.icon className="w-5 h-5 stroke-[2.25]" />
+          <div key={s.label} className={`rounded-2xl p-5 shadow-sm transition-all hover:shadow-md ${s.card}`}>
+            <div className="flex items-start justify-between mb-4">
+              <span className="text-[11px] font-bold text-gray-700/70 dark:text-gray-200/70 uppercase tracking-wide">{s.label}</span>
+              <s.icon className={`w-4 h-4 shrink-0 ${s.iconColor}`} />
             </div>
             <p className="text-2xl font-extrabold text-gray-900 dark:text-white leading-none">{s.value}</p>
-            <p className="text-xs text-gray-500 dark:text-gray-400 font-medium mt-1.5">{s.label}</p>
           </div>
         ))}
       </div>
@@ -496,17 +496,17 @@ const SellerDashboard = () => {
             <>
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
                 {[
-                  { label: 'Total Revenue', value: `₹${analytics.summary.total_revenue.toLocaleString('en-IN')}`, icon: IndianRupee, color: 'text-emerald-600 bg-emerald-50 dark:bg-emerald-900/20 dark:text-emerald-400' },
-                  { label: 'Units Sold', value: analytics.summary.total_units_sold, icon: ShoppingCart, color: 'text-blue-600 bg-blue-50 dark:bg-blue-900/20 dark:text-blue-400' },
-                  { label: 'Orders', value: analytics.summary.total_orders, icon: Package, color: 'text-purple-600 bg-purple-50 dark:bg-purple-900/20 dark:text-purple-400' },
-                  { label: 'Total Stock', value: analytics.summary.total_stock, icon: Boxes, color: 'text-amber-600 bg-amber-50 dark:bg-amber-900/20 dark:text-amber-400' },
+                  { label: 'Total Revenue', value: `₹${analytics.summary.total_revenue.toLocaleString('en-IN')}`, icon: IndianRupee, card: 'bg-violet-100 dark:bg-violet-900/30', iconColor: 'text-violet-700 dark:text-violet-300' },
+                  { label: 'Units Sold', value: analytics.summary.total_units_sold, icon: ShoppingCart, card: 'bg-sky-100 dark:bg-sky-900/30', iconColor: 'text-sky-700 dark:text-sky-300' },
+                  { label: 'Orders', value: analytics.summary.total_orders, icon: Package, card: 'bg-orange-100 dark:bg-orange-900/30', iconColor: 'text-orange-700 dark:text-orange-300' },
+                  { label: 'Total Stock', value: analytics.summary.total_stock, icon: Boxes, card: 'bg-slate-200 dark:bg-slate-700/60', iconColor: 'text-slate-700 dark:text-slate-200' },
                 ].map(s => (
-                  <div key={s.label} className="bg-white dark:bg-gray-800 rounded-2xl p-5 border border-gray-100 dark:border-gray-700 shadow-sm transition-all hover:shadow-md">
-                    <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 mb-4 ${s.color}`}>
-                      <s.icon className="w-5 h-5 stroke-[2.25]" />
+                  <div key={s.label} className={`rounded-2xl p-5 shadow-sm transition-all hover:shadow-md ${s.card}`}>
+                    <div className="flex items-start justify-between mb-4">
+                      <span className="text-[11px] font-bold text-gray-700/70 dark:text-gray-200/70 uppercase tracking-wide">{s.label}</span>
+                      <s.icon className={`w-4 h-4 shrink-0 ${s.iconColor}`} />
                     </div>
                     <p className="text-2xl font-extrabold text-gray-900 dark:text-white leading-none">{s.value}</p>
-                    <p className="text-xs text-gray-500 dark:text-gray-400 font-medium mt-1.5">{s.label}</p>
                   </div>
                 ))}
               </div>
