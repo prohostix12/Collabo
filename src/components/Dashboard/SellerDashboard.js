@@ -6,7 +6,7 @@ import {
   LayoutDashboard, ClipboardList, Tag, Wallet, Star, RotateCcw, Ban,
 } from 'lucide-react';
 import {
-  ResponsiveContainer, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip,
+  ResponsiveContainer, AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip,
 } from 'recharts';
 import api from '../../services/api';
 import toast from 'react-hot-toast';
@@ -596,15 +596,21 @@ const SellerDashboard = () => {
           {analytics?.monthly && (
             <div className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 shadow-sm p-5">
               <h3 className="text-sm font-bold text-gray-900 dark:text-white mb-4">Revenue — last 6 months</h3>
-              <div className="bg-[#FAFAFA] dark:bg-gray-900/40 rounded-xl p-3">
+              <div className="bg-[#FFFDF9] dark:bg-gray-900/40 rounded-xl p-3">
                 <ResponsiveContainer width="100%" height={220}>
-                  <BarChart data={analytics.monthly}>
-                    <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
-                    <XAxis dataKey="month" tick={{ fontSize: 11 }} stroke="#9ca3af" />
-                    <YAxis tick={{ fontSize: 11 }} stroke="#9ca3af" />
+                  <AreaChart data={analytics.monthly}>
+                    <defs>
+                      <linearGradient id="sellerRevenueFill" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="5%" stopColor="#ea580c" stopOpacity={0.25} />
+                        <stop offset="95%" stopColor="#ea580c" stopOpacity={0} />
+                      </linearGradient>
+                    </defs>
+                    <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false} />
+                    <XAxis dataKey="month" tick={{ fontSize: 11 }} stroke="#9ca3af" axisLine={false} tickLine={false} />
+                    <YAxis tick={{ fontSize: 11 }} stroke="#9ca3af" axisLine={false} tickLine={false} />
                     <Tooltip formatter={(v) => `₹${Number(v).toLocaleString('en-IN')}`} />
-                    <Bar dataKey="revenue" fill="#ea580c" radius={[4, 4, 0, 0]} />
-                  </BarChart>
+                    <Area type="monotone" dataKey="revenue" stroke="#ea580c" strokeWidth={2.5} fill="url(#sellerRevenueFill)" dot={{ r: 3, fill: '#ea580c', strokeWidth: 0 }} activeDot={{ r: 5 }} />
+                  </AreaChart>
                 </ResponsiveContainer>
               </div>
             </div>
@@ -924,15 +930,21 @@ const SellerDashboard = () => {
 
               <div className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 shadow-sm p-5">
                 <h3 className="text-sm font-bold text-gray-900 dark:text-white mb-4">Revenue — last 6 months</h3>
-                <div className="bg-[#FAFAFA] dark:bg-gray-900/40 rounded-xl p-3">
+                <div className="bg-[#FFFDF9] dark:bg-gray-900/40 rounded-xl p-3">
                   <ResponsiveContainer width="100%" height={220}>
-                    <BarChart data={analytics.monthly}>
-                      <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
-                      <XAxis dataKey="month" tick={{ fontSize: 11 }} stroke="#9ca3af" />
-                      <YAxis tick={{ fontSize: 11 }} stroke="#9ca3af" />
+                    <AreaChart data={analytics.monthly}>
+                      <defs>
+                        <linearGradient id="sellerRevenueFillAnalytics" x1="0" y1="0" x2="0" y2="1">
+                          <stop offset="5%" stopColor="#ea580c" stopOpacity={0.25} />
+                          <stop offset="95%" stopColor="#ea580c" stopOpacity={0} />
+                        </linearGradient>
+                      </defs>
+                      <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false} />
+                      <XAxis dataKey="month" tick={{ fontSize: 11 }} stroke="#9ca3af" axisLine={false} tickLine={false} />
+                      <YAxis tick={{ fontSize: 11 }} stroke="#9ca3af" axisLine={false} tickLine={false} />
                       <Tooltip formatter={(v) => `₹${Number(v).toLocaleString('en-IN')}`} />
-                      <Bar dataKey="revenue" fill="#ea580c" radius={[4, 4, 0, 0]} />
-                    </BarChart>
+                      <Area type="monotone" dataKey="revenue" stroke="#ea580c" strokeWidth={2.5} fill="url(#sellerRevenueFillAnalytics)" dot={{ r: 3, fill: '#ea580c', strokeWidth: 0 }} activeDot={{ r: 5 }} />
+                    </AreaChart>
                   </ResponsiveContainer>
                 </div>
               </div>
