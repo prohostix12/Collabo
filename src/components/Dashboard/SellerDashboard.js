@@ -1,8 +1,8 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import {
   Store, Package, Plus, X, Clock, CheckCircle2, XCircle,
   IndianRupee, Boxes, ImagePlus, Upload, ShoppingBag, Pencil, Trash2, Truck,
-  TrendingUp, ArrowUpCircle, ArrowDownCircle, ShoppingCart, LayoutGrid,
+  TrendingUp, ArrowUpCircle, ArrowDownCircle, ShoppingCart, LayoutGrid, Download, FileSpreadsheet, Search,
 } from 'lucide-react';
 import {
   ResponsiveContainer, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip,
@@ -10,6 +10,7 @@ import {
 import api from '../../services/api';
 import toast from 'react-hot-toast';
 import { useAuth } from '../../contexts/AuthContext';
+import StoreBuilder from './StoreBuilder';
 
 const emptyForm = {
   name: '',
@@ -58,12 +59,37 @@ const STATUS_META = {
   approved: { label: 'Live', dot: 'bg-emerald-400', text: 'text-emerald-600', bg: 'bg-emerald-50 dark:bg-emerald-900/20' },
   rejected: { label: 'Rejected', dot: 'bg-red-400', text: 'text-red-500', bg: 'bg-red-50 dark:bg-red-900/20' },
 };
+// Shown instead of "Live" the moment stock hits 0, so the seller sees it's out of stock without
+// having to open the Update Stock popover. It reverts to "Live" automatically once stock is restocked.
+const OUT_OF_STOCK_META = { label: 'Out of Stock', dot: 'bg-red-400', text: 'text-red-500', bg: 'bg-red-50 dark:bg-red-900/20' };
 
 const SellerDashboard = () => {
-  const { user } = useAuth();
+  const { user, updateUser } = useAuth();
+  const [uploadingLogo, setUploadingLogo] = useState(false);
   const [products, setProducts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [categories, setCategories] = useState([]);
+  const [productSearch, setProductSearch] = useState('');
+  const [productCategoryFilter, setProductCategoryFilter] = useState('all');
+  const [productStatusFilter, setProductStatusFilter] = useState('all');
+
+  const productCategories = useMemo(
+    () => Array.from(new Set(products.map(p => p.category).filter(Boolean))).sort(),
+    [products]
+  );
+  const filteredProducts = useMemo(() => {
+    const q = productSearch.trim().toLowerCase();
+    return products.filter(p => {
+      if (q && !p.name?.toLowerCase().includes(q)) return false;
+      if (productCategoryFilter !== 'all' && p.category !== productCategoryFilter) return false;
+      if (productStatusFilter !== 'all') {
+        const outOfStock = p.status === 'approved' && Number(p.stock) <= 0;
+        const effectiveStatus = outOfStock ? 'out_of_stock' : p.status;
+        if (effectiveStatus !== productStatusFilter) return false;
+      }
+      return true;
+    });
+  }, [products, productSearch, productCategoryFilter, productStatusFilter]);
   const [showAddForm, setShowAddForm] = useState(false);
   const [editingProduct, setEditingProduct] = useState(null);
   const [form, setForm] = useState(emptyForm);
@@ -75,10 +101,75 @@ const SellerDashboard = () => {
   const [activeTab, setActiveTab] = useState('products');
   const [analytics, setAnalytics] = useState(null);
   const [analyticsLoading, setAnalyticsLoading] = useState(false);
+  const [salesSearch, setSalesSearch] = useState('');
+  const [salesSortBy, setSalesSortBy] = useState('revenue');
+
+  const filteredSalesProducts = useMemo(() => {
+    if (!analytics?.products) return [];
+    const q = salesSearch.trim().toLowerCase();
+    const list = q ? analytics.products.filter(p => p.name?.toLowerCase().includes(q)) : [...analytics.products];
+    const sorters = {
+      revenue: (a, b) => b.revenue - a.revenue,
+      units_sold: (a, b) => b.units_sold - a.units_sold,
+      stock: (a, b) => a.stock - b.stock,
+      name: (a, b) => (a.name || '').localeCompare(b.name || ''),
+    };
+    return list.sort(sorters[salesSortBy] || sorters.revenue);
+  }, [analytics, salesSearch, salesSortBy]);
   const [stockProductId, setStockProductId] = useState(null);
   const [stockQty, setStockQty] = useState('1');
   const [stockExact, setStockExact] = useState('');
   const [stockSubmitting, setStockSubmitting] = useState(false);
+
+  // Bulk upload (Excel / CSV)
+  const [showBulk, setShowBulk] = useState(false);
+  const [bulkFile, setBulkFile] = useState(null);
+  const [bulkStock, setBulkStock] = useState('10');
+  const [bulkPreview, setBulkPreview] = useState(null);
+  const [bulkFilter, setBulkFilter] = useState('all');
+  const [bulkBusy, setBulkBusy] = useState(false);
+
+  const closeBulk = () => { setShowBulk(false); setBulkFile(null); setBulkPreview(null); setBulkFilter('all'); setBulkBusy(false); };
+
+  const downloadTemplate = async (fileFormat) => {
+    try {
+      const res = await api.get('/ecommerce/products/import-template/', { params: { file_format: fileFormat }, responseType: 'blob' });
+      const url = URL.createObjectURL(res.data);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `collabo-seller-template.${fileFormat}`;
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch (e) {
+      toast.error('Could not download the template. Please try again.');
+    }
+  };
+
+  const sendBulk = async (dryRun) => {
+    if (!bulkFile) { toast.error('Choose a file first'); return; }
+    setBulkBusy(true);
+    try {
+      const body = new FormData();
+      body.append('file', bulkFile);
+      body.append('default_stock', bulkStock === '' ? '' : String(Math.max(0, parseInt(bulkStock, 10) || 0)));
+      if (dryRun) body.append('dry_run', 'true');
+      const res = await api.post('/ecommerce/products/import-csv/', body, { headers: { 'Content-Type': 'multipart/form-data' }, timeout: 120000 });
+      if (dryRun) {
+        setBulkFilter('all');
+        setBulkPreview(res.data);
+      } else {
+        toast.success(res.data.message || 'Products imported');
+        fetchProducts();
+        closeBulk();
+      }
+    } catch (err) {
+      const d = err.response?.data;
+      if (d?.items) setBulkPreview(d);
+      toast.error(d?.error || 'Could not read that file. Please check it and try again.');
+    } finally {
+      setBulkBusy(false);
+    }
+  };
 
   const fetchProducts = useCallback(() => {
     if (!user?.id) return;
@@ -95,7 +186,7 @@ const SellerDashboard = () => {
   useEffect(() => { fetchProducts(); }, [fetchProducts]);
 
   useEffect(() => {
-    api.get('/ecommerce/categories/')
+    api.get('/ecommerce/categories/?page_size=1000')
       .then(res => setCategories(res.data.results || res.data || []))
       .catch(() => setCategories([]));
   }, []);
@@ -121,7 +212,13 @@ const SellerDashboard = () => {
   const closeStockPopover = () => setStockProductId(null);
 
   const applyStockUpdate = (product, delta) => {
-    if (!delta) return;
+    if (!delta) {
+      // Nothing actually changed (e.g. "Set Exact Stock" left at the current value) — say so
+      // instead of the button silently doing nothing, which looked like it was broken.
+      toast('Stock is already at that value', { icon: 'ℹ️' });
+      closeStockPopover();
+      return;
+    }
     if (product.stock + delta < 0) { toast.error(`Only ${product.stock} in stock`); return; }
     setStockSubmitting(true);
     api.post(`/ecommerce/products/${product.id}/adjust-stock/`, { delta })
@@ -198,6 +295,23 @@ const SellerDashboard = () => {
     }
   };
 
+  const handleLogoFile = async (file) => {
+    if (!file) return;
+    if (file.size > MAX_IMAGE_SIZE) { toast.error('Image must be under 5MB'); return; }
+    setUploadingLogo(true);
+    try {
+      const dataUrl = await fileToDataUrl(file);
+      await api.patch('/auth/seller-profile/', { store_logo: dataUrl });
+      updateUser({ seller_profile: { ...user.seller_profile, store_logo: dataUrl } });
+      toast.success('Logo updated');
+    } catch (err) {
+      console.error(err);
+      toast.error('Could not update logo');
+    } finally {
+      setUploadingLogo(false);
+    }
+  };
+
   const handleMainImageFile = async (file) => {
     if (!file) return;
     if (file.size > MAX_IMAGE_SIZE) { setFormError('Image must be under 5MB'); return; }
@@ -267,9 +381,30 @@ const SellerDashboard = () => {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div className="flex items-center gap-3.5">
-          <div className="w-12 h-12 rounded-2xl bg-gradient-to-tr from-orange-500 to-amber-500 text-white flex items-center justify-center shadow-lg shadow-orange-500/20 dark:shadow-none">
-            <ShoppingBag className="w-5.5 h-5.5 stroke-[2.25]" />
-          </div>
+          <label
+            title="Upload store logo"
+            className="relative w-12 h-12 rounded-2xl bg-gradient-to-tr from-orange-500 to-amber-500 text-white flex items-center justify-center shadow-lg shadow-orange-500/20 dark:shadow-none cursor-pointer overflow-hidden group shrink-0"
+          >
+            {user?.seller_profile?.store_logo ? (
+              <img src={user.seller_profile.store_logo} alt="Store logo" className="w-full h-full object-cover" />
+            ) : (
+              <ShoppingBag className="w-5.5 h-5.5 stroke-[2.25]" />
+            )}
+            <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+              {uploadingLogo ? (
+                <div className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+              ) : (
+                <Upload className="w-4 h-4 text-white" />
+              )}
+            </div>
+            <input
+              type="file"
+              accept="image/*"
+              className="hidden"
+              disabled={uploadingLogo}
+              onChange={(e) => { handleLogoFile(e.target.files[0]); e.target.value = ''; }}
+            />
+          </label>
           <div>
             <h1 className="text-xl font-extrabold text-gray-900 dark:text-white tracking-tight">
               {user?.seller_profile?.store_name || 'Seller Dashboard'}
@@ -277,36 +412,42 @@ const SellerDashboard = () => {
             <p className="text-xs text-gray-500 dark:text-gray-400 font-medium">Manage your product listings</p>
           </div>
         </div>
-        <button
-          onClick={openAddForm}
-          className="flex items-center justify-center gap-1.5 bg-orange-600 hover:bg-orange-700 text-white text-sm font-semibold px-4 py-2.5 rounded-xl transition-colors shadow-sm"
-        >
-          <Plus className="w-4 h-4" /> Add Product
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => setShowBulk(true)}
+            className="flex items-center justify-center gap-1.5 bg-white dark:bg-gray-800 border border-orange-300 dark:border-orange-700 text-orange-600 dark:text-orange-400 hover:bg-orange-50 dark:hover:bg-gray-700 text-sm font-semibold px-4 py-2.5 rounded-xl transition-colors"
+          >
+            <Upload className="w-4 h-4" /> Bulk Upload
+          </button>
+          <button
+            onClick={openAddForm}
+            className="flex items-center justify-center gap-1.5 bg-orange-600 hover:bg-orange-700 text-white text-sm font-semibold px-4 py-2.5 rounded-xl transition-colors shadow-sm"
+          >
+            <Plus className="w-4 h-4" /> Add Product
+          </button>
+        </div>
       </div>
 
       {/* Stats */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
         {[
-          { label: 'Total Listings', value: counts.all, icon: Package, color: 'text-blue-600 bg-blue-50 dark:bg-blue-900/20 dark:text-blue-400 border-blue-100 dark:border-blue-800' },
-          { label: 'Pending Review', value: counts.pending, icon: Clock, color: 'text-amber-600 bg-amber-50 dark:bg-amber-900/20 dark:text-amber-400 border-amber-100 dark:border-amber-800' },
-          { label: 'Live', value: counts.approved, icon: CheckCircle2, color: 'text-emerald-600 bg-emerald-50 dark:bg-emerald-900/20 dark:text-emerald-400 border-emerald-100 dark:border-emerald-800' },
-          { label: 'Rejected', value: counts.rejected, icon: XCircle, color: 'text-rose-600 bg-rose-50 dark:bg-rose-900/20 dark:text-rose-400 border-rose-100 dark:border-rose-800' },
+          { label: 'Total Listings', value: counts.all, icon: Package, color: 'text-blue-600 bg-blue-50 dark:bg-blue-900/20 dark:text-blue-400' },
+          { label: 'Pending Review', value: counts.pending, icon: Clock, color: 'text-amber-600 bg-amber-50 dark:bg-amber-900/20 dark:text-amber-400' },
+          { label: 'Live', value: counts.approved, icon: CheckCircle2, color: 'text-emerald-600 bg-emerald-50 dark:bg-emerald-900/20 dark:text-emerald-400' },
+          { label: 'Rejected', value: counts.rejected, icon: XCircle, color: 'text-rose-600 bg-rose-50 dark:bg-rose-900/20 dark:text-rose-400' },
         ].map(s => (
-          <div key={s.label} className="bg-white dark:bg-gray-800 rounded-2xl p-4 border border-gray-150 dark:border-gray-700 shadow-sm flex items-center gap-3.5 transition-all hover:shadow-md">
-            <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 border ${s.color}`}>
+          <div key={s.label} className="bg-white dark:bg-gray-800 rounded-2xl p-5 border border-gray-100 dark:border-gray-700 shadow-sm transition-all hover:shadow-md">
+            <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 mb-4 ${s.color}`}>
               <s.icon className="w-5 h-5 stroke-[2.25]" />
             </div>
-            <div>
-              <p className="text-2xl font-extrabold text-gray-900 dark:text-white leading-none">{s.value}</p>
-              <p className="text-xs text-gray-500 dark:text-gray-400 font-medium mt-1.5">{s.label}</p>
-            </div>
+            <p className="text-2xl font-extrabold text-gray-900 dark:text-white leading-none">{s.value}</p>
+            <p className="text-xs text-gray-500 dark:text-gray-400 font-medium mt-1.5">{s.label}</p>
           </div>
         ))}
       </div>
 
       {/* A note about the review flow */}
-      <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-100 dark:border-blue-800 rounded-xl p-3.5 text-xs text-blue-700 dark:text-blue-300">
+      <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-100 dark:border-blue-800 rounded-2xl p-3.5 text-xs text-blue-700 dark:text-blue-300">
         New products are reviewed by our team before they go live. Once approved, they'll appear in the store and buyers can purchase them right away.
       </div>
 
@@ -328,7 +469,17 @@ const SellerDashboard = () => {
         >
           <TrendingUp className="w-3.5 h-3.5" /> Analytics
         </button>
+        <button
+          onClick={() => setActiveTab('store')}
+          className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg text-xs font-semibold transition-colors ${
+            activeTab === 'store' ? 'bg-white dark:bg-gray-700 text-gray-900 dark:text-white shadow-sm' : 'text-gray-500 dark:text-gray-400'
+          }`}
+        >
+          <Store className="w-3.5 h-3.5" /> My Store
+        </button>
       </div>
+
+      {activeTab === 'store' && <StoreBuilder />}
 
       {activeTab === 'analytics' && (
         <div className="space-y-4">
@@ -345,54 +496,91 @@ const SellerDashboard = () => {
             <>
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
                 {[
-                  { label: 'Total Revenue', value: `₹${analytics.summary.total_revenue.toLocaleString('en-IN')}`, icon: IndianRupee, color: 'text-emerald-600 bg-emerald-50 dark:bg-emerald-900/20 dark:text-emerald-400 border-emerald-100 dark:border-emerald-800' },
-                  { label: 'Units Sold', value: analytics.summary.total_units_sold, icon: ShoppingCart, color: 'text-blue-600 bg-blue-50 dark:bg-blue-900/20 dark:text-blue-400 border-blue-100 dark:border-blue-800' },
-                  { label: 'Orders', value: analytics.summary.total_orders, icon: Package, color: 'text-purple-600 bg-purple-50 dark:bg-purple-900/20 dark:text-purple-400 border-purple-100 dark:border-purple-800' },
-                  { label: 'Total Stock', value: analytics.summary.total_stock, icon: Boxes, color: 'text-amber-600 bg-amber-50 dark:bg-amber-900/20 dark:text-amber-400 border-amber-100 dark:border-amber-800' },
+                  { label: 'Total Revenue', value: `₹${analytics.summary.total_revenue.toLocaleString('en-IN')}`, icon: IndianRupee, color: 'text-emerald-600 bg-emerald-50 dark:bg-emerald-900/20 dark:text-emerald-400' },
+                  { label: 'Units Sold', value: analytics.summary.total_units_sold, icon: ShoppingCart, color: 'text-blue-600 bg-blue-50 dark:bg-blue-900/20 dark:text-blue-400' },
+                  { label: 'Orders', value: analytics.summary.total_orders, icon: Package, color: 'text-purple-600 bg-purple-50 dark:bg-purple-900/20 dark:text-purple-400' },
+                  { label: 'Total Stock', value: analytics.summary.total_stock, icon: Boxes, color: 'text-amber-600 bg-amber-50 dark:bg-amber-900/20 dark:text-amber-400' },
                 ].map(s => (
-                  <div key={s.label} className="bg-white dark:bg-gray-800 rounded-2xl p-4 border border-gray-150 dark:border-gray-700 shadow-sm flex items-center gap-3.5">
-                    <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 border ${s.color}`}>
+                  <div key={s.label} className="bg-white dark:bg-gray-800 rounded-2xl p-5 border border-gray-100 dark:border-gray-700 shadow-sm transition-all hover:shadow-md">
+                    <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 mb-4 ${s.color}`}>
                       <s.icon className="w-5 h-5 stroke-[2.25]" />
                     </div>
-                    <div>
-                      <p className="text-xl font-extrabold text-gray-900 dark:text-white leading-none">{s.value}</p>
-                      <p className="text-xs text-gray-500 dark:text-gray-400 font-medium mt-1.5">{s.label}</p>
-                    </div>
+                    <p className="text-2xl font-extrabold text-gray-900 dark:text-white leading-none">{s.value}</p>
+                    <p className="text-xs text-gray-500 dark:text-gray-400 font-medium mt-1.5">{s.label}</p>
                   </div>
                 ))}
               </div>
 
-              <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-4">
-                <h3 className="text-xs font-semibold text-gray-900 dark:text-white mb-3">Revenue — last 6 months</h3>
-                <ResponsiveContainer width="100%" height={220}>
-                  <BarChart data={analytics.monthly}>
-                    <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
-                    <XAxis dataKey="month" tick={{ fontSize: 11 }} stroke="#9ca3af" />
-                    <YAxis tick={{ fontSize: 11 }} stroke="#9ca3af" />
-                    <Tooltip formatter={(v) => `₹${Number(v).toLocaleString('en-IN')}`} />
-                    <Bar dataKey="revenue" fill="#ea580c" radius={[4, 4, 0, 0]} />
-                  </BarChart>
-                </ResponsiveContainer>
+              <div className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 shadow-sm p-5">
+                <h3 className="text-sm font-bold text-gray-900 dark:text-white mb-4">Revenue — last 6 months</h3>
+                <div className="bg-[#FAFAFA] dark:bg-gray-900/40 rounded-xl p-3">
+                  <ResponsiveContainer width="100%" height={220}>
+                    <BarChart data={analytics.monthly}>
+                      <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
+                      <XAxis dataKey="month" tick={{ fontSize: 11 }} stroke="#9ca3af" />
+                      <YAxis tick={{ fontSize: 11 }} stroke="#9ca3af" />
+                      <Tooltip formatter={(v) => `₹${Number(v).toLocaleString('en-IN')}`} />
+                      <Bar dataKey="revenue" fill="#ea580c" radius={[4, 4, 0, 0]} />
+                    </BarChart>
+                  </ResponsiveContainer>
+                </div>
               </div>
 
-              <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 overflow-hidden">
-                <div className="px-4 py-3 border-b border-gray-100 dark:border-gray-700">
-                  <h3 className="text-xs font-semibold text-gray-900 dark:text-white">Sales by Product</h3>
+              <div className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 shadow-sm overflow-hidden">
+                <div className="px-5 py-4 border-b border-gray-100 dark:border-gray-700">
+                  <h3 className="text-sm font-bold text-gray-900 dark:text-white">Sales by Product</h3>
                 </div>
                 {analytics.products.length === 0 ? (
                   <p className="text-sm text-gray-500 dark:text-gray-400 text-center py-10">No sales yet</p>
                 ) : (
-                  <div className="divide-y divide-gray-100 dark:divide-gray-700">
-                    {analytics.products.map(p => (
-                      <div key={p.id} className="flex items-center gap-3 px-4 py-3">
-                        <img src={p.image} alt={p.name} className="w-10 h-10 rounded-lg object-cover bg-gray-100 dark:bg-gray-700 shrink-0" />
-                        <p className="text-sm font-medium text-gray-900 dark:text-white truncate flex-1 min-w-0">{p.name}</p>
-                        <p className="text-xs text-gray-500 dark:text-gray-400 shrink-0">{p.units_sold} sold</p>
-                        <p className="text-xs text-gray-500 dark:text-gray-400 shrink-0">Stock: {p.stock}</p>
-                        <p className="text-sm font-semibold text-gray-900 dark:text-white shrink-0 w-24 text-right">₹{p.revenue.toLocaleString('en-IN')}</p>
+                  <>
+                    <div className="flex flex-col sm:flex-row gap-2 px-4 py-3 border-b border-gray-100 dark:border-gray-700">
+                      <div className="relative flex-1 min-w-[160px]">
+                        <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-400" />
+                        <input
+                          type="text"
+                          value={salesSearch}
+                          onChange={(e) => setSalesSearch(e.target.value)}
+                          placeholder="Search products..."
+                          className="w-full pl-8 pr-3 py-1.5 text-xs rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-orange-400"
+                        />
                       </div>
-                    ))}
-                  </div>
+                      <select
+                        value={salesSortBy}
+                        onChange={(e) => setSalesSortBy(e.target.value)}
+                        className="px-2.5 py-1.5 text-xs rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-orange-400"
+                      >
+                        <option value="revenue">Sort: Revenue (high to low)</option>
+                        <option value="units_sold">Sort: Units sold (high to low)</option>
+                        <option value="stock">Sort: Stock (low to high)</option>
+                        <option value="name">Sort: Name (A-Z)</option>
+                      </select>
+                    </div>
+                    {filteredSalesProducts.length === 0 ? (
+                      <p className="text-sm text-gray-500 dark:text-gray-400 text-center py-10">No products match your search</p>
+                    ) : (
+                      <div>
+                        <div className="hidden sm:flex items-center gap-3 px-5 py-2 text-[10px] font-bold text-gray-400 dark:text-gray-500 uppercase tracking-wider bg-gray-50/60 dark:bg-gray-900/30">
+                          <span className="w-10 shrink-0" />
+                          <span className="flex-1 min-w-0">Product</span>
+                          <span className="shrink-0 w-20 text-right">Units Sold</span>
+                          <span className="shrink-0 w-20 text-right">Stock</span>
+                          <span className="shrink-0 w-24 text-right">Revenue</span>
+                        </div>
+                        <div className="divide-y divide-gray-100 dark:divide-gray-700">
+                          {filteredSalesProducts.map(p => (
+                            <div key={p.id} className="flex items-center gap-3 px-5 py-3 hover:bg-gray-50/60 dark:hover:bg-gray-900/30 transition-colors">
+                              <img src={p.image} alt={p.name} className="w-10 h-10 rounded-lg object-cover bg-gray-100 dark:bg-gray-700 shrink-0" />
+                              <p className="text-sm font-medium text-gray-900 dark:text-white truncate flex-1 min-w-0">{p.name}</p>
+                              <p className="text-xs text-gray-500 dark:text-gray-400 shrink-0 w-20 text-right">{p.units_sold} sold</p>
+                              <p className="text-xs text-gray-500 dark:text-gray-400 shrink-0 w-20 text-right">{p.stock}</p>
+                              <p className="text-sm font-semibold text-gray-900 dark:text-white shrink-0 w-24 text-right">₹{p.revenue.toLocaleString('en-IN')}</p>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </>
                 )}
               </div>
             </>
@@ -402,10 +590,44 @@ const SellerDashboard = () => {
 
       {/* Products list */}
       {activeTab === 'products' && (
-      <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 overflow-hidden">
-        <div className="px-4 py-3 border-b border-gray-100 dark:border-gray-700">
-          <h3 className="text-xs font-semibold text-gray-900 dark:text-white">My Products</h3>
+      <div className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 shadow-sm overflow-hidden">
+        <div className="px-5 py-4 border-b border-gray-100 dark:border-gray-700">
+          <h3 className="text-sm font-bold text-gray-900 dark:text-white">My Products</h3>
         </div>
+
+        {!loading && products.length > 0 && (
+          <div className="flex flex-col sm:flex-row gap-2 px-5 py-3 border-b border-gray-100 dark:border-gray-700">
+            <div className="relative flex-1 min-w-[160px]">
+              <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-400" />
+              <input
+                type="text"
+                value={productSearch}
+                onChange={(e) => setProductSearch(e.target.value)}
+                placeholder="Search products..."
+                className="w-full pl-8 pr-3 py-1.5 text-xs rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-orange-400"
+              />
+            </div>
+            <select
+              value={productCategoryFilter}
+              onChange={(e) => setProductCategoryFilter(e.target.value)}
+              className="px-2.5 py-1.5 text-xs rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-orange-400"
+            >
+              <option value="all">All Categories</option>
+              {productCategories.map(c => <option key={c} value={c}>{c}</option>)}
+            </select>
+            <select
+              value={productStatusFilter}
+              onChange={(e) => setProductStatusFilter(e.target.value)}
+              className="px-2.5 py-1.5 text-xs rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-orange-400"
+            >
+              <option value="all">All Statuses</option>
+              <option value="pending">Pending Review</option>
+              <option value="approved">Live</option>
+              <option value="out_of_stock">Out of Stock</option>
+              <option value="rejected">Rejected</option>
+            </select>
+          </div>
+        )}
 
         {loading ? (
           <div className="flex justify-center py-12">
@@ -419,16 +641,30 @@ const SellerDashboard = () => {
               Add your first product
             </button>
           </div>
+        ) : filteredProducts.length === 0 ? (
+          <div className="text-center py-14">
+            <Package className="w-14 h-14 text-gray-300 dark:text-gray-600 mx-auto mb-3" />
+            <p className="text-sm text-gray-500 dark:text-gray-400">No products match your filters</p>
+          </div>
         ) : (
-          <div className="divide-y divide-gray-100 dark:divide-gray-700">
-            {products.map(p => {
-              const meta = STATUS_META[p.status] || STATUS_META.pending;
+          <div>
+            <div className="hidden sm:flex items-center gap-3 px-5 py-2 text-[10px] font-bold text-gray-400 dark:text-gray-500 uppercase tracking-wider bg-gray-50/60 dark:bg-gray-900/30">
+              <span className="w-12 shrink-0" />
+              <span className="flex-1 min-w-0">Product</span>
+              <span className="shrink-0">Price</span>
+              <span className="shrink-0 w-24 text-center">Status</span>
+              <span className="shrink-0 w-[92px] text-right">Actions</span>
+            </div>
+            <div className="divide-y divide-gray-100 dark:divide-gray-700">
+            {filteredProducts.map(p => {
+              const outOfStock = p.status === 'approved' && Number(p.stock) <= 0;
+              const meta = outOfStock ? OUT_OF_STOCK_META : (STATUS_META[p.status] || STATUS_META.pending);
               return (
-                <div key={p.id} className="flex items-center gap-3 px-4 py-3">
+                <div key={p.id} className="flex items-center gap-3 px-5 py-3 hover:bg-gray-50/60 dark:hover:bg-gray-900/30 transition-colors">
                   <img src={p.image} alt={p.name} className="w-12 h-12 rounded-lg object-cover bg-gray-100 dark:bg-gray-700 shrink-0" />
                   <div className="min-w-0 flex-1">
                     <p className="text-sm font-medium text-gray-900 dark:text-white truncate">{p.name}</p>
-                    <p className="text-xs text-gray-400">{p.category} &middot; Stock: {p.stock}</p>
+                    <p className={`text-xs ${outOfStock ? 'text-red-500 font-semibold' : 'text-gray-400'}`}>{p.category} &middot; Stock: {p.stock}</p>
                     {p.status === 'rejected' && p.rejection_reason && (
                       <p className="text-[11px] text-red-500 mt-0.5">Reason: {p.rejection_reason}</p>
                     )}
@@ -464,9 +700,112 @@ const SellerDashboard = () => {
                 </div>
               );
             })}
+            </div>
           </div>
         )}
       </div>
+      )}
+
+      {/* Bulk upload modal */}
+      {showBulk && (
+        <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50 p-4" onClick={closeBulk}>
+          <div className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 max-w-2xl w-full max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100 dark:border-gray-700">
+              <h2 className="text-sm font-bold text-gray-900 dark:text-white flex items-center gap-2"><Upload className="w-4 h-4 text-orange-500" /> Bulk upload products</h2>
+              <button onClick={closeBulk} className="text-gray-400 hover:text-gray-600"><X className="w-4 h-4" /></button>
+            </div>
+            <div className="p-5 space-y-4 text-xs">
+              <div className="rounded-xl bg-orange-50 dark:bg-orange-900/20 border border-orange-100 dark:border-orange-800 p-4 space-y-3">
+                <p className="font-semibold text-gray-700 dark:text-gray-200 leading-relaxed">
+                  1. Download the template, 2. fill in one row per product with the same details as the Add Product form (name, category, price, sale price, stock, photo links, description, delivery, highlights, specifications and more), 3. upload it here. You will see a preview before anything is saved.
+                </p>
+                <div className="flex flex-wrap gap-2">
+                  <button onClick={() => downloadTemplate('xlsx')} className="flex items-center gap-1.5 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold px-3 py-2 rounded-lg transition-colors">
+                    <FileSpreadsheet className="w-3.5 h-3.5" /> Excel template (.xlsx)
+                  </button>
+                  <button onClick={() => downloadTemplate('csv')} className="flex items-center gap-1.5 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-200 font-semibold px-3 py-2 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-600 transition-colors">
+                    <Download className="w-3.5 h-3.5" /> CSV template
+                  </button>
+                </div>
+              </div>
+
+              <label className="block cursor-pointer text-center bg-gray-50 dark:bg-gray-900 border border-dashed border-gray-300 dark:border-gray-600 hover:border-orange-400 rounded-xl py-5 px-3 font-semibold text-gray-500 dark:text-gray-300 transition-colors">
+                {bulkFile ? `${bulkFile.name} (${(bulkFile.size / 1024).toFixed(0)} KB)` : 'Choose your Excel (.xlsx) or CSV file'}
+                <input type="file" accept=".xlsx,.csv,text/csv" className="hidden" onChange={(e) => { setBulkFile(e.target.files[0] || null); setBulkPreview(null); e.target.value = ''; }} />
+              </label>
+
+              <div className="flex items-center gap-3">
+                <label className="font-semibold text-gray-500 dark:text-gray-400 flex-1">
+                  Stock to use when the file says 0 or blank
+                </label>
+                <input
+                  type="number" min="0" value={bulkStock}
+                  onChange={(e) => { setBulkStock(e.target.value); setBulkPreview(null); }}
+                  className="w-24 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl py-2 px-3 font-semibold focus:outline-none dark:text-white"
+                />
+              </div>
+
+              {bulkPreview && (
+                <div className="space-y-3">
+                  <div className="grid grid-cols-3 gap-2 text-center">
+                    {[
+                      { key: 'new', n: bulkPreview.new_count ?? bulkPreview.created_count ?? 0, label: bulkPreview.dry_run === false ? 'imported' : 'will be added', box: 'bg-emerald-50 dark:bg-emerald-900/20', num: 'text-emerald-600', lab: 'text-emerald-700 dark:text-emerald-300', ring: 'ring-emerald-400' },
+                      { key: 'duplicate', n: bulkPreview.duplicate_count || 0, label: 'already exist', box: 'bg-amber-50 dark:bg-amber-900/20', num: 'text-amber-600', lab: 'text-amber-700 dark:text-amber-300', ring: 'ring-amber-400' },
+                      { key: 'skipped', n: bulkPreview.skipped_count || 0, label: 'skipped (see why)', box: 'bg-gray-100 dark:bg-gray-900', num: 'text-gray-600 dark:text-gray-200', lab: 'text-gray-500', ring: 'ring-gray-400' },
+                    ].map(t => (
+                      <button
+                        key={t.key} type="button" disabled={t.n === 0}
+                        onClick={() => setBulkFilter(bulkFilter === t.key ? 'all' : t.key)}
+                        className={`rounded-xl py-2 transition-all ${t.box} ${t.n === 0 ? 'opacity-60 cursor-default' : 'hover:shadow-md cursor-pointer'} ${bulkFilter === t.key ? `ring-2 ${t.ring}` : ''}`}
+                      >
+                        <div className={`text-lg font-bold ${t.num}`}>{t.n}</div>
+                        <div className={`text-[10px] font-semibold ${t.lab}`}>{t.label}</div>
+                      </button>
+                    ))}
+                  </div>
+                  <div className="max-h-56 overflow-y-auto rounded-xl border border-gray-100 dark:border-gray-700 divide-y divide-gray-100 dark:divide-gray-700">
+                    {(bulkPreview.items || []).filter(it => bulkFilter === 'all' || (bulkFilter === 'new' ? (it.status === 'new' || it.status === 'created') : it.status === bulkFilter)).map((it, i) => (
+                      <div key={i} className="flex items-center gap-2 px-3 py-2">
+                        <span className={`w-2 h-2 rounded-full flex-shrink-0 ${it.status === 'new' || it.status === 'created' ? 'bg-emerald-500' : it.status === 'duplicate' ? 'bg-amber-500' : 'bg-gray-400'}`} />
+                        <div className="w-11 h-11 rounded-lg bg-gray-100 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 overflow-hidden flex items-center justify-center flex-shrink-0">
+                          {it.image ? (
+                            <img src={it.image} alt="" loading="lazy" referrerPolicy="no-referrer" className="w-full h-full object-contain" onError={(e) => { e.currentTarget.style.display = 'none'; }} />
+                          ) : null}
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          <div className="font-semibold text-gray-700 dark:text-gray-200 truncate">{it.name || it.handle}</div>
+                          <div className="text-[10px] text-gray-400 font-medium whitespace-normal">
+                            {it.status === 'new' || it.status === 'created'
+                              ? `${it.category} · ₹${it.price} · stock ${it.stock} · ${it.images} photo${it.images === 1 ? '' : 's'}${it.variants > 1 ? ` · ${it.variants} options in file (first one imported)` : ''}`
+                              : it.status === 'duplicate' && it.existing_id
+                                ? `Already in your products as "${it.existing_name}" (ID ${it.existing_id}) · left unchanged`
+                                : it.reason}
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                  {bulkPreview.new_count > 0 && bulkPreview.dry_run && (
+                    <p className="text-[11px] font-medium text-amber-600">New products are reviewed by our team before they go live.</p>
+                  )}
+                </div>
+              )}
+
+              <div className="flex items-center justify-end gap-2 pt-1">
+                <button onClick={closeBulk} className="px-4 py-2.5 rounded-xl border border-gray-200 dark:border-gray-700 font-semibold text-gray-600 dark:text-gray-300">Cancel</button>
+                {bulkPreview && bulkPreview.dry_run && bulkPreview.new_count > 0 ? (
+                  <button disabled={bulkBusy} onClick={() => sendBulk(false)} className="px-4 py-2.5 rounded-xl bg-orange-600 hover:bg-orange-700 text-white font-semibold disabled:opacity-50">
+                    {bulkBusy ? 'Importing...' : `Import ${bulkPreview.new_count} product${bulkPreview.new_count === 1 ? '' : 's'}`}
+                  </button>
+                ) : (
+                  <button disabled={bulkBusy || !bulkFile} onClick={() => sendBulk(true)} className="px-4 py-2.5 rounded-xl bg-gray-900 hover:bg-black text-white font-semibold disabled:opacity-50">
+                    {bulkBusy ? 'Checking...' : 'Preview'}
+                  </button>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
       )}
 
       {/* Add Product Modal */}
