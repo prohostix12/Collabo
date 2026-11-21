@@ -649,7 +649,6 @@ const SellerDashboard = () => {
             <h1 className="text-base font-bold text-gray-900 dark:text-white tracking-tight leading-tight">
               {user?.seller_profile?.store_name || 'Seller Dashboard'}
             </h1>
-            <p className="text-[11px] text-gray-500 dark:text-gray-400 font-medium">Manage your product listings</p>
           </div>
         </div>
         {activeTab === 'products' && (
