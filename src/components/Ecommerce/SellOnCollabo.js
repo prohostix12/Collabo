@@ -4,7 +4,7 @@ import api from '../../services/api';
 import {
   Store, TrendingUp, Shield, Truck, BarChart3, Users, Package,
   ArrowRight, ArrowLeft, CheckCircle, ChevronDown, ChevronUp, Eye, EyeOff,
-  Mail, Lock, User, Phone, AlertCircle, Upload, X
+  Mail, Lock, User, Phone, AlertCircle, Upload, X, Megaphone,
 } from 'lucide-react';
 import { SELLER_TERMS_INTRO, SELLER_TERMS_SECTIONS } from './sellerTerms';
 
@@ -373,20 +373,28 @@ export default function SellOnCollabo() {
   const [openFaq, setOpenFaq] = useState(null);
   const { user } = useAuth();
   const [hubStats, setHubStats] = useState(null);
+  const [categories, setCategories] = useState([]);
 
   useEffect(() => {
     api.get('/ecommerce/seller-hub-stats/').then(res => setHubStats(res.data)).catch(() => {});
+    api.get('/ecommerce/categories/?page_size=1000').then(res => setCategories((res.data.results || res.data || []).slice(0, 12))).catch(() => {});
   }, []);
 
   return (
     <div className="min-h-screen bg-white">
       <nav className="sticky top-0 z-50 bg-white border-b border-gray-200">
-        <div className="max-w-6xl mx-auto px-4 sm:px-6 py-3 flex items-center justify-between">
-          <div className="flex items-center gap-3">
+        <div className="max-w-6xl mx-auto px-4 sm:px-6 py-3 flex items-center justify-between gap-4">
+          <div className="flex items-center gap-3 shrink-0">
             <a href="/" className="text-lg font-semibold text-gray-900">Collabo</a>
             <span className="text-[9px] font-medium text-orange-600 bg-orange-50 px-2 py-0.5 rounded">Seller Hub</span>
           </div>
-          <div className="flex items-center gap-3">
+          <div className="hidden md:flex items-center gap-6">
+            <a href="#how-it-works" className="text-[12px] font-medium text-gray-600 hover:text-orange-600 transition-colors">Sell Online</a>
+            <a href="#pricing" className="text-[12px] font-medium text-gray-600 hover:text-orange-600 transition-colors">Fees &amp; Commission</a>
+            <a href="#benefits" className="text-[12px] font-medium text-gray-600 hover:text-orange-600 transition-colors">Grow</a>
+            <a href="#faq" className="text-[12px] font-medium text-gray-600 hover:text-orange-600 transition-colors">Learn</a>
+          </div>
+          <div className="flex items-center gap-3 shrink-0">
             <a href="/" className="text-[11px] font-medium text-gray-500 hover:text-gray-900 transition-colors hidden sm:inline">Continue shopping</a>
             {user ? (
               <a href="/" className="text-[11px] font-medium text-white bg-orange-600 px-4 py-1.5 rounded-lg hover:bg-orange-700 transition-colors">Go to Store</a>
@@ -398,7 +406,7 @@ export default function SellOnCollabo() {
       </nav>
 
       <section className="bg-gray-50 border-b border-gray-100">
-        <div className="max-w-6xl mx-auto px-4 sm:px-6 py-12 sm:py-16">
+        <div className="max-w-6xl mx-auto px-4 sm:px-6 py-10 sm:py-14">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-start">
             <div className="pt-4">
               <div className="inline-flex items-center gap-1.5 bg-white border border-gray-200 rounded-full px-3 py-1 mb-4">
@@ -411,6 +419,22 @@ export default function SellOnCollabo() {
               <p className="text-sm text-gray-500 leading-relaxed mb-6 max-w-md">
                 Create your account, complete verification, and start selling. Zero listing fees. Get orders from day one.
               </p>
+
+              {/* Hero ad banner — highlights the real fee structure, no fabricated claims */}
+              <div className="relative overflow-hidden rounded-2xl bg-gradient-to-r from-orange-600 via-orange-500 to-amber-500 p-5 sm:p-6 mb-6 shadow-md">
+                <div className="absolute -right-6 -top-6 w-28 h-28 bg-white/10 rounded-full" />
+                <div className="absolute -right-2 bottom-0 w-16 h-16 bg-white/10 rounded-full" />
+                <div className="relative flex items-center gap-4">
+                  <div className="w-12 h-12 rounded-xl bg-white/15 backdrop-blur-sm flex items-center justify-center shrink-0">
+                    <Megaphone className="w-6 h-6 text-white" />
+                  </div>
+                  <div>
+                    <p className="text-white font-extrabold text-lg sm:text-xl leading-tight">₹0 Listing Fee</p>
+                    <p className="text-white/85 text-[12px] font-medium">Zyada mat socho — Collabo pe becho! Pay only 10% when you actually sell.</p>
+                  </div>
+                </div>
+              </div>
+
               <div className="space-y-3 mb-6">
                 {['No listing fees — pay only 10% when you sell','Integrated shipping with Shiprocket (17+ couriers)','Influencers promote your products for free','7-day payment settlement to your bank'].map((t,i) => (
                   <div key={i} className="flex items-start gap-2"><CheckCircle className="w-4 h-4 text-emerald-500 mt-0.5 shrink-0" /><span className="text-[12px] text-gray-600">{t}</span></div>
@@ -437,6 +461,22 @@ export default function SellOnCollabo() {
         </div>
       </section>
 
+      {categories.length > 0 && (
+        <section className="border-b border-gray-100">
+          <div className="max-w-6xl mx-auto px-4 sm:px-6 py-12">
+            <div className="text-center mb-8"><h2 className="text-xl font-semibold text-gray-900">Sell in top categories</h2><p className="text-xs text-gray-400 mt-1">Buyers are already shopping across these categories</p></div>
+            <div className="grid grid-cols-3 sm:grid-cols-4 lg:grid-cols-6 gap-3">
+              {categories.map(c => (
+                <div key={c.id} className="bg-gray-50 border border-gray-100 rounded-xl p-4 text-center hover:border-orange-200 hover:bg-orange-50/50 transition-colors">
+                  <span className="text-xl leading-none block mb-2">{c.icon || '📦'}</span>
+                  <p className="text-[11px] font-medium text-gray-700 truncate">{c.name}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+        </section>
+      )}
+
       <section id="how-it-works" className="border-b border-gray-100">
         <div className="max-w-6xl mx-auto px-4 sm:px-6 py-14">
           <div className="text-center mb-10"><h2 className="text-xl font-semibold text-gray-900">How it works</h2><p className="text-xs text-gray-400 mt-1">4 steps to start selling</p></div>
@@ -453,7 +493,7 @@ export default function SellOnCollabo() {
         </div>
       </section>
 
-      <section className="bg-gray-50 border-b border-gray-100">
+      <section id="benefits" className="bg-gray-50 border-b border-gray-100">
         <div className="max-w-6xl mx-auto px-4 sm:px-6 py-14">
           <div className="text-center mb-10"><h2 className="text-xl font-semibold text-gray-900">Why sell on Collabo</h2></div>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -462,7 +502,7 @@ export default function SellOnCollabo() {
         </div>
       </section>
 
-      <section className="border-b border-gray-100">
+      <section id="pricing" className="border-b border-gray-100">
         <div className="max-w-6xl mx-auto px-4 sm:px-6 py-14">
           <div className="text-center mb-10"><h2 className="text-xl font-semibold text-gray-900">Simple pricing</h2></div>
           <div className="max-w-md mx-auto bg-white rounded-xl border border-gray-200 overflow-hidden">
@@ -476,7 +516,7 @@ export default function SellOnCollabo() {
         </div>
       </section>
 
-      <section className="bg-gray-50 border-b border-gray-100">
+      <section id="faq" className="bg-gray-50 border-b border-gray-100">
         <div className="max-w-6xl mx-auto px-4 sm:px-6 py-14">
           <div className="text-center mb-10"><h2 className="text-xl font-semibold text-gray-900">FAQ</h2></div>
           <div className="max-w-2xl mx-auto space-y-2">
