@@ -4,7 +4,7 @@ import api from '../../services/api';
 import {
   Store, TrendingUp, Shield, Truck, BarChart3, Users, Package,
   ArrowRight, ArrowLeft, CheckCircle, ChevronDown, ChevronUp, Eye, EyeOff,
-  Mail, Lock, User, Phone, AlertCircle, Upload, X
+  Mail, Lock, User, Phone, AlertCircle, Upload, X, Megaphone,
 } from 'lucide-react';
 import { SELLER_TERMS_INTRO, SELLER_TERMS_SECTIONS } from './sellerTerms';
 
@@ -90,20 +90,17 @@ function SellerRegistrationWidget() {
       if (businessAddress.trim().length < 10) return setKycError('Please enter a complete business address');
       setKycStep(2);
     } else if (kycStep === 2) {
-      if (!taxId.trim() && !idNumber.trim()) return setKycError('Provide Tax ID (GSTIN/PAN) or Aadhaar/Voter ID number');
-      if (taxId.trim()) {
+      if (!taxId.trim()) return setKycError('GSTIN is required');
+      {
         const gstRegex = /^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z]{1}[0-9A-Z]{1}[Z]{1}[0-9A-Z]{1}$/;
-        const panRegex = /^[A-Z]{5}[0-9]{4}[A-Z]{1}$/;
-        if (!gstRegex.test(taxId.trim().toUpperCase()) && !panRegex.test(taxId.trim().toUpperCase())) {
-          return setKycError('Invalid Tax ID. Enter a valid 15-digit GSTIN or 10-character PAN (e.g. ABCDE1234F)');
+        if (!gstRegex.test(taxId.trim().toUpperCase())) {
+          return setKycError('Invalid GSTIN. Enter a valid 15-character GSTIN (e.g. 27AAAAA1111A1Z1)');
         }
       }
       if (idNumber.trim()) {
         if (idType === 'aadhaar') {
           const cleaned = idNumber.replace(/\s/g, '');
           if (!/^\d{12}$/.test(cleaned)) return setKycError('Aadhaar number must be exactly 12 digits');
-        } else if (idType === 'voter') {
-          if (!/^[A-Z]{3}\d{7}$/.test(idNumber.trim().toUpperCase())) return setKycError('Voter ID must be 3 letters followed by 7 digits (e.g. ABC1234567)');
         } else if (idType === 'pan') {
           if (!/^[A-Z]{5}\d{4}[A-Z]$/.test(idNumber.trim().toUpperCase())) return setKycError('PAN must be 10 characters: 5 letters, 4 digits, 1 letter (e.g. ABCDE1234F)');
         }
@@ -254,12 +251,12 @@ function SellerRegistrationWidget() {
       )}
       {kycStep === 2 && (
         <div className="space-y-3">
-          <div><label className={labelCls}>Tax ID (GSTIN / PAN)</label><input type="text" value={taxId} onChange={e=>setTaxId(e.target.value)} placeholder="e.g. 27AAAAA1111A1Z1" className={inputCls} />
-          <p className="text-[9px] text-gray-400 mt-0.5">Optional if you have Aadhaar/Voter ID below</p></div>
+          <div><label className={labelCls}>GSTIN *</label><input type="text" value={taxId} onChange={e=>setTaxId(e.target.value)} placeholder="e.g. 27AAAAA1111A1Z1" maxLength={15} className={inputCls} />
+          <p className="text-[9px] text-gray-400 mt-0.5">15-character GST number (required)</p></div>
           <div>
             <label className={labelCls}>Identity Verification *</label>
             <div className="flex gap-2 mb-2">
-              {[{id:'aadhaar',label:'Aadhaar Card'},{id:'voter',label:'Voter ID'},{id:'pan',label:'PAN Card'}].map(t=>(
+              {[{id:'aadhaar',label:'Aadhaar Card'},{id:'pan',label:'PAN Card'}].map(t=>(
                 <button key={t.id} type="button" onClick={()=>setIdType(t.id)}
                   className={`flex-1 py-2 rounded-lg text-[10px] font-medium transition-colors border ${
                     idType===t.id ? 'bg-orange-50 border-orange-300 text-orange-700' : 'bg-white border-gray-200 text-gray-500 hover:border-gray-300'
@@ -267,13 +264,13 @@ function SellerRegistrationWidget() {
               ))}
             </div>
             <input type="text" value={idNumber} onChange={e=>setIdNumber(e.target.value)}
-              placeholder={idType==='aadhaar'?'e.g. 1234 5678 9012':idType==='voter'?'e.g. ABC1234567':'e.g. ABCDE1234F'}
+              placeholder={idType==='aadhaar'?'e.g. 1234 5678 9012':'e.g. ABCDE1234F'}
               className={inputCls} />
-            <p className="text-[9px] text-gray-400 mt-0.5">{idType==='aadhaar'?'12-digit Aadhaar number':idType==='voter'?'Voter ID (EPIC) number':'10-character PAN number'}</p>
+            <p className="text-[9px] text-gray-400 mt-0.5">{idType==='aadhaar'?'12-digit Aadhaar number':'10-character PAN number'}</p>
           </div>
           <div><label className={labelCls}>Upload ID Proof (PDF or Image) *</label><input type="file" accept=".pdf,image/*" onChange={e=>handleFileUpload(e,setKycDoc)} className={inputCls} />
           {kycDoc && <p className="text-[10px] text-emerald-600 mt-1">Attached: {kycDoc.name}</p>}
-          <p className="text-[9px] text-gray-400 mt-0.5">Clear photo or scan of your {idType==='aadhaar'?'Aadhaar card (front & back)':idType==='voter'?'Voter ID card':' PAN card'}</p></div>
+          <p className="text-[9px] text-gray-400 mt-0.5">Clear photo or scan of your {idType==='aadhaar'?'Aadhaar card (front & back)':'PAN card'}</p></div>
         </div>
       )}
       {kycStep === 3 && (
@@ -292,7 +289,7 @@ function SellerRegistrationWidget() {
           {[
             ['Store', storeName], ['Address', businessAddress],
             ...(taxId ? [['Tax ID', taxId]] : []),
-            ...(idNumber ? [[idType === 'aadhaar' ? 'Aadhaar' : idType === 'voter' ? 'Voter ID' : 'PAN', idNumber]] : []),
+            ...(idNumber ? [[idType === 'aadhaar' ? 'Aadhaar' : 'PAN', idNumber]] : []),
             ['Bank', `${bankName} — ${bankIfsc}`], ['Account', bankAccount],
           ].map(([l,v]) => (
             <div key={l} className="flex justify-between py-1 border-b border-gray-100 last:border-0">
@@ -376,20 +373,28 @@ export default function SellOnCollabo() {
   const [openFaq, setOpenFaq] = useState(null);
   const { user } = useAuth();
   const [hubStats, setHubStats] = useState(null);
+  const [categories, setCategories] = useState([]);
 
   useEffect(() => {
     api.get('/ecommerce/seller-hub-stats/').then(res => setHubStats(res.data)).catch(() => {});
+    api.get('/ecommerce/categories/?page_size=1000').then(res => setCategories((res.data.results || res.data || []).slice(0, 12))).catch(() => {});
   }, []);
 
   return (
     <div className="min-h-screen bg-white">
       <nav className="sticky top-0 z-50 bg-white border-b border-gray-200">
-        <div className="max-w-6xl mx-auto px-4 sm:px-6 py-3 flex items-center justify-between">
-          <div className="flex items-center gap-3">
+        <div className="max-w-6xl mx-auto px-4 sm:px-6 py-3 flex items-center justify-between gap-4">
+          <div className="flex items-center gap-3 shrink-0">
             <a href="/" className="text-lg font-semibold text-gray-900">Collabo</a>
             <span className="text-[9px] font-medium text-orange-600 bg-orange-50 px-2 py-0.5 rounded">Seller Hub</span>
           </div>
-          <div className="flex items-center gap-3">
+          <div className="hidden md:flex items-center gap-6">
+            <a href="#how-it-works" className="text-[12px] font-medium text-gray-600 hover:text-orange-600 transition-colors">Sell Online</a>
+            <a href="#pricing" className="text-[12px] font-medium text-gray-600 hover:text-orange-600 transition-colors">Fees &amp; Commission</a>
+            <a href="#benefits" className="text-[12px] font-medium text-gray-600 hover:text-orange-600 transition-colors">Grow</a>
+            <a href="#faq" className="text-[12px] font-medium text-gray-600 hover:text-orange-600 transition-colors">Learn</a>
+          </div>
+          <div className="flex items-center gap-3 shrink-0">
             <a href="/" className="text-[11px] font-medium text-gray-500 hover:text-gray-900 transition-colors hidden sm:inline">Continue shopping</a>
             {user ? (
               <a href="/" className="text-[11px] font-medium text-white bg-orange-600 px-4 py-1.5 rounded-lg hover:bg-orange-700 transition-colors">Go to Store</a>
@@ -401,7 +406,7 @@ export default function SellOnCollabo() {
       </nav>
 
       <section className="bg-gray-50 border-b border-gray-100">
-        <div className="max-w-6xl mx-auto px-4 sm:px-6 py-12 sm:py-16">
+        <div className="max-w-6xl mx-auto px-4 sm:px-6 py-10 sm:py-14">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-start">
             <div className="pt-4">
               <div className="inline-flex items-center gap-1.5 bg-white border border-gray-200 rounded-full px-3 py-1 mb-4">
@@ -414,6 +419,22 @@ export default function SellOnCollabo() {
               <p className="text-sm text-gray-500 leading-relaxed mb-6 max-w-md">
                 Create your account, complete verification, and start selling. Zero listing fees. Get orders from day one.
               </p>
+
+              {/* Hero ad banner — highlights the real fee structure, no fabricated claims */}
+              <div className="relative overflow-hidden rounded-2xl bg-gradient-to-r from-orange-600 via-orange-500 to-amber-500 p-5 sm:p-6 mb-6 shadow-md">
+                <div className="absolute -right-6 -top-6 w-28 h-28 bg-white/10 rounded-full" />
+                <div className="absolute -right-2 bottom-0 w-16 h-16 bg-white/10 rounded-full" />
+                <div className="relative flex items-center gap-4">
+                  <div className="w-12 h-12 rounded-xl bg-white/15 backdrop-blur-sm flex items-center justify-center shrink-0">
+                    <Megaphone className="w-6 h-6 text-white" />
+                  </div>
+                  <div>
+                    <p className="text-white font-extrabold text-lg sm:text-xl leading-tight">₹0 Listing Fee</p>
+                    <p className="text-white/85 text-[12px] font-medium">Zyada mat socho — Collabo pe becho! Pay only 10% when you actually sell.</p>
+                  </div>
+                </div>
+              </div>
+
               <div className="space-y-3 mb-6">
                 {['No listing fees — pay only 10% when you sell','Integrated shipping with Shiprocket (17+ couriers)','Influencers promote your products for free','7-day payment settlement to your bank'].map((t,i) => (
                   <div key={i} className="flex items-start gap-2"><CheckCircle className="w-4 h-4 text-emerald-500 mt-0.5 shrink-0" /><span className="text-[12px] text-gray-600">{t}</span></div>
@@ -440,6 +461,22 @@ export default function SellOnCollabo() {
         </div>
       </section>
 
+      {categories.length > 0 && (
+        <section className="border-b border-gray-100">
+          <div className="max-w-6xl mx-auto px-4 sm:px-6 py-12">
+            <div className="text-center mb-8"><h2 className="text-xl font-semibold text-gray-900">Sell in top categories</h2><p className="text-xs text-gray-400 mt-1">Buyers are already shopping across these categories</p></div>
+            <div className="grid grid-cols-3 sm:grid-cols-4 lg:grid-cols-6 gap-3">
+              {categories.map(c => (
+                <div key={c.id} className="bg-gray-50 border border-gray-100 rounded-xl p-4 text-center hover:border-orange-200 hover:bg-orange-50/50 transition-colors">
+                  <span className="text-xl leading-none block mb-2">{c.icon || '📦'}</span>
+                  <p className="text-[11px] font-medium text-gray-700 truncate">{c.name}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+        </section>
+      )}
+
       <section id="how-it-works" className="border-b border-gray-100">
         <div className="max-w-6xl mx-auto px-4 sm:px-6 py-14">
           <div className="text-center mb-10"><h2 className="text-xl font-semibold text-gray-900">How it works</h2><p className="text-xs text-gray-400 mt-1">4 steps to start selling</p></div>
@@ -456,7 +493,7 @@ export default function SellOnCollabo() {
         </div>
       </section>
 
-      <section className="bg-gray-50 border-b border-gray-100">
+      <section id="benefits" className="bg-gray-50 border-b border-gray-100">
         <div className="max-w-6xl mx-auto px-4 sm:px-6 py-14">
           <div className="text-center mb-10"><h2 className="text-xl font-semibold text-gray-900">Why sell on Collabo</h2></div>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -465,7 +502,7 @@ export default function SellOnCollabo() {
         </div>
       </section>
 
-      <section className="border-b border-gray-100">
+      <section id="pricing" className="border-b border-gray-100">
         <div className="max-w-6xl mx-auto px-4 sm:px-6 py-14">
           <div className="text-center mb-10"><h2 className="text-xl font-semibold text-gray-900">Simple pricing</h2></div>
           <div className="max-w-md mx-auto bg-white rounded-xl border border-gray-200 overflow-hidden">
@@ -479,7 +516,7 @@ export default function SellOnCollabo() {
         </div>
       </section>
 
-      <section className="bg-gray-50 border-b border-gray-100">
+      <section id="faq" className="bg-gray-50 border-b border-gray-100">
         <div className="max-w-6xl mx-auto px-4 sm:px-6 py-14">
           <div className="text-center mb-10"><h2 className="text-xl font-semibold text-gray-900">FAQ</h2></div>
           <div className="max-w-2xl mx-auto space-y-2">
