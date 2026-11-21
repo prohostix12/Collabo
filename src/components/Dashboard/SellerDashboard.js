@@ -289,6 +289,61 @@ const SellerDashboard = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [chartRange, chartCustomStart, chartCustomEnd, activeTab]);
 
+  const handleDownloadAnalytics = useCallback(() => {
+    const rows = chartMonthly || analytics?.monthly || [];
+    const rangeLabels = { '1d': '1 Day', '7d': '7 Days', '30d': '30 Days', '6m': '6 Months', '12m': '12 Months', 'custom': 'Custom Range' };
+    const rangeLabel = chartRange === 'custom'
+      ? `${chartCustomStart || '?'} to ${chartCustomEnd || '?'}`
+      : (rangeLabels[chartRange] || chartRange);
+
+    const lines = [];
+    lines.push('Seller Analytics Export');
+    lines.push(`Store,${user?.seller_profile?.store_name || ''}`);
+    lines.push(`Range,${rangeLabel}`);
+    lines.push(`Generated At,${new Date().toLocaleString('en-IN')}`);
+    lines.push('');
+
+    if (analytics?.summary) {
+      lines.push('Summary (all-time)');
+      lines.push('Total Revenue,Units Sold,Total Orders,Total Products,Total Stock');
+      lines.push([
+        analytics.summary.total_revenue,
+        analytics.summary.total_units_sold,
+        analytics.summary.total_orders,
+        analytics.summary.total_products,
+        analytics.summary.total_stock,
+      ].join(','));
+      lines.push('');
+    }
+
+    lines.push('Revenue Breakdown (selected range)');
+    lines.push('Period,Fulfilled Revenue,Units,Cancelled Revenue');
+    rows.forEach(r => {
+      lines.push([r.month, r.revenue, r.units, r.cancelled_revenue].join(','));
+    });
+
+    if (analytics?.products?.length) {
+      lines.push('');
+      lines.push('Sales by Product (all-time)');
+      lines.push('Product,Units Sold,Revenue,Stock');
+      analytics.products.forEach(p => {
+        const name = `"${String(p.name || '').replace(/"/g, '""')}"`;
+        lines.push([name, p.units_sold, p.revenue, p.stock].join(','));
+      });
+    }
+
+    const csv = lines.join('\n');
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `collabo-analytics-${chartRange}-${new Date().toISOString().slice(0, 10)}.csv`;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
+  }, [chartMonthly, analytics, chartRange, chartCustomStart, chartCustomEnd, user]);
+
   const renderRevenueChart = (gradientId) => (
     <div className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 shadow-sm p-5">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4">
@@ -296,6 +351,14 @@ const SellerDashboard = () => {
         <div className="flex items-center gap-4 text-[11px] font-medium text-gray-500 dark:text-gray-400">
           <span className="flex items-center gap-1.5"><span className="w-2 h-2 rounded-full bg-orange-500" /> Fulfilled</span>
           <span className="flex items-center gap-1.5"><span className="w-2 h-2 rounded-full bg-gray-400" /> Cancelled</span>
+          <button
+            onClick={handleDownloadAnalytics}
+            disabled={!analytics}
+            className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-200 font-bold hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            title="Download analytics for this range"
+          >
+            <Download className="w-3.5 h-3.5" /> Download
+          </button>
         </div>
       </div>
 
