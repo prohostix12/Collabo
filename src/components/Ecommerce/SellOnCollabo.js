@@ -412,6 +412,16 @@ export default function SellOnCollabo() {
         </div>
       </nav>
 
+      {storeSettings?.seller_hub_banner_image && (
+        <div className="w-full">
+          <img
+            src={storeSettings.seller_hub_banner_image}
+            alt="Sell on Collabo"
+            className="w-full h-64 sm:h-80 lg:h-[420px] object-cover"
+          />
+        </div>
+      )}
+
       <section className="bg-gray-50 border-b border-gray-100">
         <div className="max-w-6xl mx-auto px-4 sm:px-6 py-10 sm:py-14">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-start">
@@ -426,16 +436,6 @@ export default function SellOnCollabo() {
               <p className="text-sm text-gray-500 leading-relaxed mb-6 max-w-md">
                 Create your account, complete verification, and start selling. Zero listing fees. Get orders from day one.
               </p>
-
-              {storeSettings?.seller_hub_banner_image && (
-                <div className="mb-6 rounded-2xl overflow-hidden border border-gray-200 shadow-sm">
-                  <img
-                    src={storeSettings.seller_hub_banner_image}
-                    alt="Sell on Collabo"
-                    className="w-full h-40 sm:h-48 object-cover"
-                  />
-                </div>
-              )}
 
               <div className="space-y-3 mb-6">
                 {['No listing fees — pay only 10% when you sell','Integrated shipping with Shiprocket (17+ couriers)','Influencers promote your products for free','7-day payment settlement to your bank'].map((t,i) => (
