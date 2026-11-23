@@ -374,6 +374,7 @@ export default function SellOnCollabo() {
   const { user } = useAuth();
   const [hubStats, setHubStats] = useState(null);
   const [categories, setCategories] = useState([]);
+  const [storeSettings, setStoreSettings] = useState(null);
   // Keep the form collapsed on first load; show it once the seller taps "Start Selling",
   // or immediately if they're already logged in / mid-application (so they can resume).
   const [showRegister, setShowRegister] = useState(!!user);
@@ -383,6 +384,7 @@ export default function SellOnCollabo() {
   useEffect(() => {
     api.get('/ecommerce/seller-hub-stats/').then(res => setHubStats(res.data)).catch(() => {});
     api.get('/ecommerce/categories/?page_size=1000').then(res => setCategories((res.data.results || res.data || []).slice(0, 12))).catch(() => {});
+    api.get('/ecommerce/store-settings/').then(res => setStoreSettings(res.data)).catch(() => {});
   }, []);
 
   return (
@@ -460,6 +462,16 @@ export default function SellOnCollabo() {
               )}
             </div>
           </div>
+
+          {storeSettings?.seller_hub_banner_image && (
+            <div className="mt-10 rounded-2xl overflow-hidden border border-gray-200 shadow-sm">
+              <img
+                src={storeSettings.seller_hub_banner_image}
+                alt="Sell on Collabo"
+                className="w-full h-48 sm:h-64 lg:h-80 object-cover"
+              />
+            </div>
+          )}
         </div>
       </section>
 

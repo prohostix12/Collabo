@@ -5,7 +5,7 @@ from .models import Product, Cart, CartItem, Address, Order, OrderItem, Category
 class CategorySerializer(serializers.ModelSerializer):
     class Meta:
         model = Category
-        fields = ['id', 'name', 'icon']
+        fields = ['id', 'name', 'icon', 'order']
 
 class BrandSerializer(serializers.ModelSerializer):
     class Meta:
@@ -26,20 +26,46 @@ class ProductSerializer(serializers.ModelSerializer):
     seller_username = serializers.ReadOnlyField(source='seller.username')
     id = serializers.IntegerField(required=False)
     vendor_details = VendorSerializer(source='vendor', read_only=True)
+    purchase_count = serializers.SerializerMethodField()
+    seller_store_slug = serializers.SerializerMethodField()
+    seller_store_name = serializers.SerializerMethodField()
 
     class Meta:
         model = Product
         fields = [
             'id', 'seller', 'seller_username', 'status', 'rejection_reason', 'name', 'category', 'brand',
             'vendor', 'vendor_details', 'return_policy',
-            'price', 'discount_price', 'discount_percent', 'rating', 'reviews_count',
+            'price', 'discount_price', 'discount_percent', 'rating', 'reviews_count', 'purchase_count',
             'image', 'images', 'colors', 'description', 'stock', 'delivery', 'specifications',
-            'highlights', 'offers', 'seller_info', 'qa_section',
+            'highlights', 'offers', 'seller_info', 'qa_section', 'seller_store_slug', 'seller_store_name',
             'product_shipping_charge', 'commission_rate', 'link_discount_percent', 'created_at', 'updated_at'
         ]
         # status/rejection_reason are admin-controlled only — set via the approve/reject
         # actions on ProductViewSet, never directly through create/update payloads.
         read_only_fields = ['seller', 'discount_percent', 'status', 'rejection_reason']
+
+    def get_purchase_count(self, obj):
+        """Units actually bought: all non-cancelled, non-returned order lines."""
+        annotated = getattr(obj, 'purchase_count_annotated', None)
+        if annotated is not None:
+            return annotated
+        from django.db.models import Sum
+        return obj.orderitem_set.exclude(order__status__in=['cancelled', 'returned']).aggregate(n=Sum('quantity'))['n'] or 0
+
+    def _seller_storefront(self, obj):
+        """Only return a storefront if the seller has an approved profile with a slug."""
+        profile = getattr(obj.seller, 'seller_profile', None)
+        if profile and profile.verification_status == 'approved' and profile.store_slug:
+            return profile
+        return None
+
+    def get_seller_store_slug(self, obj):
+        profile = self._seller_storefront(obj)
+        return profile.store_slug if profile else None
+
+    def get_seller_store_name(self, obj):
+        profile = self._seller_storefront(obj)
+        return profile.store_name if profile else None
 
     def to_representation(self, instance):
         data = super().to_representation(instance)
@@ -175,6 +201,7 @@ class StoreSettingsSerializer(serializers.ModelSerializer):
             'hero_card_carousel_enabled', 'hero_card_slides',
             'trusted_partners', 'trusted_partners_title',
             'promo_cards',
+            'seller_hub_banner_image',
             'shipping_charge', 'free_shipping_threshold', 'serviceable_pincodes',
             'updated_at'
         ]
