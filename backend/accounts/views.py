@@ -1058,6 +1058,12 @@ class SellerProfileView(generics.RetrieveUpdateAPIView):
         return ctx
 
     def post(self, request, *args, **kwargs):
+        if not request.user.is_verified:
+            return Response(
+                {'error': 'Please verify your email address before submitting your seller application.'},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+
         profile, created = SellerProfile.objects.get_or_create(user=request.user)
 
         MAX_SIZE = 5 * 1024 * 1024
@@ -1169,6 +1175,10 @@ def approve_seller(request, user_id):
         profile = SellerProfile.objects.get(user=user)
     except SellerProfile.DoesNotExist:
         return Response({'error': 'Seller profile not found'}, status=status.HTTP_404_NOT_FOUND)
+
+    if not user.is_verified:
+        return Response({'error': 'This account has not verified its email address yet and cannot be approved.'},
+                         status=status.HTTP_400_BAD_REQUEST)
 
     previous_status = profile.verification_status
     profile.verification_status = 'approved'
