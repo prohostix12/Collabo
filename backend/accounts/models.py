@@ -295,3 +295,42 @@ class SellerProfile(models.Model):
 
     def __str__(self):
         return f"{self.store_name} ({self.user.email})"
+
+
+class UserSession(models.Model):
+    """One row per login. A unique session_id is embedded as a custom claim in
+    both the access and refresh token issued at login (the access token inherits
+    it automatically — see RefreshToken.access_token in SimpleJWT). Checked on
+    every authenticated request (accounts.authentication.SafeJWTAuthentication),
+    so setting `revoked=True` here takes effect immediately — not just on the
+    token's natural expiry or next refresh."""
+    DEVICE_TYPES = (
+        ('desktop', 'Desktop'),
+        ('mobile', 'Mobile'),
+        ('tablet', 'Tablet'),
+        ('unknown', 'Unknown'),
+    )
+
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='sessions')
+    session_id = models.UUIDField(unique=True, db_index=True)
+    device_type = models.CharField(max_length=10, choices=DEVICE_TYPES, default='unknown')
+    browser = models.CharField(max_length=100, blank=True, default='')
+    os = models.CharField(max_length=100, blank=True, default='')
+    ip_address = models.GenericIPAddressField(null=True, blank=True)
+    location = models.CharField(max_length=200, blank=True, default='', help_text="Best-effort city/country from IP geolocation")
+    user_agent = models.TextField(blank=True, default='')
+    created_at = models.DateTimeField(auto_now_add=True)
+    last_active_at = models.DateTimeField(auto_now_add=True)
+    revoked = models.BooleanField(default=False)
+    revoked_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        ordering = ['-last_active_at']
+
+    @property
+    def device_name(self):
+        parts = [p for p in [self.browser, self.os] if p]
+        return ' on '.join(parts) if parts else 'Unknown device'
+
+    def __str__(self):
+        return f"{self.user.email} - {self.device_name} ({self.session_id})"

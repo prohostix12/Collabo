@@ -11,7 +11,7 @@ import {
   LayoutGrid, Cpu, Smartphone, Shirt, ShoppingBasket, Home as HomeIcon,
   Armchair, Dumbbell, BookOpen, Gamepad2, Plug, Film, Download,
   Mail, Shield, Calendar, Headphones, HeartPulse, Bath, Truck, Share2, Menu, ChevronLeft,
-  Baby, Flower2, Gift, Gem, Hammer, Wallet, ExternalLink, Upload, ChevronDown, ChevronUp
+  Baby, Flower2, Gift, Gem, Hammer, Wallet, ExternalLink, Upload, ChevronDown, ChevronUp, Monitor
 } from 'lucide-react';
 import api from '../../services/api';
 import { useAuth } from '../../contexts/AuthContext';
@@ -20,6 +20,7 @@ import Footer from '../Layout/Footer';
 import ChangePasswordModal from '../Layout/ChangePasswordModal';
 import ChangeUsernameModal from '../Layout/ChangeUsernameModal';
 import DeleteAccountModal from '../Layout/DeleteAccountModal';
+import DeviceManagementModal from '../Layout/DeviceManagementModal';
 import VendorManagement from '../Dashboard/VendorManagement';
 import WeeklyBestDealsSection from './WeeklyBestDealsSection';
 
@@ -6129,6 +6130,10 @@ export default function EcommerceMarketplace({ inlineMode = false, onBackToSelec
                     <div className="flex items-center gap-2.5"><Lock className="w-4 h-4 text-slate-400" /><span>Change Password</span></div>
                     <ChevronRight className="w-3.5 h-3.5 text-slate-300" />
                   </button>
+                  <button onClick={() => setActiveProfileModal('devices')} className="w-full text-left px-4 py-3 text-xs font-bold text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800 flex items-center justify-between transition-colors border-b border-slate-100 dark:border-slate-800">
+                    <div className="flex items-center gap-2.5"><Monitor className="w-4 h-4 text-slate-400" /><span>Manage Devices</span></div>
+                    <ChevronRight className="w-3.5 h-3.5 text-slate-300" />
+                  </button>
                   <button onClick={() => { fetchSupportTickets(); setCurrentView('support'); }} className="w-full text-left px-4 py-3 text-xs font-bold text-slate-700 dark:text-slate-300 hover:bg-orange-50 dark:hover:bg-orange-900/20 flex items-center justify-between transition-colors border-b border-slate-100 dark:border-slate-800">
                     <div className="flex items-center gap-2.5"><Mail className="w-4 h-4 text-orange-500" /><span>Contact Support</span></div>
                     <ChevronRight className="w-3.5 h-3.5 text-slate-300" />
@@ -10032,6 +10037,9 @@ export default function EcommerceMarketplace({ inlineMode = false, onBackToSelec
       )}
       {activeProfileModal === 'delete' && (
         <DeleteAccountModal isOpen={true} onClose={() => setActiveProfileModal(null)} />
+      )}
+      {activeProfileModal === 'devices' && (
+        <DeviceManagementModal isOpen={true} onClose={() => setActiveProfileModal(null)} />
       )}
 
       {/* Confirm Modal */}
