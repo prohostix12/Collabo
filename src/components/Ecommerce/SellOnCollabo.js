@@ -125,7 +125,7 @@ function SellerRegistrationWidget() {
       agreed_to_terms: regAgreedToTerms, marketing_consent: regMarketingConsent,
       phone: regForm.phone ? `+91${regForm.phone.replace(/^0+/, '')}` : '',
     });
-    if (result.success) { setPhase('kyc'); }
+    if (result.success) { setPhase('awaiting-verification'); }
     else { setRegError(result.error || 'Registration failed'); }
     setRegLoading(false);
   };
@@ -306,6 +306,40 @@ function SellerRegistrationWidget() {
 
   if (status === 'rejected') {
     if (phase !== 'kyc') setPhase('kyc');
+  }
+
+  if (!user && phase === 'awaiting-verification') {
+    return (
+      <div className="space-y-4">
+        <div className="bg-amber-50 border border-amber-100 rounded-lg p-4 text-center space-y-2">
+          <Mail className="w-8 h-8 text-amber-600 mx-auto" />
+          <p className="text-sm font-semibold text-amber-800">Check your email</p>
+          <p className="text-[11px] text-amber-600">
+            We sent a verification link to <strong>{regForm.email}</strong>. Verify it, then log in to continue your seller application.
+          </p>
+        </div>
+        {verifyResendError && <div className="bg-red-50 border border-red-100 rounded-lg p-2.5 text-[11px] text-red-600 flex items-start gap-2"><AlertCircle className="w-3.5 h-3.5 mt-0.5 shrink-0" />{verifyResendError}</div>}
+        <button
+          type="button"
+          disabled={verifyResendBusy}
+          onClick={async () => {
+            setVerifyResendError('');
+            setVerifyResendBusy(true);
+            try {
+              await api.post('/auth/resend-verification/', { email: regForm.email });
+            } catch {
+              setVerifyResendError('Could not resend right now. Please try again shortly.');
+            } finally {
+              setVerifyResendBusy(false);
+            }
+          }}
+          className="w-full bg-orange-600 hover:bg-orange-700 text-white text-[12px] font-medium py-2.5 rounded-lg transition-colors disabled:opacity-50"
+        >
+          {verifyResendBusy ? 'Sending...' : 'Resend verification email'}
+        </button>
+        <p className="text-[9px] text-gray-400 text-center">Already verified? <a href="/" className="text-orange-600 font-medium hover:underline">Login on store</a></p>
+      </div>
+    );
   }
 
   if (!user && phase === 'register') {
