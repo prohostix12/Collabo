@@ -10,7 +10,7 @@ import logging
 from django.conf import settings
 from django.core.mail import send_mail
 from django.contrib.auth.password_validation import validate_password
-from django.contrib.auth.tokens import default_token_generator, PasswordResetTokenGenerator
+from django.contrib.auth.tokens import PasswordResetTokenGenerator
 from django.core.exceptions import ValidationError as DjangoValidationError
 from django.utils.encoding import force_bytes, force_str
 from django.utils.http import urlsafe_base64_encode, urlsafe_base64_decode
@@ -38,6 +38,43 @@ class EmailVerificationTokenGenerator(PasswordResetTokenGenerator):
 
 
 email_verification_token = EmailVerificationTokenGenerator()
+
+
+class PasswordResetTenMinuteTokenGenerator(PasswordResetTokenGenerator):
+    """Separate instance from django's global default_token_generator. Django's
+    stock check_token() reads settings.PASSWORD_RESET_TIMEOUT directly (not an
+    overridable instance method), so the expiry check is reimplemented here with
+    a fixed 10-minute window instead — this only affects password-reset links,
+    not any other token generator (e.g. email_verification_token)."""
+    RESET_TIMEOUT_SECONDS = 600  # 10 minutes
+
+    def check_token(self, user, token):
+        from django.utils.crypto import constant_time_compare
+        from django.utils.http import base36_to_int
+
+        if not (user and token):
+            return False
+        try:
+            ts_b36, _ = token.split("-")
+        except ValueError:
+            return False
+        try:
+            ts = base36_to_int(ts_b36)
+        except ValueError:
+            return False
+
+        for secret in [self.secret, *self.secret_fallbacks]:
+            if constant_time_compare(self._make_token_with_timestamp(user, ts, secret), token):
+                break
+        else:
+            return False
+
+        if (self._num_seconds(self._now()) - ts) > self.RESET_TIMEOUT_SECONDS:
+            return False
+        return True
+
+
+password_reset_token = PasswordResetTenMinuteTokenGenerator()
 
 
 def _send_verification_email(request, user):
@@ -1351,7 +1388,7 @@ def password_reset_request(request):
         return generic
 
     uid = urlsafe_base64_encode(force_bytes(user.pk))
-    token = default_token_generator.make_token(user)
+    token = password_reset_token.make_token(user)
     link = f"{_reset_link_base(request)}/#reset-password:{uid}.{token}"
     try:
         send_mail(
@@ -1359,7 +1396,7 @@ def password_reset_request(request):
             message=(
                 f"Hi {user.first_name or 'there'},\n\n"
                 "We received a request to reset the password for your Collabo account.\n"
-                f"Open this link to choose a new password (valid for a short time, works once):\n\n{link}\n\n"
+                f"Open this link to choose a new password (valid for 10 minutes, works once):\n\n{link}\n\n"
                 "If you didn't ask for this, you can ignore this email; your password won't change.\n\n"
                 "- Team Collabo"
             ),
@@ -1386,7 +1423,7 @@ def password_reset_confirm(request):
         user = User.objects.get(pk=force_str(urlsafe_base64_decode(uid)), is_active=True)
     except (TypeError, ValueError, OverflowError, User.DoesNotExist):
         return bad_link
-    if not default_token_generator.check_token(user, token):
+    if not password_reset_token.check_token(user, token):
         return bad_link
 
     try:
