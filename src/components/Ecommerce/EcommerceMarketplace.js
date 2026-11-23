@@ -1023,6 +1023,9 @@ export default function EcommerceMarketplace({ inlineMode = false, onBackToSelec
   const [resetPw, setResetPw] = useState('');
   const [resetPw2, setResetPw2] = useState('');
   const [resetBusy, setResetBusy] = useState(false);
+  const [verifyLink, setVerifyLink] = useState({ uid: '', token: '' });
+  const [verifyStatus, setVerifyStatus] = useState('pending'); // pending | success | error
+  const [verifyMessage, setVerifyMessage] = useState('');
   useEffect(() => {
     if (resendIn <= 0) return undefined;
     const t = setTimeout(() => setResendIn(resendIn - 1), 1000);
@@ -1048,9 +1051,6 @@ export default function EcommerceMarketplace({ inlineMode = false, onBackToSelec
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [authMode, verifyLink.uid, verifyLink.token]);
   const [resetDone, setResetDone] = useState(false);
-  const [verifyLink, setVerifyLink] = useState({ uid: '', token: '' });
-  const [verifyStatus, setVerifyStatus] = useState('pending'); // pending | success | error
-  const [verifyMessage, setVerifyMessage] = useState('');
   const [loginUnverifiedEmail, setLoginUnverifiedEmail] = useState('');
   const [resendVerifyBusy, setResendVerifyBusy] = useState(false);
   const [postAuthView, setPostAuthView] = useState('home'); // view to return to after successful auth
