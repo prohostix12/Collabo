@@ -374,6 +374,11 @@ export default function SellOnCollabo() {
   const { user } = useAuth();
   const [hubStats, setHubStats] = useState(null);
   const [categories, setCategories] = useState([]);
+  // Keep the form collapsed on first load; show it once the seller taps "Start Selling",
+  // or immediately if they're already logged in / mid-application (so they can resume).
+  const [showRegister, setShowRegister] = useState(!!user);
+
+  const revealRegister = () => setShowRegister(true);
 
   useEffect(() => {
     api.get('/ecommerce/seller-hub-stats/').then(res => setHubStats(res.data)).catch(() => {});
@@ -399,7 +404,7 @@ export default function SellOnCollabo() {
             {user ? (
               <a href="/" className="text-[11px] font-medium text-white bg-orange-600 px-4 py-1.5 rounded-lg hover:bg-orange-700 transition-colors">Go to Store</a>
             ) : (
-              <a href="#register" className="text-[11px] font-medium text-white bg-orange-600 px-4 py-1.5 rounded-lg hover:bg-orange-700 transition-colors">Start Selling</a>
+              <a href="#register" onClick={revealRegister} className="text-[11px] font-medium text-white bg-orange-600 px-4 py-1.5 rounded-lg hover:bg-orange-700 transition-colors">Start Selling</a>
             )}
           </div>
         </div>
@@ -440,7 +445,19 @@ export default function SellOnCollabo() {
                 <div className="w-9 h-9 bg-orange-100 rounded-xl flex items-center justify-center"><Store className="w-4.5 h-4.5 text-orange-600" /></div>
                 <div><h2 className="text-sm font-semibold text-gray-900">Become a Seller</h2><p className="text-[10px] text-gray-400">Complete all steps to start selling</p></div>
               </div>
-              <SellerRegistrationWidget />
+              {showRegister ? (
+                <SellerRegistrationWidget />
+              ) : (
+                <div className="text-center py-6">
+                  <p className="text-[12px] text-gray-500 mb-5 leading-relaxed">Create your account and complete seller verification in just two quick steps.</p>
+                  <button
+                    onClick={() => setShowRegister(true)}
+                    className="w-full bg-orange-600 hover:bg-orange-700 text-white text-[12px] font-medium py-2.5 rounded-lg transition-colors"
+                  >
+                    Start Selling
+                  </button>
+                </div>
+              )}
             </div>
           </div>
         </div>
@@ -522,7 +539,7 @@ export default function SellOnCollabo() {
         <div className="max-w-6xl mx-auto px-4 sm:px-6 py-14 text-center">
           <h2 className="text-xl font-semibold text-white mb-2">Ready to grow your business?</h2>
           <p className="text-xs text-gray-400 mb-6">Join thousands of sellers on Collabo</p>
-          <a href="#register" className="inline-block bg-orange-600 hover:bg-orange-700 text-white text-sm font-medium px-8 py-2.5 rounded-lg transition-colors">Start Selling Now</a>
+          <a href="#register" onClick={revealRegister} className="inline-block bg-orange-600 hover:bg-orange-700 text-white text-sm font-medium px-8 py-2.5 rounded-lg transition-colors">Start Selling Now</a>
         </div>
       </section>
 
