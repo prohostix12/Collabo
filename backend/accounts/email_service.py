@@ -96,6 +96,65 @@ Team Collabo
         return False
 
 
+def send_verification_email(user, link):
+    """Send the one-time email-verification link to a newly registered user."""
+    try:
+        name = user.first_name or user.username
+        subject = 'Verify your Collabo email address'
+        message = (
+            f"Hi {name},\n\n"
+            "Thanks for signing up for Collabo! Please confirm this is your email address "
+            f"by opening the link below:\n\n{link}\n\n"
+            "You can browse right away, but you'll need to verify before your next login.\n\n"
+            "If you didn't create this account, you can ignore this email.\n\n"
+            "- Team Collabo"
+        )
+        html_message = f"""
+<!DOCTYPE html>
+<html>
+<head>
+  <style>
+    body {{ font-family: Arial, sans-serif; line-height: 1.6; color: #333; margin: 0; padding: 0; }}
+    .container {{ max-width: 600px; margin: 0 auto; padding: 20px; }}
+    .header {{ background: linear-gradient(135deg, #f97316 0%, #ea580c 100%); color: white; padding: 30px; text-align: center; border-radius: 12px 12px 0 0; }}
+    .content {{ background: #fff; padding: 30px; border-radius: 0 0 12px 12px; border: 1px solid #f0f0f0; }}
+    .btn {{ display: inline-block; padding: 14px 36px; background: linear-gradient(135deg, #f97316 0%, #ea580c 100%); color: white !important; text-decoration: none; border-radius: 8px; font-weight: bold; font-size: 15px; margin: 20px 0; }}
+    .footer {{ text-align: center; color: #9ca3af; font-size: 12px; margin-top: 24px; }}
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header"><h1 style="margin:0;font-size:22px;">Verify your email</h1></div>
+    <div class="content">
+      <p>Hi <strong>{name}</strong>,</p>
+      <p>Thanks for signing up for Collabo! Please confirm this is your email address.</p>
+      <center><a href="{link}" class="btn">Verify Email</a></center>
+      <p style="font-size:12px;color:#9ca3af;">You can browse right away, but you'll need to verify before your next login.</p>
+      <div class="footer">
+        <p>If you didn't create this account, you can ignore this email.</p>
+        <p>- Team Collabo</p>
+      </div>
+    </div>
+  </div>
+</body>
+</html>
+        """.strip()
+
+        send_mail(
+            subject=subject,
+            message=message,
+            from_email=settings.DEFAULT_FROM_EMAIL or 'Collabo <collaboproh@gmail.com>',
+            recipient_list=[user.email],
+            html_message=html_message,
+            fail_silently=False,
+        )
+        logger.info(f"Verification email sent to {user.email}")
+        return True
+    except Exception as e:
+        logger.error(f"Failed to send verification email to {user.email}: {str(e)}")
+        return False
+
+
 class ApprovalEmailService:
     """Service for sending approval-related emails"""
     
@@ -432,7 +491,7 @@ The Collabo Team
 
             user = profile.user
             applicant = user.first_name or user.username
-            review_url = f"{settings.FRONTEND_URL}/admin"
+            review_url = f"{settings.FRONTEND_URL}/admin-dashboard"
             subject = f'New Seller Application: {profile.store_name}'
 
             message = f"""

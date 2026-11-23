@@ -64,11 +64,15 @@ export const AuthProvider = ({ children }) => {
       
       // Extract error message from response
       let errorMessage = 'Login failed';
+      let errorCode = null;
       if (error.response?.data) {
         const data = error.response.data;
-        if (data.non_field_errors) {
-          errorMessage = Array.isArray(data.non_field_errors) 
-            ? data.non_field_errors[0] 
+        if (data.error) {
+          errorMessage = data.error;
+          errorCode = data.code || null;
+        } else if (data.non_field_errors) {
+          errorMessage = Array.isArray(data.non_field_errors)
+            ? data.non_field_errors[0]
             : data.non_field_errors;
         } else if (data.detail) {
           errorMessage = data.detail;
@@ -82,10 +86,11 @@ export const AuthProvider = ({ children }) => {
       } else if (error.message) {
         errorMessage = error.message;
       }
-      
-      return { 
-        success: false, 
-        error: errorMessage
+
+      return {
+        success: false,
+        error: errorMessage,
+        code: errorCode,
       };
     }
   };

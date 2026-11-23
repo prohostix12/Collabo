@@ -1028,7 +1028,31 @@ export default function EcommerceMarketplace({ inlineMode = false, onBackToSelec
     const t = setTimeout(() => setResendIn(resendIn - 1), 1000);
     return () => clearTimeout(t);
   }, [resendIn]);
+
+  useEffect(() => {
+    if (!(authMode === 'verify' && verifyLink.uid && verifyLink.token)) return;
+    let cancelled = false;
+    api.post('/auth/verify-email/', { uid: verifyLink.uid, token: verifyLink.token })
+      .then(res => {
+        if (cancelled) return;
+        setVerifyStatus('success');
+        setVerifyMessage(res.data?.message || 'Your email has been verified.');
+      })
+      .catch(err => {
+        if (cancelled) return;
+        setVerifyStatus('error');
+        setVerifyMessage(err.response?.data?.error || 'This verification link is invalid or has expired.');
+      })
+      .finally(() => { setVerifyLink({ uid: '', token: '' }); });
+    return () => { cancelled = true; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [authMode, verifyLink.uid, verifyLink.token]);
   const [resetDone, setResetDone] = useState(false);
+  const [verifyLink, setVerifyLink] = useState({ uid: '', token: '' });
+  const [verifyStatus, setVerifyStatus] = useState('pending'); // pending | success | error
+  const [verifyMessage, setVerifyMessage] = useState('');
+  const [loginUnverifiedEmail, setLoginUnverifiedEmail] = useState('');
+  const [resendVerifyBusy, setResendVerifyBusy] = useState(false);
   const [postAuthView, setPostAuthView] = useState('home'); // view to return to after successful auth
   const [authEmail, setAuthEmail] = useState('');
   const [authUsername, setAuthUsername] = useState('');
@@ -1093,6 +1117,13 @@ export default function EcommerceMarketplace({ inlineMode = false, onBackToSelec
       setAuthMode('reset');
       setCurrentView('auth');
       // Drop the one-time token from the address bar and history straight away
+      window.history.replaceState({ view: 'home' }, '', window.location.pathname + window.location.search);
+      window.history.pushState({ view: 'auth' }, '', '#auth');
+    } else if (hashView === 'verify-email' && hashPid && hashPid.includes('.')) {
+      const dot = hashPid.indexOf('.');
+      setVerifyLink({ uid: hashPid.slice(0, dot), token: hashPid.slice(dot + 1) });
+      setAuthMode('verify');
+      setCurrentView('auth');
       window.history.replaceState({ view: 'home' }, '', window.location.pathname + window.location.search);
       window.history.pushState({ view: 'auth' }, '', '#auth');
     } else if (hashView && hashView !== 'home' && validViews.includes(hashView)) {
@@ -6200,10 +6231,10 @@ export default function EcommerceMarketplace({ inlineMode = false, onBackToSelec
                 <ChevronLeft className="w-5 h-5 text-slate-600 dark:text-slate-300" />
               </button>
               <h2 className="text-2xl font-black tracking-tight dark:text-white">
-                {authMode === 'login' ? 'Welcome Back' : authMode === 'signup' ? 'Create Account' : authMode === 'forgot' ? (forgotSent ? 'Check Your Email' : 'Forgot Password') : authMode === 'reset' ? 'Set New Password' : 'Verify Security OTP'}
+                {authMode === 'login' ? 'Welcome Back' : authMode === 'signup' ? 'Create Account' : authMode === 'forgot' ? (forgotSent ? 'Check Your Email' : 'Forgot Password') : authMode === 'reset' ? 'Set New Password' : authMode === 'verify' ? 'Email Verification' : 'Verify Security OTP'}
               </h2>
               <p className="text-slate-400 text-xs font-semibold">
-                {authMode === 'login' ? 'Access your buyer dashboard credentials' : authMode === 'signup' ? 'Join premium rewards selection' : authMode === 'forgot' ? (forgotSent ? 'Password reset link sent' : "Enter your email and we'll send you a reset link") : authMode === 'reset' ? 'Choose a new password for your account' : 'Check security code sent to phone'}
+                {authMode === 'login' ? 'Access your buyer dashboard credentials' : authMode === 'signup' ? 'Join premium rewards selection' : authMode === 'forgot' ? (forgotSent ? 'Password reset link sent' : "Enter your email and we'll send you a reset link") : authMode === 'reset' ? 'Choose a new password for your account' : authMode === 'verify' ? 'Confirming your account' : 'Check security code sent to phone'}
               </p>
             </div>
 
@@ -6369,6 +6400,30 @@ export default function EcommerceMarketplace({ inlineMode = false, onBackToSelec
                   </>
                 )}
               </div>
+            ) : authMode === 'verify' ? (
+              <div className="space-y-4">
+                {verifyStatus === 'pending' && (
+                  <div className="rounded-xl border border-slate-200 bg-slate-50 dark:bg-slate-800 dark:border-slate-700 p-4 text-xs font-semibold text-slate-500 text-center">
+                    Verifying your email...
+                  </div>
+                )}
+                {verifyStatus === 'success' && (
+                  <div className="rounded-xl border border-emerald-200 bg-emerald-50 dark:bg-emerald-900/20 dark:border-emerald-800 p-4 text-xs font-semibold text-emerald-700 dark:text-emerald-300">
+                    {verifyMessage}
+                  </div>
+                )}
+                {verifyStatus === 'error' && (
+                  <div className="rounded-xl border border-red-200 bg-red-50 dark:bg-red-900/20 dark:border-red-800 p-4 text-xs font-semibold text-red-600 dark:text-red-300">
+                    {verifyMessage}
+                  </div>
+                )}
+                <button
+                  onClick={() => { setAuthMode('login'); setVerifyStatus('pending'); setVerifyMessage(''); }}
+                  className="w-full bg-slate-950 hover:bg-slate-900 text-white font-extrabold text-xs py-3 rounded-xl shadow-md transition-colors"
+                >
+                  Go to Log In
+                </button>
+              </div>
             ) : authMode === 'otp' ? (
               <div className="space-y-4">
                 <div className="space-y-2">
@@ -6476,6 +6531,30 @@ export default function EcommerceMarketplace({ inlineMode = false, onBackToSelec
                   </div>
                 )}
 
+                {authMode === 'login' && loginUnverifiedEmail && (
+                  <div className="rounded-xl border border-amber-200 bg-amber-50 dark:bg-amber-900/20 dark:border-amber-800 p-3 text-[11px] text-amber-700 dark:text-amber-300 flex items-center justify-between gap-2">
+                    <span>Didn't get the verification email?</span>
+                    <button
+                      type="button"
+                      disabled={resendVerifyBusy}
+                      onClick={async () => {
+                        setResendVerifyBusy(true);
+                        try {
+                          await api.post('/auth/resend-verification/', { email: loginUnverifiedEmail });
+                          showToast('Verification email sent — check your inbox.', 'success');
+                        } catch {
+                          showToast('Could not resend right now. Please try again shortly.', 'error');
+                        } finally {
+                          setResendVerifyBusy(false);
+                        }
+                      }}
+                      className="font-bold text-orange-600 hover:underline disabled:opacity-50 shrink-0"
+                    >
+                      {resendVerifyBusy ? 'Sending...' : 'Resend'}
+                    </button>
+                  </div>
+                )}
+
                 {authMode === 'signup' && (
                   <div className="space-y-2">
                     <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Confirm Password</label>
@@ -6526,9 +6605,11 @@ export default function EcommerceMarketplace({ inlineMode = false, onBackToSelec
                       }
                       const result = await login(authEmail, authPassword);
                       if (result.success) {
+                        setLoginUnverifiedEmail('');
                         setCurrentView(postAuthView || 'home');
                         setPostAuthView('home');
                       } else {
+                        setLoginUnverifiedEmail(result.code === 'unverified' ? authEmail : '');
                         showToast(result.error || "Login failed", 'error');
                       }
                     }}
@@ -6564,6 +6645,7 @@ export default function EcommerceMarketplace({ inlineMode = false, onBackToSelec
                       });
                       if (result.success) {
                         localStorage.removeItem('signup_affiliate_code');
+                        showToast('Account created! Check your email to verify it before your next login.', 'success');
                         setCurrentView(postAuthView || 'home');
                         setPostAuthView('home');
                       } else {
