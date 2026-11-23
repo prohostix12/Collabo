@@ -26,7 +26,8 @@ def test_seller_lifecycle():
         username='buyer_test',
         email='buyer_test@test.com',
         password='testpassword123',
-        user_type='buyer'
+        user_type='buyer',
+        is_verified=True,  # seller applications now require a verified email
     )
     admin = User.objects.create_superuser(
         username='admin_test',

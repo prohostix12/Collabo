@@ -83,6 +83,8 @@ function SellerRegistrationWidget() {
   const [kycSubmitting, setKycSubmitting] = useState(false);
   const [agreedToTerms, setAgreedToTerms] = useState(false);
   const [showTermsModal, setShowTermsModal] = useState(false);
+  const [verifyResendBusy, setVerifyResendBusy] = useState(false);
+  const [verifyResendError, setVerifyResendError] = useState('');
 
   // Selling preferences
   const [sellingCategories, setSellingCategories] = useState(user?.seller_profile?.selling_categories || []);
@@ -225,13 +227,13 @@ function SellerRegistrationWidget() {
   const sp = user?.seller_profile;
   const status = sp?.verification_status;
 
-  // While an application is under review, poll for the admin's decision so
-  // approval/rejection shows up here without the seller needing to refresh.
+  // While an application is under review — or the account is still unverified —
+  // poll so the admin's decision or the verification click shows up without a refresh.
   useEffect(() => {
-    if (status !== 'pending' && phase !== 'done') return;
+    if (status !== 'pending' && phase !== 'done' && user?.is_verified !== false) return;
     const interval = setInterval(() => { fetchUser(); }, 15000);
     return () => clearInterval(interval);
-  }, [status, phase, fetchUser]);
+  }, [status, phase, user?.is_verified, fetchUser]);
 
   if (status === 'approved' || user?.user_type === 'seller') {
     return (
@@ -264,6 +266,40 @@ function SellerRegistrationWidget() {
             </div>
           ))}
         </div>
+      </div>
+    );
+  }
+
+  if (user && !user.is_verified) {
+    return (
+      <div className="space-y-4">
+        <div className="bg-amber-50 border border-amber-100 rounded-lg p-4 text-center space-y-2">
+          <Mail className="w-8 h-8 text-amber-600 mx-auto" />
+          <p className="text-sm font-semibold text-amber-800">Please verify your email first</p>
+          <p className="text-[11px] text-amber-600">
+            We sent a verification link to <strong>{user.email}</strong>. Click it before continuing your seller application.
+          </p>
+        </div>
+        {verifyResendError && <div className="bg-red-50 border border-red-100 rounded-lg p-2.5 text-[11px] text-red-600 flex items-start gap-2"><AlertCircle className="w-3.5 h-3.5 mt-0.5 shrink-0" />{verifyResendError}</div>}
+        <button
+          type="button"
+          disabled={verifyResendBusy}
+          onClick={async () => {
+            setVerifyResendError('');
+            setVerifyResendBusy(true);
+            try {
+              await api.post('/auth/resend-verification/', { email: user.email });
+              setVerifyResendError('');
+            } catch {
+              setVerifyResendError('Could not resend right now. Please try again shortly.');
+            } finally {
+              setVerifyResendBusy(false);
+            }
+          }}
+          className="w-full bg-orange-600 hover:bg-orange-700 text-white text-[12px] font-medium py-2.5 rounded-lg transition-colors disabled:opacity-50"
+        >
+          {verifyResendBusy ? 'Sending...' : 'Resend verification email'}
+        </button>
       </div>
     );
   }
