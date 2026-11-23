@@ -4,7 +4,7 @@ import api from '../../services/api';
 import {
   Store, TrendingUp, Shield, Truck, BarChart3, Users, Package,
   ArrowRight, ArrowLeft, CheckCircle, ChevronDown, ChevronUp, Eye, EyeOff,
-  Mail, Lock, User, Phone, AlertCircle, Upload, X, Megaphone,
+  Mail, Lock, User, Phone, AlertCircle, Upload, X,
 } from 'lucide-react';
 import { SELLER_TERMS_INTRO, SELLER_TERMS_SECTIONS } from './sellerTerms';
 
@@ -419,21 +419,6 @@ export default function SellOnCollabo() {
               <p className="text-sm text-gray-500 leading-relaxed mb-6 max-w-md">
                 Create your account, complete verification, and start selling. Zero listing fees. Get orders from day one.
               </p>
-
-              {/* Hero ad banner — highlights the real fee structure, no fabricated claims */}
-              <div className="relative overflow-hidden rounded-2xl bg-gradient-to-r from-orange-600 via-orange-500 to-amber-500 p-5 sm:p-6 mb-6 shadow-md">
-                <div className="absolute -right-6 -top-6 w-28 h-28 bg-white/10 rounded-full" />
-                <div className="absolute -right-2 bottom-0 w-16 h-16 bg-white/10 rounded-full" />
-                <div className="relative flex items-center gap-4">
-                  <div className="w-12 h-12 rounded-xl bg-white/15 backdrop-blur-sm flex items-center justify-center shrink-0">
-                    <Megaphone className="w-6 h-6 text-white" />
-                  </div>
-                  <div>
-                    <p className="text-white font-extrabold text-lg sm:text-xl leading-tight">₹0 Listing Fee</p>
-                    <p className="text-white/85 text-[12px] font-medium">Zyada mat socho — Collabo pe becho! Pay only 10% when you actually sell.</p>
-                  </div>
-                </div>
-              </div>
 
               <div className="space-y-3 mb-6">
                 {['No listing fees — pay only 10% when you sell','Integrated shipping with Shiprocket (17+ couriers)','Influencers promote your products for free','7-day payment settlement to your bank'].map((t,i) => (
