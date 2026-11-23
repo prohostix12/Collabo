@@ -219,6 +219,8 @@ const ChangePasswordModal = ({ isOpen, onClose }) => {
                   value={formData.currentPassword}
                   onChange={(e) => handleInputChange('currentPassword', e.target.value)}
                   disabled={loading}
+                  autoComplete="off"
+                  name="current_password_no_autofill"
                   className={`w-full pl-10 pr-12 py-2 rounded-lg bg-slate-50 border border-slate-200 text-slate-900 text-sm focus:bg-white focus:border-slate-500 focus:ring-1 focus:ring-slate-500 outline-none transition-all ${errors.currentPassword ? 'border-red-500' : ''}`}
                   placeholder="Enter current password"
                 />
@@ -253,6 +255,7 @@ const ChangePasswordModal = ({ isOpen, onClose }) => {
                   value={formData.newPassword}
                   onChange={(e) => handleInputChange('newPassword', e.target.value)}
                   disabled={loading}
+                  autoComplete="new-password"
                   className={`w-full pl-10 pr-12 py-2 rounded-lg bg-slate-50 border border-slate-200 text-slate-900 text-sm focus:bg-white focus:border-slate-500 focus:ring-1 focus:ring-slate-500 outline-none transition-all ${errors.newPassword ? 'border-red-500' : ''}`}
                   placeholder="Enter new password"
                 />
@@ -310,6 +313,7 @@ const ChangePasswordModal = ({ isOpen, onClose }) => {
                   value={formData.confirmPassword}
                   onChange={(e) => handleInputChange('confirmPassword', e.target.value)}
                   disabled={loading}
+                  autoComplete="new-password"
                   className={`w-full pl-10 pr-12 py-2 rounded-lg bg-slate-50 border border-slate-200 text-slate-900 text-sm focus:bg-white focus:border-slate-500 focus:ring-1 focus:ring-slate-500 outline-none transition-all ${errors.confirmPassword ? 'border-red-500' : ''}`}
                   placeholder="Confirm new password"
                 />
