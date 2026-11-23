@@ -11,6 +11,7 @@ from .views import (
     delete_influencer, approval_stats, platform_overview, mark_approval_shown,
     admin_create_influencer, admin_reset_password,
     password_reset_request, password_reset_confirm,
+    verify_email, resend_verification_email,
     # Seller profile & admin views
     SellerProfileView, PendingSellersListView, AllSellersListView, approve_seller, reject_seller,
     suspend_seller, reactivate_seller,
@@ -32,6 +33,8 @@ urlpatterns = [
     path('change-password/', change_password, name='change-password'),
     path('password-reset/', password_reset_request, name='password-reset'),
     path('password-reset/confirm/', password_reset_confirm, name='password-reset-confirm'),
+    path('verify-email/', verify_email, name='verify-email'),
+    path('resend-verification/', resend_verification_email, name='resend-verification'),
     path('delete-account/', delete_account, name='delete-account'),
     path('fetch-video-stats/', fetch_video_stats, name='fetch-video-stats'),
     path('get-video-stats/', get_video_stats, name='get-video-stats'),

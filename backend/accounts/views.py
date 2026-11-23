@@ -10,7 +10,7 @@ import logging
 from django.conf import settings
 from django.core.mail import send_mail
 from django.contrib.auth.password_validation import validate_password
-from django.contrib.auth.tokens import default_token_generator
+from django.contrib.auth.tokens import default_token_generator, PasswordResetTokenGenerator
 from django.core.exceptions import ValidationError as DjangoValidationError
 from django.utils.encoding import force_bytes, force_str
 from django.utils.http import urlsafe_base64_encode, urlsafe_base64_decode
@@ -26,6 +26,26 @@ from .serializers import (
 from .youtube_service import VideoStatsService
 
 logger = logging.getLogger(__name__)
+
+
+class EmailVerificationTokenGenerator(PasswordResetTokenGenerator):
+    """Separate from default_token_generator (used for password resets) so a
+    verification link can never be replayed against the password-reset endpoint.
+    Hash includes is_verified, so the token naturally stops working the moment
+    it's used once (is_verified flips True -> hash changes)."""
+    def _make_hash_value(self, user, timestamp):
+        return f"{user.pk}{user.password}{timestamp}{user.is_verified}"
+
+
+email_verification_token = EmailVerificationTokenGenerator()
+
+
+def _send_verification_email(request, user):
+    uid = urlsafe_base64_encode(force_bytes(user.pk))
+    token = email_verification_token.make_token(user)
+    link = f"{_reset_link_base(request)}/#verify-email:{uid}.{token}"
+    from .email_service import send_verification_email
+    send_verification_email(user, link)
 
 
 def _validate_document_content(uploaded_file):
@@ -107,6 +127,13 @@ class RegisterView(generics.CreateAPIView):
             import logging
             logging.getLogger(__name__).error(f"Welcome email failed for {user.email}: {e}")
 
+        # Send email verification link (account stays usable immediately via the
+        # tokens below, but a future login will be blocked until this is clicked)
+        try:
+            _send_verification_email(request, user)
+        except Exception as e:
+            logging.getLogger(__name__).error(f"Verification email failed for {user.email}: {e}")
+
         # Send welcome WhatsApp message
         try:
             from ecommerce.gupshup import notify_welcome
@@ -177,7 +204,14 @@ class LoginView(generics.GenericAPIView):
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         user = serializer.validated_data['user']
-        
+
+        if not user.is_verified:
+            return Response(
+                {'error': 'Please verify your email before logging in. Check your inbox for the verification link.',
+                 'code': 'unverified'},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+
         if user.reward_points is None:
             user.reward_points = 0
             user.save(update_fields=['reward_points'])
@@ -494,6 +528,7 @@ def admin_create_influencer(request):
         user_type='influencer',
         approval_status='approved',
         is_approved=True,
+        is_verified=True,  # admin manually vouching for this account, no email ownership proof needed
     )
     InfluencerProfile.objects.create(user=user)
     return Response({'email': email, 'password': password, 'message': 'Influencer created and approved'}, status=status.HTTP_201_CREATED)
@@ -1362,3 +1397,60 @@ def password_reset_confirm(request):
     user.set_password(new_password)
     user.save(update_fields=['password'])  # also invalidates the token (it is tied to the old hash)
     return Response({'message': 'Your password has been reset. You can now log in.'})
+
+
+# ── Email verification ──────────────────────────────────────────────────────
+
+class ResendVerificationThrottle(AnonRateThrottle):
+    scope = 'resend_verification'
+
+    def get_rate(self):
+        return '5/hour'
+
+
+@api_view(['POST'])
+@permission_classes([AllowAny])
+def verify_email(request):
+    """Confirm the emailed verification link (uid + token) and mark the account verified."""
+    uid = request.data.get('uid') or ''
+    token = request.data.get('token') or ''
+    bad_link = Response(
+        {'error': 'This verification link is invalid or has expired. Please request a new one.'},
+        status=status.HTTP_400_BAD_REQUEST,
+    )
+    try:
+        user = User.objects.get(pk=force_str(urlsafe_base64_decode(uid)), is_active=True)
+    except (TypeError, ValueError, OverflowError, User.DoesNotExist):
+        return bad_link
+
+    if user.is_verified:
+        return Response({'message': 'Your email is already verified. You can log in.'})
+
+    if not email_verification_token.check_token(user, token):
+        return bad_link
+
+    user.is_verified = True
+    user.save(update_fields=['is_verified'])
+    return Response({'message': 'Your email has been verified. You can now log in.'})
+
+
+@api_view(['POST'])
+@permission_classes([AllowAny])
+@throttle_classes([ResendVerificationThrottle])
+def resend_verification_email(request):
+    """Resend the verification link. Always answers the same way, so it can't be
+    used to find out which email addresses have accounts."""
+    email = (request.data.get('email') or '').strip()
+    generic = Response({'message': 'If an unverified account exists for that email, a verification link has been sent.'})
+    if not email:
+        return Response({'email': ['Please enter your email address.']}, status=status.HTTP_400_BAD_REQUEST)
+
+    user = User.objects.filter(email__iexact=email, is_active=True, is_verified=False).first()
+    if not user:
+        return generic
+
+    try:
+        _send_verification_email(request, user)
+    except Exception:
+        logger.exception('Could not send verification email to user id %s', user.pk)
+    return generic
