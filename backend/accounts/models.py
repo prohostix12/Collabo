@@ -1,6 +1,7 @@
 from django.contrib.auth.models import AbstractUser
 from django.contrib.auth.validators import UnicodeUsernameValidator
 from django.db import models
+from django.utils.text import slugify
 
 class User(AbstractUser):
     # Overridden to drop the unique constraint AbstractUser puts on username —
@@ -51,6 +52,11 @@ class User(AbstractUser):
     wallet_bank_account_number = models.CharField(max_length=30, blank=True)
     wallet_bank_ifsc = models.CharField(max_length=15, blank=True)
 
+    # Consent capture at registration
+    terms_accepted = models.BooleanField(default=False, help_text="Agreed to Terms & Conditions and Privacy Policy at signup")
+    terms_accepted_at = models.DateTimeField(null=True, blank=True)
+    marketing_consent = models.BooleanField(default=False, help_text="Opted in to promotional emails/SMS")
+
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -76,6 +82,8 @@ class ApprovalAuditLog(models.Model):
         ('approved', 'Approved'),
         ('rejected', 'Rejected'),
         ('pending', 'Set to Pending'),
+        ('suspended', 'Suspended'),
+        ('reactivated', 'Reactivated'),
     )
     
     user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='approval_logs', help_text="The influencer whose status was changed")
@@ -188,16 +196,65 @@ class SellerProfile(models.Model):
         ('pending', 'Pending'),
         ('approved', 'Approved'),
         ('rejected', 'Rejected'),
+        ('suspended', 'Suspended'),
     )
-    
+
+    SHIPPING_METHODS = (
+        ('', 'Not set'),
+        ('seller_managed', 'Seller-managed shipping'),
+        ('marketplace_managed', 'Marketplace-managed shipping'),
+        ('hybrid', 'Hybrid fulfilment'),
+    )
+
     user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='seller_profile')
     store_name = models.CharField(max_length=200, unique=True)
+    store_slug = models.SlugField(max_length=220, unique=True, blank=True, null=True, help_text="Storefront URL: /store/<slug>")
+    store_logo = models.TextField(blank=True, default='', help_text="Store logo image URL or base64 data")
+    store_banner = models.TextField(blank=True, default='', help_text="Store banner image URL or base64 data")
+    store_banner_height = models.PositiveIntegerField(default=208, help_text="Storefront banner height in pixels, freely set by the seller")
+    store_tagline = models.CharField(max_length=200, blank=True, default='')
+    store_description = models.TextField(blank=True, default='')
+    store_theme_color = models.CharField(max_length=20, blank=True, default='#f97316')
+    featured_product_ids = models.JSONField(default=list, blank=True, help_text="Product ids to feature at the top of the storefront")
+    store_sections = models.JSONField(default=list, blank=True, help_text="Ordered list of custom storefront page sections (carousel, featured grid, promo banner, category strip)")
     tax_id = models.CharField(max_length=50, help_text="GSTIN / EIN / PAN")
     bank_name = models.CharField(max_length=150)
     bank_account_number = models.CharField(max_length=50)
     bank_ifsc = models.CharField(max_length=50, help_text="IFSC / Branch / Routing Code")
     business_address = models.TextField()
-    
+
+    # Structured registered business address (business_address above is kept as a
+    # derived/legacy plain-text copy for backward compatibility with existing readers).
+    address_line1 = models.CharField(max_length=200, blank=True, default='')
+    address_line2 = models.CharField(max_length=200, blank=True, default='')
+    country = models.CharField(max_length=100, blank=True, default='India')
+    state = models.CharField(max_length=100, blank=True, default='')
+    city = models.CharField(max_length=100, blank=True, default='')
+    district = models.CharField(max_length=100, blank=True, default='')
+    pincode = models.CharField(max_length=10, blank=True, default='')
+
+    # Warehouse / pickup address — defaults to the business address unless the
+    # seller unchecks "same as business address" and provides a separate one.
+    warehouse_same_as_business = models.BooleanField(default=True)
+    warehouse_address_line1 = models.CharField(max_length=200, blank=True, default='')
+    warehouse_address_line2 = models.CharField(max_length=200, blank=True, default='')
+    warehouse_country = models.CharField(max_length=100, blank=True, default='India')
+    warehouse_state = models.CharField(max_length=100, blank=True, default='')
+    warehouse_city = models.CharField(max_length=100, blank=True, default='')
+    warehouse_district = models.CharField(max_length=100, blank=True, default='')
+    warehouse_pincode = models.CharField(max_length=10, blank=True, default='')
+
+    # Selling preferences
+    selling_categories = models.JSONField(default=list, blank=True, help_text="Category names the seller intends to sell in")
+    expected_product_count = models.CharField(max_length=20, blank=True, default='', help_text="e.g. '1-10', '10-50', '50+'")
+    shipping_method = models.CharField(max_length=30, choices=SHIPPING_METHODS, blank=True, default='')
+    preferred_courier = models.CharField(max_length=100, blank=True, default='')
+    return_address_same_as_warehouse = models.BooleanField(default=True)
+    return_address_line1 = models.CharField(max_length=200, blank=True, default='')
+    return_address_city = models.CharField(max_length=100, blank=True, default='')
+    return_address_state = models.CharField(max_length=100, blank=True, default='')
+    return_address_pincode = models.CharField(max_length=10, blank=True, default='')
+
     # Verification Documents (legacy base64 fields kept for backward compat)
     kyc_document = models.TextField(blank=True, help_text="Deprecated: base64 encoded KYC document")
     bank_document = models.TextField(blank=True, help_text="Deprecated: base64 encoded bank document")
@@ -210,6 +267,31 @@ class SellerProfile(models.Model):
     
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
+
+    def _format_address(self, line1, line2, city, district, state, pincode, country):
+        parts = [p for p in [line1, line2, city, district, state, pincode, country] if p]
+        return ', '.join(parts)
+
+    def save(self, *args, **kwargs):
+        if not self.store_slug and self.store_name:
+            base = slugify(self.store_name) or 'store'
+            slug = base
+            n = 1
+            while SellerProfile.objects.exclude(pk=self.pk).filter(store_slug=slug).exists():
+                n += 1
+                slug = f'{base}-{n}'
+            self.store_slug = slug
+
+        # Keep the legacy plain-text business_address in sync whenever structured
+        # fields are provided, so existing code that reads business_address directly
+        # keeps working without changes.
+        if self.address_line1:
+            self.business_address = self._format_address(
+                self.address_line1, self.address_line2, self.city,
+                self.district, self.state, self.pincode, self.country,
+            )
+
+        super().save(*args, **kwargs)
 
     def __str__(self):
         return f"{self.store_name} ({self.user.email})"

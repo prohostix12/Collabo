@@ -10,9 +10,11 @@ from .views import (
     approve_influencer, reject_influencer, bulk_approve_influencers,
     delete_influencer, approval_stats, platform_overview, mark_approval_shown,
     admin_create_influencer, admin_reset_password,
+    password_reset_request, password_reset_confirm,
     # Seller profile & admin views
     SellerProfileView, PendingSellersListView, AllSellersListView, approve_seller, reject_seller,
-    seller_audit_log, admin_convert_to_influencer,
+    suspend_seller, reactivate_seller,
+    seller_audit_log, admin_convert_to_influencer, StorefrontView, AdminSellerStoreView,
 )
 
 urlpatterns = [
@@ -23,10 +25,13 @@ urlpatterns = [
     path('influencer-profile/', InfluencerProfileView.as_view(), name='influencer-profile'),
     path('company-profile/', CompanyProfileView.as_view(), name='company-profile'),
     path('seller-profile/', SellerProfileView.as_view(), name='seller-profile'),
+    path('store/<slug:slug>/', StorefrontView.as_view(), name='storefront'),
     path('influencers/', InfluencerListView.as_view(), name='influencers-list'),
     path('influencers/<int:id>/', InfluencerDetailView.as_view(), name='influencer-detail'),
     path('companies/', CompanyListView.as_view(), name='companies-list'),
     path('change-password/', change_password, name='change-password'),
+    path('password-reset/', password_reset_request, name='password-reset'),
+    path('password-reset/confirm/', password_reset_confirm, name='password-reset-confirm'),
     path('delete-account/', delete_account, name='delete-account'),
     path('fetch-video-stats/', fetch_video_stats, name='fetch-video-stats'),
     path('get-video-stats/', get_video_stats, name='get-video-stats'),
@@ -37,7 +42,10 @@ urlpatterns = [
     path('admin/all-sellers/', AllSellersListView.as_view(), name='all-sellers'),
     path('admin/approve-seller/<int:user_id>/', approve_seller, name='approve-seller'),
     path('admin/reject-seller/<int:user_id>/', reject_seller, name='reject-seller'),
+    path('admin/suspend-seller/<int:user_id>/', suspend_seller, name='suspend-seller'),
+    path('admin/reactivate-seller/<int:user_id>/', reactivate_seller, name='reactivate-seller'),
     path('admin/seller-audit/<int:user_id>/', seller_audit_log, name='seller-audit-log'),
+    path('admin/seller-store/<int:user_id>/', AdminSellerStoreView.as_view(), name='admin-seller-store'),
     path('admin/all-influencers/', AllInfluencersListView.as_view(), name='all-influencers'),
     path('admin/all-users/', AllUsersListView.as_view(), name='all-users'),
     path('admin/approve-influencer/<int:user_id>/', approve_influencer, name='approve-influencer'),

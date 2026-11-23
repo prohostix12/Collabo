@@ -6,6 +6,8 @@ class UserRegistrationSerializer(serializers.ModelSerializer):
     password = serializers.CharField(write_only=True, min_length=8)
     password_confirm = serializers.CharField(write_only=True)
     referred_by_code = serializers.CharField(write_only=True, required=False, allow_blank=True)
+    agreed_to_terms = serializers.BooleanField(write_only=True, required=True)
+    marketing_consent = serializers.BooleanField(write_only=True, required=False, default=False)
     # Declared explicitly (rather than left to ModelSerializer) so the model's
     # auto-added UniqueValidator doesn't reject a blank value before we can
     # normalize it to None below.
@@ -16,7 +18,8 @@ class UserRegistrationSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = User
-        fields = ('email', 'username', 'password', 'password_confirm', 'user_type', 'phone', 'referred_by_code')
+        fields = ('email', 'username', 'password', 'password_confirm', 'user_type', 'phone',
+                  'referred_by_code', 'agreed_to_terms', 'marketing_consent')
 
     def validate_email(self, value):
         value = value.strip().lower()
@@ -35,14 +38,22 @@ class UserRegistrationSerializer(serializers.ModelSerializer):
     def validate(self, attrs):
         if attrs['password'] != attrs['password_confirm']:
             raise serializers.ValidationError("Passwords don't match")
+        if not attrs.get('agreed_to_terms'):
+            raise serializers.ValidationError({'agreed_to_terms': 'You must agree to the Terms & Conditions and Privacy Policy.'})
         return attrs
 
     def create(self, validated_data):
+        from django.utils import timezone
         validated_data.pop('password_confirm')
         referred_by_code = validated_data.pop('referred_by_code', '').strip()
+        validated_data.pop('agreed_to_terms', None)
+        marketing_consent = validated_data.pop('marketing_consent', False)
         password = validated_data.pop('password')
         user = User.objects.create_user(**validated_data)
         user.set_password(password)
+        user.terms_accepted = True
+        user.terms_accepted_at = timezone.now()
+        user.marketing_consent = marketing_consent
         if referred_by_code:
             recruiter = User.objects.filter(affiliate_code=referred_by_code.upper()).first()
             if not recruiter:
@@ -166,6 +177,17 @@ class SellerProfileSerializer(serializers.ModelSerializer):
                 return request.build_absolute_uri(obj.bank_document_file.url)
             return obj.bank_document_file.url
         return obj.bank_document or None
+
+
+class PublicStorefrontSerializer(serializers.ModelSerializer):
+    """Public-safe view of a SellerProfile: storefront display fields only.
+    Never include tax_id, bank_*, kyc/bank documents, or rejection_reason here."""
+    seller_id = serializers.IntegerField(source='user.id', read_only=True)
+
+    class Meta:
+        model = SellerProfile
+        fields = ('seller_id', 'store_name', 'store_slug', 'store_logo', 'store_banner', 'store_banner_height',
+                   'store_tagline', 'store_description', 'store_theme_color', 'featured_product_ids', 'store_sections')
 
 
 class ApprovalAuditLogSerializer(serializers.ModelSerializer):

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
   Users, UserCheck, UserX, Clock, TrendingUp, 
@@ -6,13 +6,12 @@ import {
   CheckCircle, XCircle, Search, Filter, Mail,
   // eslint-disable-next-line no-unused-vars
   Calendar, Eye, AlertCircle, Shield, Settings, 
-  BarChart3, Activity, DollarSign, Layout, ShoppingBag, Store, Package
+  BarChart3, Activity, DollarSign, ShoppingBag, Store, Package
 } from 'lucide-react';
 import api from '../../services/api';
 import toast from 'react-hot-toast';
 import { useAuth } from '../../contexts/AuthContext';
 import AdminSupportTickets from '../Support/AdminSupportTickets';
-import LandingContentManager from './LandingContentManager';
 import UserManagement from './UserManagement';
 // eslint-disable-next-line no-unused-vars
 import CampaignManagement from './CampaignManagement';
@@ -20,6 +19,8 @@ import PaymentManagement from './PaymentManagement';
 import PlatformSettings from './PlatformSettings';
 import EcommerceMarketplace from '../Ecommerce/EcommerceMarketplace';
 import StoreContentEditor from './StoreContentEditor';
+import BrandOutreach from './BrandOutreach';
+import StoreBuilder from './StoreBuilder';
 
 const AdminDashboard = () => {
   const { user } = useAuth();
@@ -31,7 +32,12 @@ const AdminDashboard = () => {
   useEffect(() => {
     try { localStorage.setItem('admin_portal_mode', portalMode); } catch { /* ignore */ }
   }, [portalMode]);
-  const [activeTab, setActiveTab] = useState('overview');
+  const [activeTab, setActiveTab] = useState(() => {
+    try { return localStorage.getItem('admin_dashboard_tab') || 'overview'; } catch { return 'overview'; }
+  });
+  useEffect(() => {
+    try { localStorage.setItem('admin_dashboard_tab', activeTab); } catch { /* ignore */ }
+  }, [activeTab]);
   const [influencers, setInfluencers] = useState([]);
   // New state for influencer creation modal
   const [showCreateModal, setShowCreateModal] = useState(false);
@@ -41,6 +47,7 @@ const AdminDashboard = () => {
   const [sellers, setSellers] = useState([]);
   const [loadingSellers, setLoadingSellers] = useState(false);
   const [selectedSellerDetails, setSelectedSellerDetails] = useState(null);
+  const [editingStoreSeller, setEditingStoreSeller] = useState(null); // seller object, to edit their storefront
   const [analytics, setAnalytics] = useState({
     total_influencers: 0,
     pending: 0,
@@ -57,6 +64,27 @@ const AdminDashboard = () => {
   const [products, setProducts] = useState([]);
   const [loadingProducts, setLoadingProducts] = useState(false);
   const [productTab, setProductTab] = useState('pending');
+  const [productSearch, setProductSearch] = useState('');
+  const [productCategoryFilter, setProductCategoryFilter] = useState('all');
+  const [productSellerFilter, setProductSellerFilter] = useState('all');
+
+  const productCategories = useMemo(
+    () => Array.from(new Set(products.map(p => p.category).filter(Boolean))).sort(),
+    [products]
+  );
+  const productSellers = useMemo(
+    () => Array.from(new Set(products.map(p => p.seller_username).filter(Boolean))).sort(),
+    [products]
+  );
+  const filteredProducts = useMemo(() => {
+    const q = productSearch.trim().toLowerCase();
+    return products.filter(p => {
+      if (q && !(p.name?.toLowerCase().includes(q) || p.seller_username?.toLowerCase().includes(q))) return false;
+      if (productCategoryFilter !== 'all' && p.category !== productCategoryFilter) return false;
+      if (productSellerFilter !== 'all' && p.seller_username !== productSellerFilter) return false;
+      return true;
+    });
+  }, [products, productSearch, productCategoryFilter, productSellerFilter]);
   const [selectedProductDetails, setSelectedProductDetails] = useState(null);
   const [rejectingProduct, setRejectingProduct] = useState(null);
   const [rejectReason, setRejectReason] = useState('');
@@ -67,9 +95,9 @@ const AdminDashboard = () => {
     { id: 'seller-approvals', label: 'Seller Approvals', icon: Store },
     { id: 'product-approvals', label: 'Product Approvals', icon: Package },
     { id: 'seller-payouts', label: 'Seller Payouts', icon: DollarSign },
-    { id: 'landing', label: 'Landing Page', icon: Layout },
     { id: 'store', label: 'Store Content', icon: ShoppingBag },
     { id: 'support', label: 'Support Tickets', icon: AlertCircle },
+    { id: 'outreach', label: 'Brand Outreach', icon: Mail },
     { id: 'payments', label: 'Payment Management', icon: DollarSign },
     { id: 'settings', label: 'Platform Settings', icon: Settings },
   ];
@@ -210,6 +238,30 @@ const AdminDashboard = () => {
     } catch (error) {
       console.error('Failed to reject seller:', error);
       toast.error('Failed to reject seller');
+    }
+  };
+
+  const handleSuspendSeller = async (userId) => {
+    try {
+      await api.post(`/auth/admin/suspend-seller/${userId}/`, { reason: 'Suspended by admin' });
+      toast.success('Seller suspended');
+      fetchSellers(sellerTab);
+      setShowConfirmModal(false);
+    } catch (error) {
+      console.error('Failed to suspend seller:', error);
+      toast.error('Failed to suspend seller');
+    }
+  };
+
+  const handleReactivateSeller = async (userId) => {
+    try {
+      await api.post(`/auth/admin/reactivate-seller/${userId}/`);
+      toast.success('Seller reactivated');
+      fetchSellers(sellerTab);
+      setShowConfirmModal(false);
+    } catch (error) {
+      console.error('Failed to reactivate seller:', error);
+      toast.error('Failed to reactivate seller');
     }
   };
 
@@ -512,12 +564,20 @@ const AdminDashboard = () => {
           </div>
         )}
 
-        {activeTab === 'seller-approvals' && (
+        {activeTab === 'seller-approvals' && editingStoreSeller && (
+          <StoreBuilder
+            sellerId={editingStoreSeller.user}
+            sellerLabel={editingStoreSeller.store_name || editingStoreSeller.username}
+            onClose={() => setEditingStoreSeller(null)}
+          />
+        )}
+
+        {activeTab === 'seller-approvals' && !editingStoreSeller && (
           <div className="space-y-3">
             <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 overflow-hidden">
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 p-3 border-b border-gray-100 dark:border-gray-700">
                 <div className="flex items-center gap-1">
-                  {['all', 'pending', 'approved', 'rejected'].map((tab) => (
+                  {['all', 'pending', 'approved', 'rejected', 'suspended'].map((tab) => (
                     <button key={tab} onClick={() => setSellerTab(tab)}
                       className={`px-3 py-1.5 rounded-md text-[11px] font-medium transition-colors ${
                         sellerTab === tab ? 'bg-gray-900 dark:bg-gray-600 text-white' : 'text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-700'
@@ -558,6 +618,9 @@ const AdminDashboard = () => {
                             onViewDetails={() => setSelectedSellerDetails(seller)}
                             onApprove={() => openConfirmModal(seller, 'approve-seller')}
                             onReject={() => openConfirmModal(seller, 'reject-seller')}
+                            onSuspend={() => openConfirmModal(seller, 'suspend-seller')}
+                            onReactivate={() => openConfirmModal(seller, 'reactivate-seller')}
+                            onEditStore={() => setEditingStoreSeller(seller)}
                           />
                         ))}
                       </AnimatePresence>
@@ -581,14 +644,43 @@ const AdminDashboard = () => {
                       }`}>{tab.charAt(0).toUpperCase() + tab.slice(1)}</button>
                   ))}
                 </div>
-                <p className="text-[10px] text-gray-500">{products.length} product{products.length === 1 ? '' : 's'}</p>
+                <p className="text-[10px] text-gray-500">{filteredProducts.length} product{filteredProducts.length === 1 ? '' : 's'}</p>
+              </div>
+
+              <div className="flex flex-col sm:flex-row gap-2 p-3 border-b border-gray-100 dark:border-gray-700">
+                <div className="relative flex-1 min-w-[180px]">
+                  <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-400" />
+                  <input
+                    type="text"
+                    value={productSearch}
+                    onChange={(e) => setProductSearch(e.target.value)}
+                    placeholder="Search product or seller..."
+                    className="w-full pl-8 pr-3 py-1.5 text-[11px] rounded-md border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 dark:text-white focus:outline-none focus:ring-1 focus:ring-gray-400"
+                  />
+                </div>
+                <select
+                  value={productCategoryFilter}
+                  onChange={(e) => setProductCategoryFilter(e.target.value)}
+                  className="px-2.5 py-1.5 text-[11px] rounded-md border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 dark:text-white focus:outline-none focus:ring-1 focus:ring-gray-400"
+                >
+                  <option value="all">All Categories</option>
+                  {productCategories.map(c => <option key={c} value={c}>{c}</option>)}
+                </select>
+                <select
+                  value={productSellerFilter}
+                  onChange={(e) => setProductSellerFilter(e.target.value)}
+                  className="px-2.5 py-1.5 text-[11px] rounded-md border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 dark:text-white focus:outline-none focus:ring-1 focus:ring-gray-400"
+                >
+                  <option value="all">All Sellers</option>
+                  {productSellers.map(s => <option key={s} value={s}>{s}</option>)}
+                </select>
               </div>
 
               {loadingProducts ? (
                 <div className="flex justify-center py-10">
                   <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-violet-600"></div>
                 </div>
-              ) : products.length === 0 ? (
+              ) : filteredProducts.length === 0 ? (
                 <div className="text-center py-12">
                   <Package className="w-16 h-16 text-gray-400 mx-auto mb-4" />
                   <p className="text-gray-600 dark:text-gray-400 text-lg">
@@ -607,7 +699,7 @@ const AdminDashboard = () => {
                     </thead>
                     <tbody>
                       <AnimatePresence>
-                        {products.map((product, index) => (
+                        {filteredProducts.map((product, index) => (
                           <ProductApprovalRow
                             key={product.id}
                             product={product}
@@ -639,8 +731,12 @@ const AdminDashboard = () => {
           <AdminSupportTickets />
         )}
 
-        {activeTab === 'landing' && (
-          <LandingContentManager />
+        {activeTab === 'outreach' && (
+          <>
+            {user?.is_staff || user?.user_type === 'admin'
+              ? <BrandOutreach />
+              : <div className="p-4 text-center text-gray-500">Access denied. Admins only.</div>}
+          </>
         )}
 
         {activeTab === 'store' && (
@@ -671,6 +767,10 @@ const AdminDashboard = () => {
                 handleApproveSeller(selectedInfluencer.user);
               } else if (confirmAction === 'reject-seller') {
                 handleRejectSeller(selectedInfluencer.user);
+              } else if (confirmAction === 'suspend-seller') {
+                handleSuspendSeller(selectedInfluencer.user);
+              } else if (confirmAction === 'reactivate-seller') {
+                handleReactivateSeller(selectedInfluencer.user);
               }
             }}
             onCancel={() => {
@@ -826,7 +926,11 @@ const InfluencerRow = ({ influencer, index, onApprove, onReject, activeTab }) =>
 // Confirmation Modal Component
 const ConfirmationModal = ({ influencer, action, onConfirm, onCancel }) => {
   const isApprove = action?.startsWith('approve');
+  const isReactivate = action === 'reactivate-seller';
+  const isSuspend = action === 'suspend-seller';
+  const isPositive = isApprove || isReactivate;
   const isSeller = action?.includes('seller');
+  const label = isApprove ? 'Approve' : isReactivate ? 'Reactivate' : isSuspend ? 'Suspend' : 'Reject';
   return (
     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
       className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50 p-4" onClick={onCancel}>
@@ -834,12 +938,14 @@ const ConfirmationModal = ({ influencer, action, onConfirm, onCancel }) => {
         onClick={(e) => e.stopPropagation()}
         className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 max-w-sm w-full p-5">
         <h3 className="text-sm font-semibold text-gray-900 dark:text-white mb-1">
-          {isApprove ? 'Approve' : 'Reject'} {isSeller ? 'Seller' : 'Influencer'}
+          {label} {isSeller ? 'Seller' : 'Influencer'}
         </h3>
         <p className="text-[11px] text-gray-500 mb-4">
-          {isApprove
-            ? `${influencer?.username || influencer?.store_name} will gain platform access.`
-            : `${influencer?.username || influencer?.store_name} will receive a rejection notice.`}
+          {isApprove && `${influencer?.username || influencer?.store_name} will gain platform access.`}
+          {isReactivate && `${influencer?.username || influencer?.store_name} will regain dashboard access and their storefront will go live again.`}
+          {isSuspend && `${influencer?.username || influencer?.store_name} will lose dashboard access and their storefront will be hidden until reactivated.`}
+          {action === 'reject-seller' && `${influencer?.username || influencer?.store_name} will receive a rejection notice.`}
+          {action === 'reject' && `${influencer?.username || influencer?.store_name} will receive a rejection notice.`}
         </p>
         <div className="flex gap-2">
           <button onClick={onCancel}
@@ -848,16 +954,16 @@ const ConfirmationModal = ({ influencer, action, onConfirm, onCancel }) => {
           </button>
           <button onClick={onConfirm}
             className={`flex-1 py-2 text-[11px] font-medium text-white rounded-lg transition-colors ${
-              isApprove ? 'bg-gray-900 hover:bg-gray-800' : 'bg-red-600 hover:bg-red-700'
+              isPositive ? 'bg-gray-900 hover:bg-gray-800' : 'bg-red-600 hover:bg-red-700'
             }`}>
-            {isApprove ? 'Approve' : 'Reject'}
+            {label}
           </button>
         </div>
       </motion.div>
     </motion.div>
   );
 };
-const SellerRow = ({ seller, index, onApprove, onReject, onViewDetails }) => {
+const SellerRow = ({ seller, index, onApprove, onReject, onSuspend, onReactivate, onViewDetails, onEditStore }) => {
   const status = seller.verification_status || 'pending';
   return (
     <motion.tr initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ delay: index * 0.03 }}
@@ -878,21 +984,28 @@ const SellerRow = ({ seller, index, onApprove, onReject, onViewDetails }) => {
       <td className="py-2.5 px-4 text-[10px] text-gray-500">{new Date(seller.created_at).toLocaleDateString()}</td>
       <td className="py-2.5 px-4">
         <span className={`inline-flex items-center gap-1 text-[10px] font-medium capitalize ${
-          status === 'approved' ? 'text-emerald-600' : status === 'rejected' ? 'text-red-500' : 'text-amber-600'
+          status === 'approved' ? 'text-emerald-600' : status === 'rejected' ? 'text-red-500' : status === 'suspended' ? 'text-gray-500' : 'text-amber-600'
         }`}>
           <span className={`w-1.5 h-1.5 rounded-full ${
-            status === 'approved' ? 'bg-emerald-400' : status === 'rejected' ? 'bg-red-400' : 'bg-amber-400'
+            status === 'approved' ? 'bg-emerald-400' : status === 'rejected' ? 'bg-red-400' : status === 'suspended' ? 'bg-gray-400' : 'bg-amber-400'
           }`} /> {status}
         </span>
       </td>
       <td className="py-2.5 px-4">
         <div className="flex gap-1">
           <button onClick={onViewDetails} className="px-2 py-1 text-[10px] font-medium text-gray-700 bg-gray-100 rounded-md hover:bg-gray-200 transition-colors">View</button>
+          <button onClick={onEditStore} className="px-2 py-1 text-[10px] font-medium text-orange-700 bg-orange-50 rounded-md hover:bg-orange-100 transition-colors">Edit Store</button>
           {status === 'pending' && (
             <>
               <button onClick={onApprove} className="px-2 py-1 text-[10px] font-medium text-emerald-700 bg-emerald-50 rounded-md hover:bg-emerald-100 transition-colors">Approve</button>
               <button onClick={onReject} className="px-2 py-1 text-[10px] font-medium text-red-600 bg-red-50 rounded-md hover:bg-red-100 transition-colors">Reject</button>
             </>
+          )}
+          {status === 'approved' && (
+            <button onClick={onSuspend} className="px-2 py-1 text-[10px] font-medium text-gray-600 bg-gray-100 rounded-md hover:bg-gray-200 transition-colors">Suspend</button>
+          )}
+          {status === 'suspended' && (
+            <button onClick={onReactivate} className="px-2 py-1 text-[10px] font-medium text-emerald-700 bg-emerald-50 rounded-md hover:bg-emerald-100 transition-colors">Reactivate</button>
           )}
         </div>
       </td>
@@ -1113,8 +1226,8 @@ const AdminSellerPayouts = () => {
 const SellerDetailsModal = ({ seller, onClose, onApprove, onReject }) => {
   const [auditLogs, setAuditLogs] = React.useState([]);
   const status = seller?.verification_status || 'pending';
-  const statusDot = status === 'approved' ? 'bg-emerald-400' : status === 'rejected' ? 'bg-red-400' : 'bg-orange-400';
-  const statusLabel = status === 'approved' ? 'Approved' : status === 'rejected' ? 'Rejected' : 'Pending Approval';
+  const statusDot = status === 'approved' ? 'bg-emerald-400' : status === 'rejected' ? 'bg-red-400' : status === 'suspended' ? 'bg-gray-400' : 'bg-orange-400';
+  const statusLabel = status === 'approved' ? 'Approved' : status === 'rejected' ? 'Rejected' : status === 'suspended' ? 'Suspended' : 'Pending Approval';
 
   React.useEffect(() => {
     if (seller?.user) {

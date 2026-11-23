@@ -6,20 +6,75 @@ from rest_framework_simplejwt.tokens import RefreshToken
 from django.contrib.auth import authenticate
 from django.contrib.auth.hashers import check_password
 from django.utils import timezone
+import logging
+from django.conf import settings
+from django.core.mail import send_mail
+from django.contrib.auth.password_validation import validate_password
+from django.contrib.auth.tokens import default_token_generator
+from django.core.exceptions import ValidationError as DjangoValidationError
+from django.utils.encoding import force_bytes, force_str
+from django.utils.http import urlsafe_base64_encode, urlsafe_base64_decode
+from rest_framework.decorators import throttle_classes
+from rest_framework.throttling import AnonRateThrottle
 from .models import User, InfluencerProfile, CompanyProfile, SellerProfile
 from .serializers import (
     UserRegistrationSerializer, UserLoginSerializer, 
     UserSerializer, InfluencerProfileSerializer, CompanyProfileSerializer,
     ChangePasswordSerializer, PendingInfluencerSerializer, ApprovalActionSerializer,
-    SellerProfileSerializer
+    SellerProfileSerializer, PublicStorefrontSerializer
 )
 from .youtube_service import VideoStatsService
+
+logger = logging.getLogger(__name__)
+
+
+def _validate_document_content(uploaded_file):
+    """Sniff the actual file bytes rather than trusting the browser-reported
+    content_type/filename. Returns (ok: bool, error_message: str)."""
+    try:
+        head = uploaded_file.read(1024)
+        uploaded_file.seek(0)
+    except Exception:
+        return False, 'could not be read'
+
+    if head.startswith(b'%PDF-'):
+        return True, ''
+
+    # Not a PDF signature — must be a genuine, fully-decodable image.
+    try:
+        from PIL import Image
+        import io
+        img = Image.open(io.BytesIO(head + uploaded_file.read()))
+        img.verify()
+        uploaded_file.seek(0)
+        return True, ''
+    except Exception:
+        uploaded_file.seek(0)
+        return False, 'is not a valid PDF or image file'
+
+
+class RegisterThrottle(AnonRateThrottle):
+    """Limits how fast a single IP can create accounts, to blunt bulk signup abuse."""
+    scope = 'register'
+
+    def get_rate(self):
+        return '20/hour'
+
+
+class LoginThrottle(AnonRateThrottle):
+    """Limits credential-stuffing / brute-force login attempts per IP."""
+    scope = 'login'
+
+    def get_rate(self):
+        return '30/hour'
+
 
 class RegisterView(generics.CreateAPIView):
     queryset = User.objects.all()
     serializer_class = UserRegistrationSerializer
     permission_classes = [AllowAny]
-    
+    throttle_classes = [RegisterThrottle]
+
     def create(self, request, *args, **kwargs):
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
@@ -116,7 +171,8 @@ class RegisterView(generics.CreateAPIView):
 class LoginView(generics.GenericAPIView):
     serializer_class = UserLoginSerializer
     permission_classes = [AllowAny]
-    
+    throttle_classes = [LoginThrottle]
+
     def post(self, request, *args, **kwargs):
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
@@ -938,20 +994,23 @@ class SellerProfileView(generics.RetrieveUpdateAPIView):
         kyc_file = request.FILES.get('kyc_document_file')
         bank_file = request.FILES.get('bank_document_file')
 
+        for label, f in (('KYC', kyc_file), ('Bank', bank_file)):
+            if not f:
+                continue
+            if f.size > MAX_SIZE:
+                return Response({'error': f'{label} document must be under 5MB'}, status=status.HTTP_400_BAD_REQUEST)
+            if f.content_type not in ALLOWED:
+                return Response({'error': f'{label} document must be PDF, PNG, or JPG'}, status=status.HTTP_400_BAD_REQUEST)
+            content_ok, content_err = _validate_document_content(f)
+            if not content_ok:
+                return Response({'error': f'{label} document {content_err}'}, status=status.HTTP_400_BAD_REQUEST)
+
         if kyc_file:
-            if kyc_file.size > MAX_SIZE:
-                return Response({'error': 'KYC document must be under 5MB'}, status=status.HTTP_400_BAD_REQUEST)
-            if kyc_file.content_type not in ALLOWED:
-                return Response({'error': 'KYC document must be PDF, PNG, or JPG'}, status=status.HTTP_400_BAD_REQUEST)
             if profile.kyc_document_file:
                 profile.kyc_document_file.delete(save=False)
             profile.kyc_document_file = kyc_file
 
         if bank_file:
-            if bank_file.size > MAX_SIZE:
-                return Response({'error': 'Bank document must be under 5MB'}, status=status.HTTP_400_BAD_REQUEST)
-            if bank_file.content_type not in ALLOWED:
-                return Response({'error': 'Bank document must be PDF, PNG, or JPG'}, status=status.HTTP_400_BAD_REQUEST)
             if profile.bank_document_file:
                 profile.bank_document_file.delete(save=False)
             profile.bank_document_file = bank_file
@@ -967,6 +1026,28 @@ class SellerProfileView(generics.RetrieveUpdateAPIView):
             pass
 
         return Response(serializer.data, status=status.HTTP_200_OK)
+
+
+class StorefrontView(generics.RetrieveAPIView):
+    """GET /api/accounts/store/<slug>/ — public storefront page data. Approved sellers only."""
+    serializer_class = PublicStorefrontSerializer
+    permission_classes = [AllowAny]
+    lookup_field = 'store_slug'
+    lookup_url_kwarg = 'slug'
+
+    def get_queryset(self):
+        return SellerProfile.objects.filter(verification_status='approved').select_related('user')
+
+
+class AdminSellerStoreView(generics.RetrieveUpdateAPIView):
+    """GET/PATCH /api/auth/admin/seller-store/<user_id>/ — lets an admin view and edit any
+    seller's storefront (identity, look & feel, sections) on their behalf."""
+    serializer_class = SellerProfileSerializer
+    permission_classes = [IsAuthenticated, IsAdminUser]
+    parser_classes = [parsers.MultiPartParser, parsers.FormParser, parsers.JSONParser]
+    lookup_field = 'user_id'
+    lookup_url_kwarg = 'user_id'
+    queryset = SellerProfile.objects.select_related('user')
 
 
 class PendingSellersListView(generics.ListAPIView):
@@ -996,7 +1077,7 @@ class AllSellersListView(generics.ListAPIView):
     def get_queryset(self):
         queryset = SellerProfile.objects.all().select_related('user')
         status_filter = self.request.query_params.get('status', None)
-        if status_filter in ['pending', 'approved', 'rejected']:
+        if status_filter in ['pending', 'approved', 'rejected', 'suspended']:
             queryset = queryset.filter(verification_status=status_filter)
         return queryset
 
@@ -1101,6 +1182,95 @@ def reject_seller(request, user_id):
     })
 
 
+@api_view(['POST'])
+@permission_classes([IsAdminUser])
+def suspend_seller(request, user_id):
+    """Revoke an already-approved seller's access without deleting their application
+    history. Blocks dashboard access and hides their storefront, same as a rejection,
+    but is reversible via reactivate_seller and is tracked as a distinct audit action."""
+    from .models import ApprovalAuditLog
+
+    try:
+        user = User.objects.get(id=user_id)
+    except User.DoesNotExist:
+        return Response({'error': 'User not found'}, status=status.HTTP_404_NOT_FOUND)
+
+    try:
+        profile = SellerProfile.objects.get(user=user)
+    except SellerProfile.DoesNotExist:
+        return Response({'error': 'Seller profile not found'}, status=status.HTTP_404_NOT_FOUND)
+
+    reason = request.data.get('reason', 'Suspended by admin')
+    previous_status = profile.verification_status
+    profile.verification_status = 'suspended'
+    profile.rejection_reason = reason
+    profile.save()
+
+    if user.user_type == 'seller':
+        user.user_type = 'buyer'
+        user.save(update_fields=['user_type'])
+
+    x_forwarded = request.META.get('HTTP_X_FORWARDED_FOR')
+    ip = x_forwarded.split(',')[0].strip() if x_forwarded else request.META.get('REMOTE_ADDR')
+    try:
+        ApprovalAuditLog.objects.create(
+            user=user, admin=request.user, action='suspended',
+            previous_status=previous_status, new_status='suspended',
+            reason=reason, ip_address=ip,
+        )
+    except Exception:
+        pass
+
+    return Response({
+        'message': 'Seller suspended',
+        'profile': SellerProfileSerializer(profile).data
+    })
+
+
+@api_view(['POST'])
+@permission_classes([IsAdminUser])
+def reactivate_seller(request, user_id):
+    """Restore a suspended seller back to approved status."""
+    from .models import ApprovalAuditLog
+
+    try:
+        user = User.objects.get(id=user_id)
+    except User.DoesNotExist:
+        return Response({'error': 'User not found'}, status=status.HTTP_404_NOT_FOUND)
+
+    try:
+        profile = SellerProfile.objects.get(user=user)
+    except SellerProfile.DoesNotExist:
+        return Response({'error': 'Seller profile not found'}, status=status.HTTP_404_NOT_FOUND)
+
+    if profile.verification_status != 'suspended':
+        return Response({'error': 'Seller is not currently suspended'}, status=status.HTTP_400_BAD_REQUEST)
+
+    previous_status = profile.verification_status
+    profile.verification_status = 'approved'
+    profile.rejection_reason = None
+    profile.save()
+
+    user.user_type = 'seller'
+    user.save(update_fields=['user_type'])
+
+    x_forwarded = request.META.get('HTTP_X_FORWARDED_FOR')
+    ip = x_forwarded.split(',')[0].strip() if x_forwarded else request.META.get('REMOTE_ADDR')
+    try:
+        ApprovalAuditLog.objects.create(
+            user=user, admin=request.user, action='reactivated',
+            previous_status=previous_status, new_status='approved',
+            reason='', ip_address=ip,
+        )
+    except Exception:
+        pass
+
+    return Response({
+        'message': 'Seller reactivated',
+        'profile': SellerProfileSerializer(profile).data
+    })
+
+
 @api_view(['GET'])
 @permission_classes([IsAdminUser])
 def seller_audit_log(request, user_id):
@@ -1108,3 +1278,87 @@ def seller_audit_log(request, user_id):
     from .serializers import ApprovalAuditLogSerializer
     logs = ApprovalAuditLog.objects.filter(user_id=user_id).order_by('-timestamp')
     return Response(ApprovalAuditLogSerializer(logs, many=True).data)
+
+# ── Forgot / reset password ────────────────────────────────────────────────
+
+class PasswordResetThrottle(AnonRateThrottle):
+    """Limit reset requests per IP so the form can't be used to spam inboxes."""
+    scope = 'password_reset'
+
+    def get_rate(self):
+        return '8/hour'
+
+
+def _reset_link_base(request):
+    """Public website address used in the emailed link. FRONTEND_URL wins unless
+    it still points at localhost, in which case a trusted Origin is used."""
+    base = (getattr(settings, 'FRONTEND_URL', '') or '').rstrip('/')
+    if not base or 'localhost' in base or '127.0.0.1' in base:
+        origin = (request.headers.get('Origin') or '').rstrip('/')
+        if origin and origin in getattr(settings, 'CORS_ALLOWED_ORIGINS', []):
+            return origin
+    return base or 'http://localhost:3000'
+
+
+@api_view(['POST'])
+@permission_classes([AllowAny])
+@throttle_classes([PasswordResetThrottle])
+def password_reset_request(request):
+    """Email a one-time reset link. Always answers the same way, so it can't be
+    used to find out which email addresses have accounts."""
+    email = (request.data.get('email') or '').strip()
+    generic = Response({'message': 'If an account exists for that email, a password reset link has been sent.'})
+    if not email:
+        return Response({'email': ['Please enter your email address.']}, status=status.HTTP_400_BAD_REQUEST)
+
+    user = User.objects.filter(email__iexact=email, is_active=True).first()
+    if not user:
+        return generic
+
+    uid = urlsafe_base64_encode(force_bytes(user.pk))
+    token = default_token_generator.make_token(user)
+    link = f"{_reset_link_base(request)}/#reset-password:{uid}.{token}"
+    try:
+        send_mail(
+            subject='Reset your Collabo password',
+            message=(
+                f"Hi {user.first_name or 'there'},\n\n"
+                "We received a request to reset the password for your Collabo account.\n"
+                f"Open this link to choose a new password (valid for a short time, works once):\n\n{link}\n\n"
+                "If you didn't ask for this, you can ignore this email; your password won't change.\n\n"
+                "- Team Collabo"
+            ),
+            from_email=getattr(settings, 'DEFAULT_FROM_EMAIL', None) or None,
+            recipient_list=[user.email],
+            fail_silently=False,
+        )
+    except Exception:
+        logger.exception('Could not send password reset email to user id %s', user.pk)
+    return generic
+
+
+@api_view(['POST'])
+@permission_classes([AllowAny])
+@throttle_classes([PasswordResetThrottle])
+def password_reset_confirm(request):
+    """Set a new password from the emailed link (uid + token)."""
+    uid = request.data.get('uid') or ''
+    token = request.data.get('token') or ''
+    new_password = request.data.get('new_password') or ''
+    bad_link = Response({'error': 'This reset link is invalid or has expired. Please request a new one.'},
+                        status=status.HTTP_400_BAD_REQUEST)
+    try:
+        user = User.objects.get(pk=force_str(urlsafe_base64_decode(uid)), is_active=True)
+    except (TypeError, ValueError, OverflowError, User.DoesNotExist):
+        return bad_link
+    if not default_token_generator.check_token(user, token):
+        return bad_link
+
+    try:
+        validate_password(new_password, user)
+    except DjangoValidationError as e:
+        return Response({'error': ' '.join(e.messages)}, status=status.HTTP_400_BAD_REQUEST)
+
+    user.set_password(new_password)
+    user.save(update_fields=['password'])  # also invalidates the token (it is tied to the old hash)
+    return Response({'message': 'Your password has been reset. You can now log in.'})

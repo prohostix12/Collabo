@@ -4,7 +4,7 @@ import api from '../../services/api';
 import {
   Store, TrendingUp, Shield, Truck, BarChart3, Users, Package,
   ArrowRight, ArrowLeft, CheckCircle, ChevronDown, ChevronUp, Eye, EyeOff,
-  Mail, Lock, User, Phone, AlertCircle, Upload, X,
+  Mail, Lock, User, Phone, AlertCircle, Upload, X, MapPin,
 } from 'lucide-react';
 import { SELLER_TERMS_INTRO, SELLER_TERMS_SECTIONS } from './sellerTerms';
 
@@ -24,6 +24,18 @@ const BENEFITS = [
   { icon: Package, title: 'Bulk Import', desc: 'Upload products from Shopify or any platform via CSV.' },
 ];
 
+const SELLING_CATEGORY_OPTIONS = [
+  'Home & Kitchen', 'Fashion & Apparel', 'Electronics', 'Mobile & Accessories',
+  'Health & Personal Care', 'Beauty & Personal Care', 'Kids', 'Korean Products',
+  'Jewellery', 'Furniture', 'Home Improvement', 'Toys & Games', 'Industrial & Scientific',
+];
+
+const SHIPPING_METHOD_OPTIONS = [
+  { value: 'seller_managed', label: 'Seller-managed shipping' },
+  { value: 'marketplace_managed', label: 'Marketplace-managed shipping' },
+  { value: 'hybrid', label: 'Hybrid fulfilment' },
+];
+
 const FAQS = [
   { q: 'What documents do I need?', a: 'GST/Tax ID, bank account (number + IFSC), and a KYC document (PAN, Aadhaar, or business registration certificate).' },
   { q: 'What are the fees?', a: '10% platform commission per sale. No listing fees, no monthly charges.' },
@@ -35,16 +47,34 @@ function SellerRegistrationWidget() {
   const { register, user, fetchUser } = useAuth();
   const [phase, setPhase] = useState(user ? 'kyc' : 'register');
   const [regForm, setRegForm] = useState({ email: '', username: '', password: '', phone: '' });
+  const [regPasswordConfirm, setRegPasswordConfirm] = useState('');
+  const [regAgreedToTerms, setRegAgreedToTerms] = useState(false);
+  const [regMarketingConsent, setRegMarketingConsent] = useState(false);
   const [showPw, setShowPw] = useState(false);
   const [regLoading, setRegLoading] = useState(false);
   const [regError, setRegError] = useState('');
 
   const [kycStep, setKycStep] = useState(1);
   const [storeName, setStoreName] = useState(user?.seller_profile?.store_name || '');
-  const [businessAddress, setBusinessAddress] = useState(user?.seller_profile?.business_address || '');
+  const [addressLine1, setAddressLine1] = useState(user?.seller_profile?.address_line1 || '');
+  const [addressLine2, setAddressLine2] = useState(user?.seller_profile?.address_line2 || '');
+  const [country, setCountry] = useState(user?.seller_profile?.country || 'India');
+  const [stateName, setStateName] = useState(user?.seller_profile?.state || '');
+  const [city, setCity] = useState(user?.seller_profile?.city || '');
+  const [district, setDistrict] = useState(user?.seller_profile?.district || '');
+  const [pincode, setPincode] = useState(user?.seller_profile?.pincode || '');
+  const [warehouseSameAsBusiness, setWarehouseSameAsBusiness] = useState(user?.seller_profile?.warehouse_same_as_business ?? true);
+  const [warehouseLine1, setWarehouseLine1] = useState(user?.seller_profile?.warehouse_address_line1 || '');
+  const [warehouseLine2, setWarehouseLine2] = useState(user?.seller_profile?.warehouse_address_line2 || '');
+  const [warehouseCountry, setWarehouseCountry] = useState(user?.seller_profile?.warehouse_country || 'India');
+  const [warehouseState, setWarehouseState] = useState(user?.seller_profile?.warehouse_state || '');
+  const [warehouseCity, setWarehouseCity] = useState(user?.seller_profile?.warehouse_city || '');
+  const [warehouseDistrict, setWarehouseDistrict] = useState(user?.seller_profile?.warehouse_district || '');
+  const [warehousePincode, setWarehousePincode] = useState(user?.seller_profile?.warehouse_pincode || '');
   const [taxId, setTaxId] = useState(user?.seller_profile?.tax_id || '');
   const [bankName, setBankName] = useState(user?.seller_profile?.bank_name || '');
   const [bankAccount, setBankAccount] = useState(user?.seller_profile?.bank_account_number || '');
+  const [bankAccountConfirm, setBankAccountConfirm] = useState('');
   const [bankIfsc, setBankIfsc] = useState(user?.seller_profile?.bank_ifsc || '');
   const [idType, setIdType] = useState('aadhaar');
   const [idNumber, setIdNumber] = useState('');
@@ -54,6 +84,21 @@ function SellerRegistrationWidget() {
   const [kycSubmitting, setKycSubmitting] = useState(false);
   const [agreedToTerms, setAgreedToTerms] = useState(false);
   const [showTermsModal, setShowTermsModal] = useState(false);
+
+  // Selling preferences
+  const [sellingCategories, setSellingCategories] = useState(user?.seller_profile?.selling_categories || []);
+  const [expectedProductCount, setExpectedProductCount] = useState(user?.seller_profile?.expected_product_count || '');
+  const [shippingMethod, setShippingMethod] = useState(user?.seller_profile?.shipping_method || '');
+  const [preferredCourier, setPreferredCourier] = useState(user?.seller_profile?.preferred_courier || '');
+  const [returnSameAsWarehouse, setReturnSameAsWarehouse] = useState(user?.seller_profile?.return_address_same_as_warehouse ?? true);
+  const [returnLine1, setReturnLine1] = useState(user?.seller_profile?.return_address_line1 || '');
+  const [returnCity, setReturnCity] = useState(user?.seller_profile?.return_address_city || '');
+  const [returnState, setReturnState] = useState(user?.seller_profile?.return_address_state || '');
+  const [returnPincode, setReturnPincode] = useState(user?.seller_profile?.return_address_pincode || '');
+
+  const toggleSellingCategory = (cat) => {
+    setSellingCategories(prev => prev.includes(cat) ? prev.filter(c => c !== cat) : [...prev, cat]);
+  };
 
   const handleFileUpload = useCallback((e, setter) => {
     const file = e.target.files?.[0];
@@ -71,9 +116,12 @@ function SellerRegistrationWidget() {
     if (regForm.username.trim().length < 3) { setRegError('Username must be at least 3 characters'); return; }
     if (regForm.phone && !/^\d{10}$/.test(regForm.phone.replace(/\D/g, ''))) { setRegError('Phone number must be exactly 10 digits'); return; }
     if (regForm.password.length < 8) { setRegError('Password must be at least 8 characters'); return; }
+    if (regForm.password !== regPasswordConfirm) { setRegError('Passwords do not match'); return; }
+    if (!regAgreedToTerms) { setRegError('Please agree to the Terms & Conditions and Privacy Policy'); return; }
     setRegLoading(true);
     const result = await register({
-      ...regForm, password_confirm: regForm.password, user_type: 'buyer',
+      ...regForm, password_confirm: regPasswordConfirm, user_type: 'buyer',
+      agreed_to_terms: regAgreedToTerms, marketing_consent: regMarketingConsent,
       phone: regForm.phone ? `+91${regForm.phone.replace(/^0+/, '')}` : '',
     });
     if (result.success) { setPhase('kyc'); }
@@ -86,8 +134,16 @@ function SellerRegistrationWidget() {
     if (kycStep === 1) {
       if (!storeName.trim()) return setKycError('Store name is required');
       if (storeName.trim().length < 3) return setKycError('Store name must be at least 3 characters');
-      if (!businessAddress.trim()) return setKycError('Business address is required');
-      if (businessAddress.trim().length < 10) return setKycError('Please enter a complete business address');
+      if (!addressLine1.trim()) return setKycError('Address line 1 is required');
+      if (!city.trim()) return setKycError('City is required');
+      if (!stateName.trim()) return setKycError('State is required');
+      if (!/^\d{6}$/.test(pincode.trim())) return setKycError('PIN code must be exactly 6 digits');
+      if (!warehouseSameAsBusiness) {
+        if (!warehouseLine1.trim()) return setKycError('Warehouse/pickup address line 1 is required');
+        if (!warehouseCity.trim()) return setKycError('Warehouse/pickup city is required');
+        if (!warehouseState.trim()) return setKycError('Warehouse/pickup state is required');
+        if (!/^\d{6}$/.test(warehousePincode.trim())) return setKycError('Warehouse/pickup PIN code must be exactly 6 digits');
+      }
       setKycStep(2);
     } else if (kycStep === 2) {
       if (!taxId.trim()) return setKycError('GSTIN is required');
@@ -113,7 +169,18 @@ function SellerRegistrationWidget() {
       if (!/^[A-Z]{4}0[A-Z0-9]{6}$/.test(bankIfsc.trim().toUpperCase())) return setKycError('Invalid IFSC code. Must be 11 characters (e.g. HDFC0001234)');
       if (!bankAccount.trim()) return setKycError('Account number is required');
       if (!/^\d{9,18}$/.test(bankAccount.trim())) return setKycError('Account number must be 9-18 digits');
+      if (bankAccount.trim() !== bankAccountConfirm.trim()) return setKycError('Account numbers do not match');
       setKycStep(4);
+    } else if (kycStep === 4) {
+      if (sellingCategories.length === 0) return setKycError('Select at least one category you plan to sell in');
+      if (!shippingMethod) return setKycError('Please select a shipping method');
+      if (!returnSameAsWarehouse) {
+        if (!returnLine1.trim()) return setKycError('Return address line 1 is required');
+        if (!returnCity.trim()) return setKycError('Return address city is required');
+        if (!returnState.trim()) return setKycError('Return address state is required');
+        if (!/^\d{6}$/.test(returnPincode.trim())) return setKycError('Return address PIN code must be exactly 6 digits');
+      }
+      setKycStep(5);
     } else {
       if (!agreedToTerms) return setKycError('Please agree to the Seller Terms & Conditions to continue');
       setKycSubmitting(true);
@@ -124,7 +191,34 @@ function SellerRegistrationWidget() {
         fd.append('bank_name', bankName);
         fd.append('bank_account_number', bankAccount);
         fd.append('bank_ifsc', bankIfsc);
-        fd.append('business_address', businessAddress);
+        fd.append('address_line1', addressLine1);
+        fd.append('address_line2', addressLine2);
+        fd.append('country', country);
+        fd.append('state', stateName);
+        fd.append('city', city);
+        fd.append('district', district);
+        fd.append('pincode', pincode);
+        fd.append('warehouse_same_as_business', warehouseSameAsBusiness);
+        if (!warehouseSameAsBusiness) {
+          fd.append('warehouse_address_line1', warehouseLine1);
+          fd.append('warehouse_address_line2', warehouseLine2);
+          fd.append('warehouse_country', warehouseCountry);
+          fd.append('warehouse_state', warehouseState);
+          fd.append('warehouse_city', warehouseCity);
+          fd.append('warehouse_district', warehouseDistrict);
+          fd.append('warehouse_pincode', warehousePincode);
+        }
+        fd.append('selling_categories', JSON.stringify(sellingCategories));
+        fd.append('expected_product_count', expectedProductCount);
+        fd.append('shipping_method', shippingMethod);
+        fd.append('preferred_courier', preferredCourier);
+        fd.append('return_address_same_as_warehouse', returnSameAsWarehouse);
+        if (!returnSameAsWarehouse) {
+          fd.append('return_address_line1', returnLine1);
+          fd.append('return_address_city', returnCity);
+          fd.append('return_address_state', returnState);
+          fd.append('return_address_pincode', returnPincode);
+        }
         if (kycDoc instanceof File) fd.append('kyc_document_file', kycDoc);
         if (bankDoc instanceof File) fd.append('bank_document_file', bankDoc);
         await api.post('/auth/seller-profile/', fd, { headers: { 'Content-Type': 'multipart/form-data' } });
@@ -212,6 +306,23 @@ function SellerRegistrationWidget() {
           <input type={showPw?'text':'password'} required value={regForm.password} onChange={e => setRegForm({...regForm, password: e.target.value})} placeholder="Min 8 characters" className="w-full pl-9 pr-10 py-2.5 border border-gray-200 rounded-lg text-[12px] focus:outline-none focus:ring-1 focus:ring-orange-400" />
           <button type="button" onClick={()=>setShowPw(!showPw)} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400">{showPw?<EyeOff className="w-3.5 h-3.5"/>:<Eye className="w-3.5 h-3.5"/>}</button></div>
         </div>
+        <div>
+          <label className="block text-[10px] text-gray-500 font-medium mb-1">Confirm Password</label>
+          <div className="relative"><Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-400" />
+          <input type={showPw?'text':'password'} required value={regPasswordConfirm} onChange={e => setRegPasswordConfirm(e.target.value)} placeholder="Re-enter your password" className="w-full pl-9 pr-3 py-2.5 border border-gray-200 rounded-lg text-[12px] focus:outline-none focus:ring-1 focus:ring-orange-400" /></div>
+        </div>
+        <label className="flex items-start gap-2 cursor-pointer select-none">
+          <input type="checkbox" checked={regAgreedToTerms} onChange={e => setRegAgreedToTerms(e.target.checked)}
+            className="mt-0.5 w-3.5 h-3.5 shrink-0 rounded border-gray-300 text-orange-600 focus:ring-1 focus:ring-orange-400" />
+          <span className="text-[11px] text-gray-600">
+            I agree to the <a href="/terms" className="text-orange-600 font-medium hover:underline">Terms &amp; Conditions</a> and <a href="/privacy" className="text-orange-600 font-medium hover:underline">Privacy Policy</a>
+          </span>
+        </label>
+        <label className="flex items-start gap-2 cursor-pointer select-none">
+          <input type="checkbox" checked={regMarketingConsent} onChange={e => setRegMarketingConsent(e.target.checked)}
+            className="mt-0.5 w-3.5 h-3.5 shrink-0 rounded border-gray-300 text-orange-600 focus:ring-1 focus:ring-orange-400" />
+          <span className="text-[11px] text-gray-600">Send me promotional emails and SMS offers (optional)</span>
+        </label>
         <button type="submit" disabled={regLoading} className="w-full bg-orange-600 hover:bg-orange-700 text-white text-[12px] font-medium py-2.5 rounded-lg transition-colors disabled:opacity-50">
           {regLoading ? 'Creating...' : 'Create Account & Continue'}
         </button>
@@ -228,12 +339,12 @@ function SellerRegistrationWidget() {
       <p className="text-[10px] text-gray-400 uppercase font-medium">Step 2 of 2 — Seller Verification</p>
       {/* Progress */}
       <div className="flex gap-1.5">
-        {[1,2,3,4].map(s => (
+        {[1,2,3,4,5].map(s => (
           <div key={s} className={`h-1 rounded-full flex-1 transition-all ${kycStep >= s ? 'bg-orange-500' : 'bg-gray-200'}`} />
         ))}
       </div>
       <p className="text-[11px] font-medium text-gray-700">
-        {kycStep === 1 ? 'Store Profile' : kycStep === 2 ? 'Compliance & KYC' : kycStep === 3 ? 'Bank Details' : 'Review & Submit'}
+        {kycStep === 1 ? 'Store Profile' : kycStep === 2 ? 'Compliance & KYC' : kycStep === 3 ? 'Bank Details' : kycStep === 4 ? 'Selling Preferences' : 'Review & Submit'}
       </p>
 
       {status === 'rejected' && kycStep === 1 && (
@@ -246,7 +357,42 @@ function SellerRegistrationWidget() {
       {kycStep === 1 && (
         <div className="space-y-3">
           <div><label className={labelCls}>Store Name *</label><input type="text" value={storeName} onChange={e=>setStoreName(e.target.value)} placeholder="e.g. My Premium Store" className={inputCls} /></div>
-          <div><label className={labelCls}>Business Address *</label><textarea value={businessAddress} onChange={e=>setBusinessAddress(e.target.value)} placeholder="Full registered address" rows={2} className={inputCls + " resize-none"} /></div>
+
+          <p className="text-[10px] text-gray-400 uppercase font-medium pt-1">Registered Business Address</p>
+          <div><label className={labelCls}>Address Line 1 *</label><input type="text" value={addressLine1} onChange={e=>setAddressLine1(e.target.value)} placeholder="Building, street" className={inputCls} /></div>
+          <div><label className={labelCls}>Address Line 2</label><input type="text" value={addressLine2} onChange={e=>setAddressLine2(e.target.value)} placeholder="Area, landmark (optional)" className={inputCls} /></div>
+          <div className="grid grid-cols-2 gap-3">
+            <div><label className={labelCls}>City *</label><input type="text" value={city} onChange={e=>setCity(e.target.value)} className={inputCls} /></div>
+            <div><label className={labelCls}>District</label><input type="text" value={district} onChange={e=>setDistrict(e.target.value)} className={inputCls} /></div>
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div><label className={labelCls}>State *</label><input type="text" value={stateName} onChange={e=>setStateName(e.target.value)} className={inputCls} /></div>
+            <div><label className={labelCls}>PIN Code *</label><input type="text" value={pincode} onChange={e=>setPincode(e.target.value.replace(/\D/g,'').slice(0,6))} maxLength={6} className={inputCls} /></div>
+          </div>
+          <div><label className={labelCls}>Country *</label><input type="text" value={country} onChange={e=>setCountry(e.target.value)} className={inputCls} /></div>
+
+          <label className="flex items-start gap-2 cursor-pointer select-none pt-1">
+            <input type="checkbox" checked={warehouseSameAsBusiness} onChange={e=>setWarehouseSameAsBusiness(e.target.checked)}
+              className="mt-0.5 w-3.5 h-3.5 shrink-0 rounded border-gray-300 text-orange-600 focus:ring-1 focus:ring-orange-400" />
+            <span className="text-[11px] text-gray-600">My warehouse / pickup address is the same as my business address</span>
+          </label>
+
+          {!warehouseSameAsBusiness && (
+            <div className="space-y-3 pt-1">
+              <p className="text-[10px] text-gray-400 uppercase font-medium">Warehouse / Pickup Address</p>
+              <div><label className={labelCls}>Address Line 1 *</label><input type="text" value={warehouseLine1} onChange={e=>setWarehouseLine1(e.target.value)} className={inputCls} /></div>
+              <div><label className={labelCls}>Address Line 2</label><input type="text" value={warehouseLine2} onChange={e=>setWarehouseLine2(e.target.value)} className={inputCls} /></div>
+              <div className="grid grid-cols-2 gap-3">
+                <div><label className={labelCls}>City *</label><input type="text" value={warehouseCity} onChange={e=>setWarehouseCity(e.target.value)} className={inputCls} /></div>
+                <div><label className={labelCls}>District</label><input type="text" value={warehouseDistrict} onChange={e=>setWarehouseDistrict(e.target.value)} className={inputCls} /></div>
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div><label className={labelCls}>State *</label><input type="text" value={warehouseState} onChange={e=>setWarehouseState(e.target.value)} className={inputCls} /></div>
+                <div><label className={labelCls}>PIN Code *</label><input type="text" value={warehousePincode} onChange={e=>setWarehousePincode(e.target.value.replace(/\D/g,'').slice(0,6))} maxLength={6} className={inputCls} /></div>
+              </div>
+              <div><label className={labelCls}>Country *</label><input type="text" value={warehouseCountry} onChange={e=>setWarehouseCountry(e.target.value)} className={inputCls} /></div>
+            </div>
+          )}
         </div>
       )}
       {kycStep === 2 && (
@@ -280,17 +426,70 @@ function SellerRegistrationWidget() {
             <div><label className={labelCls}>IFSC Code *</label><input type="text" value={bankIfsc} onChange={e=>setBankIfsc(e.target.value)} placeholder="e.g. HDFC0001234" className={inputCls} /></div>
           </div>
           <div><label className={labelCls}>Account Number *</label><input type="text" value={bankAccount} onChange={e=>setBankAccount(e.target.value)} placeholder="e.g. 50100234567890" className={inputCls} /></div>
+          <div><label className={labelCls}>Confirm Account Number *</label><input type="text" value={bankAccountConfirm} onChange={e=>setBankAccountConfirm(e.target.value)} placeholder="Re-enter account number" className={inputCls} /></div>
           <div><label className={labelCls}>Bank Proof (Cheque / Statement)</label><input type="file" accept=".pdf,image/*" onChange={e=>handleFileUpload(e,setBankDoc)} className={inputCls} />
           {bankDoc && <p className="text-[10px] text-emerald-600 mt-1">Attached: {bankDoc.name}</p>}</div>
         </div>
       )}
       {kycStep === 4 && (
+        <div className="space-y-4">
+          <div>
+            <label className={labelCls}>Product Categories You'll Sell *</label>
+            <div className="grid grid-cols-2 gap-1.5 mt-1">
+              {SELLING_CATEGORY_OPTIONS.map(cat => (
+                <label key={cat} className="flex items-center gap-1.5 text-[11px] text-gray-600 cursor-pointer select-none">
+                  <input type="checkbox" checked={sellingCategories.includes(cat)} onChange={()=>toggleSellingCategory(cat)}
+                    className="w-3.5 h-3.5 shrink-0 rounded border-gray-300 text-orange-600 focus:ring-1 focus:ring-orange-400" />
+                  {cat}
+                </label>
+              ))}
+            </div>
+          </div>
+          <div><label className={labelCls}>Expected Number of Products</label>
+            <select value={expectedProductCount} onChange={e=>setExpectedProductCount(e.target.value)} className={inputCls}>
+              <option value="">Select a range (optional)</option>
+              <option value="1-10">1-10</option>
+              <option value="10-50">10-50</option>
+              <option value="50-200">50-200</option>
+              <option value="200+">200+</option>
+            </select>
+          </div>
+          <div><label className={labelCls}>Shipping Method *</label>
+            <select value={shippingMethod} onChange={e=>setShippingMethod(e.target.value)} className={inputCls}>
+              <option value="">Select a shipping method</option>
+              {SHIPPING_METHOD_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
+            </select>
+          </div>
+          <div><label className={labelCls}>Preferred Courier</label><input type="text" value={preferredCourier} onChange={e=>setPreferredCourier(e.target.value)} placeholder="e.g. Delhivery, Bluedart (optional)" className={inputCls} /></div>
+
+          <label className="flex items-start gap-2 cursor-pointer select-none">
+            <input type="checkbox" checked={returnSameAsWarehouse} onChange={e=>setReturnSameAsWarehouse(e.target.checked)}
+              className="mt-0.5 w-3.5 h-3.5 shrink-0 rounded border-gray-300 text-orange-600 focus:ring-1 focus:ring-orange-400" />
+            <span className="text-[11px] text-gray-600">My returns should go to my warehouse / pickup address</span>
+          </label>
+
+          {!returnSameAsWarehouse && (
+            <div className="space-y-3">
+              <p className="text-[10px] text-gray-400 uppercase font-medium">Return Address</p>
+              <div><label className={labelCls}>Address Line 1 *</label><input type="text" value={returnLine1} onChange={e=>setReturnLine1(e.target.value)} className={inputCls} /></div>
+              <div className="grid grid-cols-2 gap-3">
+                <div><label className={labelCls}>City *</label><input type="text" value={returnCity} onChange={e=>setReturnCity(e.target.value)} className={inputCls} /></div>
+                <div><label className={labelCls}>State *</label><input type="text" value={returnState} onChange={e=>setReturnState(e.target.value)} className={inputCls} /></div>
+              </div>
+              <div><label className={labelCls}>PIN Code *</label><input type="text" value={returnPincode} onChange={e=>setReturnPincode(e.target.value.replace(/\D/g,'').slice(0,6))} maxLength={6} className={inputCls} /></div>
+            </div>
+          )}
+        </div>
+      )}
+      {kycStep === 5 && (
         <div className="bg-gray-50 rounded-lg p-4 space-y-2 text-[11px]">
           {[
-            ['Store', storeName], ['Address', businessAddress],
+            ['Store', storeName], ['Address', `${addressLine1}, ${city}, ${stateName} ${pincode}`],
             ...(taxId ? [['Tax ID', taxId]] : []),
             ...(idNumber ? [[idType === 'aadhaar' ? 'Aadhaar' : 'PAN', idNumber]] : []),
             ['Bank', `${bankName} — ${bankIfsc}`], ['Account', bankAccount],
+            ['Categories', sellingCategories.join(', ') || '—'],
+            ['Shipping', SHIPPING_METHOD_OPTIONS.find(o => o.value === shippingMethod)?.label || '—'],
           ].map(([l,v]) => (
             <div key={l} className="flex justify-between py-1 border-b border-gray-100 last:border-0">
               <span className="text-gray-500">{l}</span>
@@ -302,7 +501,7 @@ function SellerRegistrationWidget() {
         </div>
       )}
 
-      {kycStep === 4 && (
+      {kycStep === 5 && (
         <label className="flex items-start gap-2 cursor-pointer select-none">
           <input
             type="checkbox"
@@ -325,9 +524,9 @@ function SellerRegistrationWidget() {
             <ArrowLeft className="w-4 h-4" /> Back
           </button>
         )}
-        <button onClick={handleKycSubmit} disabled={kycSubmitting || (kycStep === 4 && !agreedToTerms)}
+        <button onClick={handleKycSubmit} disabled={kycSubmitting || (kycStep === 5 && !agreedToTerms)}
           className="flex-1 bg-orange-600 hover:bg-orange-700 text-white text-[12px] font-medium py-2.5 rounded-lg transition-colors disabled:opacity-50 flex items-center justify-center gap-1.5">
-          {kycSubmitting ? 'Submitting...' : kycStep === 4 ? <><CheckCircle className="w-4 h-4" /> Submit Application</> : <>Next <ArrowRight className="w-3.5 h-3.5" /></>}
+          {kycSubmitting ? 'Submitting...' : kycStep === 5 ? <><CheckCircle className="w-4 h-4" /> Submit Application</> : <>Next <ArrowRight className="w-3.5 h-3.5" /></>}
         </button>
       </div>
 
