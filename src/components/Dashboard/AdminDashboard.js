@@ -241,6 +241,30 @@ const AdminDashboard = () => {
     }
   };
 
+  const handleSuspendSeller = async (userId) => {
+    try {
+      await api.post(`/auth/admin/suspend-seller/${userId}/`, { reason: 'Suspended by admin' });
+      toast.success('Seller suspended');
+      fetchSellers(sellerTab);
+      setShowConfirmModal(false);
+    } catch (error) {
+      console.error('Failed to suspend seller:', error);
+      toast.error('Failed to suspend seller');
+    }
+  };
+
+  const handleReactivateSeller = async (userId) => {
+    try {
+      await api.post(`/auth/admin/reactivate-seller/${userId}/`);
+      toast.success('Seller reactivated');
+      fetchSellers(sellerTab);
+      setShowConfirmModal(false);
+    } catch (error) {
+      console.error('Failed to reactivate seller:', error);
+      toast.error('Failed to reactivate seller');
+    }
+  };
+
   const fetchProducts = async (statusFilter = 'pending') => {
     setLoadingProducts(true);
     try {
@@ -553,7 +577,7 @@ const AdminDashboard = () => {
             <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 overflow-hidden">
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 p-3 border-b border-gray-100 dark:border-gray-700">
                 <div className="flex items-center gap-1">
-                  {['all', 'pending', 'approved', 'rejected'].map((tab) => (
+                  {['all', 'pending', 'approved', 'rejected', 'suspended'].map((tab) => (
                     <button key={tab} onClick={() => setSellerTab(tab)}
                       className={`px-3 py-1.5 rounded-md text-[11px] font-medium transition-colors ${
                         sellerTab === tab ? 'bg-gray-900 dark:bg-gray-600 text-white' : 'text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-700'
@@ -594,6 +618,8 @@ const AdminDashboard = () => {
                             onViewDetails={() => setSelectedSellerDetails(seller)}
                             onApprove={() => openConfirmModal(seller, 'approve-seller')}
                             onReject={() => openConfirmModal(seller, 'reject-seller')}
+                            onSuspend={() => openConfirmModal(seller, 'suspend-seller')}
+                            onReactivate={() => openConfirmModal(seller, 'reactivate-seller')}
                             onEditStore={() => setEditingStoreSeller(seller)}
                           />
                         ))}
@@ -741,6 +767,10 @@ const AdminDashboard = () => {
                 handleApproveSeller(selectedInfluencer.user);
               } else if (confirmAction === 'reject-seller') {
                 handleRejectSeller(selectedInfluencer.user);
+              } else if (confirmAction === 'suspend-seller') {
+                handleSuspendSeller(selectedInfluencer.user);
+              } else if (confirmAction === 'reactivate-seller') {
+                handleReactivateSeller(selectedInfluencer.user);
               }
             }}
             onCancel={() => {
@@ -896,7 +926,11 @@ const InfluencerRow = ({ influencer, index, onApprove, onReject, activeTab }) =>
 // Confirmation Modal Component
 const ConfirmationModal = ({ influencer, action, onConfirm, onCancel }) => {
   const isApprove = action?.startsWith('approve');
+  const isReactivate = action === 'reactivate-seller';
+  const isSuspend = action === 'suspend-seller';
+  const isPositive = isApprove || isReactivate;
   const isSeller = action?.includes('seller');
+  const label = isApprove ? 'Approve' : isReactivate ? 'Reactivate' : isSuspend ? 'Suspend' : 'Reject';
   return (
     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
       className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50 p-4" onClick={onCancel}>
@@ -904,12 +938,14 @@ const ConfirmationModal = ({ influencer, action, onConfirm, onCancel }) => {
         onClick={(e) => e.stopPropagation()}
         className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 max-w-sm w-full p-5">
         <h3 className="text-sm font-semibold text-gray-900 dark:text-white mb-1">
-          {isApprove ? 'Approve' : 'Reject'} {isSeller ? 'Seller' : 'Influencer'}
+          {label} {isSeller ? 'Seller' : 'Influencer'}
         </h3>
         <p className="text-[11px] text-gray-500 mb-4">
-          {isApprove
-            ? `${influencer?.username || influencer?.store_name} will gain platform access.`
-            : `${influencer?.username || influencer?.store_name} will receive a rejection notice.`}
+          {isApprove && `${influencer?.username || influencer?.store_name} will gain platform access.`}
+          {isReactivate && `${influencer?.username || influencer?.store_name} will regain dashboard access and their storefront will go live again.`}
+          {isSuspend && `${influencer?.username || influencer?.store_name} will lose dashboard access and their storefront will be hidden until reactivated.`}
+          {action === 'reject-seller' && `${influencer?.username || influencer?.store_name} will receive a rejection notice.`}
+          {action === 'reject' && `${influencer?.username || influencer?.store_name} will receive a rejection notice.`}
         </p>
         <div className="flex gap-2">
           <button onClick={onCancel}
@@ -918,16 +954,16 @@ const ConfirmationModal = ({ influencer, action, onConfirm, onCancel }) => {
           </button>
           <button onClick={onConfirm}
             className={`flex-1 py-2 text-[11px] font-medium text-white rounded-lg transition-colors ${
-              isApprove ? 'bg-gray-900 hover:bg-gray-800' : 'bg-red-600 hover:bg-red-700'
+              isPositive ? 'bg-gray-900 hover:bg-gray-800' : 'bg-red-600 hover:bg-red-700'
             }`}>
-            {isApprove ? 'Approve' : 'Reject'}
+            {label}
           </button>
         </div>
       </motion.div>
     </motion.div>
   );
 };
-const SellerRow = ({ seller, index, onApprove, onReject, onViewDetails, onEditStore }) => {
+const SellerRow = ({ seller, index, onApprove, onReject, onSuspend, onReactivate, onViewDetails, onEditStore }) => {
   const status = seller.verification_status || 'pending';
   return (
     <motion.tr initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ delay: index * 0.03 }}
@@ -948,10 +984,10 @@ const SellerRow = ({ seller, index, onApprove, onReject, onViewDetails, onEditSt
       <td className="py-2.5 px-4 text-[10px] text-gray-500">{new Date(seller.created_at).toLocaleDateString()}</td>
       <td className="py-2.5 px-4">
         <span className={`inline-flex items-center gap-1 text-[10px] font-medium capitalize ${
-          status === 'approved' ? 'text-emerald-600' : status === 'rejected' ? 'text-red-500' : 'text-amber-600'
+          status === 'approved' ? 'text-emerald-600' : status === 'rejected' ? 'text-red-500' : status === 'suspended' ? 'text-gray-500' : 'text-amber-600'
         }`}>
           <span className={`w-1.5 h-1.5 rounded-full ${
-            status === 'approved' ? 'bg-emerald-400' : status === 'rejected' ? 'bg-red-400' : 'bg-amber-400'
+            status === 'approved' ? 'bg-emerald-400' : status === 'rejected' ? 'bg-red-400' : status === 'suspended' ? 'bg-gray-400' : 'bg-amber-400'
           }`} /> {status}
         </span>
       </td>
@@ -964,6 +1000,12 @@ const SellerRow = ({ seller, index, onApprove, onReject, onViewDetails, onEditSt
               <button onClick={onApprove} className="px-2 py-1 text-[10px] font-medium text-emerald-700 bg-emerald-50 rounded-md hover:bg-emerald-100 transition-colors">Approve</button>
               <button onClick={onReject} className="px-2 py-1 text-[10px] font-medium text-red-600 bg-red-50 rounded-md hover:bg-red-100 transition-colors">Reject</button>
             </>
+          )}
+          {status === 'approved' && (
+            <button onClick={onSuspend} className="px-2 py-1 text-[10px] font-medium text-gray-600 bg-gray-100 rounded-md hover:bg-gray-200 transition-colors">Suspend</button>
+          )}
+          {status === 'suspended' && (
+            <button onClick={onReactivate} className="px-2 py-1 text-[10px] font-medium text-emerald-700 bg-emerald-50 rounded-md hover:bg-emerald-100 transition-colors">Reactivate</button>
           )}
         </div>
       </td>
@@ -1184,8 +1226,8 @@ const AdminSellerPayouts = () => {
 const SellerDetailsModal = ({ seller, onClose, onApprove, onReject }) => {
   const [auditLogs, setAuditLogs] = React.useState([]);
   const status = seller?.verification_status || 'pending';
-  const statusDot = status === 'approved' ? 'bg-emerald-400' : status === 'rejected' ? 'bg-red-400' : 'bg-orange-400';
-  const statusLabel = status === 'approved' ? 'Approved' : status === 'rejected' ? 'Rejected' : 'Pending Approval';
+  const statusDot = status === 'approved' ? 'bg-emerald-400' : status === 'rejected' ? 'bg-red-400' : status === 'suspended' ? 'bg-gray-400' : 'bg-orange-400';
+  const statusLabel = status === 'approved' ? 'Approved' : status === 'rejected' ? 'Rejected' : status === 'suspended' ? 'Suspended' : 'Pending Approval';
 
   React.useEffect(() => {
     if (seller?.user) {

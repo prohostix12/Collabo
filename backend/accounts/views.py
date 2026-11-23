@@ -27,11 +27,54 @@ from .youtube_service import VideoStatsService
 
 logger = logging.getLogger(__name__)
 
+
+def _validate_document_content(uploaded_file):
+    """Sniff the actual file bytes rather than trusting the browser-reported
+    content_type/filename. Returns (ok: bool, error_message: str)."""
+    try:
+        head = uploaded_file.read(1024)
+        uploaded_file.seek(0)
+    except Exception:
+        return False, 'could not be read'
+
+    if head.startswith(b'%PDF-'):
+        return True, ''
+
+    # Not a PDF signature — must be a genuine, fully-decodable image.
+    try:
+        from PIL import Image
+        import io
+        img = Image.open(io.BytesIO(head + uploaded_file.read()))
+        img.verify()
+        uploaded_file.seek(0)
+        return True, ''
+    except Exception:
+        uploaded_file.seek(0)
+        return False, 'is not a valid PDF or image file'
+
+
+class RegisterThrottle(AnonRateThrottle):
+    """Limits how fast a single IP can create accounts, to blunt bulk signup abuse."""
+    scope = 'register'
+
+    def get_rate(self):
+        return '20/hour'
+
+
+class LoginThrottle(AnonRateThrottle):
+    """Limits credential-stuffing / brute-force login attempts per IP."""
+    scope = 'login'
+
+    def get_rate(self):
+        return '30/hour'
+
+
 class RegisterView(generics.CreateAPIView):
     queryset = User.objects.all()
     serializer_class = UserRegistrationSerializer
     permission_classes = [AllowAny]
-    
+    throttle_classes = [RegisterThrottle]
+
     def create(self, request, *args, **kwargs):
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
@@ -128,7 +171,8 @@ class RegisterView(generics.CreateAPIView):
 class LoginView(generics.GenericAPIView):
     serializer_class = UserLoginSerializer
     permission_classes = [AllowAny]
-    
+    throttle_classes = [LoginThrottle]
+
     def post(self, request, *args, **kwargs):
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
@@ -950,20 +994,23 @@ class SellerProfileView(generics.RetrieveUpdateAPIView):
         kyc_file = request.FILES.get('kyc_document_file')
         bank_file = request.FILES.get('bank_document_file')
 
+        for label, f in (('KYC', kyc_file), ('Bank', bank_file)):
+            if not f:
+                continue
+            if f.size > MAX_SIZE:
+                return Response({'error': f'{label} document must be under 5MB'}, status=status.HTTP_400_BAD_REQUEST)
+            if f.content_type not in ALLOWED:
+                return Response({'error': f'{label} document must be PDF, PNG, or JPG'}, status=status.HTTP_400_BAD_REQUEST)
+            content_ok, content_err = _validate_document_content(f)
+            if not content_ok:
+                return Response({'error': f'{label} document {content_err}'}, status=status.HTTP_400_BAD_REQUEST)
+
         if kyc_file:
-            if kyc_file.size > MAX_SIZE:
-                return Response({'error': 'KYC document must be under 5MB'}, status=status.HTTP_400_BAD_REQUEST)
-            if kyc_file.content_type not in ALLOWED:
-                return Response({'error': 'KYC document must be PDF, PNG, or JPG'}, status=status.HTTP_400_BAD_REQUEST)
             if profile.kyc_document_file:
                 profile.kyc_document_file.delete(save=False)
             profile.kyc_document_file = kyc_file
 
         if bank_file:
-            if bank_file.size > MAX_SIZE:
-                return Response({'error': 'Bank document must be under 5MB'}, status=status.HTTP_400_BAD_REQUEST)
-            if bank_file.content_type not in ALLOWED:
-                return Response({'error': 'Bank document must be PDF, PNG, or JPG'}, status=status.HTTP_400_BAD_REQUEST)
             if profile.bank_document_file:
                 profile.bank_document_file.delete(save=False)
             profile.bank_document_file = bank_file
@@ -1030,7 +1077,7 @@ class AllSellersListView(generics.ListAPIView):
     def get_queryset(self):
         queryset = SellerProfile.objects.all().select_related('user')
         status_filter = self.request.query_params.get('status', None)
-        if status_filter in ['pending', 'approved', 'rejected']:
+        if status_filter in ['pending', 'approved', 'rejected', 'suspended']:
             queryset = queryset.filter(verification_status=status_filter)
         return queryset
 
@@ -1131,6 +1178,95 @@ def reject_seller(request, user_id):
 
     return Response({
         'message': 'Seller application rejected',
+        'profile': SellerProfileSerializer(profile).data
+    })
+
+
+@api_view(['POST'])
+@permission_classes([IsAdminUser])
+def suspend_seller(request, user_id):
+    """Revoke an already-approved seller's access without deleting their application
+    history. Blocks dashboard access and hides their storefront, same as a rejection,
+    but is reversible via reactivate_seller and is tracked as a distinct audit action."""
+    from .models import ApprovalAuditLog
+
+    try:
+        user = User.objects.get(id=user_id)
+    except User.DoesNotExist:
+        return Response({'error': 'User not found'}, status=status.HTTP_404_NOT_FOUND)
+
+    try:
+        profile = SellerProfile.objects.get(user=user)
+    except SellerProfile.DoesNotExist:
+        return Response({'error': 'Seller profile not found'}, status=status.HTTP_404_NOT_FOUND)
+
+    reason = request.data.get('reason', 'Suspended by admin')
+    previous_status = profile.verification_status
+    profile.verification_status = 'suspended'
+    profile.rejection_reason = reason
+    profile.save()
+
+    if user.user_type == 'seller':
+        user.user_type = 'buyer'
+        user.save(update_fields=['user_type'])
+
+    x_forwarded = request.META.get('HTTP_X_FORWARDED_FOR')
+    ip = x_forwarded.split(',')[0].strip() if x_forwarded else request.META.get('REMOTE_ADDR')
+    try:
+        ApprovalAuditLog.objects.create(
+            user=user, admin=request.user, action='suspended',
+            previous_status=previous_status, new_status='suspended',
+            reason=reason, ip_address=ip,
+        )
+    except Exception:
+        pass
+
+    return Response({
+        'message': 'Seller suspended',
+        'profile': SellerProfileSerializer(profile).data
+    })
+
+
+@api_view(['POST'])
+@permission_classes([IsAdminUser])
+def reactivate_seller(request, user_id):
+    """Restore a suspended seller back to approved status."""
+    from .models import ApprovalAuditLog
+
+    try:
+        user = User.objects.get(id=user_id)
+    except User.DoesNotExist:
+        return Response({'error': 'User not found'}, status=status.HTTP_404_NOT_FOUND)
+
+    try:
+        profile = SellerProfile.objects.get(user=user)
+    except SellerProfile.DoesNotExist:
+        return Response({'error': 'Seller profile not found'}, status=status.HTTP_404_NOT_FOUND)
+
+    if profile.verification_status != 'suspended':
+        return Response({'error': 'Seller is not currently suspended'}, status=status.HTTP_400_BAD_REQUEST)
+
+    previous_status = profile.verification_status
+    profile.verification_status = 'approved'
+    profile.rejection_reason = None
+    profile.save()
+
+    user.user_type = 'seller'
+    user.save(update_fields=['user_type'])
+
+    x_forwarded = request.META.get('HTTP_X_FORWARDED_FOR')
+    ip = x_forwarded.split(',')[0].strip() if x_forwarded else request.META.get('REMOTE_ADDR')
+    try:
+        ApprovalAuditLog.objects.create(
+            user=user, admin=request.user, action='reactivated',
+            previous_status=previous_status, new_status='approved',
+            reason='', ip_address=ip,
+        )
+    except Exception:
+        pass
+
+    return Response({
+        'message': 'Seller reactivated',
         'profile': SellerProfileSerializer(profile).data
     })
 

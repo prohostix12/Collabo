@@ -1033,8 +1033,11 @@ export default function EcommerceMarketplace({ inlineMode = false, onBackToSelec
   const [authEmail, setAuthEmail] = useState('');
   const [authUsername, setAuthUsername] = useState('');
   const [authPassword, setAuthPassword] = useState('');
+  const [authPasswordConfirm, setAuthPasswordConfirm] = useState('');
   const [showAuthPassword, setShowAuthPassword] = useState(false);
   const [authPhone, setAuthPhone] = useState('');
+  const [authAgreedToTerms, setAuthAgreedToTerms] = useState(false);
+  const [authMarketingConsent, setAuthMarketingConsent] = useState(false);
 
   // Dashboard state — restore the last-viewed admin tab so a page reload doesn't
   // dump the admin back on the overview tab.
@@ -6473,6 +6476,47 @@ export default function EcommerceMarketplace({ inlineMode = false, onBackToSelec
                   </div>
                 )}
 
+                {authMode === 'signup' && (
+                  <div className="space-y-2">
+                    <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Confirm Password</label>
+                    <div className="relative">
+                      <input
+                        type={showAuthPassword ? "text" : "password"}
+                        value={authPasswordConfirm}
+                        onChange={(e) => setAuthPasswordConfirm(e.target.value)}
+                        placeholder="••••••••"
+                        className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl py-2.5 pl-10 pr-10 text-xs font-bold focus:outline-none focus:ring-1 focus:ring-orange-500 dark:text-white"
+                      />
+                      <Lock className="absolute left-3.5 top-3 w-4 h-4 text-slate-400" />
+                    </div>
+                  </div>
+                )}
+
+                {authMode === 'signup' && (
+                  <div className="space-y-1.5">
+                    <label className="flex items-start gap-2 cursor-pointer select-none">
+                      <input
+                        type="checkbox"
+                        checked={authAgreedToTerms}
+                        onChange={(e) => setAuthAgreedToTerms(e.target.checked)}
+                        className="mt-0.5 w-3.5 h-3.5 shrink-0 rounded border-slate-300 text-orange-600 focus:ring-1 focus:ring-orange-500"
+                      />
+                      <span className="text-[11px] text-slate-500 dark:text-slate-400">
+                        I agree to the <a href="/terms" className="text-orange-600 font-bold hover:underline">Terms &amp; Conditions</a> and <a href="/privacy" className="text-orange-600 font-bold hover:underline">Privacy Policy</a>
+                      </span>
+                    </label>
+                    <label className="flex items-start gap-2 cursor-pointer select-none">
+                      <input
+                        type="checkbox"
+                        checked={authMarketingConsent}
+                        onChange={(e) => setAuthMarketingConsent(e.target.checked)}
+                        className="mt-0.5 w-3.5 h-3.5 shrink-0 rounded border-slate-300 text-orange-600 focus:ring-1 focus:ring-orange-500"
+                      />
+                      <span className="text-[11px] text-slate-500 dark:text-slate-400">Send me promotional emails and SMS offers (optional)</span>
+                    </label>
+                  </div>
+                )}
+
                 {authMode === 'login' ? (
                   <button
                     onClick={async () => {
@@ -6501,14 +6545,18 @@ export default function EcommerceMarketplace({ inlineMode = false, onBackToSelec
                       if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(authEmail)) { toast.error('Please enter a valid email address'); return; }
                       if (authPhone && authPhone.length !== 10) { toast.error('Mobile number must be exactly 10 digits'); return; }
                       if (authPassword.length < 8) { toast.error('Password must be at least 8 characters'); return; }
+                      if (authPassword !== authPasswordConfirm) { toast.error('Passwords do not match'); return; }
+                      if (!authAgreedToTerms) { toast.error('Please agree to the Terms & Conditions and Privacy Policy'); return; }
                       localStorage.setItem('collabo_new_user', '1');
                       const result = await register({
                         email: authEmail,
                         username: authUsername.trim(),
                         password: authPassword,
-                        password_confirm: authPassword,
+                        password_confirm: authPasswordConfirm,
                         phone: authPhone ? `+91${authPhone}` : '',
                         user_type: 'buyer',
+                        agreed_to_terms: authAgreedToTerms,
+                        marketing_consent: authMarketingConsent,
                         // Prefer a personal "Invite Friends" code; fall back to whatever
                         // product referral link brought this visitor here, so a brand-new
                         // signup via either link type binds to whoever sent it.
