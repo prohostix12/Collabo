@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import ReactDOM from 'react-dom';
 import { useAuth } from '../../contexts/AuthContext';
-import { X, Trash2, AlertTriangle, Shield, Type } from 'lucide-react';
+import { X, Trash2, AlertTriangle, Shield, Type, Eye, EyeOff } from 'lucide-react';
 import api from '../../services/api';
 import toast from 'react-hot-toast';
 
@@ -10,6 +10,7 @@ const DeleteAccountModal = ({ isOpen, onClose }) => {
   const [step, setStep] = useState(1);
   const [confirmationText, setConfirmationText] = useState('');
   const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
@@ -20,6 +21,7 @@ const DeleteAccountModal = ({ isOpen, onClose }) => {
       setStep(1);
       setConfirmationText('');
       setPassword('');
+      setShowPassword(false);
       setError('');
       onClose();
     }
@@ -221,17 +223,30 @@ const DeleteAccountModal = ({ isOpen, onClose }) => {
                     <Shield className="h-5 w-5 text-gray-900" />
                   </div>
                   <input
-                    type="password"
+                    type={showPassword ? 'text' : 'password'}
                     value={password}
                     onChange={(e) => {
                       setPassword(e.target.value);
                       setError('');
                     }}
                     disabled={loading}
-                    className={`form-input w-full pl-10 pr-4 py-3 rounded-xl ${error ? 'border-red-500/50' : ''}`}
+                    autoComplete="off"
+                    name="delete_account_password_no_autofill"
+                    className={`form-input w-full pl-10 pr-10 py-3 rounded-xl ${error ? 'border-red-500/50' : ''}`}
                     placeholder="Enter your password"
                     autoFocus
                   />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="absolute inset-y-0 right-0 pr-3 flex items-center"
+                  >
+                    {showPassword ? (
+                      <EyeOff className="h-5 w-5 text-gray-400 hover:text-gray-600" />
+                    ) : (
+                      <Eye className="h-5 w-5 text-gray-400 hover:text-gray-600" />
+                    )}
+                  </button>
                 </div>
                 {error && (
                   <p className="mt-1 text-sm text-red-400">{error}</p>
