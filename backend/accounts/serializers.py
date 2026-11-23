@@ -1,6 +1,25 @@
 from rest_framework import serializers
 from django.contrib.auth import authenticate
-from .models import User, InfluencerProfile, CompanyProfile, SellerProfile
+from .models import User, InfluencerProfile, CompanyProfile, SellerProfile, UserSession
+
+
+class UserSessionSerializer(serializers.ModelSerializer):
+    device_name = serializers.ReadOnlyField()
+    is_current = serializers.SerializerMethodField()
+    # Plain text, not serializers.IPAddressField: DRF 3.14's auto-mapped
+    # IPAddressField crashes against Django 5.1's ip_address_validators()
+    # (unpacking mismatch) — see ApprovalAuditLogSerializer for the same fix.
+    ip_address = serializers.CharField(read_only=True)
+
+    class Meta:
+        model = UserSession
+        fields = ('id', 'device_name', 'device_type', 'browser', 'os', 'ip_address',
+                  'location', 'created_at', 'last_active_at', 'revoked', 'is_current')
+        read_only_fields = fields
+
+    def get_is_current(self, obj):
+        current_session_id = self.context.get('current_session_id')
+        return bool(current_session_id) and str(obj.session_id) == str(current_session_id)
 
 class UserRegistrationSerializer(serializers.ModelSerializer):
     password = serializers.CharField(write_only=True, min_length=8)

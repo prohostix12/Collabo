@@ -85,6 +85,46 @@ def _send_verification_email(request, user):
     send_verification_email(user, link)
 
 
+def _create_login_session(request, user, refresh):
+    """Create the UserSession row for this login, embed its id as a custom
+    claim on the refresh token (the access token inherits it automatically —
+    see RefreshToken.access_token), and email the user if this device/IP
+    combination hasn't been seen on their account before."""
+    import uuid
+    from .models import UserSession
+    from .device_utils import parse_user_agent, get_client_ip, get_location
+
+    ua_string = request.META.get('HTTP_USER_AGENT', '')
+    device_type, browser, os_name = parse_user_agent(ua_string)
+    ip_address = get_client_ip(request)
+
+    is_new_device = not UserSession.objects.filter(
+        user=user, ip_address=ip_address, browser=browser, os=os_name,
+    ).exists()
+
+    session = UserSession.objects.create(
+        user=user,
+        session_id=uuid.uuid4(),
+        device_type=device_type,
+        browser=browser,
+        os=os_name,
+        ip_address=ip_address,
+        location=get_location(ip_address),
+        user_agent=ua_string[:1000],
+    )
+
+    refresh['session_id'] = str(session.session_id)
+
+    if is_new_device:
+        try:
+            from .email_service import send_new_device_login_email
+            send_new_device_login_email(user, session)
+        except Exception as e:
+            logging.getLogger(__name__).error(f"New-device email failed for {user.email}: {e}")
+
+    return session
+
+
 def _validate_document_content(uploaded_file):
     """Sniff the actual file bytes rather than trusting the browser-reported
     content_type/filename. Returns (ok: bool, error_message: str)."""
@@ -251,17 +291,68 @@ class LoginView(generics.GenericAPIView):
             user.save(update_fields=['reward_points'])
 
         refresh = RefreshToken.for_user(user)
-        
+        session = _create_login_session(request, user, refresh)
+
         return Response({
             'user': UserSerializer(user).data,
             'refresh': str(refresh),
             'access': str(refresh.access_token),
+            'session_id': str(session.session_id),
         })
+
+# ── Device / session management ─────────────────────────────────────────────
+# Available to any authenticated account (customer, seller or admin) for their
+# own sessions only — there is no cross-user management here by design.
+
+def _current_session_id(request):
+    return getattr(request, 'auth', None) and request.auth.get('session_id')
+
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def list_sessions(request):
+    from .models import UserSession
+    from .serializers import UserSessionSerializer
+    sessions = UserSession.objects.filter(user=request.user)
+    serializer = UserSessionSerializer(
+        sessions, many=True, context={'current_session_id': _current_session_id(request)}
+    )
+    return Response(serializer.data)
+
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def revoke_session(request, session_id):
+    from .models import UserSession
+    session = UserSession.objects.filter(user=request.user, session_id=session_id).first()
+    if not session:
+        return Response({'error': 'Session not found'}, status=status.HTTP_404_NOT_FOUND)
+    if session.revoked:
+        return Response({'message': 'That session is already logged out'})
+
+    session.revoked = True
+    session.revoked_at = timezone.now()
+    session.save(update_fields=['revoked', 'revoked_at'])
+
+    is_current = str(session.session_id) == str(_current_session_id(request))
+    return Response({'message': 'Device logged out', 'was_current_device': is_current})
+
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def revoke_other_sessions(request):
+    from .models import UserSession
+    current_session_id = _current_session_id(request)
+    updated = UserSession.objects.filter(user=request.user, revoked=False).exclude(
+        session_id=current_session_id
+    ).update(revoked=True, revoked_at=timezone.now())
+    return Response({'message': f'Logged out {updated} other device(s)', 'count': updated})
+
 
 class ProfileView(generics.RetrieveUpdateAPIView):
     serializer_class = UserSerializer
     permission_classes = [IsAuthenticated]
-    
+
     def get_object(self):
         return self.request.user
 

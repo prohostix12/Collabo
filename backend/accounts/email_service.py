@@ -558,3 +558,36 @@ Review it here: {review_url}
         except Exception as e:
             logger.error(f"Failed to send seller application notification: {str(e)}")
             return False
+
+
+def send_new_device_login_email(user, session):
+    """Alert the user that their account was just accessed from a device/IP
+    combination we haven't seen for them before."""
+    try:
+        name = user.first_name or user.username
+        when = session.created_at.strftime('%d %b %Y, %I:%M %p')
+        subject = 'New login to your Collabo account'
+        message = (
+            f"Hi {name},\n\n"
+            f"We noticed a new sign-in to your Collabo account:\n\n"
+            f"Device: {session.device_name}\n"
+            f"Location: {session.location or 'Unknown'}\n"
+            f"IP address: {session.ip_address or 'Unknown'}\n"
+            f"Time: {when}\n\n"
+            "If this was you, no action is needed. If you don't recognize this activity, "
+            "go to Account Settings > Login & Security > Active Sessions to log that device out "
+            "and change your password immediately.\n\n"
+            "- Team Collabo"
+        )
+        send_mail(
+            subject=subject,
+            message=message,
+            from_email=settings.DEFAULT_FROM_EMAIL or 'Collabo <collaboproh@gmail.com>',
+            recipient_list=[user.email],
+            fail_silently=False,
+        )
+        logger.info(f"New-device login email sent to {user.email}")
+        return True
+    except Exception as e:
+        logger.error(f"Failed to send new-device login email to {user.email}: {str(e)}")
+        return False

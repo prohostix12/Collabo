@@ -1,18 +1,20 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
-import { 
-  User, 
-  Settings, 
-  Key, 
-  Trash2, 
-  LogOut, 
+import {
+  User,
+  Settings,
+  Key,
+  Trash2,
+  LogOut,
   ChevronDown,
   Edit3,
-  Shield
+  Shield,
+  Monitor
 } from 'lucide-react';
 import ChangeUsernameModal from './ChangeUsernameModal';
 import ChangePasswordModal from './ChangePasswordModal';
 import DeleteAccountModal from './DeleteAccountModal';
+import DeviceManagementModal from './DeviceManagementModal';
 
 // `embedded`: used inside Layout's mobile slide-down panel, where the hamburger icon is
 // already the "open this menu" action — so the account options render directly, instead of
@@ -106,6 +108,13 @@ const UserAccountMenu = ({ embedded = false }) => {
       description: 'Update your account password'
     },
     {
+      id: 'manage-devices',
+      label: 'Manage Devices',
+      icon: Monitor,
+      action: () => openModal('devices'),
+      description: 'View and sign out of active sessions'
+    },
+    {
       id: 'delete-account',
       label: 'Delete Account',
       icon: Trash2,
@@ -193,6 +202,7 @@ const UserAccountMenu = ({ embedded = false }) => {
         <PanelContent className="mt-2 bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden" />
         {activeModal === 'username' && <ChangeUsernameModal isOpen={true} onClose={closeModal} />}
         {activeModal === 'password' && <ChangePasswordModal isOpen={true} onClose={closeModal} />}
+        {activeModal === 'devices' && <DeviceManagementModal isOpen={true} onClose={closeModal} />}
         {activeModal === 'delete' && <DeleteAccountModal isOpen={true} onClose={closeModal} />}
       </>
     );
@@ -242,6 +252,9 @@ const UserAccountMenu = ({ embedded = false }) => {
       )}
       {activeModal === 'password' && (
         <ChangePasswordModal isOpen={true} onClose={closeModal} />
+      )}
+      {activeModal === 'devices' && (
+        <DeviceManagementModal isOpen={true} onClose={closeModal} />
       )}
       {activeModal === 'delete' && (
         <DeleteAccountModal isOpen={true} onClose={closeModal} />

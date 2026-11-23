@@ -12,6 +12,7 @@ from .views import (
     admin_create_influencer, admin_reset_password,
     password_reset_request, password_reset_confirm,
     verify_email, resend_verification_email,
+    list_sessions, revoke_session, revoke_other_sessions,
     # Seller profile & admin views
     SellerProfileView, PendingSellersListView, AllSellersListView, approve_seller, reject_seller,
     suspend_seller, reactivate_seller,
@@ -36,6 +37,9 @@ urlpatterns = [
     path('verify-email/', verify_email, name='verify-email'),
     path('resend-verification/', resend_verification_email, name='resend-verification'),
     path('delete-account/', delete_account, name='delete-account'),
+    path('sessions/', list_sessions, name='list-sessions'),
+    path('sessions/<uuid:session_id>/revoke/', revoke_session, name='revoke-session'),
+    path('sessions/revoke-others/', revoke_other_sessions, name='revoke-other-sessions'),
     path('fetch-video-stats/', fetch_video_stats, name='fetch-video-stats'),
     path('get-video-stats/', get_video_stats, name='get-video-stats'),
     
