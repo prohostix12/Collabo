@@ -689,6 +689,67 @@ const StoreContentEditor = () => {
           </div>
         </Card>
 
+        {/* Seller Hub (Sell-on-Collabo) hero banner */}
+        <Card icon={ShoppingBag} title="Seller Hub Hero Banner" fullWidth>
+          <p className="text-xs text-gray-400">
+            Big image card shown in the hero section of the "Sell on Collabo" seller sign-up page. Leave blank to hide it.
+          </p>
+          <div className="flex flex-col sm:flex-row gap-4 items-start">
+            <div className="flex-1 w-full space-y-1.5">
+              <label className="text-xs font-semibold text-gray-500">Banner Image</label>
+              <div className="flex items-center gap-1.5">
+                <input
+                  type="text"
+                  value={settings.seller_hub_banner_image || ''}
+                  onChange={e => set('seller_hub_banner_image', e.target.value)}
+                  placeholder="https://..."
+                  className={inputCls + ' text-xs'}
+                />
+                <label className="flex-shrink-0 w-8 h-8 flex items-center justify-center border border-gray-200 rounded-lg cursor-pointer hover:bg-gray-50 text-gray-500" title="Upload from device">
+                  <Upload className="w-3.5 h-3.5" />
+                  <input
+                    type="file"
+                    accept="image/*"
+                    className="hidden"
+                    onChange={async (e) => {
+                      const file = e.target.files[0];
+                      e.target.value = '';
+                      if (!file) return;
+                      if (file.size > MAX_IMAGE_SIZE) { toast.error('Image must be under 5MB'); return; }
+                      try {
+                        const dataUrl = await fileToDataUrl(file);
+                        set('seller_hub_banner_image', dataUrl);
+                      } catch {
+                        toast.error('Could not read that image');
+                      }
+                    }}
+                  />
+                </label>
+                {settings.seller_hub_banner_image && (
+                  <button
+                    type="button"
+                    onClick={() => set('seller_hub_banner_image', '')}
+                    className="flex-shrink-0 w-8 h-8 flex items-center justify-center border border-gray-200 rounded-lg hover:bg-gray-50 text-gray-400 hover:text-red-500"
+                    title="Remove banner"
+                  >
+                    <X className="w-3.5 h-3.5" />
+                  </button>
+                )}
+              </div>
+            </div>
+            {settings.seller_hub_banner_image && (
+              <div className="w-full sm:w-48 shrink-0">
+                <p className="text-xs font-semibold text-gray-500 mb-1.5">Preview</p>
+                <img
+                  src={settings.seller_hub_banner_image}
+                  alt="Seller hub banner preview"
+                  className="w-full h-28 object-cover rounded-lg border border-gray-200"
+                />
+              </div>
+            )}
+          </div>
+        </Card>
+
         {/* Footer */}
         <Card icon={FileText} title="Footer Content" fullWidth>
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">

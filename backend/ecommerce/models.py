@@ -557,6 +557,12 @@ class StoreSettings(models.Model):
         help_text='List of {badge, title, subtitle, cta, category, bg} promo card objects for the category section sidebar'
     )
 
+    # Seller Hub (Sell-on-Collabo landing page) hero banner
+    seller_hub_banner_image = models.TextField(
+        blank=True, default='',
+        help_text="Seller Hub hero banner image URL or base64 data. Shown as the big image card in the Sell-on-Collabo hero section."
+    )
+
     # Shipping
     shipping_charge = models.PositiveIntegerField(default=99, help_text="Flat shipping fee in INR charged per order")
     free_shipping_threshold = models.PositiveIntegerField(default=500, help_text="Order subtotal (INR) above which shipping is free")

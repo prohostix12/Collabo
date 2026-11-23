@@ -201,6 +201,7 @@ class StoreSettingsSerializer(serializers.ModelSerializer):
             'hero_card_carousel_enabled', 'hero_card_slides',
             'trusted_partners', 'trusted_partners_title',
             'promo_cards',
+            'seller_hub_banner_image',
             'shipping_charge', 'free_shipping_threshold', 'serviceable_pincodes',
             'updated_at'
         ]
