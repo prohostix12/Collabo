@@ -105,7 +105,7 @@ def send_verification_email(user, link):
             f"Hi {name},\n\n"
             "Thanks for signing up for Collabo! Please confirm this is your email address "
             f"by opening the link below:\n\n{link}\n\n"
-            "You can browse right away, but you'll need to verify before your next login.\n\n"
+            "Please verify your email to activate your account and log in.\n\n"
             "If you didn't create this account, you can ignore this email.\n\n"
             "- Team Collabo"
         )
@@ -129,7 +129,7 @@ def send_verification_email(user, link):
       <p>Hi <strong>{name}</strong>,</p>
       <p>Thanks for signing up for Collabo! Please confirm this is your email address.</p>
       <center><a href="{link}" class="btn">Verify Email</a></center>
-      <p style="font-size:12px;color:#9ca3af;">You can browse right away, but you'll need to verify before your next login.</p>
+      <p style="font-size:12px;color:#9ca3af;">Please verify your email to activate your account and log in.</p>
       <div class="footer">
         <p>If you didn't create this account, you can ignore this email.</p>
         <p>- Team Collabo</p>

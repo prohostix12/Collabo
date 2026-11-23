@@ -98,18 +98,15 @@ export const AuthProvider = ({ children }) => {
   const register = async (userData) => {
     try {
       const response = await api.post('/auth/register/', userData);
-      const { user, access, refresh } = response.data;
-      
-      localStorage.setItem('access_token', access);
-      localStorage.setItem('refresh_token', refresh);
-      api.defaults.headers.common['Authorization'] = `Bearer ${access}`;
-      
-      setUser(user);
-      
-      // Refetch user data to ensure all fields are loaded
-      await fetchUser();
-      
-      return { success: true };
+      // Account creation now requires email verification before any login is
+      // possible — the backend no longer issues tokens here, so there is nothing
+      // to store and no session to start. The caller shows a "check your email" step.
+      return {
+        success: true,
+        requiresVerification: !!response.data.requires_verification,
+        message: response.data.message,
+        email: response.data.user?.email,
+      };
     } catch (error) {
       console.error('Registration error:', error);
       console.error('Error response:', error.response?.data);

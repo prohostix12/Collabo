@@ -164,8 +164,8 @@ class RegisterView(generics.CreateAPIView):
             import logging
             logging.getLogger(__name__).error(f"Welcome email failed for {user.email}: {e}")
 
-        # Send email verification link (account stays usable immediately via the
-        # tokens below, but a future login will be blocked until this is clicked)
+        # Send email verification link. Account creation itself now requires this to
+        # be clicked before any login is possible — no tokens are issued here anymore.
         try:
             _send_verification_email(request, user)
         except Exception as e:
@@ -179,13 +179,10 @@ class RegisterView(generics.CreateAPIView):
             import logging
             logging.getLogger(__name__).error(f"Welcome WhatsApp failed for {user.phone}: {e}")
 
-        # Generate tokens
-        refresh = RefreshToken.for_user(user)
-
         return Response({
             'user': UserSerializer(user).data,
-            'refresh': str(refresh),
-            'access': str(refresh.access_token),
+            'message': 'Account created. Please check your email and verify your account before logging in.',
+            'requires_verification': True,
         }, status=status.HTTP_201_CREATED)
     
     def _auto_create_social_accounts_on_register(self, user, data):

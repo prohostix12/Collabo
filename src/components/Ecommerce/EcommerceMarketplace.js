@@ -6645,9 +6645,13 @@ export default function EcommerceMarketplace({ inlineMode = false, onBackToSelec
                       });
                       if (result.success) {
                         localStorage.removeItem('signup_affiliate_code');
-                        showToast('Account created! Check your email to verify it before your next login.', 'success');
-                        setCurrentView(postAuthView || 'home');
-                        setPostAuthView('home');
+                        showToast('Account created! Check your email to verify it before logging in.', 'success');
+                        // No session is started until the email is verified — land back
+                        // on the login form (prefilled) with the resend-verification banner shown.
+                        setAuthPassword('');
+                        setAuthPasswordConfirm('');
+                        setLoginUnverifiedEmail(result.email || authEmail);
+                        setAuthMode('login');
                       } else {
                         localStorage.removeItem('collabo_new_user');
                         toast.error(result.error || 'Registration failed');
