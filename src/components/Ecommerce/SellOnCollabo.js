@@ -30,12 +30,6 @@ const SELLING_CATEGORY_OPTIONS = [
   'Jewellery', 'Furniture', 'Home Improvement', 'Toys & Games', 'Industrial & Scientific',
 ];
 
-const SHIPPING_METHOD_OPTIONS = [
-  { value: 'seller_managed', label: 'Seller-managed shipping' },
-  { value: 'marketplace_managed', label: 'Marketplace-managed shipping' },
-  { value: 'hybrid', label: 'Hybrid fulfilment' },
-];
-
 const FAQS = [
   { q: 'What documents do I need?', a: 'GST/Tax ID, bank account (number + IFSC), and a KYC document (PAN, Aadhaar, or business registration certificate).' },
   { q: 'What are the fees?', a: '10% platform commission per sale. No listing fees, no monthly charges.' },
@@ -89,7 +83,6 @@ function SellerRegistrationWidget() {
   // Selling preferences
   const [sellingCategories, setSellingCategories] = useState(user?.seller_profile?.selling_categories || []);
   const [expectedProductCount, setExpectedProductCount] = useState(user?.seller_profile?.expected_product_count || '');
-  const [shippingMethod, setShippingMethod] = useState(user?.seller_profile?.shipping_method || '');
   const [preferredCourier, setPreferredCourier] = useState(user?.seller_profile?.preferred_courier || '');
   const [returnSameAsWarehouse, setReturnSameAsWarehouse] = useState(user?.seller_profile?.return_address_same_as_warehouse ?? true);
   const [returnLine1, setReturnLine1] = useState(user?.seller_profile?.return_address_line1 || '');
@@ -147,7 +140,8 @@ function SellerRegistrationWidget() {
       }
       setKycStep(2);
     } else if (kycStep === 2) {
-      if (taxId.trim()) {
+      if (!taxId.trim()) return setKycError('GSTIN is required');
+      {
         const gstRegex = /^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z]{1}[0-9A-Z]{1}[Z]{1}[0-9A-Z]{1}$/;
         if (!gstRegex.test(taxId.trim().toUpperCase())) {
           return setKycError('Invalid GSTIN. Enter a valid 15-character GSTIN (e.g. 27AAAAA1111A1Z1)');
@@ -167,7 +161,6 @@ function SellerRegistrationWidget() {
       setKycStep(4);
     } else if (kycStep === 4) {
       if (sellingCategories.length === 0) return setKycError('Select at least one category you plan to sell in');
-      if (!shippingMethod) return setKycError('Please select a shipping method');
       if (!returnSameAsWarehouse) {
         if (!returnLine1.trim()) return setKycError('Return address line 1 is required');
         if (!returnCity.trim()) return setKycError('Return address city is required');
@@ -204,7 +197,6 @@ function SellerRegistrationWidget() {
         }
         fd.append('selling_categories', JSON.stringify(sellingCategories));
         fd.append('expected_product_count', expectedProductCount);
-        fd.append('shipping_method', shippingMethod);
         fd.append('preferred_courier', preferredCourier);
         fd.append('return_address_same_as_warehouse', returnSameAsWarehouse);
         if (!returnSameAsWarehouse) {
@@ -459,8 +451,8 @@ function SellerRegistrationWidget() {
       )}
       {kycStep === 2 && (
         <div className="space-y-3">
-          <div><label className={labelCls}>GSTIN</label><input type="text" value={taxId} onChange={e=>setTaxId(e.target.value)} placeholder="e.g. 27AAAAA1111A1Z1 (optional)" maxLength={15} className={inputCls} />
-          <p className="text-[9px] text-gray-400 mt-0.5">15-character GST number — optional, only if your business is GST-registered</p></div>
+          <div><label className={labelCls}>GSTIN *</label><input type="text" value={taxId} onChange={e=>setTaxId(e.target.value)} placeholder="e.g. 27AAAAA1111A1Z1" maxLength={15} className={inputCls} />
+          <p className="text-[9px] text-gray-400 mt-0.5">15-character GST number (required)</p></div>
           <div>
             <label className={labelCls}>PAN Number *</label>
             <input type="text" value={idNumber} onChange={e=>setIdNumber(e.target.value)}
@@ -508,12 +500,6 @@ function SellerRegistrationWidget() {
               <option value="200+">200+</option>
             </select>
           </div>
-          <div><label className={labelCls}>Shipping Method *</label>
-            <select value={shippingMethod} onChange={e=>setShippingMethod(e.target.value)} className={inputCls}>
-              <option value="">Select a shipping method</option>
-              {SHIPPING_METHOD_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
-            </select>
-          </div>
           <div><label className={labelCls}>Preferred Courier</label><input type="text" value={preferredCourier} onChange={e=>setPreferredCourier(e.target.value)} placeholder="e.g. Delhivery, Bluedart (optional)" className={inputCls} /></div>
 
           <label className="flex items-start gap-2 cursor-pointer select-none">
@@ -543,7 +529,6 @@ function SellerRegistrationWidget() {
             ['PAN', idNumber],
             ['Bank', `${bankName} — ${bankIfsc}`], ['Account', bankAccount],
             ['Categories', sellingCategories.join(', ') || '—'],
-            ['Shipping', SHIPPING_METHOD_OPTIONS.find(o => o.value === shippingMethod)?.label || '—'],
           ].map(([l,v]) => (
             <div key={l} className="flex justify-between py-1 border-b border-gray-100 last:border-0">
               <span className="text-gray-500">{l}</span>
