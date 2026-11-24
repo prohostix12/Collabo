@@ -21,15 +21,16 @@ from rest_framework import viewsets, permissions, status, filters, views, generi
 from rest_framework.response import Response
 from rest_framework.decorators import action, api_view, permission_classes
 from rest_framework.permissions import IsAuthenticated
+from rest_framework.exceptions import PermissionDenied
 from django.db import transaction
 from django.shortcuts import get_object_or_404
-from .models import Product, Cart, CartItem, Address, Order, OrderItem, Category, Brand, ProductReview, AffiliateCommission, StoreSettings, CustomerReview, ReferralClick, ProductInfluencerMedia, Wishlist, CustomerReferralLink, WalletTransaction, WalletPayout, Vendor
+from .models import Product, Cart, CartItem, Address, Order, OrderItem, Category, Brand, ProductReview, AffiliateCommission, StoreSettings, CustomerReview, ReferralClick, ProductInfluencerMedia, Wishlist, CustomerReferralLink, WalletTransaction, WalletPayout, Vendor, ProductVariant, InventoryMovement
 from .serializers import (
     ProductSerializer, CartSerializer, CartItemSerializer,
     AddressSerializer, OrderSerializer, OrderItemSerializer,
     CategorySerializer, BrandSerializer, ProductReviewSerializer, StoreSettingsSerializer, CustomerReviewSerializer,
     ProductInfluencerMediaSerializer, WishlistSerializer, CustomerReferralLinkSerializer, WalletTransactionSerializer,
-    WalletPayoutSerializer, VendorSerializer
+    WalletPayoutSerializer, VendorSerializer, ProductVariantSerializer, InventoryMovementSerializer
 )
 
 DEFAULT_CATEGORIES = [
@@ -281,7 +282,139 @@ class ProductViewSet(viewsets.ModelViewSet):
             )
         product.stock = new_stock
         product.save(update_fields=['stock'])
+        InventoryMovement.objects.create(
+            product=product, change=delta, resulting_stock=new_stock,
+            reason='manual_adjustment', actor=request.user,
+            note=request.data.get('note', ''),
+        )
         return Response(ProductSerializer(product, context={'request': request}).data)
+
+
+class ProductVariantViewSet(viewsets.ModelViewSet):
+    """Variants are the actual purchasable item. Scoped exactly like ProductViewSet:
+    a seller only ever sees/edits their own variants, admins see everything, buyers
+    only see variants of approved, active products — never another seller's stock."""
+    serializer_class = ProductVariantSerializer
+    permission_classes = [permissions.IsAuthenticated, IsSellerOrReadOnly]
+    filter_backends = [filters.SearchFilter, filters.OrderingFilter]
+    search_fields = ['sku', 'product__name']
+    ordering_fields = ['price', 'stock', 'created_at']
+
+    def get_queryset(self):
+        queryset = ProductVariant.objects.select_related('product', 'seller').all()
+        user = self.request.user if self.request.user.is_authenticated else None
+        is_admin = bool(user and (user.is_staff or user.user_type == 'admin'))
+
+        product_id = self.request.query_params.get('product')
+        if product_id:
+            queryset = queryset.filter(product_id=product_id)
+
+        if is_admin:
+            pass  # sees everything
+        elif user and user.user_type == 'seller':
+            queryset = queryset.filter(seller=user)
+        else:
+            # Public/buyer access: only active variants of approved products.
+            queryset = queryset.filter(is_active=True, product__status='approved')
+
+        stock_filter = self.request.query_params.get('stock')
+        if stock_filter == 'out':
+            queryset = queryset.filter(stock=0)
+        elif stock_filter == 'low':
+            queryset = queryset.filter(stock__gt=0, stock__lte=F('low_stock_threshold'))
+
+        return queryset
+
+    def perform_create(self, serializer):
+        product = serializer.validated_data.get('product')
+        user = self.request.user
+        if not (user.is_staff or user.user_type == 'admin') and product.seller_id != user.id:
+            raise PermissionDenied("You can only add variants to your own products.")
+        serializer.save(seller=product.seller)
+
+    @action(detail=True, methods=['post'], url_path='adjust-stock')
+    def adjust_stock(self, request, pk=None):
+        variant = self.get_object()
+        try:
+            delta = int(request.data.get('delta'))
+        except (TypeError, ValueError):
+            return Response({'error': 'delta must be an integer'}, status=status.HTTP_400_BAD_REQUEST)
+        new_stock = variant.stock + delta
+        if new_stock < 0:
+            return Response(
+                {'error': f'Not enough stock to remove. Current stock is {variant.stock}.'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        variant.stock = new_stock
+        variant.save(update_fields=['stock'])  # also re-syncs the parent product's aggregate
+        InventoryMovement.objects.create(
+            product=variant.product, variant=variant, change=delta, resulting_stock=new_stock,
+            reason='manual_adjustment', actor=request.user, note=request.data.get('note', ''),
+        )
+        return Response(ProductVariantSerializer(variant, context={'request': request}).data)
+
+    @action(detail=False, methods=['post'], url_path='bulk-update')
+    def bulk_update(self, request):
+        """Bulk price/stock update for variants the caller owns (or any, for admins).
+        Body: {"updates": [{"id": 1, "price": "499.00", "stock": 20}, ...]}"""
+        user = request.user
+        is_admin = bool(user.is_staff or user.user_type == 'admin')
+        updates = request.data.get('updates', [])
+        if not isinstance(updates, list) or not updates:
+            return Response({'error': '"updates" must be a non-empty list'}, status=status.HTTP_400_BAD_REQUEST)
+
+        updated, errors = [], []
+        with transaction.atomic():
+            for row in updates:
+                variant_id = row.get('id')
+                variant = ProductVariant.objects.select_for_update().filter(pk=variant_id).first()
+                if not variant:
+                    errors.append({'id': variant_id, 'error': 'Not found'})
+                    continue
+                if not is_admin and variant.seller_id != user.id:
+                    errors.append({'id': variant_id, 'error': 'Not your variant'})
+                    continue
+
+                old_stock = variant.stock
+                if 'price' in row:
+                    variant.price = row['price']
+                if 'stock' in row:
+                    try:
+                        variant.stock = int(row['stock'])
+                    except (TypeError, ValueError):
+                        errors.append({'id': variant_id, 'error': 'stock must be an integer'})
+                        continue
+                variant.save()
+
+                if 'stock' in row and variant.stock != old_stock:
+                    InventoryMovement.objects.create(
+                        product=variant.product, variant=variant, change=variant.stock - old_stock,
+                        resulting_stock=variant.stock, reason='bulk_update', actor=user,
+                    )
+                updated.append(variant.id)
+
+        return Response({'updated': updated, 'errors': errors})
+
+
+class InventoryMovementListView(generics.ListAPIView):
+    """Read-only inventory movement history. Sellers see only movements on their
+    own products; admins see everything, optionally filtered by ?product= or ?variant=."""
+    serializer_class = InventoryMovementSerializer
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get_queryset(self):
+        user = self.request.user
+        qs = InventoryMovement.objects.select_related('product', 'variant', 'actor', 'order')
+        if not (user.is_staff or user.user_type == 'admin'):
+            qs = qs.filter(product__seller=user)
+        product_id = self.request.query_params.get('product')
+        if product_id:
+            qs = qs.filter(product_id=product_id)
+        variant_id = self.request.query_params.get('variant')
+        if variant_id:
+            qs = qs.filter(variant_id=variant_id)
+        return qs
+
 
 class WishlistViewSet(viewsets.ModelViewSet):
     serializer_class = WishlistSerializer
@@ -323,26 +456,37 @@ class CartViewSet(viewsets.ViewSet):
     def add_item(self, request):
         cart = self._get_or_create_cart(request.user)
         product_id = request.data.get('product')
+        variant_id = request.data.get('variant')
         quantity = int(request.data.get('quantity', 1))
 
         if not product_id:
             return Response({'error': 'Product ID is required'}, status=status.HTTP_400_BAD_REQUEST)
 
         product = get_object_or_404(Product, id=product_id)
-        
-        # Check stock
-        if product.stock < quantity:
-            return Response({'error': f'Only {product.stock} items left in stock'}, status=status.HTTP_400_BAD_REQUEST)
 
-        cart_item, created = CartItem.objects.get_or_create(cart=cart, product=product)
+        variant = None
+        if product.has_variants:
+            if not variant_id:
+                return Response({'error': 'Please select a size/colour (or other option) before adding to cart'}, status=status.HTTP_400_BAD_REQUEST)
+            variant = get_object_or_404(ProductVariant, id=variant_id, product=product)
+            if not variant.is_active:
+                return Response({'error': 'That option is no longer available'}, status=status.HTTP_400_BAD_REQUEST)
+        elif variant_id:
+            return Response({'error': 'This product does not have variants'}, status=status.HTTP_400_BAD_REQUEST)
+
+        available_stock = variant.stock if variant else product.stock
+        if available_stock < quantity:
+            return Response({'error': f'Only {available_stock} items left in stock'}, status=status.HTTP_400_BAD_REQUEST)
+
+        cart_item, created = CartItem.objects.get_or_create(cart=cart, product=product, variant=variant)
         if not created:
             cart_item.quantity += quantity
         else:
             cart_item.quantity = quantity
-            
-        if product.stock < cart_item.quantity:
-             return Response({'error': f'Only {product.stock} items left in stock'}, status=status.HTTP_400_BAD_REQUEST)
-             
+
+        if available_stock < cart_item.quantity:
+             return Response({'error': f'Only {available_stock} items left in stock'}, status=status.HTTP_400_BAD_REQUEST)
+
         cart_item.save()
         cart.save()  # bump updated_at so abandoned-cart detection sees real activity
 
@@ -360,11 +504,12 @@ class CartViewSet(viewsets.ViewSet):
             quantity = request.data.get('quantity')
             if quantity is not None:
                 quantity = int(quantity)
+                available_stock = cart_item.variant.stock if cart_item.variant else cart_item.product.stock
                 if quantity <= 0:
                     cart_item.delete()
                 else:
-                    if cart_item.product.stock < quantity:
-                        return Response({'error': f'Only {cart_item.product.stock} items in stock'}, status=status.HTTP_400_BAD_REQUEST)
+                    if available_stock < quantity:
+                        return Response({'error': f'Only {available_stock} items in stock'}, status=status.HTTP_400_BAD_REQUEST)
                     cart_item.quantity = quantity
                     cart_item.save()
 
@@ -464,12 +609,15 @@ def create_order_for_user(user, data):
     if not cart_items.exists():
         raise OrderCreationError('No items selected or cart is empty')
 
-    # Lock these product rows for the rest of the transaction so two
-    # concurrent checkouts can't both read the same stock count and both
-    # succeed, oversetting stock below zero.
+    # Lock these product (and, where applicable, variant) rows for the rest of
+    # the transaction so two concurrent checkouts can't both read the same
+    # stock count and both succeed, overselling stock below zero.
     list(Product.objects.select_for_update().filter(
         id__in=cart_items.values_list('product_id', flat=True)
     ))
+    variant_ids = [i for i in cart_items.values_list('variant_id', flat=True) if i]
+    if variant_ids:
+        list(ProductVariant.objects.select_for_update().filter(id__in=variant_ids))
 
     # Calculate pricing with per-product referral discounts
     subtotal = 0
@@ -479,11 +627,15 @@ def create_order_for_user(user, data):
     from ecommerce.models import ProductReview
 
     for item in cart_items:
-        # Check stock
-        if item.product.stock < item.quantity:
+        # Check stock — variant-level stock takes priority when the item is a
+        # specific size/colour/etc.; legacy non-variant products use the
+        # product's own stock exactly as before.
+        available_stock = item.variant.stock if item.variant else item.product.stock
+        if available_stock < item.quantity:
             raise OrderCreationError(f'Product {item.product.name} is out of stock or insufficient quantity')
 
-        item_subtotal = item.product.discount_price * item.quantity
+        unit_price = item.variant.price if item.variant else item.product.discount_price
+        item_subtotal = unit_price * item.quantity
         subtotal += item_subtotal
 
         # Look for referral code for this specific product
@@ -612,10 +764,12 @@ def create_order_for_user(user, data):
 
     # Create Order Items, decrease stock, and award commissions
     for item in cart_items:
-        # Determine effective unit price (custom_price takes priority if referral used)
+        # Determine effective unit price (custom_price takes priority if referral used,
+        # otherwise the variant's own price — if this item is a specific variant —
+        # else the product's own discount_price, exactly as before for non-variant items)
         product_id_str = str(item.product.id)
         ref_code_for_item = valid_referral_map.get(product_id_str)
-        effective_price = item.product.discount_price
+        effective_price = item.variant.price if item.variant else item.product.discount_price
         if ref_code_for_item:
             review_for_price = ProductReview.objects.filter(referral_code=ref_code_for_item, product=item.product).first()
             if review_for_price and review_for_price.custom_price is not None:
@@ -624,12 +778,30 @@ def create_order_for_user(user, data):
         order_item = OrderItem.objects.create(
             order=order,
             product=item.product,
+            variant=item.variant,
+            # Snapshot at purchase time — survives the variant later being edited,
+            # deactivated, or deleted. This is what invoices/order history read.
+            variant_sku=item.variant.sku if item.variant else '',
+            variant_attributes=item.variant.attributes if item.variant else {},
             price=effective_price,
             quantity=item.quantity
         )
-        # Decrease stock
-        item.product.stock -= item.quantity
-        item.product.save()
+        # Decrease stock — variant-level when this item is a specific variant,
+        # otherwise the legacy product-level stock exactly as before.
+        if item.variant:
+            item.variant.stock -= item.quantity
+            item.variant.save()  # also re-syncs the parent product's aggregate stock/price
+            InventoryMovement.objects.create(
+                product=item.product, variant=item.variant, change=-item.quantity,
+                resulting_stock=item.variant.stock, reason='order_placed', order=order,
+            )
+        else:
+            item.product.stock -= item.quantity
+            item.product.save()
+            InventoryMovement.objects.create(
+                product=item.product, change=-item.quantity,
+                resulting_stock=item.product.stock, reason='order_placed', order=order,
+            )
 
         # Process referral commission for this product if it has a valid referral.
         # product_link_reward_paid tracks whether THIS item already paid out via a
@@ -829,8 +1001,20 @@ class OrderViewSet(viewsets.ModelViewSet):
         # Revert stock and commissions if order gets cancelled, returned or refunded
         if new_status in ['cancelled', 'returned', 'refunded'] and old_status not in ['cancelled', 'returned', 'refunded']:
             for item in order.items.all():
-                item.product.stock += item.quantity
-                item.product.save()
+                if item.variant:
+                    item.variant.stock += item.quantity
+                    item.variant.save()
+                    InventoryMovement.objects.create(
+                        product=item.product, variant=item.variant, change=item.quantity,
+                        resulting_stock=item.variant.stock, reason='order_cancelled', order=order,
+                    )
+                else:
+                    item.product.stock += item.quantity
+                    item.product.save()
+                    InventoryMovement.objects.create(
+                        product=item.product, change=item.quantity,
+                        resulting_stock=item.product.stock, reason='order_cancelled', order=order,
+                    )
             AffiliateCommission.objects.filter(order=order).update(status='cancelled')
             WalletTransaction.objects.filter(order=order).update(status='cancelled')
 
@@ -991,9 +1175,21 @@ class OrderViewSet(viewsets.ModelViewSet):
         
         # Revert stock
         for item in order.items.all():
-            item.product.stock += item.quantity
-            item.product.save()
-            
+            if item.variant:
+                item.variant.stock += item.quantity
+                item.variant.save()
+                InventoryMovement.objects.create(
+                    product=item.product, variant=item.variant, change=item.quantity,
+                    resulting_stock=item.variant.stock, reason='order_cancelled', order=order,
+                )
+            else:
+                item.product.stock += item.quantity
+                item.product.save()
+                InventoryMovement.objects.create(
+                    product=item.product, change=item.quantity,
+                    resulting_stock=item.product.stock, reason='order_cancelled', order=order,
+                )
+
         # Revert commissions
         AffiliateCommission.objects.filter(order=order).update(status='cancelled')
         
@@ -2100,6 +2296,8 @@ class SellerOrdersView(views.APIView):
                 'product_id': it.product_id,
                 'product_name': it.product.name,
                 'product_image': it.product.image,
+                'variant_sku': it.variant_sku,
+                'variant_attributes': it.variant_attributes,
                 'price': str(it.price),
                 'quantity': it.quantity,
             }

@@ -94,6 +94,26 @@ const DiscountBadge = ({ price, discounted, className = '' }) => {
   return pct ? <span className={`font-black text-orange-500 ${className}`}>{pct}% off</span> : null;
 };
 
+// The price actually being charged for a cart line: the variant's own price
+// when one was selected, otherwise the product's discount price (unchanged
+// legacy behaviour for non-variant products).
+const cartItemUnitPrice = (item) => item.variant ? Number(item.variant.price) : item.product.discountPrice;
+
+// Shared cart-item -> frontend-shape mapper, used everywhere the cart is
+// fetched/updated so the selected variant (if any) travels with it consistently.
+const formatCartItem = (item) => ({
+  id: item.id,
+  quantity: item.quantity,
+  variant: item.variant_details || null,
+  product: {
+    ...item.product_details,
+    discountPrice: Number(item.product_details.discount_price),
+    discountPercent: item.product_details.discount_percent,
+    reviewsCount: item.product_details.reviews_count,
+    price: Number(item.product_details.price),
+  },
+});
+
 const CAT_ICON_MAP = {
   'All':           { Icon: LayoutGrid,     color: 'text-slate-900 dark:text-white', bg: 'bg-slate-100 dark:bg-slate-700' },
   'Electronics':   { Icon: Cpu,            color: 'text-slate-900 dark:text-white', bg: 'bg-slate-100 dark:bg-slate-700' },
@@ -789,6 +809,9 @@ export default function EcommerceMarketplace({ inlineMode = false, onBackToSelec
   ];
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [selectedProduct, setSelectedProduct] = useState(null);
+  // Variant selection on the product detail page: a dict of {attributeName: value}
+  // the shopper has picked so far (e.g. {size: 'M', color: 'Black'}).
+  const [selectedAttrs, setSelectedAttrs] = useState({});
   // Initialize directly from localStorage so the save effect never fires with []
   const [selectedCartItems, setSelectedCartItems] = useState(() => {
     try { return JSON.parse(localStorage.getItem('cart_selected_items') || '[]'); } catch { return []; }
@@ -1506,8 +1529,39 @@ export default function EcommerceMarketplace({ inlineMode = false, onBackToSelec
         setActiveReferral(null);
       }
     }
+    // Reset variant selection for the new product, then auto-pick the first
+    // in-stock combination so a price/SKU/stock is shown immediately.
+    const variants = selectedProduct?.variants || [];
+    if (variants.length > 0) {
+      const firstAvailable = variants.find(v => v.is_in_stock) || variants[0];
+      setSelectedAttrs(firstAvailable.attributes || {});
+    } else {
+      setSelectedAttrs({});
+    }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedProduct]);
+
+  // Attribute groups (e.g. {size: ['S','M','L'], color: ['Black','White']}) derived
+  // from every variant this product has, and the single variant (if any) that
+  // matches every attribute currently selected.
+  const variantAttributeGroups = React.useMemo(() => {
+    const variants = selectedProduct?.variants || [];
+    const groups = {};
+    variants.forEach(v => {
+      Object.entries(v.attributes || {}).forEach(([k, val]) => {
+        if (!groups[k]) groups[k] = [];
+        if (!groups[k].includes(val)) groups[k].push(val);
+      });
+    });
+    return groups;
+  }, [selectedProduct]);
+
+  const selectedVariant = React.useMemo(() => {
+    const variants = selectedProduct?.variants || [];
+    if (variants.length === 0) return null;
+    const attrKeys = Object.keys(variantAttributeGroups);
+    return variants.find(v => attrKeys.every(k => (v.attributes || {})[k] === selectedAttrs[k])) || null;
+  }, [selectedProduct, selectedAttrs, variantAttributeGroups]);
 
   // Sync / fetch products
   const [allProducts, setAllProducts] = useState([]);
@@ -1626,17 +1680,7 @@ export default function EcommerceMarketplace({ inlineMode = false, onBackToSelec
     try {
       const response = await api.get('/ecommerce/cart/');
       const items = response.data.items || [];
-      const formatted = items.map(item => ({
-        id: item.id,
-        quantity: item.quantity,
-        product: {
-          ...item.product_details,
-          discountPrice: Number(item.product_details.discount_price),
-          discountPercent: item.product_details.discount_percent,
-          reviewsCount: item.product_details.reviews_count,
-          price: Number(item.product_details.price)
-        }
-      }));
+      const formatted = items.map(formatCartItem);
       setCart(formatted);
     } catch (err) {
       console.error("Error fetching cart:", err);
@@ -2081,29 +2125,28 @@ export default function EcommerceMarketplace({ inlineMode = false, onBackToSelec
   };
 
   // Add to Cart helper
-  const addToCart = async (product) => {
+  const addToCart = async (product, variant = null) => {
     if (!isLoggedIn) {
       setPostAuthView('details'); // after login, return to this product's details
       setCurrentView('auth');
       return false;
     }
+    if (product.has_variants && !variant) {
+      showToast('Please select an option (size/colour) before adding to cart', 'error');
+      return false;
+    }
+    if (variant && !variant.is_in_stock) {
+      showToast('That option is out of stock', 'error');
+      return false;
+    }
     try {
       const response = await api.post('/ecommerce/cart/add/', {
         product: product.id,
+        variant: variant ? variant.id : undefined,
         quantity: 1
       });
       const items = response.data.items || [];
-      const formatted = items.map(item => ({
-        id: item.id,
-        quantity: item.quantity,
-        product: {
-          ...item.product_details,
-          discountPrice: Number(item.product_details.discount_price),
-          discountPercent: item.product_details.discount_percent,
-          reviewsCount: item.product_details.reviews_count,
-          price: Number(item.product_details.price)
-        }
-      }));
+      const formatted = items.map(formatCartItem);
       setCart(formatted);
       showToast(`${product.name} added to cart successfully!`);
       return true;
@@ -2129,7 +2172,7 @@ export default function EcommerceMarketplace({ inlineMode = false, onBackToSelec
     const customPriceMap = JSON.parse(localStorage.getItem('referral_price_map') || '{}');
     const hasRef = !!refMap[item.product.id] || !!refMap[String(item.product.id)];
     const customPrice = hasRef ? (customPriceMap[item.product.id] ?? customPriceMap[String(item.product.id)] ?? null) : null;
-    const price = (customPrice !== null && customPrice !== undefined) ? Number(customPrice) : item.product.discountPrice;
+    const price = (customPrice !== null && customPrice !== undefined) ? Number(customPrice) : cartItemUnitPrice(item);
     return sum + (price * item.quantity);
   }, 0);
   
@@ -2147,7 +2190,7 @@ export default function EcommerceMarketplace({ inlineMode = false, onBackToSelec
       return sum;
     }
     const pct = discountMap[item.product.id] !== undefined ? discountMap[item.product.id] : (discountMap[String(item.product.id)] !== undefined ? discountMap[String(item.product.id)] : 10);
-    return sum + Math.round(item.product.discountPrice * (pct / 100)) * item.quantity;
+    return sum + Math.round(cartItemUnitPrice(item) * (pct / 100)) * item.quantity;
   }, 0);
 
   const cartDiscount = (couponApplied ? Math.round(cartSubtotal * couponDiscount) : 0) + referralDiscountAmount;
@@ -2231,18 +2274,7 @@ export default function EcommerceMarketplace({ inlineMode = false, onBackToSelec
         quantity: newQuantity
       });
       const items = response.data.items || [];
-      const formatted = items.map(item => ({
-        id: item.id,
-        quantity: item.quantity,
-        product: {
-          ...item.product_details,
-          discountPrice: Number(item.product_details.discount_price),
-          discountPercent: item.product_details.discount_percent,
-          reviewsCount: item.product_details.reviews_count,
-          price: Number(item.product_details.price)
-        }
-      }));
-      setCart(formatted);
+      setCart(items.map(formatCartItem));
     } catch (err) {
       console.error("Error updating cart quantity:", err);
     }
@@ -2252,18 +2284,7 @@ export default function EcommerceMarketplace({ inlineMode = false, onBackToSelec
     try {
       const response = await api.delete(`/ecommerce/cart/items/${itemId}/`);
       const items = response.data.items || [];
-      const formatted = items.map(item => ({
-        id: item.id,
-        quantity: item.quantity,
-        product: {
-          ...item.product_details,
-          discountPrice: Number(item.product_details.discount_price),
-          discountPercent: item.product_details.discount_percent,
-          reviewsCount: item.product_details.reviews_count,
-          price: Number(item.product_details.price)
-        }
-      }));
-      setCart(formatted);
+      setCart(items.map(formatCartItem));
     } catch (err) {
       console.error("Error removing from cart:", err);
     }
@@ -4114,7 +4135,7 @@ export default function EcommerceMarketplace({ inlineMode = false, onBackToSelec
                       </div>
                       <span className="text-xs text-slate-400 font-medium">{selectedProduct.reviewsCount} ratings</span>
                       <span className="text-emerald-600 text-[10px] font-bold flex items-center gap-0.5">
-                        <ShieldCheck className="w-3.5 h-3.5" />{selectedProduct.stock > 0 ? 'In Stock' : 'Out of Stock'}
+                        <ShieldCheck className="w-3.5 h-3.5" />{(selectedProduct.has_variants ? selectedVariant?.is_in_stock : selectedProduct.stock > 0) ? 'In Stock' : 'Out of Stock'}
                       </span>
                     </div>
                   </div>
@@ -4139,6 +4160,64 @@ export default function EcommerceMarketplace({ inlineMode = false, onBackToSelec
                           </button>
                         ))}
                       </div>
+                    </div>
+                  )}
+
+                  {selectedProduct.has_variants && (
+                    <div className="space-y-3">
+                      {Object.entries(variantAttributeGroups).map(([attrName, values]) => (
+                        <div key={attrName} className="space-y-1.5">
+                          <p className="text-xs font-bold text-slate-500 dark:text-slate-400 capitalize">
+                            {attrName}{selectedAttrs[attrName] ? <span className="text-slate-900 dark:text-white">: {selectedAttrs[attrName]}</span> : null}
+                          </p>
+                          <div className="flex flex-wrap gap-2">
+                            {values.map(val => {
+                              const isChosen = selectedAttrs[attrName] === val;
+                              // Would picking this value (with everything else held constant) resolve to a real, in-stock variant?
+                              const wouldMatch = (selectedProduct.variants || []).some(v =>
+                                (v.attributes || {})[attrName] === val &&
+                                Object.entries(selectedAttrs).every(([k, sv]) => k === attrName || (v.attributes || {})[k] === sv)
+                              );
+                              const wouldBeInStock = (selectedProduct.variants || []).some(v =>
+                                (v.attributes || {})[attrName] === val && v.is_in_stock &&
+                                Object.entries(selectedAttrs).every(([k, sv]) => k === attrName || (v.attributes || {})[k] === sv)
+                              );
+                              return (
+                                <button
+                                  key={val}
+                                  type="button"
+                                  disabled={!wouldMatch}
+                                  onClick={() => setSelectedAttrs(prev => ({ ...prev, [attrName]: val }))}
+                                  className={`px-3.5 py-1.5 rounded-lg text-xs font-bold border transition-all ${
+                                    isChosen ? 'border-orange-500 bg-orange-50 dark:bg-orange-900/20 text-orange-700 dark:text-orange-400'
+                                    : wouldMatch ? 'border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:border-slate-300 dark:hover:border-slate-600'
+                                    : 'border-slate-100 dark:border-slate-800 text-slate-300 dark:text-slate-700 cursor-not-allowed line-through'
+                                  } ${wouldMatch && !wouldBeInStock ? 'opacity-50' : ''}`}
+                                >
+                                  {val}
+                                </button>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      ))}
+
+                      {selectedVariant ? (
+                        <div className="flex items-center gap-2 text-[11px]">
+                          <span className="text-slate-400">SKU: <span className="font-semibold text-slate-600 dark:text-slate-300">{selectedVariant.sku}</span></span>
+                          {selectedVariant.is_in_stock ? (
+                            selectedVariant.is_low_stock ? (
+                              <span className="text-amber-600 font-bold">Only {selectedVariant.stock} left</span>
+                            ) : (
+                              <span className="text-emerald-600 font-bold">In Stock</span>
+                            )
+                          ) : (
+                            <span className="text-red-500 font-bold">Out of Stock</span>
+                          )}
+                        </div>
+                      ) : (
+                        <p className="text-[11px] text-amber-600 font-semibold">This combination isn't available — try a different option.</p>
+                      )}
                     </div>
                   )}
 
@@ -4204,7 +4283,18 @@ export default function EcommerceMarketplace({ inlineMode = false, onBackToSelec
                       </div>
                     );
 
-                    // Normal price (no referral)
+                    // Normal price (no referral) — the selected variant's own price
+                    // takes over once the product has variants (e.g. Black/M may cost
+                    // more or less than Black/L), otherwise the product's own price.
+                    if (selectedProduct.has_variants) {
+                      return (
+                        <div className="flex items-baseline gap-2">
+                          <span className="text-2xl font-black dark:text-white">
+                            {selectedVariant ? `₹${Number(selectedVariant.price).toLocaleString()}` : `From ₹${selectedProduct.discountPrice.toLocaleString()}`}
+                          </span>
+                        </div>
+                      );
+                    }
                     return (
                       <div className="flex items-baseline gap-2">
                         <span className="text-2xl font-black dark:text-white">₹{selectedProduct.discountPrice.toLocaleString()}</span>
@@ -4436,12 +4526,16 @@ export default function EcommerceMarketplace({ inlineMode = false, onBackToSelec
                   {/* Add to Cart / Buy Now Action Bar */}
                   <div className="fixed bottom-0 left-0 right-0 md:sticky md:bottom-0 z-[60] bg-white dark:bg-slate-900 p-3 md:p-4 border-t border-slate-200/50 dark:border-slate-800/50 md:-mx-6 md:-mb-6 md:rounded-b-[28px] shadow-[0_-10px_40px_-15px_rgba(0,0,0,0.1)] dark:shadow-[0_-10px_40px_-15px_rgba(0,0,0,0.5)]">
                     <div className="flex gap-2 md:gap-3">
-                      <button onClick={async () => { const ok = await addToCart(selectedProduct); if (ok) setCurrentView('cart'); }}
-                        className="flex-1 bg-white hover:bg-slate-50 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-800 dark:text-white border border-slate-200 dark:border-slate-700 font-black text-xs md:text-[13px] uppercase tracking-widest py-3.5 md:py-4 rounded-xl shadow-sm transition-all flex items-center justify-center gap-2">
+                      <button
+                        disabled={selectedProduct.has_variants && (!selectedVariant || !selectedVariant.is_in_stock)}
+                        onClick={async () => { const ok = await addToCart(selectedProduct, selectedVariant); if (ok) setCurrentView('cart'); }}
+                        className="flex-1 bg-white hover:bg-slate-50 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-800 dark:text-white border border-slate-200 dark:border-slate-700 font-black text-xs md:text-[13px] uppercase tracking-widest py-3.5 md:py-4 rounded-xl shadow-sm transition-all flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed">
                         <ShoppingCart className="w-4 h-4" /> Add to Cart
                       </button>
-                      <button onClick={async () => { const ok = await addToCart(selectedProduct); if (ok) setCurrentView('checkout'); }}
-                        className="flex-1 bg-[#ff9f00] hover:bg-[#ff9f00]/90 text-white font-black text-xs md:text-[13px] uppercase tracking-widest py-3.5 md:py-4 rounded-xl shadow-md transition-all flex items-center justify-center gap-2">
+                      <button
+                        disabled={selectedProduct.has_variants && (!selectedVariant || !selectedVariant.is_in_stock)}
+                        onClick={async () => { const ok = await addToCart(selectedProduct, selectedVariant); if (ok) setCurrentView('checkout'); }}
+                        className="flex-1 bg-[#ff9f00] hover:bg-[#ff9f00]/90 text-white font-black text-xs md:text-[13px] uppercase tracking-widest py-3.5 md:py-4 rounded-xl shadow-md transition-all flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed">
                         <Zap className="w-4 h-4" /> Buy Now
                       </button>
                       <button onClick={() => toggleWishlist(selectedProduct)}
@@ -4685,13 +4779,13 @@ export default function EcommerceMarketplace({ inlineMode = false, onBackToSelec
                     const customPriceMap = JSON.parse(localStorage.getItem('referral_price_map') || '{}');
                     const hasRef = !!refMap[item.product.id] || !!refMap[String(item.product.id)];
                     const customPrice = hasRef ? (customPriceMap[item.product.id] ?? customPriceMap[String(item.product.id)] ?? null) : null;
-                    const baseUnitPrice = (customPrice !== null && customPrice !== undefined) ? Number(customPrice) : item.product.discountPrice;
-                    
+                    const baseUnitPrice = (customPrice !== null && customPrice !== undefined) ? Number(customPrice) : cartItemUnitPrice(item);
+
                     const refDiscountPct = hasRef ? (discountMap[item.product.id] !== undefined ? discountMap[item.product.id] : (discountMap[String(item.product.id)] !== undefined ? discountMap[String(item.product.id)] : 10)) : 0;
-                    const refDiscountUnit = (hasRef && customPrice === null) ? Math.round(item.product.discountPrice * (refDiscountPct / 100)) : 0;
+                    const refDiscountUnit = (hasRef && customPrice === null) ? Math.round(cartItemUnitPrice(item) * (refDiscountPct / 100)) : 0;
                     const couponDiscountUnit = couponApplied ? Math.round(baseUnitPrice * couponDiscount) : 0;
                     const finalUnitPrice = baseUnitPrice - refDiscountUnit - couponDiscountUnit;
-                    const unitStoreDiscount = item.product.price - item.product.discountPrice;
+                    const unitStoreDiscount = item.variant ? 0 : (item.product.price - item.product.discountPrice);
                     const hasDiscounts = unitStoreDiscount > 0 || hasRef || couponApplied;
                     const totalSavings = ((item.product.price - finalUnitPrice) * item.quantity);
 
@@ -4716,12 +4810,18 @@ export default function EcommerceMarketplace({ inlineMode = false, onBackToSelec
                             />
                           </div>
                           <div className="w-16 h-16 bg-slate-50 dark:bg-slate-800 rounded-xl overflow-hidden shrink-0 flex items-center justify-center border border-slate-100 dark:border-slate-800">
-                            <img loading="lazy" src={item.product.image} className="max-h-full object-cover" alt={item.product.name} />
+                            <img loading="lazy" src={item.variant?.display_image || item.product.image} className="max-h-full object-cover" alt={item.product.name} />
                           </div>
                           <div className="space-y-1.5 flex-1 min-w-0">
                             <span className="text-[9px] font-black text-orange-500 uppercase tracking-widest">{item.product.brand}</span>
                             <h3 className="font-extrabold text-xs line-clamp-1 dark:text-white">{item.product.name}</h3>
-                            
+                            {item.variant && (
+                              <p className="text-[10px] text-slate-500 dark:text-slate-400">
+                                {Object.entries(item.variant.attributes || {}).map(([k, v]) => `${k}: ${v}`).join(' | ')}
+                                <span className="text-slate-300 dark:text-slate-600"> · SKU {item.variant.sku}</span>
+                              </p>
+                            )}
+
                             <div className="flex items-baseline gap-2 flex-wrap">
                               <span className="text-base font-black dark:text-white">₹{finalUnitPrice.toLocaleString()}</span>
                               {hasDiscounts && (
@@ -5667,6 +5767,12 @@ export default function EcommerceMarketplace({ inlineMode = false, onBackToSelec
                             </div>
                             <div className="flex-1 min-w-0">
                               <p className="text-xs font-medium text-slate-800 dark:text-white truncate">{item.product_details?.name || 'Product'}</p>
+                              {item.variant_sku && (
+                                <p className="text-[10px] text-slate-400">
+                                  {Object.entries(item.variant_attributes || {}).map(([k, v]) => `${k}: ${v}`).join(' | ')}
+                                  <span className="text-slate-300 dark:text-slate-600"> · SKU {item.variant_sku}</span>
+                                </p>
+                              )}
                               <p className="text-[11px] text-slate-500 dark:text-slate-400">Qty: {item.quantity}</p>
                             </div>
                             <p className="text-xs font-semibold text-slate-700 dark:text-slate-200 shrink-0">₹{Number(item.price).toLocaleString()}</p>
@@ -5942,6 +6048,12 @@ export default function EcommerceMarketplace({ inlineMode = false, onBackToSelec
                       </div>
                       <div className="flex-1 min-w-0">
                         <p className="text-xs font-semibold text-slate-800 dark:text-white truncate">{item.product_details?.name || 'Product'}</p>
+                        {item.variant_sku && (
+                          <p className="text-[10px] text-slate-400">
+                            {Object.entries(item.variant_attributes || {}).map(([k, v]) => `${k}: ${v}`).join(' | ')}
+                            <span className="text-slate-300 dark:text-slate-600"> · SKU {item.variant_sku}</span>
+                          </p>
+                        )}
                         <p className="text-[11px] text-slate-500 dark:text-slate-400">Qty: {item.quantity}</p>
                       </div>
                       <p className="text-xs font-bold text-slate-700 dark:text-slate-200 shrink-0">₹{Number(item.price * item.quantity).toLocaleString()}</p>
