@@ -1,6 +1,6 @@
 from rest_framework import serializers
 from django.conf import settings
-from .models import Product, Cart, CartItem, Address, Order, OrderItem, Category, Brand, ProductReview, AffiliateCommission, StoreSettings, CustomerReview, ProductInfluencerMedia, SellerReview, SellerPayout, NewsletterSubscriber, Wishlist, CustomerReferralLink, WalletTransaction, WalletPayout, Vendor
+from .models import Product, Cart, CartItem, Address, Order, OrderItem, Category, Brand, ProductReview, AffiliateCommission, StoreSettings, CustomerReview, ProductInfluencerMedia, SellerReview, SellerPayout, NewsletterSubscriber, Wishlist, CustomerReferralLink, WalletTransaction, WalletPayout, Vendor, ProductVariant, InventoryMovement
 
 class CategorySerializer(serializers.ModelSerializer):
     class Meta:
@@ -22,6 +22,60 @@ def _force_https(url):
         return 'https://' + url[7:]
     return url
 
+class ProductVariantSerializer(serializers.ModelSerializer):
+    is_in_stock = serializers.ReadOnlyField()
+    is_low_stock = serializers.ReadOnlyField()
+    display_image = serializers.ReadOnlyField()
+
+    class Meta:
+        model = ProductVariant
+        fields = [
+            'id', 'product', 'sku', 'attributes', 'price', 'stock', 'is_active',
+            'image', 'display_image', 'low_stock_threshold', 'is_in_stock', 'is_low_stock',
+            'created_at', 'updated_at',
+        ]
+        read_only_fields = ['id', 'created_at', 'updated_at']
+
+    def validate(self, attrs):
+        # Duplicate-combination check at the application level (the model's
+        # attributes_key unique_together is the DB-level backstop for races).
+        product = attrs.get('product') or getattr(self.instance, 'product', None)
+        attributes = attrs.get('attributes', getattr(self.instance, 'attributes', {}) if self.instance else {})
+        if product is not None:
+            key = '|'.join(f"{k}:{v}" for k, v in sorted((attributes or {}).items()))
+            qs = ProductVariant.objects.filter(product=product, attributes_key=key)
+            if self.instance:
+                qs = qs.exclude(pk=self.instance.pk)
+            if qs.exists():
+                raise serializers.ValidationError('A variant with this exact attribute combination already exists for this product.')
+
+        sku = attrs.get('sku', '').strip() if attrs.get('sku') else ''
+        if sku:
+            seller = (product.seller if product else getattr(self.instance, 'seller', None))
+            qs = ProductVariant.objects.filter(seller=seller, sku=sku)
+            if self.instance:
+                qs = qs.exclude(pk=self.instance.pk)
+            if qs.exists():
+                raise serializers.ValidationError({'sku': 'You already have a variant with this SKU.'})
+        return attrs
+
+
+class InventoryMovementSerializer(serializers.ModelSerializer):
+    product_name = serializers.ReadOnlyField(source='product.name')
+    variant_sku = serializers.ReadOnlyField(source='variant.sku')
+    actor_username = serializers.ReadOnlyField(source='actor.username')
+    order_display_id = serializers.ReadOnlyField(source='order.order_id')
+
+    class Meta:
+        model = InventoryMovement
+        fields = [
+            'id', 'product', 'product_name', 'variant', 'variant_sku', 'change',
+            'resulting_stock', 'reason', 'note', 'order', 'order_display_id',
+            'actor', 'actor_username', 'created_at',
+        ]
+        read_only_fields = fields
+
+
 class ProductSerializer(serializers.ModelSerializer):
     seller_username = serializers.ReadOnlyField(source='seller.username')
     id = serializers.IntegerField(required=False)
@@ -29,6 +83,8 @@ class ProductSerializer(serializers.ModelSerializer):
     purchase_count = serializers.SerializerMethodField()
     seller_store_slug = serializers.SerializerMethodField()
     seller_store_name = serializers.SerializerMethodField()
+    variants = ProductVariantSerializer(many=True, read_only=True)
+    has_variants = serializers.ReadOnlyField()
 
     class Meta:
         model = Product
@@ -38,7 +94,8 @@ class ProductSerializer(serializers.ModelSerializer):
             'price', 'discount_price', 'discount_percent', 'rating', 'reviews_count', 'purchase_count',
             'image', 'images', 'colors', 'description', 'stock', 'delivery', 'specifications',
             'highlights', 'offers', 'seller_info', 'qa_section', 'seller_store_slug', 'seller_store_name',
-            'product_shipping_charge', 'commission_rate', 'link_discount_percent', 'created_at', 'updated_at'
+            'product_shipping_charge', 'commission_rate', 'link_discount_percent', 'created_at', 'updated_at',
+            'variants', 'has_variants',
         ]
         # status/rejection_reason are admin-controlled only — set via the approve/reject
         # actions on ProductViewSet, never directly through create/update payloads.
@@ -81,10 +138,11 @@ class ProductSerializer(serializers.ModelSerializer):
 
 class CartItemSerializer(serializers.ModelSerializer):
     product_details = ProductSerializer(source='product', read_only=True)
+    variant_details = ProductVariantSerializer(source='variant', read_only=True)
 
     class Meta:
         model = CartItem
-        fields = ['id', 'product', 'product_details', 'quantity']
+        fields = ['id', 'product', 'product_details', 'variant', 'variant_details', 'quantity']
 
 class CartSerializer(serializers.ModelSerializer):
     items = CartItemSerializer(many=True, read_only=True)
@@ -106,7 +164,7 @@ class OrderItemSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = OrderItem
-        fields = ['id', 'product', 'product_details', 'price', 'quantity']
+        fields = ['id', 'product', 'product_details', 'variant', 'variant_sku', 'variant_attributes', 'price', 'quantity']
 
 class OrderSerializer(serializers.ModelSerializer):
     items = OrderItemSerializer(many=True, read_only=True)

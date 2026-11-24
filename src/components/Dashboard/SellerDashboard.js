@@ -3,7 +3,7 @@ import {
   Store, Package, Plus, X, Clock, CheckCircle2, XCircle,
   IndianRupee, Boxes, ImagePlus, Upload, ShoppingBag, Pencil, Trash2, Truck,
   TrendingUp, ArrowUpCircle, ArrowDownCircle, ShoppingCart, LayoutGrid, Download, FileSpreadsheet, Search,
-  LayoutDashboard, ClipboardList, Tag, Wallet, Star, RotateCcw, Ban, Calendar,
+  LayoutDashboard, ClipboardList, Tag, Wallet, Star, RotateCcw, Ban, Calendar, Layers,
 } from 'lucide-react';
 import {
   ResponsiveContainer, ComposedChart, Area, Line, Bar, XAxis, YAxis, CartesianGrid, Tooltip,
@@ -12,6 +12,7 @@ import api from '../../services/api';
 import toast from 'react-hot-toast';
 import { useAuth } from '../../contexts/AuthContext';
 import StoreBuilder from './StoreBuilder';
+import VariantManagerModal from './VariantManagerModal';
 
 const emptyForm = {
   name: '',
@@ -118,6 +119,7 @@ const SellerDashboard = () => {
   }, [products, productSearch, productCategoryFilter, productStatusFilter]);
   const [showAddForm, setShowAddForm] = useState(false);
   const [editingProduct, setEditingProduct] = useState(null);
+  const [variantManagerProduct, setVariantManagerProduct] = useState(null);
   const [form, setForm] = useState(emptyForm);
   const [uploadedImages, setUploadedImages] = useState([]);
   const [qaRows, setQaRows] = useState([emptyQaRow()]);
@@ -871,7 +873,14 @@ const SellerDashboard = () => {
                 {orders.results.map(it => (
                   <div key={it.order_item_id} className="flex items-center gap-3 px-5 py-3 hover:bg-gray-50/60 dark:hover:bg-gray-900/30 transition-colors">
                     <img src={it.product_image} alt={it.product_name} className="w-10 h-10 rounded-lg object-cover bg-gray-100 dark:bg-gray-700 shrink-0" />
-                    <p className="text-sm font-medium text-gray-900 dark:text-white truncate flex-1 min-w-0">{it.product_name}</p>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium text-gray-900 dark:text-white truncate">{it.product_name}</p>
+                      {it.variant_sku && (
+                        <p className="text-[10px] text-gray-400 truncate">
+                          {Object.entries(it.variant_attributes || {}).map(([k, v]) => `${k}: ${v}`).join(' | ')} · SKU {it.variant_sku}
+                        </p>
+                      )}
+                    </div>
                     <p className="text-xs text-gray-500 dark:text-gray-400 shrink-0 w-28 truncate">{it.order_id}</p>
                     <p className="text-xs text-gray-500 dark:text-gray-400 shrink-0 w-20 text-right">{it.quantity}</p>
                     <p className="text-sm font-semibold text-gray-900 dark:text-white shrink-0 w-24 text-right">₹{(it.price * it.quantity).toLocaleString('en-IN')}</p>
@@ -1276,6 +1285,13 @@ const SellerDashboard = () => {
                   </span>
                   <div className="flex items-center gap-1 shrink-0">
                     <button
+                      onClick={() => setVariantManagerProduct(p)}
+                      title="Manage Variants"
+                      className="p-2 rounded-lg text-gray-500 hover:text-purple-600 hover:bg-purple-50 dark:hover:bg-purple-900/20 transition-colors"
+                    >
+                      <Layers className="w-3.5 h-3.5" />
+                    </button>
+                    <button
                       onClick={() => openStockPopover(p)}
                       title="Update Stock"
                       className="p-2 rounded-lg text-gray-500 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-colors"
@@ -1650,6 +1666,14 @@ const SellerDashboard = () => {
           </div>
         );
       })()}
+
+      {variantManagerProduct && (
+        <VariantManagerModal
+          product={variantManagerProduct}
+          onClose={() => setVariantManagerProduct(null)}
+          onChanged={() => fetchProducts()}
+        />
+      )}
     </div>
   );
 };

@@ -86,6 +86,136 @@ class Product(models.Model):
     def __str__(self):
         return f"{self.name} - {self.brand} (${self.price})"
 
+    @property
+    def has_variants(self):
+        return self.variants.exists()
+
+    def sync_variant_aggregates(self):
+        """Keeps the product's own price/stock as a display-level aggregate of its
+        active variants, so existing code that reads Product.price/Product.stock
+        directly (low-stock widgets, listing cards, etc.) keeps behaving sensibly
+        without needing to be made variant-aware everywhere. The variant rows
+        themselves — not this aggregate — are what checkout actually debits."""
+        active = self.variants.filter(is_active=True)
+        total_stock = active.aggregate(s=models.Sum('stock'))['s']
+        if total_stock is None:
+            return  # no active variants — leave the product's own price/stock as-is
+        min_price = active.order_by('price').values_list('price', flat=True).first()
+        self.stock = total_stock
+        if min_price is not None:
+            self.price = min_price
+            self.discount_price = min_price
+            self.discount_percent = 0
+        Product.objects.filter(pk=self.pk).update(
+            stock=self.stock, price=self.price,
+            discount_price=self.discount_price, discount_percent=self.discount_percent,
+        )
+
+
+def _generate_variant_sku(product, attributes):
+    """Human-readable auto-SKU: PRODUCTPREFIX-ATTR1-ATTR2-### — e.g. a 'Men's
+    T-Shirt' in Black/M becomes MTSH-BLK-M-001. Uniqueness is scoped to the
+    seller (two sellers can both land on the same-looking SKU; that's fine,
+    the DB constraint is unique_together('seller', 'sku'))."""
+    words = [w for w in product.name.upper().split() if w.isalnum()][:2]
+    prefix = ''.join(w[:2] for w in words) or 'PRD'
+    attr_part = '-'.join(str(v).strip()[:3].upper() for v in attributes.values() if str(v).strip())
+    base = f"{prefix}-{attr_part}" if attr_part else prefix
+    n = 1
+    while ProductVariant.objects.filter(seller=product.seller, sku=f"{base}-{n:03d}").exists():
+        n += 1
+    return f"{base}-{n:03d}"
+
+
+class ProductVariant(models.Model):
+    """The actual purchasable item in this marketplace. A Product with variants
+    is just the shared display shell (name, description, images, category) —
+    price, stock and SKU all live here, scoped to the owning seller. Two
+    sellers never share a ProductVariant (they don't even share a Product row,
+    since Product.seller is already 1:1 with its listing), so one seller's
+    stock change can never touch another seller's inventory."""
+    product = models.ForeignKey(Product, on_delete=models.CASCADE, related_name='variants')
+    seller = models.ForeignKey(User, on_delete=models.CASCADE, related_name='product_variants')
+    sku = models.CharField(max_length=64, blank=True)
+    attributes = models.JSONField(default=dict, help_text="e.g. {'size': 'M', 'color': 'Black'}")
+    # Canonical, order-independent string form of `attributes` (e.g. "color:Black|size:M"),
+    # recomputed on every save. A DB-level safety net against duplicate attribute
+    # combinations for the same product, on top of the application-level check in
+    # the serializer — covers the race-condition case two simultaneous saves can't
+    # catch via a Python-side query alone.
+    attributes_key = models.CharField(max_length=300, editable=False, default='')
+    price = models.DecimalField(max_digits=12, decimal_places=2)
+    stock = models.PositiveIntegerField(default=0)
+    is_active = models.BooleanField(default=True, help_text="Deactivated variants are hidden from buyers but keep their SKU and order history")
+    image = models.TextField(blank=True, default='', help_text="Variant-specific image URL or base64 data; falls back to the product's main image if blank")
+    low_stock_threshold = models.PositiveIntegerField(default=5)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        unique_together = [('seller', 'sku'), ('product', 'attributes_key')]
+        ordering = ['id']
+
+    @property
+    def is_in_stock(self):
+        return self.is_active and self.stock > 0
+
+    @property
+    def is_low_stock(self):
+        return self.is_active and 0 < self.stock <= self.low_stock_threshold
+
+    @property
+    def display_image(self):
+        return self.image or self.product.image
+
+    def save(self, *args, **kwargs):
+        if not self.seller_id:
+            self.seller = self.product.seller
+        # Canonicalize attributes to a sorted "key:value|key:value" string so
+        # {"size":"M","color":"Black"} and {"color":"Black","size":"M"} are
+        # recognised as the same combination.
+        self.attributes_key = '|'.join(f"{k}:{v}" for k, v in sorted((self.attributes or {}).items()))
+        if not self.sku:
+            self.sku = _generate_variant_sku(self.product, self.attributes or {})
+        super().save(*args, **kwargs)
+        self.product.sync_variant_aggregates()
+
+    def delete(self, *args, **kwargs):
+        product = self.product
+        super().delete(*args, **kwargs)
+        product.sync_variant_aggregates()
+
+    def __str__(self):
+        attrs = ', '.join(f"{k}: {v}" for k, v in (self.attributes or {}).items())
+        return f"{self.product.name} ({attrs}) - {self.sku}"
+
+
+class InventoryMovement(models.Model):
+    """Audit trail for every stock change, variant or legacy non-variant product
+    alike, so sellers/admins can see what changed, why, and who/what did it."""
+    REASON_CHOICES = (
+        ('order_placed', 'Order Placed'),
+        ('order_cancelled', 'Order Cancelled / Returned / Refunded'),
+        ('manual_adjustment', 'Manual Adjustment'),
+        ('bulk_update', 'Bulk Update'),
+    )
+    product = models.ForeignKey(Product, on_delete=models.CASCADE, related_name='inventory_movements')
+    variant = models.ForeignKey(ProductVariant, on_delete=models.SET_NULL, null=True, blank=True, related_name='movements')
+    change = models.IntegerField(help_text="Positive = stock increased, negative = decreased")
+    resulting_stock = models.PositiveIntegerField()
+    reason = models.CharField(max_length=30, choices=REASON_CHOICES)
+    note = models.CharField(max_length=255, blank=True, default='')
+    order = models.ForeignKey('Order', on_delete=models.SET_NULL, null=True, blank=True, related_name='inventory_movements')
+    actor = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, related_name='inventory_actions', help_text="Who made this change; blank for system/order-driven changes")
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return f"{self.product.name}: {'+' if self.change >= 0 else ''}{self.change} ({self.reason})"
+
+
 class Cart(models.Model):
     user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='cart')
     created_at = models.DateTimeField(auto_now_add=True)
@@ -101,12 +231,17 @@ class Cart(models.Model):
 class CartItem(models.Model):
     cart = models.ForeignKey(Cart, on_delete=models.CASCADE, related_name='items')
     product = models.ForeignKey(Product, on_delete=models.CASCADE)
+    # Required if the product has variants, left null for legacy non-variant
+    # products. CASCADE is fine here (unlike OrderItem) — a cart is not a
+    # historical record, so if a variant is deleted the cart line just goes with it.
+    variant = models.ForeignKey('ProductVariant', on_delete=models.CASCADE, null=True, blank=True, related_name='cart_items')
     quantity = models.PositiveIntegerField(default=1)
 
     class Meta:
         # Without this, cart.items.all() has no guaranteed order, so a quantity
         # update (which rewrites the row) can make items visibly reshuffle.
         ordering = ['id']
+        unique_together = ('cart', 'product', 'variant')
 
     def __str__(self):
         return f"{self.product.name} x {self.quantity} in {self.cart}"
@@ -275,6 +410,16 @@ def order_post_save(sender, instance, created, **kwargs):
 class OrderItem(models.Model):
     order = models.ForeignKey(Order, on_delete=models.CASCADE, related_name='items')
     product = models.ForeignKey(Product, on_delete=models.CASCADE)
+    # SET_NULL (not CASCADE): a variant can be edited or deleted later without
+    # touching this row's SKU/attributes/price snapshot below — those are what
+    # the invoice and order history actually display, independent of whatever
+    # the live variant looks like now.
+    variant = models.ForeignKey('ProductVariant', on_delete=models.SET_NULL, null=True, blank=True, related_name='order_items')
+    # Purchase-time snapshot, copied from the variant (if any) when the order
+    # item is created. Survives the variant being edited/deactivated/deleted —
+    # "historical orders must not change" per the variant feature's requirements.
+    variant_sku = models.CharField(max_length=64, blank=True, default='')
+    variant_attributes = models.JSONField(default=dict, blank=True)
     price = models.DecimalField(max_digits=12, decimal_places=2)
     quantity = models.PositiveIntegerField()
 
