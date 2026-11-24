@@ -7117,7 +7117,7 @@ export default function EcommerceMarketplace({ inlineMode = false, onBackToSelec
                         <select
                           value={editingProduct ? editProdVendor : newProdVendor}
                           onChange={(e) => handleVendorChange(e, !!editingProduct)}
-                          className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl py-2 px-3 focus:outline-none dark:text-white font-bold text-sm"
+                          className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl py-2 px-3 focus:outline-none dark:text-white font-normal text-sm"
                         >
                           <option value="">Select Vendor (Optional)</option>
                           {vendorsList.map(v => (
