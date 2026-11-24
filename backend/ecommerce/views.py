@@ -149,7 +149,7 @@ class ProductViewSet(viewsets.ModelViewSet):
     serializer_class = ProductSerializer
     filter_backends = [filters.SearchFilter, filters.OrderingFilter]
     search_fields = ['name', 'brand', 'description', 'category']
-    ordering_fields = ['price', 'rating', 'created_at']
+    ordering_fields = ['price', 'rating', 'created_at', 'purchase_count_annotated']
 
     def get_permissions(self):
         if self.action in ['list', 'retrieve']:
@@ -190,6 +190,14 @@ class ProductViewSet(viewsets.ModelViewSet):
         if seller_id:
             queryset = queryset.filter(seller_id=seller_id)
 
+        # Structured attribute filtering for consistent, filterable specs —
+        # e.g. ?attr_Material=Cotton&attr_Size=M matches Product.attributes
+        # entries exactly (case-insensitive on the value).
+        for param, value in self.request.query_params.items():
+            if param.startswith('attr_') and value:
+                attr_name = param[len('attr_'):]
+                queryset = queryset.filter(**{f'attributes__{attr_name}__iexact': value})
+
         # Visibility: admins see everything (optionally filtered by ?status=).
         # A seller looking at their own listings (?seller=<their own id>) sees
         # all of their own products regardless of status. Everyone else —
@@ -209,10 +217,12 @@ class ProductViewSet(viewsets.ModelViewSet):
             # Direct object access (edit/delete/single fetch) — let a seller reach
             # their own product regardless of status, even without ?seller=<id>
             # on the URL (e.g. PATCH /products/<id>/ carries no query params).
-            # Everyone else still only reaches approved products this way.
-            queryset = queryset.filter(Q(status='approved') | Q(seller=user))
+            # Everyone else still only reaches approved, active products this way.
+            queryset = queryset.filter((Q(status='approved') & Q(is_active=True)) | Q(seller=user))
         else:
-            queryset = queryset.filter(status='approved')
+            # A seller deactivating a listing hides it here without touching
+            # its stock or order history (unlike deleting it).
+            queryset = queryset.filter(status='approved', is_active=True)
 
         return queryset
 
@@ -288,6 +298,78 @@ class ProductViewSet(viewsets.ModelViewSet):
             note=request.data.get('note', ''),
         )
         return Response(ProductSerializer(product, context={'request': request}).data)
+
+    @action(detail=True, methods=['post'], url_path='toggle-active')
+    def toggle_active(self, request, pk=None):
+        """Hide/unhide a listing from buyers without touching its stock or
+        order history — unlike delete, which is blocked once a product has
+        order history."""
+        product = self.get_object()
+        user = request.user
+        if not (user.is_staff or user.user_type == 'admin') and product.seller_id != user.id:
+            raise PermissionDenied("You can only activate/deactivate your own products.")
+        product.is_active = not product.is_active
+        product.save(update_fields=['is_active'])
+        return Response(ProductSerializer(product, context={'request': request}).data)
+
+    @action(detail=False, methods=['post'], url_path='bulk-update')
+    def bulk_update(self, request):
+        """Bulk price/stock/active updates for non-variant products the caller
+        owns (or any, for admins). Body: {"updates": [{"id": 1, "price": "499",
+        "stock": 20, "is_active": true}, ...]}"""
+        user = request.user
+        is_admin = bool(user.is_staff or user.user_type == 'admin')
+        updates = request.data.get('updates', [])
+        if not isinstance(updates, list) or not updates:
+            return Response({'error': '"updates" must be a non-empty list'}, status=status.HTTP_400_BAD_REQUEST)
+
+        updated, errors = [], []
+        with transaction.atomic():
+            for row in updates:
+                product_id = row.get('id')
+                product = Product.objects.select_for_update().filter(pk=product_id).first()
+                if not product:
+                    errors.append({'id': product_id, 'error': 'Not found'})
+                    continue
+                if not is_admin and product.seller_id != user.id:
+                    errors.append({'id': product_id, 'error': 'Not your product'})
+                    continue
+                if product.has_variants:
+                    errors.append({'id': product_id, 'error': 'Has variants — update stock/price per variant instead'})
+                    continue
+
+                old_stock = product.stock
+                update_fields = []
+                if 'price' in row:
+                    try:
+                        product.price = Decimal(str(row['price']))
+                    except (InvalidOperation, TypeError, ValueError):
+                        errors.append({'id': product_id, 'error': 'price must be a number'})
+                        continue
+                    update_fields.append('price')
+                if 'stock' in row:
+                    try:
+                        product.stock = int(row['stock'])
+                    except (TypeError, ValueError):
+                        errors.append({'id': product_id, 'error': 'stock must be an integer'})
+                        continue
+                    update_fields.append('stock')
+                if 'is_active' in row:
+                    product.is_active = bool(row['is_active'])
+                    update_fields.append('is_active')
+                if not update_fields:
+                    errors.append({'id': product_id, 'error': 'No recognised fields to update'})
+                    continue
+                product.save()  # runs full save() so discount_percent stays in sync
+
+                if 'stock' in row and product.stock != old_stock:
+                    InventoryMovement.objects.create(
+                        product=product, change=product.stock - old_stock,
+                        resulting_stock=product.stock, reason='bulk_update', actor=user,
+                    )
+                updated.append(product.id)
+
+        return Response({'updated': updated, 'errors': errors})
 
 
 class ProductVariantViewSet(viewsets.ModelViewSet):

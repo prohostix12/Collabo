@@ -23,6 +23,7 @@ import DeleteAccountModal from '../Layout/DeleteAccountModal';
 import DeviceManagementModal from '../Layout/DeviceManagementModal';
 import VendorManagement from '../Dashboard/VendorManagement';
 import WeeklyBestDealsSection from './WeeklyBestDealsSection';
+import DiscoverySections from './DiscoverySections';
 
 const CATEGORIES = [
   { name: 'All', icon: '🌟' },
@@ -774,6 +775,11 @@ export default function EcommerceMarketplace({ inlineMode = false, onBackToSelec
   }, [user]);
   const [productsList, setProductsList] = useState([]);
   const [sellerProducts, setSellerProducts] = useState([]);
+  const [selectedCatalogIds, setSelectedCatalogIds] = useState([]);
+  const [bulkEditOpen, setBulkEditOpen] = useState(false);
+  const [bulkPriceDelta, setBulkPriceDelta] = useState('');
+  const [bulkStockDelta, setBulkStockDelta] = useState('');
+  const [bulkSubmitting, setBulkSubmitting] = useState(false);
   const [addresses, setAddresses] = useState([]);
   const [showAddressForm, setShowAddressForm] = useState(false);
   const [editingAddressId, setEditingAddressId] = useState(null);
@@ -1414,6 +1420,8 @@ export default function EcommerceMarketplace({ inlineMode = false, onBackToSelec
   const [editProdOffers, setEditProdOffers] = useState('');
   const [newProdSpecifications, setNewProdSpecifications] = useState('');
   const [editProdSpecifications, setEditProdSpecifications] = useState('');
+  const [newProdAttributes, setNewProdAttributes] = useState('');
+  const [editProdAttributes, setEditProdAttributes] = useState('');
   const [newProdQaSection, setNewProdQaSection] = useState('');
   const [editProdQaSection, setEditProdQaSection] = useState('');
   const [newProdColors, setNewProdColors] = useState('');
@@ -1669,6 +1677,7 @@ export default function EcommerceMarketplace({ inlineMode = false, onBackToSelec
     setEditProdHighlights(Array.isArray(p.highlights) ? p.highlights.join('\n') : (p.highlights || ''));
     setEditProdOffers(Array.isArray(p.offers) ? p.offers.join('\n') : (p.offers || ''));
     setEditProdSpecifications(typeof p.specifications === 'string' ? p.specifications : JSON.stringify(p.specifications || {}));
+    setEditProdAttributes(Object.entries(p.attributes || {}).map(([k, v]) => `${k}: ${v}`).join('\n'));
     setEditProdQaSection(typeof p.qa_section === 'string' ? p.qa_section : JSON.stringify(p.qa_section || []));
     setEditProdColors(Array.isArray(p.colors) ? p.colors.map(c => `${c.name}|${c.image}`).join('\n') : '');
                                 setEditProdVendor(p.vendor || '');
@@ -3446,6 +3455,15 @@ export default function EcommerceMarketplace({ inlineMode = false, onBackToSelec
                   storeSettings={storeSettings}
                 />
               )}
+
+              <DiscoverySections
+                productsList={productsList}
+                addToCart={addToCart}
+                toggleWishlist={toggleWishlist}
+                wishlist={wishlist}
+                setSelectedProduct={setSelectedProduct}
+                setCurrentView={setCurrentView}
+              />
             </div>
 
             {/* Shop By Category Grid + Side Ad */}
@@ -7381,6 +7399,18 @@ export default function EcommerceMarketplace({ inlineMode = false, onBackToSelec
                     </div>
 
                     <div className="space-y-1">
+                      <label className="font-bold text-slate-450 dark:text-slate-400">Structured Attributes (Key: Value per line — used for consistent filtering)</label>
+                      <textarea
+                        rows="3"
+                        value={editingProduct ? editProdAttributes : newProdAttributes}
+                        onChange={(e) => editingProduct ? setEditProdAttributes(e.target.value) : setNewProdAttributes(e.target.value)}
+                        placeholder={'Material: Cotton\nSize: M\nColor: Black'}
+                        className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl py-2 px-3 focus:outline-none dark:text-white font-bold text-xs font-mono"
+                      />
+                      <p className="text-[10px] text-slate-400">Unlike free-text specifications, these are exact key:value pairs buyers can filter by (e.g. Material = Cotton).</p>
+                    </div>
+
+                    <div className="space-y-1">
                       <label className="font-bold text-slate-450 dark:text-slate-400">Q&A Section (JSON array of {"{q, a}"})</label>
                       <textarea
                         rows="3"
@@ -7459,6 +7489,17 @@ export default function EcommerceMarketplace({ inlineMode = false, onBackToSelec
                                   });
                                 }
                               };
+                              const parseAttrs = (val) => {
+                                if (!val) return {};
+                                if (typeof val !== 'string') return val;
+                                return val.split('\n').filter(s => s.includes(':')).reduce((acc, s) => {
+                                  const [k, ...v] = s.split(':');
+                                  const key = k.trim();
+                                  const value = v.join(':').trim();
+                                  if (key && value) acc[key] = value;
+                                  return acc;
+                                }, {});
+                              };
                               const parseQa = (val) => {
                                 if (!val) return [];
                                 if (typeof val !== 'string') return val;
@@ -7495,6 +7536,7 @@ export default function EcommerceMarketplace({ inlineMode = false, onBackToSelec
                                   highlights: editProdHighlights.split('\n').filter(s=>s.trim()),
                                   offers: editProdOffers.split('\n').filter(s=>s.trim()),
                                   specifications: parseSpecs(editProdSpecifications),
+                                  attributes: parseAttrs(editProdAttributes),
                                   qa_section: parseQa(editProdQaSection),
                                   colors: parseColors(editProdColors)
                                 });
@@ -7523,6 +7565,7 @@ export default function EcommerceMarketplace({ inlineMode = false, onBackToSelec
                                   highlights: newProdHighlights.split('\n').filter(s=>s.trim()),
                                   offers: newProdOffers.split('\n').filter(s=>s.trim()),
                                   specifications: parseSpecs(newProdSpecifications),
+                                  attributes: parseAttrs(newProdAttributes),
                                   qa_section: parseQa(newProdQaSection),
                                   colors: parseColors(newProdColors)
                                 });
@@ -7540,6 +7583,7 @@ export default function EcommerceMarketplace({ inlineMode = false, onBackToSelec
                                 setNewProdHighlights('');
                                 setNewProdOffers('');
                                 setNewProdSpecifications('');
+                                setNewProdAttributes('');
                                 setNewProdQaSection('');
                                 setNewProdColors('');
                                 setNewProdImages([]);
@@ -7586,6 +7630,14 @@ export default function EcommerceMarketplace({ inlineMode = false, onBackToSelec
                       >
                         <Upload className="w-3.5 h-3.5" /> Bulk Upload
                       </button>
+                      {selectedCatalogIds.length > 0 && (
+                        <button
+                          onClick={() => setBulkEditOpen(true)}
+                          className="flex items-center gap-1.5 bg-slate-950 hover:bg-slate-900 text-white text-[11px] font-black px-3 py-1.5 rounded-xl transition-colors"
+                        >
+                          <Edit className="w-3.5 h-3.5" /> Bulk Edit ({selectedCatalogIds.length})
+                        </button>
+                      )}
                     </div>
                                         <div className="flex items-center gap-2 flex-1 max-w-[400px] justify-end">
                       <select
@@ -7616,8 +7668,16 @@ export default function EcommerceMarketplace({ inlineMode = false, onBackToSelec
                       <p className="text-xs text-slate-500 font-semibold text-center py-4">No active products found.</p>
                     ) : (
                       [...sellerProducts].sort((a, b) => a.id - b.id).filter(p => !catalogSearch || p.name?.toLowerCase().includes(catalogSearch.toLowerCase()) || p.category?.toLowerCase().includes(catalogSearch.toLowerCase()) || String(p.id).includes(catalogSearch)).filter(p => !catalogVendorFilter || String(p.vendor) === String(catalogVendorFilter)).map((p, idx) => ( // eslint-disable-line no-undef
-                        <div key={idx} className="p-3.5 bg-slate-50 dark:bg-slate-800/60 rounded-2xl flex items-center justify-between border border-slate-100 dark:border-slate-700/50 text-xs">
+                        <div key={idx} className={`p-3.5 rounded-2xl flex items-center justify-between border text-xs ${p.is_active === false ? 'bg-slate-100/70 dark:bg-slate-800/30 border-slate-200/70 dark:border-slate-700/30 opacity-60' : 'bg-slate-50 dark:bg-slate-800/60 border-slate-100 dark:border-slate-700/50'}`}>
                           <div className="flex items-center gap-3">
+                            <input
+                              type="checkbox"
+                              checked={selectedCatalogIds.includes(p.id)}
+                              onChange={(e) => {
+                                setSelectedCatalogIds(prev => e.target.checked ? [...prev, p.id] : prev.filter(id => id !== p.id));
+                              }}
+                              className="w-3.5 h-3.5 shrink-0 accent-orange-500"
+                            />
                             <span className="text-[10px] font-bold text-slate-400 dark:text-slate-500 w-12 text-center shrink-0">ID: {p.id}</span>
                             <div
                               className="w-10 h-10 bg-slate-200 rounded-xl overflow-hidden shrink-0 flex items-center justify-center cursor-pointer hover:ring-2 hover:ring-orange-400 transition-all"
@@ -7626,18 +7686,38 @@ export default function EcommerceMarketplace({ inlineMode = false, onBackToSelec
                               <img loading="lazy" src={p.image} className="max-h-full object-cover" alt="prod" />
                             </div>
                             <div className="space-y-0.5 font-bold flex-1 min-w-0">
-                              <h4 
+                              <h4
                                 onClick={() => handleEditProduct(p)}
-                                className="font-extrabold text-slate-800 dark:text-white line-clamp-1 text-xs hover:text-orange-500 cursor-pointer transition-colors"
+                                className="font-extrabold text-slate-800 dark:text-white line-clamp-1 text-xs hover:text-orange-500 cursor-pointer transition-colors flex items-center gap-1.5"
                               >
                                 {p.name}
+                                {p.is_active === false && (
+                                  <span className="text-[9px] font-black text-slate-400 bg-slate-200 dark:bg-slate-700 px-1.5 py-0.5 rounded">HIDDEN</span>
+                                )}
                               </h4>
                               <span className="text-[10px] text-slate-400 font-semibold">{p.brand} • {p.category} • stock: {p.stock}</span>
                             </div>
                           </div>
                           <div className="flex items-center gap-2">
                             <span className="font-black text-slate-850 dark:text-slate-200 mr-2">₹{p.discountPrice.toLocaleString()}</span>
-                            
+
+                            <button
+                              onClick={async () => {
+                                try {
+                                  await api.post(`/ecommerce/products/${p.id}/toggle-active/`);
+                                  fetchSellerProducts();
+                                  fetchProducts();
+                                } catch (err) {
+                                  console.error("Error toggling product visibility:", err);
+                                  showToast("Failed to update listing visibility", 'error');
+                                }
+                              }}
+                              className={`p-1.5 rounded-lg border ${p.is_active === false ? 'text-emerald-500 hover:bg-emerald-50 dark:hover:bg-emerald-950/20 border-emerald-100 dark:border-emerald-900/30' : 'text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-700/40 border-slate-200 dark:border-slate-700'}`}
+                              title={p.is_active === false ? 'Activate Listing (show to buyers)' : 'Deactivate Listing (hide from buyers, keep stock/history)'}
+                            >
+                              {p.is_active === false ? <Eye className="w-4 h-4" /> : <EyeOff className="w-4 h-4" />}
+                            </button>
+
                             <button
                               onClick={() => openMediaUpload(p)}
                               className="p-1.5 text-violet-500 hover:bg-violet-50 dark:hover:bg-violet-950/20 rounded-lg border border-violet-100 dark:border-violet-900/30"
@@ -7654,7 +7734,7 @@ export default function EcommerceMarketplace({ inlineMode = false, onBackToSelec
                               <Edit className="w-4 h-4" />
                             </button>
 
-                            <button 
+                            <button
                               onClick={async () => {
                                 if (window.confirm("Are you sure you want to delete this listing?")) {
                                   try {
@@ -10487,6 +10567,87 @@ export default function EcommerceMarketplace({ inlineMode = false, onBackToSelec
           </div>
         );
       })()}
+
+      {bulkEditOpen && (
+        <div className="fixed inset-0 z-[9999] bg-black/50 backdrop-blur-sm flex items-center justify-center p-4" onClick={() => !bulkSubmitting && setBulkEditOpen(false)}>
+          <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-2xl max-w-md w-full" onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-center justify-between px-5 py-4 border-b border-slate-100 dark:border-slate-800">
+              <h3 className="font-black text-sm dark:text-white flex items-center gap-2"><Edit className="w-4 h-4 text-orange-500" /> Bulk edit {selectedCatalogIds.length} product{selectedCatalogIds.length === 1 ? '' : 's'}</h3>
+              <button onClick={() => !bulkSubmitting && setBulkEditOpen(false)} className="text-slate-400 hover:text-slate-600"><X className="w-4 h-4" /></button>
+            </div>
+            <div className="p-5 space-y-4 text-xs">
+              <p className="text-slate-500 dark:text-slate-400 font-semibold leading-relaxed">
+                Leave a field blank to leave it unchanged. Price % and stock change apply to every selected product's current values. Products with variants are skipped here — edit their variants individually.
+              </p>
+              <div className="space-y-1">
+                <label className="font-bold text-slate-450 dark:text-slate-400">Change price by % (e.g. 10 = +10%, -10 = -10%)</label>
+                <input
+                  type="number" value={bulkPriceDelta}
+                  onChange={(e) => setBulkPriceDelta(e.target.value)}
+                  placeholder="e.g. -10"
+                  className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl py-2 px-3 focus:outline-none dark:text-white font-bold text-sm"
+                />
+              </div>
+              <div className="space-y-1">
+                <label className="font-bold text-slate-450 dark:text-slate-400">Change stock by (e.g. 20 = add 20, -5 = remove 5)</label>
+                <input
+                  type="number" value={bulkStockDelta}
+                  onChange={(e) => setBulkStockDelta(e.target.value)}
+                  placeholder="e.g. 20"
+                  className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl py-2 px-3 focus:outline-none dark:text-white font-bold text-sm"
+                />
+              </div>
+              <div className="flex gap-3 pt-2">
+                <button
+                  disabled={bulkSubmitting || (!bulkPriceDelta && !bulkStockDelta)}
+                  onClick={async () => {
+                    setBulkSubmitting(true);
+                    try {
+                      const priceFactor = bulkPriceDelta ? (1 + Number(bulkPriceDelta) / 100) : null;
+                      const stockDelta = bulkStockDelta ? Number(bulkStockDelta) : null;
+                      const updates = selectedCatalogIds.map(id => {
+                        const p = sellerProducts.find(sp => sp.id === id);
+                        const row = { id };
+                        if (p && priceFactor !== null) {
+                          row.price = Math.max(0, Math.round(Number(p.price) * priceFactor * 100) / 100);
+                        }
+                        if (p && stockDelta !== null) {
+                          row.stock = Math.max(0, Number(p.stock) + stockDelta);
+                        }
+                        return row;
+                      });
+                      const res = await api.post('/ecommerce/products/bulk-update/', { updates });
+                      const errCount = (res.data.errors || []).length;
+                      showToast(errCount ? `Updated ${res.data.updated.length}, ${errCount} skipped (has variants or not owned)` : `Updated ${res.data.updated.length} product(s)`, errCount ? 'error' : 'success');
+                      setBulkEditOpen(false);
+                      setSelectedCatalogIds([]);
+                      setBulkPriceDelta('');
+                      setBulkStockDelta('');
+                      fetchSellerProducts();
+                      fetchProducts();
+                    } catch (err) {
+                      console.error('Bulk update failed:', err);
+                      showToast('Bulk update failed', 'error');
+                    } finally {
+                      setBulkSubmitting(false);
+                    }
+                  }}
+                  className="flex-1 bg-slate-950 hover:bg-slate-900 disabled:opacity-40 disabled:cursor-not-allowed text-white font-black text-xs py-3 rounded-xl transition-colors"
+                >
+                  {bulkSubmitting ? 'Applying…' : 'Apply to selected'}
+                </button>
+                <button
+                  disabled={bulkSubmitting}
+                  onClick={() => setBulkEditOpen(false)}
+                  className="px-4 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-750 text-slate-700 dark:text-slate-300 font-black text-xs py-3 rounded-xl transition-colors"
+                >
+                  Cancel
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {showBulkUpload && (
         <div className="fixed inset-0 z-[9999] bg-black/50 backdrop-blur-sm flex items-center justify-center p-4" onClick={closeBulkUpload}>
