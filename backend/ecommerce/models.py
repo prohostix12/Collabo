@@ -6,6 +6,10 @@ class Category(models.Model):
     name = models.CharField(max_length=100, unique=True)
     icon = models.CharField(max_length=50, default='📦')
     order = models.PositiveIntegerField(default=0, help_text="Display order on the storefront; lower shows first")
+    attribute_schema = models.JSONField(
+        default=list, blank=True,
+        help_text="Attribute names sellers should fill in for products in this category, e.g. ['Material', 'Size'] — keeps specs consistent for filtering.",
+    )
 
     class Meta:
         verbose_name_plural = "Categories"
@@ -43,6 +47,10 @@ class Product(models.Model):
     # approves them.
     status = models.CharField(max_length=20, choices=APPROVAL_STATUS, default='approved')
     rejection_reason = models.TextField(blank=True, default='')
+    is_active = models.BooleanField(
+        default=True,
+        help_text="Seller-controlled visibility toggle. Deactivating hides the listing from buyers without touching stock or order history (unlike deleting).",
+    )
     name = models.CharField(max_length=255)
     category = models.CharField(max_length=100)
     brand = models.CharField(max_length=100, blank=True, default='')
@@ -60,6 +68,10 @@ class Product(models.Model):
     stock = models.PositiveIntegerField(default=0)
     delivery = models.CharField(max_length=255, default='Free delivery by Tomorrow')
     specifications = models.JSONField(default=list, blank=True, help_text="List of specifications [{name: '', value: ''}]")
+    attributes = models.JSONField(
+        default=dict, blank=True,
+        help_text="Structured key:value attributes (e.g. {'Material': 'Cotton', 'Size': 'M'}) used for consistent, filterable specs — distinct from the free-text `specifications` list.",
+    )
     highlights = models.JSONField(default=list, blank=True, help_text="List of highlights")
     offers = models.JSONField(default=list, blank=True, help_text="List of offers")
     seller_info = models.TextField(blank=True, help_text="Seller information and policies")
