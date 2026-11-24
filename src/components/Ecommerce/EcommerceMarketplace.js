@@ -1418,6 +1418,7 @@ export default function EcommerceMarketplace({ inlineMode = false, onBackToSelec
   const [editProdQaSection, setEditProdQaSection] = useState('');
   const [newProdColors, setNewProdColors] = useState('');
   const [editProdColors, setEditProdColors] = useState('');
+  const [colorVariantNameDraft, setColorVariantNameDraft] = useState('');
 
   // Product reviews in details view
   const [productReviews, setProductReviews] = useState([]);
@@ -7390,8 +7391,43 @@ export default function EcommerceMarketplace({ inlineMode = false, onBackToSelec
                       />
                     </div>
 
-                    <div className="space-y-1">
+                    <div className="space-y-1.5">
                       <label className="font-bold text-slate-450 dark:text-slate-400">Color Variants (Name|Image URL, one per line)</label>
+                      <div className="flex gap-2">
+                        <input
+                          type="text"
+                          value={colorVariantNameDraft}
+                          onChange={(e) => setColorVariantNameDraft(e.target.value)}
+                          placeholder="Color name, e.g. Black"
+                          className="flex-1 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl py-2 px-3 focus:outline-none dark:text-white font-bold text-xs"
+                        />
+                        <label className={`cursor-pointer font-black text-xs px-4 rounded-xl flex items-center justify-center transition-colors shrink-0 ${colorVariantNameDraft.trim() ? 'bg-slate-950 hover:bg-slate-900 text-white' : 'bg-slate-100 dark:bg-slate-800 text-slate-400 cursor-not-allowed'}`}>
+                          <span>Upload Image</span>
+                          <input
+                            type="file"
+                            accept="image/*"
+                            disabled={!colorVariantNameDraft.trim()}
+                            onChange={(e) => {
+                              const file = e.target.files[0];
+                              if (!file) return;
+                              if (file.size > 5 * 1024 * 1024) { showToast('Image must be under 5MB', 'error'); e.target.value = ''; return; }
+                              const name = colorVariantNameDraft.trim();
+                              const reader = new FileReader();
+                              reader.onloadend = () => {
+                                const newLine = `${name}|${reader.result}`;
+                                const append = (prev) => (prev && prev.trim() ? `${prev}\n${newLine}` : newLine);
+                                if (editingProduct) setEditProdColors(append(editProdColors));
+                                else setNewProdColors(append(newProdColors));
+                                setColorVariantNameDraft('');
+                              };
+                              reader.readAsDataURL(file);
+                              e.target.value = '';
+                            }}
+                            className="hidden"
+                          />
+                        </label>
+                      </div>
+                      <p className="text-[10px] text-slate-400">Type a color name above, then upload its image — it's added as a new line below. You can also paste image URLs directly.</p>
                       <textarea
                         rows="3"
                         value={editingProduct ? editProdColors : newProdColors}
