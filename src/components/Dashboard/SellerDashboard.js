@@ -147,6 +147,10 @@ const SellerDashboard = () => {
   const [variantOption1, setVariantOption1] = useState({ name: '', values: '' });
   const [variantOption2, setVariantOption2] = useState({ name: '', values: '' });
   const [variantRowOverrides, setVariantRowOverrides] = useState({});
+  // "Others" in the category dropdown lets a seller type a category name that
+  // isn't in the admin-curated list yet — saved as free text on the product
+  // (Product.category is a plain CharField, no FK, so this needs no new endpoint).
+  const [isOtherCategory, setIsOtherCategory] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [formError, setFormError] = useState('');
   const [deletingId, setDeletingId] = useState(null);
@@ -589,6 +593,7 @@ const SellerDashboard = () => {
   const resetForm = () => {
     setForm(emptyForm); setUploadedImages([]); setQaRows([emptyQaRow()]); setFormError(''); setEditingProduct(null);
     setVariantOption1({ name: '', values: '' }); setVariantOption2({ name: '', values: '' }); setVariantRowOverrides({});
+    setIsOtherCategory(false);
   };
 
   const openAddForm = () => { resetForm(); setShowAddForm(true); };
@@ -643,6 +648,7 @@ const SellerDashboard = () => {
     setUploadedImages([]);
     setQaRows(product.qa_section?.length ? product.qa_section.map(r => ({ q: r.q || '', a: r.a || '' })) : [emptyQaRow()]);
     setFormError('');
+    setIsOtherCategory(!!product.category && !categories.some(c => c.name === product.category));
     setEditingProduct(product);
     setShowAddForm(true);
   };
@@ -1671,11 +1677,23 @@ const SellerDashboard = () => {
                   </div>
                   <div>
                     <label className="text-[11px] font-semibold text-gray-500 uppercase tracking-wide">Product Type (Category)</label>
-                    <select value={form.category} onChange={e => setForm({ ...form, category: e.target.value })}
+                    <select
+                      value={isOtherCategory ? '__other__' : form.category}
+                      onChange={e => {
+                        if (e.target.value === '__other__') { setIsOtherCategory(true); setForm({ ...form, category: '' }); }
+                        else { setIsOtherCategory(false); setForm({ ...form, category: e.target.value }); }
+                      }}
                       className="w-full mt-1 border border-gray-200 dark:border-gray-700 rounded-lg px-3 py-2 text-sm bg-white dark:bg-gray-900 focus:outline-none focus:ring-1 focus:ring-orange-400">
                       <option value="">Select...</option>
                       {categories.map(c => <option key={c.id} value={c.name}>{c.name}</option>)}
+                      <option value="__other__">Others (type your own)</option>
                     </select>
+                    {isOtherCategory && (
+                      <input type="text" value={form.category} onChange={e => setForm({ ...form, category: e.target.value })}
+                        placeholder="Type a new category name"
+                        autoFocus
+                        className="w-full mt-2 border border-gray-200 dark:border-gray-700 rounded-lg px-3 py-2 text-sm bg-white dark:bg-gray-900 focus:outline-none focus:ring-1 focus:ring-orange-400" />
+                    )}
                   </div>
                   <div>
                     <label className="text-[11px] font-semibold text-gray-500 uppercase tracking-wide">Vendor / Brand (optional)</label>
