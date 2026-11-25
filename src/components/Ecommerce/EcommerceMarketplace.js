@@ -154,6 +154,9 @@ const CATEGORY_ICON_ART = {
   'Korean Products': '/images/categories/korean_products.png',
   'Jewellery': '/images/categories/jewellery.png',
   'Furniture': '/images/categories/furniture.png',
+  'Home Improvement': '/images/categories/home_improvement.png',
+  'Industrial & Scientific': '/images/categories/industrial_scientific.png',
+  'Toys & Games': '/images/categories/toys_games.png',
 };
 
 // Renders product photos without cropping/zooming (object-contain instead of
@@ -2686,11 +2689,11 @@ export default function EcommerceMarketplace({ inlineMode = false, onBackToSelec
             <div className="space-y-2 pt-0">
               {/* Category Grid — compact isometric-style tiles (navy tile, orange accent, bold label) */}
               <div className="w-full bg-transparent">
-                <div style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }} className="grid grid-rows-2 grid-flow-col auto-cols-[76px] sm:auto-cols-[92px] gap-x-3 sm:gap-x-5 gap-y-4 overflow-x-auto overflow-y-hidden scrollbar-hide px-4 sm:px-6 py-1 w-full max-w-7xl mx-auto snap-x">
+                <div style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }} className="flex items-start gap-3 sm:gap-5 overflow-x-auto overflow-y-hidden scrollbar-hide px-4 sm:px-6 py-1 w-full max-w-7xl mx-auto snap-x">
                   {!categoriesLoaded ? (
                     Array.from({ length: 10 }).map((_, i) => (
-                      <div key={i} className="flex flex-col items-center gap-1.5 animate-pulse">
-                        <div className="w-14 h-14 sm:w-16 sm:h-16 rounded-2xl bg-slate-200 dark:bg-slate-700" />
+                      <div key={i} className="flex flex-col items-center gap-1.5 animate-pulse flex-shrink-0">
+                        <div className="w-10 h-10 sm:w-11 sm:h-11 rounded-2xl bg-slate-200 dark:bg-slate-700" />
                         <div className="w-10 h-2 rounded bg-slate-200 dark:bg-slate-700" />
                       </div>
                     ))
@@ -2702,21 +2705,21 @@ export default function EcommerceMarketplace({ inlineMode = false, onBackToSelec
                         <button
                           key={idx}
                           onClick={() => { setFilterCategory(cat.name); setCurrentView('listing'); }}
-                          className="flex flex-col items-center group flex-shrink-0 snap-center"
+                          className="flex flex-col items-center group flex-shrink-0 snap-center w-[64px] sm:w-[72px]"
                         >
                           {isoArt ? (
                             // Compact isometric 3D icon, no container/background — matches the reference set exactly.
-                            <div className="w-14 h-14 sm:w-16 sm:h-16 flex items-center justify-center transition-transform group-hover:scale-105">
+                            <div className="w-10 h-10 sm:w-11 sm:h-11 flex items-center justify-center transition-transform group-hover:scale-105">
                               <img loading="lazy" src={isoArt} alt={cat.name} className="w-full h-full object-contain drop-shadow-md" />
                             </div>
                           ) : (
-                            <div className="w-14 h-14 sm:w-16 sm:h-16 rounded-2xl flex items-center justify-center transition-transform group-hover:scale-105 relative shadow-[0_6px_14px_-4px_rgba(15,23,42,0.35)] bg-gradient-to-br from-[#1E3A52] via-[#16293B] to-[#0F1D2B] overflow-hidden">
-                              <div className="absolute -right-2 -bottom-2 w-7 h-7 bg-orange-500 rounded-xl rotate-12 shadow-md" />
+                            <div className="w-10 h-10 sm:w-11 sm:h-11 rounded-xl flex items-center justify-center transition-transform group-hover:scale-105 relative shadow-[0_4px_10px_-3px_rgba(15,23,42,0.35)] bg-gradient-to-br from-[#1E3A52] via-[#16293B] to-[#0F1D2B] overflow-hidden">
+                              <div className="absolute -right-1.5 -bottom-1.5 w-5 h-5 bg-orange-500 rounded-lg rotate-12 shadow-md" />
                               <div className="absolute inset-0 bg-gradient-to-t from-black/10 to-white/10 pointer-events-none" />
                               {(cat.image || storeSettings.category_images?.[cat.name]) ? (
-                                <img loading="lazy" src={cat.image || storeSettings.category_images[cat.name]} alt={cat.name} className="w-8 h-8 sm:w-9 sm:h-9 object-contain relative z-10 drop-shadow" />
+                                <img loading="lazy" src={cat.image || storeSettings.category_images[cat.name]} alt={cat.name} className="w-6 h-6 object-contain relative z-10 drop-shadow" />
                               ) : (
-                                <Icon className="w-7 h-7 sm:w-8 sm:h-8 text-white relative z-10 drop-shadow" strokeWidth={1.75} />
+                                <Icon className="w-5 h-5 text-white relative z-10 drop-shadow" strokeWidth={1.75} />
                               )}
                             </div>
                           )}
