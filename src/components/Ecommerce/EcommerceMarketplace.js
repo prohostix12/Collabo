@@ -2704,17 +2704,17 @@ export default function EcommerceMarketplace({ inlineMode = false, onBackToSelec
                         <button
                           key={idx}
                           onClick={() => { setFilterCategory(cat.name); setCurrentView('listing'); }}
-                          className="flex flex-col items-center group flex-shrink-0 snap-center w-[72px] sm:w-[80px]"
+                          className="flex flex-col items-center group flex-shrink-0 snap-center w-[60px] sm:w-[66px]"
                         >
-                          <div className="w-11 h-11 sm:w-12 sm:h-12 flex items-center justify-center transition-transform group-hover:scale-105 relative">
-                            <span className="absolute top-0 left-0.5 w-3.5 h-3.5 sm:w-4 sm:h-4 bg-orange-500 rounded-[7px] rotate-[18deg] z-10 shadow-sm" />
+                          <div className="w-8 h-8 sm:w-9 sm:h-9 flex items-center justify-center transition-transform group-hover:scale-105 relative">
+                            <span className="absolute top-0 left-0.5 w-2.5 h-2.5 sm:w-3 sm:h-3 bg-orange-500 rounded-[6px] rotate-[18deg] z-10 shadow-sm" />
                             {(cat.image || storeSettings.category_images?.[cat.name]) ? (
                               <img loading="lazy" src={cat.image || storeSettings.category_images[cat.name]} alt={cat.name} className="w-full h-full object-contain" />
                             ) : (
-                              <Icon className="w-10 h-10 sm:w-11 sm:h-11 text-[#101A35] dark:text-white" strokeWidth={2.2} strokeLinecap="round" strokeLinejoin="round" />
+                              <Icon className="w-7 h-7 sm:w-8 sm:h-8 text-[#101A35] dark:text-white" strokeWidth={2.1} strokeLinecap="round" strokeLinejoin="round" />
                             )}
                           </div>
-                          <span className="text-[10px] sm:text-[11px] font-bold text-[#101A35] dark:text-slate-200 group-hover:text-orange-600 transition-colors text-center leading-tight mt-1.5 max-w-[84px]">{cat.name}</span>
+                          <span className="text-[9px] sm:text-[10px] font-bold text-[#101A35] dark:text-slate-200 group-hover:text-orange-600 transition-colors text-center leading-tight mt-1 max-w-[70px]">{cat.name}</span>
                         </button>
                       )
                     })
