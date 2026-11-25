@@ -141,6 +141,12 @@ const SellerDashboard = () => {
   const [form, setForm] = useState(emptyForm);
   const [uploadedImages, setUploadedImages] = useState([]);
   const [qaRows, setQaRows] = useState([emptyQaRow()]);
+  // New-product variant builder: up to 2 options (e.g. Size, Color), each with
+  // comma-separated values. Rows are the cartesian product, editable per-row
+  // before the variants are actually created (right after the product itself).
+  const [variantOption1, setVariantOption1] = useState({ name: '', values: '' });
+  const [variantOption2, setVariantOption2] = useState({ name: '', values: '' });
+  const [variantRowOverrides, setVariantRowOverrides] = useState({});
   const [submitting, setSubmitting] = useState(false);
   const [formError, setFormError] = useState('');
   const [deletingId, setDeletingId] = useState(null);
@@ -580,9 +586,40 @@ const SellerDashboard = () => {
     customers: orders?.results ? new Set(orders.results.map(r => r.buyer_username).filter(Boolean)).size : 0,
   };
 
-  const resetForm = () => { setForm(emptyForm); setUploadedImages([]); setQaRows([emptyQaRow()]); setFormError(''); setEditingProduct(null); };
+  const resetForm = () => {
+    setForm(emptyForm); setUploadedImages([]); setQaRows([emptyQaRow()]); setFormError(''); setEditingProduct(null);
+    setVariantOption1({ name: '', values: '' }); setVariantOption2({ name: '', values: '' }); setVariantRowOverrides({});
+  };
 
   const openAddForm = () => { resetForm(); setShowAddForm(true); };
+
+  // Cartesian product of the two option value lists, e.g. Size: S,M and Color: Gray,Navy
+  // becomes 4 rows ({Size: S, Color: Gray}, {Size: S, Color: Navy}, ...). Each row carries
+  // a stable key so per-row price/stock edits (variantRowOverrides) survive re-typing values.
+  const variantRows = useMemo(() => {
+    const vals1 = variantOption1.name.trim() && variantOption1.values.trim()
+      ? variantOption1.values.split(',').map(v => v.trim()).filter(Boolean) : [];
+    const vals2 = variantOption2.name.trim() && variantOption2.values.trim()
+      ? variantOption2.values.split(',').map(v => v.trim()).filter(Boolean) : [];
+    if (vals1.length === 0) return [];
+    const combos = vals2.length > 0
+      ? vals1.flatMap(v1 => vals2.map(v2 => ({ [variantOption1.name.trim()]: v1, [variantOption2.name.trim()]: v2 })))
+      : vals1.map(v1 => ({ [variantOption1.name.trim()]: v1 }));
+    return combos.map(attributes => {
+      const key = Object.entries(attributes).map(([k, v]) => `${k}:${v}`).join('|');
+      const override = variantRowOverrides[key] || {};
+      return {
+        key,
+        attributes,
+        price: override.price ?? form.price ?? '',
+        stock: override.stock ?? form.stock ?? '',
+      };
+    });
+  }, [variantOption1, variantOption2, variantRowOverrides, form.price, form.stock]);
+
+  const updateVariantRow = (key, field, value) => {
+    setVariantRowOverrides(prev => ({ ...prev, [key]: { ...prev[key], [field]: value } }));
+  };
 
   const openEditForm = (product) => {
     const [main, ...extra] = product.images?.length ? product.images : [product.image];
@@ -730,7 +767,24 @@ const SellerDashboard = () => {
         await api.patch(`/ecommerce/products/${editingProduct.id}/`, payload);
         toast.success('Product updated');
       } else {
-        await api.post('/ecommerce/products/', payload);
+        const res = await api.post('/ecommerce/products/', payload);
+        const newProductId = res.data.id;
+        if (variantRows.length > 0) {
+          let variantErrors = 0;
+          for (const row of variantRows) {
+            try {
+              await api.post('/ecommerce/product-variants/', {
+                product: newProductId,
+                attributes: row.attributes,
+                price: Number(row.price) || Number(form.price),
+                stock: Number(row.stock) || 0,
+              });
+            } catch (err) {
+              variantErrors += 1;
+            }
+          }
+          if (variantErrors > 0) toast.error(`${variantErrors} of ${variantRows.length} variants failed to save`);
+        }
         toast.success('Product submitted for admin review');
       }
       resetForm();
@@ -1594,114 +1648,190 @@ const SellerDashboard = () => {
       {/* Add Product Modal */}
       {showAddForm && (
         <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50 p-4" onClick={() => setShowAddForm(false)}>
-          <div className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 max-w-lg w-full max-h-[90vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
-            <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100 dark:border-gray-700">
-              <h2 className="text-sm font-bold text-gray-900 dark:text-white">{editingProduct ? 'Edit Product' : 'Add Product'}</h2>
-              <button onClick={() => setShowAddForm(false)} className="text-gray-400 hover:text-gray-600">
-                <X className="w-4 h-4" />
-              </button>
+          <div className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 max-w-6xl w-full max-h-[92vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
+            <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100 dark:border-gray-700">
+              <h2 className="text-lg font-bold text-gray-900 dark:text-white">{editingProduct ? 'Edit Product' : 'Add New Product'}</h2>
+              <div className="flex items-center gap-2">
+                <button type="button" onClick={() => setShowAddForm(false)}
+                  className="px-4 py-2 text-sm font-medium text-gray-600 bg-gray-100 dark:bg-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-200 transition-colors">
+                  Cancel
+                </button>
+                <button type="submit" form="seller-product-form" disabled={submitting}
+                  className="px-4 py-2 text-sm font-semibold text-white bg-orange-600 hover:bg-orange-700 rounded-lg disabled:opacity-50 transition-colors">
+                  {submitting ? 'Saving...' : editingProduct ? 'Save Changes' : 'Publish Product'}
+                </button>
+              </div>
             </div>
-            <form onSubmit={handleSubmit} className="p-5 space-y-3">
+
+            <form id="seller-product-form" onSubmit={handleSubmit} className="p-6 space-y-5">
               {formError && (
                 <div className="bg-red-50 dark:bg-red-900/20 text-red-600 text-xs font-medium px-3 py-2 rounded-lg">{formError}</div>
               )}
-              <div>
-                <label className="text-[11px] font-semibold text-gray-500 uppercase tracking-wide">Product Name</label>
-                <input type="text" value={form.name} onChange={e => setForm({ ...form, name: e.target.value })}
-                  className="w-full mt-1 border border-gray-200 dark:border-gray-700 rounded-lg px-3 py-2 text-sm bg-white dark:bg-gray-900 focus:outline-none focus:ring-1 focus:ring-orange-400" />
-              </div>
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="text-[11px] font-semibold text-gray-500 uppercase tracking-wide">Category</label>
-                  <select value={form.category} onChange={e => setForm({ ...form, category: e.target.value })}
-                    className="w-full mt-1 border border-gray-200 dark:border-gray-700 rounded-lg px-3 py-2 text-sm bg-white dark:bg-gray-900 focus:outline-none focus:ring-1 focus:ring-orange-400">
-                    <option value="">Select...</option>
-                    {categories.map(c => <option key={c.id} value={c.name}>{c.name}</option>)}
-                  </select>
-                </div>
-                <div>
-                  <label className="text-[11px] font-semibold text-gray-500 uppercase tracking-wide">Brand (optional)</label>
-                  <input type="text" value={form.brand} onChange={e => setForm({ ...form, brand: e.target.value })}
-                    className="w-full mt-1 border border-gray-200 dark:border-gray-700 rounded-lg px-3 py-2 text-sm bg-white dark:bg-gray-900 focus:outline-none focus:ring-1 focus:ring-orange-400" />
-                </div>
-              </div>
-              <div className="grid grid-cols-3 gap-3">
-                <div>
-                  <label className="text-[11px] font-semibold text-gray-500 uppercase tracking-wide flex items-center gap-0.5"><IndianRupee className="w-3 h-3" /> Price</label>
-                  <input type="number" min="0" step="0.01" value={form.price} onChange={e => setForm({ ...form, price: e.target.value })}
-                    className="w-full mt-1 border border-gray-200 dark:border-gray-700 rounded-lg px-3 py-2 text-sm bg-white dark:bg-gray-900 focus:outline-none focus:ring-1 focus:ring-orange-400" />
-                </div>
-                <div>
-                  <label className="text-[11px] font-semibold text-gray-500 uppercase tracking-wide">Sale Price</label>
-                  <input type="number" min="0" step="0.01" value={form.discount_price} onChange={e => setForm({ ...form, discount_price: e.target.value })}
-                    placeholder="Optional"
-                    className="w-full mt-1 border border-gray-200 dark:border-gray-700 rounded-lg px-3 py-2 text-sm bg-white dark:bg-gray-900 focus:outline-none focus:ring-1 focus:ring-orange-400" />
-                </div>
-                <div>
-                  <label className="text-[11px] font-semibold text-gray-500 uppercase tracking-wide">Stock</label>
-                  <input type="number" min="0" value={form.stock} onChange={e => setForm({ ...form, stock: e.target.value })}
-                    className="w-full mt-1 border border-gray-200 dark:border-gray-700 rounded-lg px-3 py-2 text-sm bg-white dark:bg-gray-900 focus:outline-none focus:ring-1 focus:ring-orange-400" />
-                </div>
-              </div>
-              <div>
-                <div className="flex justify-between items-center">
-                  <label className="text-[11px] font-semibold text-gray-500 uppercase tracking-wide flex items-center gap-0.5"><ImagePlus className="w-3 h-3" /> Main Image</label>
-                  <span className="text-[10px] text-gray-400 font-semibold">Paste a URL or upload a file</span>
-                </div>
-                <div className="flex gap-2 mt-1">
-                  <input type="text" value={form.image} onChange={e => setForm({ ...form, image: e.target.value })}
-                    placeholder="https://..."
-                    className="flex-1 border border-gray-200 dark:border-gray-700 rounded-lg px-3 py-2 text-sm bg-white dark:bg-gray-900 focus:outline-none focus:ring-1 focus:ring-orange-400" />
-                  <label className="cursor-pointer bg-gray-900 hover:bg-gray-800 text-white font-semibold text-xs px-4 rounded-lg flex items-center justify-center transition-colors shrink-0">
-                    <Upload className="w-3.5 h-3.5 mr-1.5" /> Browse
-                    <input type="file" accept="image/*" className="hidden"
-                      onChange={e => { handleMainImageFile(e.target.files[0]); e.target.value = ''; }} />
-                  </label>
-                </div>
-                {form.image && (
-                  <img src={form.image} alt="Main preview" className="w-16 h-16 rounded-lg object-cover border border-gray-200 dark:border-gray-700 mt-2" />
-                )}
-              </div>
-              <div>
-                <label className="text-[11px] font-semibold text-gray-500 uppercase tracking-wide">Additional Images (optional)</label>
-                <input type="text" value={form.images} onChange={e => setForm({ ...form, images: e.target.value })}
-                  placeholder="Paste URLs, comma-separated"
-                  className="w-full mt-1 border border-gray-200 dark:border-gray-700 rounded-lg px-3 py-2 text-sm bg-white dark:bg-gray-900 focus:outline-none focus:ring-1 focus:ring-orange-400" />
-                <div className="flex flex-wrap gap-2 mt-2">
-                  {uploadedImages.map((img, i) => (
-                    <div key={i} className="relative group">
-                      <img src={img} alt={`Upload ${i + 1}`} className="w-14 h-14 rounded-lg object-cover border border-gray-200 dark:border-gray-700" />
-                      <button type="button" onClick={() => setUploadedImages(prev => prev.filter((_, idx) => idx !== i))}
-                        className="absolute -top-1.5 -right-1.5 w-4 h-4 bg-red-500 text-white rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
-                        <X className="w-2.5 h-2.5" />
-                      </button>
-                    </div>
-                  ))}
-                  <label className="w-14 h-14 rounded-lg border-2 border-dashed border-gray-300 dark:border-gray-600 flex items-center justify-center cursor-pointer hover:border-orange-400 transition-colors">
-                    <Upload className="w-4 h-4 text-gray-400" />
-                    <input type="file" accept="image/*" multiple className="hidden"
-                      onChange={e => { handleExtraImageFiles(e.target.files); e.target.value = ''; }} />
-                  </label>
-                </div>
-              </div>
-              <div>
-                <label className="text-[11px] font-semibold text-gray-500 uppercase tracking-wide">Description</label>
-                <textarea rows={4} value={form.description} onChange={e => setForm({ ...form, description: e.target.value })}
-                  className="w-full mt-1 border border-gray-200 dark:border-gray-700 rounded-lg px-3 py-2 text-sm bg-white dark:bg-gray-900 focus:outline-none focus:ring-1 focus:ring-orange-400" />
-              </div>
 
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="text-[11px] font-semibold text-gray-500 uppercase tracking-wide flex items-center gap-0.5"><Truck className="w-3 h-3" /> Delivery Estimate</label>
-                  <input type="text" value={form.delivery} onChange={e => setForm({ ...form, delivery: e.target.value })}
-                    placeholder="Free delivery by Tomorrow"
-                    className="w-full mt-1 border border-gray-200 dark:border-gray-700 rounded-lg px-3 py-2 text-sm bg-white dark:bg-gray-900 focus:outline-none focus:ring-1 focus:ring-orange-400" />
+              <div className="grid grid-cols-1 lg:grid-cols-3 gap-5 items-start">
+                {/* Column 1: Product Details */}
+                <div className="border border-gray-200 dark:border-gray-700 rounded-xl p-4 space-y-3">
+                  <h3 className="text-sm font-bold text-gray-900 dark:text-white">Product Details</h3>
+                  <div>
+                    <label className="text-[11px] font-semibold text-gray-500 uppercase tracking-wide">Product Name</label>
+                    <input type="text" value={form.name} onChange={e => setForm({ ...form, name: e.target.value })}
+                      className="w-full mt-1 border border-gray-200 dark:border-gray-700 rounded-lg px-3 py-2 text-sm bg-white dark:bg-gray-900 focus:outline-none focus:ring-1 focus:ring-orange-400" />
+                  </div>
+                  <div>
+                    <label className="text-[11px] font-semibold text-gray-500 uppercase tracking-wide">Description</label>
+                    <textarea rows={5} value={form.description} onChange={e => setForm({ ...form, description: e.target.value })}
+                      className="w-full mt-1 border border-gray-200 dark:border-gray-700 rounded-lg px-3 py-2 text-sm bg-white dark:bg-gray-900 focus:outline-none focus:ring-1 focus:ring-orange-400" />
+                  </div>
+                  <div>
+                    <label className="text-[11px] font-semibold text-gray-500 uppercase tracking-wide">Product Type (Category)</label>
+                    <select value={form.category} onChange={e => setForm({ ...form, category: e.target.value })}
+                      className="w-full mt-1 border border-gray-200 dark:border-gray-700 rounded-lg px-3 py-2 text-sm bg-white dark:bg-gray-900 focus:outline-none focus:ring-1 focus:ring-orange-400">
+                      <option value="">Select...</option>
+                      {categories.map(c => <option key={c.id} value={c.name}>{c.name}</option>)}
+                    </select>
+                  </div>
+                  <div>
+                    <label className="text-[11px] font-semibold text-gray-500 uppercase tracking-wide">Vendor / Brand (optional)</label>
+                    <input type="text" value={form.brand} onChange={e => setForm({ ...form, brand: e.target.value })}
+                      className="w-full mt-1 border border-gray-200 dark:border-gray-700 rounded-lg px-3 py-2 text-sm bg-white dark:bg-gray-900 focus:outline-none focus:ring-1 focus:ring-orange-400" />
+                  </div>
                 </div>
-                <div>
-                  <label className="text-[11px] font-semibold text-gray-500 uppercase tracking-wide">Shipping Charge (₹)</label>
-                  <input type="number" min="0" value={form.shipping_charge} onChange={e => setForm({ ...form, shipping_charge: e.target.value })}
-                    placeholder="0 = free shipping"
-                    className="w-full mt-1 border border-gray-200 dark:border-gray-700 rounded-lg px-3 py-2 text-sm bg-white dark:bg-gray-900 focus:outline-none focus:ring-1 focus:ring-orange-400" />
+
+                {/* Column 2: Media */}
+                <div className="border border-gray-200 dark:border-gray-700 rounded-xl p-4 space-y-3">
+                  <h3 className="text-sm font-bold text-gray-900 dark:text-white flex items-center gap-1.5"><ImagePlus className="w-3.5 h-3.5" /> Media</h3>
+                  <div className="aspect-square w-full rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 flex items-center justify-center overflow-hidden">
+                    {form.image ? (
+                      <img src={form.image} alt="Main preview" className="w-full h-full object-contain" />
+                    ) : (
+                      <span className="text-xs text-gray-400">No image yet</span>
+                    )}
+                  </div>
+                  <div className="flex flex-wrap gap-2">
+                    <div className="w-14 h-14 rounded-lg overflow-hidden border-2 border-orange-400 shrink-0">
+                      {form.image && <img src={form.image} alt="Main" className="w-full h-full object-cover" />}
+                    </div>
+                    {uploadedImages.map((img, i) => (
+                      <div key={i} className="relative group shrink-0">
+                        <img src={img} alt={`Upload ${i + 1}`} className="w-14 h-14 rounded-lg object-cover border border-gray-200 dark:border-gray-700" />
+                        <button type="button" onClick={() => setUploadedImages(prev => prev.filter((_, idx) => idx !== i))}
+                          className="absolute -top-1.5 -right-1.5 w-4 h-4 bg-red-500 text-white rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                          <X className="w-2.5 h-2.5" />
+                        </button>
+                      </div>
+                    ))}
+                    <label className="w-14 h-14 rounded-lg border-2 border-dashed border-gray-300 dark:border-gray-600 flex items-center justify-center cursor-pointer hover:border-orange-400 transition-colors shrink-0">
+                      <Upload className="w-4 h-4 text-gray-400" />
+                      <input type="file" accept="image/*" multiple className="hidden"
+                        onChange={e => { handleExtraImageFiles(e.target.files); e.target.value = ''; }} />
+                    </label>
+                  </div>
+                  <div className="flex gap-2">
+                    <input type="text" value={form.image} onChange={e => setForm({ ...form, image: e.target.value })}
+                      placeholder="Main image URL..."
+                      className="flex-1 border border-gray-200 dark:border-gray-700 rounded-lg px-3 py-2 text-sm bg-white dark:bg-gray-900 focus:outline-none focus:ring-1 focus:ring-orange-400" />
+                    <label className="cursor-pointer bg-gray-900 hover:bg-gray-800 text-white font-semibold text-xs px-4 rounded-lg flex items-center justify-center transition-colors shrink-0">
+                      <Upload className="w-3.5 h-3.5 mr-1.5" /> Browse
+                      <input type="file" accept="image/*" className="hidden"
+                        onChange={e => { handleMainImageFile(e.target.files[0]); e.target.value = ''; }} />
+                    </label>
+                  </div>
+                  <div>
+                    <label className="text-[11px] font-semibold text-gray-500 uppercase tracking-wide">Additional Image URLs (optional)</label>
+                    <input type="text" value={form.images} onChange={e => setForm({ ...form, images: e.target.value })}
+                      placeholder="Paste URLs, comma-separated"
+                      className="w-full mt-1 border border-gray-200 dark:border-gray-700 rounded-lg px-3 py-2 text-sm bg-white dark:bg-gray-900 focus:outline-none focus:ring-1 focus:ring-orange-400" />
+                  </div>
+                </div>
+
+                {/* Column 3: Pricing & Inventory + Variants */}
+                <div className="space-y-5">
+                  <div className="border border-gray-200 dark:border-gray-700 rounded-xl p-4 space-y-3">
+                    <h3 className="text-sm font-bold text-gray-900 dark:text-white">Pricing &amp; Inventory</h3>
+                    <div className="grid grid-cols-2 gap-3">
+                      <div>
+                        <label className="text-[11px] font-semibold text-gray-500 uppercase tracking-wide flex items-center gap-0.5"><IndianRupee className="w-3 h-3" /> Price</label>
+                        <input type="number" min="0" step="0.01" value={form.price} onChange={e => setForm({ ...form, price: e.target.value })}
+                          className="w-full mt-1 border border-gray-200 dark:border-gray-700 rounded-lg px-3 py-2 text-sm bg-white dark:bg-gray-900 focus:outline-none focus:ring-1 focus:ring-orange-400" />
+                      </div>
+                      <div>
+                        <label className="text-[11px] font-semibold text-gray-500 uppercase tracking-wide">Sale Price</label>
+                        <input type="number" min="0" step="0.01" value={form.discount_price} onChange={e => setForm({ ...form, discount_price: e.target.value })}
+                          placeholder="Optional"
+                          className="w-full mt-1 border border-gray-200 dark:border-gray-700 rounded-lg px-3 py-2 text-sm bg-white dark:bg-gray-900 focus:outline-none focus:ring-1 focus:ring-orange-400" />
+                      </div>
+                    </div>
+                    <div className="grid grid-cols-2 gap-3">
+                      <div>
+                        <label className="text-[11px] font-semibold text-gray-500 uppercase tracking-wide">Stock</label>
+                        <input type="number" min="0" value={form.stock} onChange={e => setForm({ ...form, stock: e.target.value })}
+                          className="w-full mt-1 border border-gray-200 dark:border-gray-700 rounded-lg px-3 py-2 text-sm bg-white dark:bg-gray-900 focus:outline-none focus:ring-1 focus:ring-orange-400" />
+                      </div>
+                      <div>
+                        <label className="text-[11px] font-semibold text-gray-500 uppercase tracking-wide">Shipping Charge (₹)</label>
+                        <input type="number" min="0" value={form.shipping_charge} onChange={e => setForm({ ...form, shipping_charge: e.target.value })}
+                          placeholder="0 = free"
+                          className="w-full mt-1 border border-gray-200 dark:border-gray-700 rounded-lg px-3 py-2 text-sm bg-white dark:bg-gray-900 focus:outline-none focus:ring-1 focus:ring-orange-400" />
+                      </div>
+                    </div>
+                    <div>
+                      <label className="text-[11px] font-semibold text-gray-500 uppercase tracking-wide flex items-center gap-0.5"><Truck className="w-3 h-3" /> Delivery Estimate</label>
+                      <input type="text" value={form.delivery} onChange={e => setForm({ ...form, delivery: e.target.value })}
+                        placeholder="Free delivery by Tomorrow"
+                        className="w-full mt-1 border border-gray-200 dark:border-gray-700 rounded-lg px-3 py-2 text-sm bg-white dark:bg-gray-900 focus:outline-none focus:ring-1 focus:ring-orange-400" />
+                    </div>
+                  </div>
+
+                  <div className="border border-gray-200 dark:border-gray-700 rounded-xl p-4 space-y-3">
+                    <h3 className="text-sm font-bold text-gray-900 dark:text-white flex items-center gap-1.5"><Layers className="w-3.5 h-3.5" /> Variants</h3>
+                    {editingProduct ? (
+                      <button type="button"
+                        onClick={() => { setShowAddForm(false); setVariantManagerProduct(editingProduct); }}
+                        className="w-full flex items-center justify-center gap-1.5 py-2 text-xs font-semibold text-purple-700 bg-purple-50 dark:bg-purple-900/20 dark:text-purple-400 rounded-lg hover:bg-purple-100 dark:hover:bg-purple-900/30 transition-colors">
+                        <Layers className="w-3.5 h-3.5" /> Manage Variants
+                      </button>
+                    ) : (
+                      <>
+                        <p className="text-[11px] text-gray-400">Optional. Add up to 2 options (e.g. Size, Color) with comma-separated values — each combination becomes a real, independently priced/stocked variant once you publish.</p>
+                        <div className="grid grid-cols-2 gap-2">
+                          <input type="text" value={variantOption1.name} onChange={e => setVariantOption1({ ...variantOption1, name: e.target.value })}
+                            placeholder="Option name (e.g. Size)"
+                            className="border border-gray-200 dark:border-gray-700 rounded-lg px-3 py-2 text-sm bg-white dark:bg-gray-900 focus:outline-none focus:ring-1 focus:ring-orange-400" />
+                          <input type="text" value={variantOption1.values} onChange={e => setVariantOption1({ ...variantOption1, values: e.target.value })}
+                            placeholder="Values (e.g. S, M, L)"
+                            className="border border-gray-200 dark:border-gray-700 rounded-lg px-3 py-2 text-sm bg-white dark:bg-gray-900 focus:outline-none focus:ring-1 focus:ring-orange-400" />
+                        </div>
+                        <div className="grid grid-cols-2 gap-2">
+                          <input type="text" value={variantOption2.name} onChange={e => setVariantOption2({ ...variantOption2, name: e.target.value })}
+                            placeholder="Option name (e.g. Color)"
+                            className="border border-gray-200 dark:border-gray-700 rounded-lg px-3 py-2 text-sm bg-white dark:bg-gray-900 focus:outline-none focus:ring-1 focus:ring-orange-400" />
+                          <input type="text" value={variantOption2.values} onChange={e => setVariantOption2({ ...variantOption2, values: e.target.value })}
+                            placeholder="Values (e.g. Gray, Navy)"
+                            className="border border-gray-200 dark:border-gray-700 rounded-lg px-3 py-2 text-sm bg-white dark:bg-gray-900 focus:outline-none focus:ring-1 focus:ring-orange-400" />
+                        </div>
+                        {variantRows.length > 0 && (
+                          <div className="border border-gray-100 dark:border-gray-700 rounded-lg overflow-hidden">
+                            <div className="grid grid-cols-[1fr_72px_72px] gap-2 px-2 py-1.5 text-[10px] font-bold text-gray-400 uppercase tracking-wide bg-gray-50 dark:bg-gray-900/40">
+                              <span>Variant</span><span>Price</span><span>Stock</span>
+                            </div>
+                            <div className="divide-y divide-gray-100 dark:divide-gray-700 max-h-48 overflow-y-auto">
+                              {variantRows.map(row => (
+                                <div key={row.key} className="grid grid-cols-[1fr_72px_72px] gap-2 px-2 py-1.5 items-center">
+                                  <span className="text-xs text-gray-600 dark:text-gray-300 truncate">{Object.values(row.attributes).join(' / ')}</span>
+                                  <input type="number" min="0" step="0.01" value={row.price}
+                                    onChange={e => updateVariantRow(row.key, 'price', e.target.value)}
+                                    className="w-full border border-gray-200 dark:border-gray-700 rounded px-1.5 py-1 text-xs bg-white dark:bg-gray-900" />
+                                  <input type="number" min="0" value={row.stock}
+                                    onChange={e => updateVariantRow(row.key, 'stock', e.target.value)}
+                                    className="w-full border border-gray-200 dark:border-gray-700 rounded px-1.5 py-1 text-xs bg-white dark:bg-gray-900" />
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+                      </>
+                    )}
+                  </div>
                 </div>
               </div>
 
@@ -1759,18 +1889,15 @@ const SellerDashboard = () => {
                   </button>
                 </div>
               </div>
-
-              <div className="flex gap-2 pt-1">
-                <button type="button" onClick={() => setShowAddForm(false)}
-                  className="flex-1 py-2.5 text-sm font-medium text-gray-600 bg-gray-100 dark:bg-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-200 transition-colors">
-                  Cancel
-                </button>
-                <button type="submit" disabled={submitting}
-                  className="flex-1 py-2.5 text-sm font-semibold text-white bg-orange-600 hover:bg-orange-700 rounded-lg disabled:opacity-50 transition-colors">
-                  {submitting ? 'Saving...' : editingProduct ? 'Save Changes' : 'Submit for Review'}
-                </button>
-              </div>
             </form>
+
+            <div className="flex items-center justify-between px-6 py-3 border-t border-gray-100 dark:border-gray-700 text-[11px] text-gray-400 font-medium">
+              <span>
+                {editingProduct
+                  ? `Product ID: P${String(editingProduct.id).padStart(5, '0')} · Last Edited: ${new Date(editingProduct.updated_at || editingProduct.created_at).toLocaleString('en-IN', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })}`
+                  : 'Not yet published'}
+              </span>
+            </div>
           </div>
         </div>
       )}
