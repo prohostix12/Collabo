@@ -1038,6 +1038,8 @@ export default function EcommerceMarketplace({ inlineMode = false, onBackToSelec
   const [confirmModal, setConfirmModal] = useState(null);
   const [catalogSearch, setCatalogSearch] = useState('');
   const [catalogVendorFilter, setCatalogVendorFilter] = useState('');
+  const [catalogStatusFilter, setCatalogStatusFilter] = useState('all');
+  const [showAddProductForm, setShowAddProductForm] = useState(false);
 
   const fetchSupportTickets = async () => {
     if (!user) return;
@@ -1680,6 +1682,7 @@ export default function EcommerceMarketplace({ inlineMode = false, onBackToSelec
   };
 
   const handleEditProduct = (p) => {
+    setShowAddProductForm(true);
     setEditingProduct(p);
     setEditProdName(p.name);
     setEditProdCategory(p.category);
@@ -2248,6 +2251,35 @@ export default function EcommerceMarketplace({ inlineMode = false, onBackToSelec
   }, 0);
 
   const lowStockCount = sellerProducts.filter(p => p.stock < 5).length;
+  const sellerCustomerCount = new Set(
+    sellerOrders
+      .filter(ord => (ord.items || []).some(i => (user?.is_staff || user?.user_type === 'admin') || i.product_details?.seller === user?.id))
+      .map(ord => ord.user || ord.user_username)
+      .filter(Boolean)
+  ).size;
+
+  // Status badge shown in the product table — derived purely from existing fields
+  // (status/is_active/stock), no backend changes needed.
+  const productDisplayStatus = (p) => {
+    if (p.status === 'pending') return { label: 'Draft', cls: 'bg-slate-100 text-slate-500 dark:bg-slate-700 dark:text-slate-300' };
+    if (p.status === 'rejected') return { label: 'Rejected', cls: 'bg-rose-50 text-rose-600 dark:bg-rose-900/20 dark:text-rose-400' };
+    if (p.is_active === false) return { label: 'Inactive', cls: 'bg-rose-50 text-rose-600 dark:bg-rose-900/20 dark:text-rose-400' };
+    if (Number(p.stock) === 0) return { label: 'Out of Stock', cls: 'bg-amber-50 text-amber-600 dark:bg-amber-900/20 dark:text-amber-400' };
+    return { label: 'Published', cls: 'bg-emerald-50 text-emerald-600 dark:bg-emerald-900/20 dark:text-emerald-400' };
+  };
+
+  const exportCatalogCsv = (rows) => {
+    const header = ['ID', 'Name', 'Category', 'Price', 'Sell Price', 'Stock', 'Status'];
+    const lines = rows.map(p => [
+      p.id, `"${(p.name || '').replace(/"/g, '""')}"`, p.category, p.price, p.discountPrice, p.stock, productDisplayStatus(p).label,
+    ].join(','));
+    const csv = [header.join(','), ...lines].join('\n');
+    const blob = new Blob([csv], { type: 'text/csv' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url; a.download = 'catalog-export.csv'; a.click();
+    URL.revokeObjectURL(url);
+  };
 
   // Dynamic monthly chart calculations (last 6 months)
   const getMonthlyRevenueData = () => {
@@ -7071,9 +7103,32 @@ export default function EcommerceMarketplace({ inlineMode = false, onBackToSelec
 
             {/* INVENTORY */}
             {adminView === 'products' && (
-              <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
-                
+              <div className="space-y-6">
+                {/* Dashboard stat cards */}
+                <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+                  {[
+                    { title: 'Total Products', value: sellerProducts.length.toLocaleString(), change: 'Last 7 days', icon: Package, color: 'text-violet-500' },
+                    { title: 'Total Revenue', value: `₹${sellerRevenue.toLocaleString()}`, change: 'Last 7 days', icon: TrendingUp, color: 'text-emerald-500' },
+                    { title: 'Total Orders', value: sellerOrders.length.toLocaleString(), change: 'Last 7 days', icon: ShoppingBag, color: 'text-cyan-500' },
+                    { title: 'Customers', value: sellerCustomerCount.toLocaleString(), change: 'Last 7 days', icon: Users, color: 'text-amber-500' },
+                  ].map((stat, idx) => (
+                    <div key={idx} className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-3.5 rounded-xl space-y-2.5 shadow-sm hover:shadow-md transition-all">
+                      <div className="flex justify-between items-center">
+                        <span className="text-[10px] font-semibold text-slate-400 dark:text-slate-500 uppercase tracking-widest">{stat.title}</span>
+                        <stat.icon className={`w-3.5 h-3.5 ${stat.color}`} />
+                      </div>
+                      <div className="space-y-0.5">
+                        <h3 className="text-lg font-bold dark:text-white">{stat.value}</h3>
+                        <p className="text-[10px] text-slate-500 dark:text-slate-400 font-medium">{stat.change}</p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+
+              <div className={`grid grid-cols-1 ${(showAddProductForm || editingProduct) ? 'lg:grid-cols-12 gap-8' : ''}`}>
+
                 {/* Add/Edit product Form */}
+                {(showAddProductForm || editingProduct) && (
                 <div className="lg:col-span-5 bg-white dark:bg-slate-900 border border-slate-200/50 dark:border-slate-800/50 p-6 rounded-3xl space-y-4 shadow-sm">
                   <h3 className="font-black text-xs uppercase tracking-wider dark:text-white flex items-center gap-2">
                     <PlusCircle className="w-4 h-4 text-orange-500" />
@@ -7566,6 +7621,7 @@ export default function EcommerceMarketplace({ inlineMode = false, onBackToSelec
                                   colors: parseColors(editProdColors)
                                 });
                                 setEditingProduct(null);
+                                setShowAddProductForm(false);
                               } else {
                                 // Add Product Details
                                 await api.post('/ecommerce/products/', {
@@ -7632,43 +7688,51 @@ export default function EcommerceMarketplace({ inlineMode = false, onBackToSelec
                         {editingProduct ? 'Update Listing' : 'Publish Listing'}
                       </button>
                       
-                      {editingProduct && (
-                        <button 
-                          onClick={() => setEditingProduct(null)}
-                          className="px-4 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-750 text-slate-700 dark:text-slate-300 font-black text-xs py-3 rounded-xl transition-colors"
-                        >
-                          Cancel
-                        </button>
-                      )}
+                      <button
+                        onClick={() => { setEditingProduct(null); setShowAddProductForm(false); }}
+                        className="px-4 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-750 text-slate-700 dark:text-slate-300 font-black text-xs py-3 rounded-xl transition-colors"
+                      >
+                        {editingProduct ? 'Cancel' : 'Close'}
+                      </button>
                     </div>
                   </div>
                 </div>
+                )}
 
                 {/* Products list */}
-                <div className="lg:col-span-7 bg-white dark:bg-slate-900 border border-slate-200/50 dark:border-slate-800/50 p-6 rounded-3xl space-y-4 shadow-sm">
-                  <div className="flex items-center justify-between gap-3">
+                <div className={`${(showAddProductForm || editingProduct) ? 'lg:col-span-7' : 'lg:col-span-12'} bg-white dark:bg-slate-900 border border-slate-200/50 dark:border-slate-800/50 p-6 rounded-3xl space-y-4 shadow-sm`}>
+                  <div className="flex flex-wrap items-center justify-between gap-3">
                     <div className="flex items-center gap-2.5">
-                      <h3 className="font-extrabold text-sm dark:text-white">Active Catalog Listing</h3>
+                      <h3 className="font-extrabold text-sm dark:text-white">Products</h3>
+                      <span className="text-[10px] text-slate-400 font-semibold">Manage inventory, pricing and availability across your store</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <button
+                        onClick={() => exportCatalogCsv(sellerProducts)}
+                        className="flex items-center gap-1.5 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 text-[11px] font-black px-3 py-1.5 rounded-xl transition-colors"
+                      >
+                        <Download className="w-3.5 h-3.5" /> Export
+                      </button>
                       <button
                         onClick={() => setShowBulkUpload(true)}
-                        className="flex items-center gap-1.5 bg-orange-500 hover:bg-orange-600 text-white text-[11px] font-black px-3 py-1.5 rounded-xl transition-colors"
+                        className="flex items-center gap-1.5 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 text-[11px] font-black px-3 py-1.5 rounded-xl transition-colors"
                       >
                         <Upload className="w-3.5 h-3.5" /> Bulk Upload
                       </button>
-                      {selectedCatalogIds.length > 0 && (
+                      {selectedCatalogIds.length === 0 && (
                         <button
-                          onClick={() => setBulkEditOpen(true)}
+                          onClick={() => { setEditingProduct(null); setShowAddProductForm(true); }}
                           className="flex items-center gap-1.5 bg-slate-950 hover:bg-slate-900 text-white text-[11px] font-black px-3 py-1.5 rounded-xl transition-colors"
                         >
-                          <Edit className="w-3.5 h-3.5" /> Bulk Edit ({selectedCatalogIds.length})
+                          <PlusCircle className="w-3.5 h-3.5" /> Add product
                         </button>
                       )}
                     </div>
-                                        <div className="flex items-center gap-2 flex-1 max-w-[400px] justify-end">
+                    <div className="flex items-center gap-2 flex-1 max-w-[420px] justify-end">
                       <select
                         value={catalogVendorFilter || ''}
                         onChange={(e) => setCatalogVendorFilter(e.target.value)}
-                        className="w-[45%] bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl py-1.5 px-2 text-xs font-bold focus:outline-none focus:ring-1 focus:ring-orange-500 dark:text-white"
+                        className="w-[40%] bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl py-1.5 px-2 text-xs font-bold focus:outline-none focus:ring-1 focus:ring-orange-500 dark:text-white"
                       >
                         <option value="">All Vendors</option>
                         {vendorsList.map(v => (
@@ -7679,7 +7743,7 @@ export default function EcommerceMarketplace({ inlineMode = false, onBackToSelec
                         <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400" />
                         <input
                           type="text"
-                          placeholder="Search..."
+                          placeholder="Search by product name or ID"
                           value={catalogSearch || ''}
                           onChange={(e) => setCatalogSearch(e.target.value)}
                           className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl py-1.5 pl-8 pr-3 text-xs font-bold focus:outline-none focus:ring-1 focus:ring-orange-500 dark:text-white"
@@ -7688,102 +7752,199 @@ export default function EcommerceMarketplace({ inlineMode = false, onBackToSelec
                     </div>
                   </div>
 
-                  <div className="space-y-3.5 max-h-[500px] overflow-y-auto pr-1">
-                    {sellerProducts.length === 0 ? (
-                      <p className="text-xs text-slate-500 font-semibold text-center py-4">No active products found.</p>
-                    ) : (
-                      [...sellerProducts].sort((a, b) => a.id - b.id).filter(p => !catalogSearch || p.name?.toLowerCase().includes(catalogSearch.toLowerCase()) || p.category?.toLowerCase().includes(catalogSearch.toLowerCase()) || String(p.id).includes(catalogSearch)).filter(p => !catalogVendorFilter || String(p.vendor) === String(catalogVendorFilter)).map((p, idx) => ( // eslint-disable-line no-undef
-                        <div key={idx} className={`p-3.5 rounded-2xl flex items-center justify-between border text-xs ${p.is_active === false ? 'bg-slate-100/70 dark:bg-slate-800/30 border-slate-200/70 dark:border-slate-700/30 opacity-60' : 'bg-slate-50 dark:bg-slate-800/60 border-slate-100 dark:border-slate-700/50'}`}>
-                          <div className="flex items-center gap-3">
-                            <input
-                              type="checkbox"
-                              checked={selectedCatalogIds.includes(p.id)}
-                              onChange={(e) => {
-                                setSelectedCatalogIds(prev => e.target.checked ? [...prev, p.id] : prev.filter(id => id !== p.id));
-                              }}
-                              className="w-3.5 h-3.5 shrink-0 accent-orange-500"
-                            />
-                            <span className="text-[10px] font-bold text-slate-400 dark:text-slate-500 w-12 text-center shrink-0">ID: {p.id}</span>
-                            <div
-                              className="w-10 h-10 bg-slate-200 rounded-xl overflow-hidden shrink-0 flex items-center justify-center cursor-pointer hover:ring-2 hover:ring-orange-400 transition-all"
-                              onClick={() => setLightboxImage(p.image)}
-                            >
-                              <img loading="lazy" src={p.image} className="max-h-full object-cover" alt="prod" />
-                            </div>
-                            <div className="space-y-0.5 font-bold flex-1 min-w-0">
-                              <h4
-                                onClick={() => handleEditProduct(p)}
-                                className="font-extrabold text-slate-800 dark:text-white line-clamp-1 text-xs hover:text-orange-500 cursor-pointer transition-colors flex items-center gap-1.5"
-                              >
-                                {p.name}
-                                {p.is_active === false && (
-                                  <span className="text-[9px] font-black text-slate-400 bg-slate-200 dark:bg-slate-700 px-1.5 py-0.5 rounded">HIDDEN</span>
-                                )}
-                              </h4>
-                              <span className="text-[10px] text-slate-400 font-semibold">{p.brand} • {p.category} • stock: {p.stock}</span>
-                            </div>
-                          </div>
-                          <div className="flex items-center gap-2">
-                            <span className="font-black text-slate-850 dark:text-slate-200 mr-2">₹{p.discountPrice.toLocaleString()}</span>
-
-                            <button
-                              onClick={async () => {
-                                try {
-                                  await api.post(`/ecommerce/products/${p.id}/toggle-active/`);
-                                  fetchSellerProducts();
-                                  fetchProducts();
-                                } catch (err) {
-                                  console.error("Error toggling product visibility:", err);
-                                  showToast("Failed to update listing visibility", 'error');
-                                }
-                              }}
-                              className={`p-1.5 rounded-lg border ${p.is_active === false ? 'text-emerald-500 hover:bg-emerald-50 dark:hover:bg-emerald-950/20 border-emerald-100 dark:border-emerald-900/30' : 'text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-700/40 border-slate-200 dark:border-slate-700'}`}
-                              title={p.is_active === false ? 'Activate Listing (show to buyers)' : 'Deactivate Listing (hide from buyers, keep stock/history)'}
-                            >
-                              {p.is_active === false ? <Eye className="w-4 h-4" /> : <EyeOff className="w-4 h-4" />}
-                            </button>
-
-                            <button
-                              onClick={() => openMediaUpload(p)}
-                              className="p-1.5 text-violet-500 hover:bg-violet-50 dark:hover:bg-violet-950/20 rounded-lg border border-violet-100 dark:border-violet-900/30"
-                              title="Upload Media for Influencers"
-                            >
-                              <Film className="w-4 h-4" />
-                            </button>
-
-                            <button
-                              onClick={() => handleEditProduct(p)}
-                              className="p-1.5 text-blue-500 hover:bg-blue-50 dark:hover:bg-blue-950/20 rounded-lg border border-blue-100 dark:border-blue-900/30"
-                              title="Edit Product"
-                            >
-                              <Edit className="w-4 h-4" />
-                            </button>
-
-                            <button
-                              onClick={async () => {
-                                if (window.confirm("Are you sure you want to delete this listing?")) {
-                                  try {
-                                    await api.delete(`/ecommerce/products/${p.id}/`);
-                                    fetchSellerProducts();
-                                    fetchProducts();
-                                  } catch (err) {
-                                    console.error("Error deleting product:", err);
-                                    showToast("Failed to delete product", 'error');
-                                  }
-                                }
-                              }}
-                              className="p-1.5 text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-950/20 rounded-lg border border-rose-100 dark:border-rose-900/30"
-                              title="Delete Product"
-                            >
-                              <Trash2 className="w-4 h-4" />
-                            </button>
-                          </div>
-                        </div>
-                      ))
-                    )}
+                  {/* Status tabs */}
+                  <div className="flex items-center gap-1.5 overflow-x-auto scrollbar-hide">
+                    {[
+                      { key: 'all', label: 'All' },
+                      { key: 'Published', label: 'Active' },
+                      { key: 'Draft', label: 'Drafts' },
+                      { key: 'Inactive', label: 'Archived' },
+                    ].map(tab => (
+                      <button
+                        key={tab.key}
+                        onClick={() => setCatalogStatusFilter(tab.key)}
+                        className={`px-3 py-1.5 rounded-lg text-[11px] font-bold whitespace-nowrap transition-colors ${catalogStatusFilter === tab.key ? 'bg-slate-950 text-white dark:bg-white dark:text-slate-900' : 'text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800'}`}
+                      >
+                        {tab.label}
+                      </button>
+                    ))}
                   </div>
+
+                  {(() => {
+                    const filteredCatalog = [...sellerProducts]
+                      .sort((a, b) => a.id - b.id)
+                      .filter(p => !catalogSearch || p.name?.toLowerCase().includes(catalogSearch.toLowerCase()) || p.category?.toLowerCase().includes(catalogSearch.toLowerCase()) || String(p.id).includes(catalogSearch))
+                      .filter(p => !catalogVendorFilter || String(p.vendor) === String(catalogVendorFilter))
+                      .filter(p => catalogStatusFilter === 'all' || productDisplayStatus(p).label === catalogStatusFilter);
+
+                    return (
+                      <div className="space-y-3">
+                        <div className="overflow-x-auto -mx-1">
+                          <table className="w-full text-xs border-collapse min-w-[720px]">
+                            <thead>
+                              <tr className="text-left text-[10px] font-bold text-slate-400 uppercase tracking-wider border-b border-slate-100 dark:border-slate-800">
+                                <th className="py-2.5 px-2 w-8">
+                                  <input
+                                    type="checkbox"
+                                    checked={filteredCatalog.length > 0 && filteredCatalog.every(p => selectedCatalogIds.includes(p.id))}
+                                    onChange={(e) => {
+                                      const ids = filteredCatalog.map(p => p.id);
+                                      setSelectedCatalogIds(prev => e.target.checked ? Array.from(new Set([...prev, ...ids])) : prev.filter(id => !ids.includes(id)));
+                                    }}
+                                    className="w-3.5 h-3.5 accent-orange-500"
+                                  />
+                                </th>
+                                <th className="py-2.5 px-2">Product Name</th>
+                                <th className="py-2.5 px-2">ID &amp; Create Date</th>
+                                <th className="py-2.5 px-2">Price</th>
+                                <th className="py-2.5 px-2">Stock</th>
+                                <th className="py-2.5 px-2">Status</th>
+                                <th className="py-2.5 px-2 text-right">Actions</th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {filteredCatalog.length === 0 ? (
+                                <tr><td colSpan={7} className="text-center py-8 text-slate-400 font-semibold">No products found.</td></tr>
+                              ) : (
+                                filteredCatalog.map((p) => {
+                                  const st = productDisplayStatus(p);
+                                  return (
+                                    <tr key={p.id} className={`border-b border-slate-50 dark:border-slate-800/60 ${p.is_active === false ? 'opacity-60' : ''} hover:bg-slate-50 dark:hover:bg-slate-800/40 transition-colors`}>
+                                      <td className="py-2.5 px-2">
+                                        <input
+                                          type="checkbox"
+                                          checked={selectedCatalogIds.includes(p.id)}
+                                          onChange={(e) => setSelectedCatalogIds(prev => e.target.checked ? [...prev, p.id] : prev.filter(id => id !== p.id))}
+                                          className="w-3.5 h-3.5 accent-orange-500"
+                                        />
+                                      </td>
+                                      <td className="py-2.5 px-2">
+                                        <div className="flex items-center gap-2.5 min-w-[200px]">
+                                          <div
+                                            className="w-9 h-9 bg-slate-200 rounded-lg overflow-hidden shrink-0 flex items-center justify-center cursor-pointer hover:ring-2 hover:ring-orange-400 transition-all"
+                                            onClick={() => setLightboxImage(p.image)}
+                                          >
+                                            <img loading="lazy" src={p.image} className="max-h-full object-cover" alt="prod" />
+                                          </div>
+                                          <div className="min-w-0">
+                                            <h4
+                                              onClick={() => handleEditProduct(p)}
+                                              className="font-bold text-slate-800 dark:text-white line-clamp-1 hover:text-orange-500 cursor-pointer transition-colors"
+                                            >
+                                              {p.name}
+                                            </h4>
+                                            <span className="text-[10px] text-slate-400 font-semibold">{p.brand || p.category}</span>
+                                          </div>
+                                        </div>
+                                      </td>
+                                      <td className="py-2.5 px-2 text-slate-500 dark:text-slate-400">
+                                        <div className="font-bold text-slate-700 dark:text-slate-300">#{p.id}</div>
+                                        <div className="text-[10px]">{p.created_at ? new Date(p.created_at).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }) : '—'}</div>
+                                      </td>
+                                      <td className="py-2.5 px-2">
+                                        <div className="font-bold text-slate-800 dark:text-slate-200">₹{Number(p.price).toLocaleString()}</div>
+                                        <div className="text-[10px] text-slate-400">Sell Price ₹{p.discountPrice.toLocaleString()}</div>
+                                      </td>
+                                      <td className="py-2.5 px-2 font-bold text-slate-700 dark:text-slate-300">{p.stock}</td>
+                                      <td className="py-2.5 px-2">
+                                        <span className={`inline-flex items-center gap-1 px-2 py-1 rounded-md text-[10px] font-bold ${st.cls}`}>
+                                          <span className="w-1.5 h-1.5 rounded-full bg-current" /> {st.label}
+                                        </span>
+                                      </td>
+                                      <td className="py-2.5 px-2">
+                                        <div className="flex items-center justify-end gap-1.5">
+                                          <button
+                                            onClick={async () => {
+                                              try {
+                                                await api.post(`/ecommerce/products/${p.id}/toggle-active/`);
+                                                fetchSellerProducts();
+                                                fetchProducts();
+                                              } catch (err) {
+                                                console.error("Error toggling product visibility:", err);
+                                                showToast("Failed to update listing visibility", 'error');
+                                              }
+                                            }}
+                                            className={`p-1.5 rounded-lg border ${p.is_active === false ? 'text-emerald-500 hover:bg-emerald-50 dark:hover:bg-emerald-950/20 border-emerald-100 dark:border-emerald-900/30' : 'text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-700/40 border-slate-200 dark:border-slate-700'}`}
+                                            title={p.is_active === false ? 'Activate Listing (show to buyers)' : 'Deactivate Listing (hide from buyers, keep stock/history)'}
+                                          >
+                                            {p.is_active === false ? <Eye className="w-4 h-4" /> : <EyeOff className="w-4 h-4" />}
+                                          </button>
+                                          <button
+                                            onClick={() => openMediaUpload(p)}
+                                            className="p-1.5 text-violet-500 hover:bg-violet-50 dark:hover:bg-violet-950/20 rounded-lg border border-violet-100 dark:border-violet-900/30"
+                                            title="Upload Media for Influencers"
+                                          >
+                                            <Film className="w-4 h-4" />
+                                          </button>
+                                          <button
+                                            onClick={() => handleEditProduct(p)}
+                                            className="p-1.5 text-blue-500 hover:bg-blue-50 dark:hover:bg-blue-950/20 rounded-lg border border-blue-100 dark:border-blue-900/30"
+                                            title="Edit Product"
+                                          >
+                                            <Edit className="w-4 h-4" />
+                                          </button>
+                                          <button
+                                            onClick={async () => {
+                                              if (window.confirm("Are you sure you want to delete this listing?")) {
+                                                try {
+                                                  await api.delete(`/ecommerce/products/${p.id}/`);
+                                                  fetchSellerProducts();
+                                                  fetchProducts();
+                                                } catch (err) {
+                                                  console.error("Error deleting product:", err);
+                                                  showToast("Failed to delete product", 'error');
+                                                }
+                                              }
+                                            }}
+                                            className="p-1.5 text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-950/20 rounded-lg border border-rose-100 dark:border-rose-900/30"
+                                            title="Delete Product"
+                                          >
+                                            <Trash2 className="w-4 h-4" />
+                                          </button>
+                                        </div>
+                                      </td>
+                                    </tr>
+                                  );
+                                })
+                              )}
+                            </tbody>
+                          </table>
+                        </div>
+
+                        {selectedCatalogIds.length > 0 && (
+                          <div className="sticky bottom-2 flex items-center gap-2 bg-slate-950 dark:bg-white text-white dark:text-slate-900 px-4 py-2.5 rounded-xl shadow-lg w-fit mx-auto">
+                            <span className="text-xs font-bold">{selectedCatalogIds.length} Selected</span>
+                            <button onClick={() => exportCatalogCsv(filteredCatalog.filter(p => selectedCatalogIds.includes(p.id)))} className="flex items-center gap-1 text-[11px] font-bold px-2.5 py-1 rounded-lg hover:bg-white/10 dark:hover:bg-slate-900/10">
+                              <Download className="w-3.5 h-3.5" /> Export
+                            </button>
+                            <button onClick={() => setBulkEditOpen(true)} className="flex items-center gap-1 text-[11px] font-bold px-2.5 py-1 rounded-lg hover:bg-white/10 dark:hover:bg-slate-900/10">
+                              <Edit className="w-3.5 h-3.5" /> Edit Info
+                            </button>
+                            <button
+                              onClick={async () => {
+                                if (!window.confirm(`Delete ${selectedCatalogIds.length} selected listing(s)? This can't be undone.`)) return;
+                                for (const id of selectedCatalogIds) {
+                                  try { await api.delete(`/ecommerce/products/${id}/`); } catch (err) { console.error('Delete failed', id, err); }
+                                }
+                                setSelectedCatalogIds([]);
+                                fetchSellerProducts();
+                                fetchProducts();
+                              }}
+                              className="flex items-center gap-1 text-[11px] font-bold px-2.5 py-1 rounded-lg hover:bg-white/10 dark:hover:bg-slate-900/10"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" /> Delete
+                            </button>
+                            <button onClick={() => setSelectedCatalogIds([])} className="p-1 rounded-lg hover:bg-white/10 dark:hover:bg-slate-900/10">
+                              <X className="w-3.5 h-3.5" />
+                            </button>
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })()}
                 </div>
 
+              </div>
               </div>
             )}
 
