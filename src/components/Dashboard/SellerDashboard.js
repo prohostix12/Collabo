@@ -67,7 +67,7 @@ const STATUS_META = {
 const OUT_OF_STOCK_META = { label: 'Out of Stock', dot: 'bg-red-400', text: 'text-red-500', bg: 'bg-red-50 dark:bg-red-900/20' };
 // Shown when the seller has deactivated an approved listing (is_active=false) — hidden from
 // buyers but keeps its stock/order history, distinct from admin rejection.
-const INACTIVE_META = { label: 'Inactive', dot: 'bg-gray-400', text: 'text-gray-500', bg: 'bg-gray-100 dark:bg-gray-700/40' };
+const INACTIVE_META = { label: 'Inactive', dot: 'bg-red-400', text: 'text-red-500', bg: 'bg-red-50 dark:bg-red-900/20' };
 
 const productStatusMeta = (p) => {
   if (p.status === 'approved' && p.is_active === false) return INACTIVE_META;
@@ -122,9 +122,15 @@ const SellerDashboard = () => {
       if (q && !p.name?.toLowerCase().includes(q)) return false;
       if (productCategoryFilter !== 'all' && p.category !== productCategoryFilter) return false;
       if (productStatusFilter !== 'all') {
-        const outOfStock = p.status === 'approved' && Number(p.stock) <= 0;
-        const effectiveStatus = outOfStock ? 'out_of_stock' : p.status;
-        if (effectiveStatus !== productStatusFilter) return false;
+        if (productStatusFilter === 'inactive') {
+          if (!(p.status === 'approved' && p.is_active === false)) return false;
+        } else if (productStatusFilter === 'approved') {
+          if (!(p.status === 'approved' && p.is_active !== false && Number(p.stock) > 0)) return false;
+        } else {
+          const outOfStock = p.status === 'approved' && Number(p.stock) <= 0;
+          const effectiveStatus = outOfStock ? 'out_of_stock' : p.status;
+          if (effectiveStatus !== productStatusFilter) return false;
+        }
       }
       return true;
     });
@@ -1316,8 +1322,28 @@ const SellerDashboard = () => {
               <option value="pending">Pending Review</option>
               <option value="approved">Live</option>
               <option value="out_of_stock">Out of Stock</option>
+              <option value="inactive">Inactive</option>
               <option value="rejected">Rejected</option>
             </select>
+          </div>
+        )}
+
+        {!loading && products.length > 0 && (
+          <div className="flex items-center gap-1.5 px-5 pb-3 overflow-x-auto scrollbar-hide">
+            {[
+              { key: 'all', label: 'All' },
+              { key: 'approved', label: 'Active' },
+              { key: 'pending', label: 'Drafts' },
+              { key: 'inactive', label: 'Archived' },
+            ].map(tab => (
+              <button
+                key={tab.key}
+                onClick={() => setProductStatusFilter(tab.key)}
+                className={`px-3 py-1.5 rounded-lg text-[11px] font-bold whitespace-nowrap transition-colors ${productStatusFilter === tab.key ? 'bg-gray-900 text-white dark:bg-white dark:text-gray-900' : 'text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-700/40'}`}
+              >
+                {tab.label}
+              </button>
+            ))}
           </div>
         )}
 
@@ -1356,6 +1382,7 @@ const SellerDashboard = () => {
               <span className="flex-1 min-w-0">Product</span>
               <span className="shrink-0 w-28">ID &amp; Create Date</span>
               <span className="shrink-0 w-20 text-right">Price</span>
+              <span className="shrink-0 w-16 text-right">Stock</span>
               <span className="shrink-0 w-24 text-center">Status</span>
               <span className="shrink-0 w-[112px] text-right">Actions</span>
             </div>
@@ -1374,7 +1401,7 @@ const SellerDashboard = () => {
                   <img src={p.image} alt={p.name} className="w-12 h-12 rounded-lg object-cover bg-gray-100 dark:bg-gray-700 shrink-0" />
                   <div className="min-w-0 flex-1">
                     <p className="text-sm font-medium text-gray-900 dark:text-white truncate">{p.name}</p>
-                    <p className={`text-xs ${outOfStock ? 'text-red-500 font-semibold' : 'text-gray-400'}`}>{p.category} &middot; Stock: {p.stock}</p>
+                    <p className="text-xs text-gray-400">{p.category}</p>
                     {p.status === 'rejected' && p.rejection_reason && (
                       <p className="text-[11px] text-red-500 mt-0.5">Reason: {p.rejection_reason}</p>
                     )}
@@ -1389,6 +1416,7 @@ const SellerDashboard = () => {
                       <p className="text-[10px] text-gray-400">MRP ₹{p.price}</p>
                     )}
                   </div>
+                  <p className={`shrink-0 w-16 text-right text-sm font-semibold ${outOfStock ? 'text-red-500' : 'text-gray-700 dark:text-gray-300'}`}>{p.stock}</p>
                   <span className={`inline-flex items-center gap-1 text-[10px] font-medium capitalize px-2 py-1 rounded-full shrink-0 ${meta.bg} ${meta.text}`}>
                     <span className={`w-1.5 h-1.5 rounded-full ${meta.dot}`} /> {meta.label}
                   </span>
