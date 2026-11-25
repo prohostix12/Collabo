@@ -91,6 +91,7 @@ def send_abandoned_cart_reminders():
     from django.db.models import F
     from .models import Cart, CartItem, StoreSettings
     from .notification_service import notify_abandoned_cart
+    from .order_emails import abandoned_cart as email_abandoned_cart
 
     cutoff = timezone.now() - timedelta(hours=2)
 
@@ -114,7 +115,7 @@ def send_abandoned_cart_reminders():
     count = 0
     for cart in stale_carts:
         user = cart.user
-        if not user.phone:
+        if not user.phone and not user.email:
             continue
         # Skip if user placed an order in the last 24 hours
         from .models import Order
@@ -129,13 +130,24 @@ def send_abandoned_cart_reminders():
         if not item_names:
             continue
 
-        try:
-            notify_abandoned_cart(user, item_names, coupon, discount_pct)
+        sent_any = False
+        if user.phone:
+            try:
+                notify_abandoned_cart(user, item_names, coupon, discount_pct)
+                sent_any = True
+            except Exception as exc:
+                logger.error(f"Abandoned cart WhatsApp notify failed for {user.username}: {exc}")
+        if user.email:
+            try:
+                email_abandoned_cart(user, item_names, coupon, discount_pct)
+                sent_any = True
+            except Exception as exc:
+                logger.error(f"Abandoned cart email notify failed for {user.username}: {exc}")
+
+        if sent_any:
             cart.abandoned_reminder_sent_at = timezone.now()
             cart.save(update_fields=['abandoned_reminder_sent_at'])
             count += 1
-        except Exception as exc:
-            logger.error(f"Abandoned cart notify failed for {user.username}: {exc}")
 
     logger.info(f"Abandoned cart reminders sent: {count}")
     return count
