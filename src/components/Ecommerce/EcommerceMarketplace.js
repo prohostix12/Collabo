@@ -141,6 +141,21 @@ const CAT_ICON_MAP = {
 };
 const getCatIcon = (name) => CAT_ICON_MAP[name] || { Icon: LayoutGrid, color: 'text-slate-900 dark:text-white', bg: 'bg-slate-100 dark:bg-slate-700' };
 
+// Compact-isometric 3D category icon art (navy/orange duotone), used on the home
+// page category strip in place of the plain line icons where we have matching art.
+const CATEGORY_ICON_ART = {
+  'Home & Kitchen': '/images/categories/home_kitchen.png',
+  'Fashion & Apparel': '/images/categories/fashion_apparel.png',
+  'Electronics': '/images/categories/electronics.png',
+  'Mobile & Accessories': '/images/categories/mobile_accessories.png',
+  'Health & Personal Care': '/images/categories/health_personal_care.png',
+  'Beauty & Personal Care': '/images/categories/beauty_personal_care.png',
+  'Kids': '/images/categories/kids.png',
+  'Korean Products': '/images/categories/korean_products.png',
+  'Jewellery': '/images/categories/jewellery.png',
+  'Furniture': '/images/categories/furniture.png',
+};
+
 // Renders product photos without cropping/zooming (object-contain instead of
 // object-cover) so tall marketing-style photos aren't chopped. Parent supplies
 // the sized, colored tile (e.g. aspect-square bg-slate-50); this just fills it.
@@ -2682,21 +2697,29 @@ export default function EcommerceMarketplace({ inlineMode = false, onBackToSelec
                   ) : (
                     dynamicCategories.filter(c => c.name !== 'All').map((cat, idx) => {
                       const { Icon } = getCatIcon(cat.name);
+                      const isoArt = CATEGORY_ICON_ART[cat.name];
                       return (
                         <button
                           key={idx}
                           onClick={() => { setFilterCategory(cat.name); setCurrentView('listing'); }}
                           className="flex flex-col items-center group flex-shrink-0 snap-center"
                         >
-                          <div className="w-14 h-14 sm:w-16 sm:h-16 rounded-2xl flex items-center justify-center transition-transform group-hover:scale-105 relative shadow-[0_6px_14px_-4px_rgba(15,23,42,0.35)] bg-gradient-to-br from-[#1E3A52] via-[#16293B] to-[#0F1D2B] overflow-hidden">
-                            <div className="absolute -right-2 -bottom-2 w-7 h-7 bg-orange-500 rounded-xl rotate-12 shadow-md" />
-                            <div className="absolute inset-0 bg-gradient-to-t from-black/10 to-white/10 pointer-events-none" />
-                            {(cat.image || storeSettings.category_images?.[cat.name]) ? (
-                              <img loading="lazy" src={cat.image || storeSettings.category_images[cat.name]} alt={cat.name} className="w-8 h-8 sm:w-9 sm:h-9 object-contain relative z-10 drop-shadow" />
-                            ) : (
-                              <Icon className="w-7 h-7 sm:w-8 sm:h-8 text-white relative z-10 drop-shadow" strokeWidth={1.75} />
-                            )}
-                          </div>
+                          {isoArt ? (
+                            // Compact isometric 3D icon, no container/background — matches the reference set exactly.
+                            <div className="w-14 h-14 sm:w-16 sm:h-16 flex items-center justify-center transition-transform group-hover:scale-105">
+                              <img loading="lazy" src={isoArt} alt={cat.name} className="w-full h-full object-contain drop-shadow-md" />
+                            </div>
+                          ) : (
+                            <div className="w-14 h-14 sm:w-16 sm:h-16 rounded-2xl flex items-center justify-center transition-transform group-hover:scale-105 relative shadow-[0_6px_14px_-4px_rgba(15,23,42,0.35)] bg-gradient-to-br from-[#1E3A52] via-[#16293B] to-[#0F1D2B] overflow-hidden">
+                              <div className="absolute -right-2 -bottom-2 w-7 h-7 bg-orange-500 rounded-xl rotate-12 shadow-md" />
+                              <div className="absolute inset-0 bg-gradient-to-t from-black/10 to-white/10 pointer-events-none" />
+                              {(cat.image || storeSettings.category_images?.[cat.name]) ? (
+                                <img loading="lazy" src={cat.image || storeSettings.category_images[cat.name]} alt={cat.name} className="w-8 h-8 sm:w-9 sm:h-9 object-contain relative z-10 drop-shadow" />
+                              ) : (
+                                <Icon className="w-7 h-7 sm:w-8 sm:h-8 text-white relative z-10 drop-shadow" strokeWidth={1.75} />
+                              )}
+                            </div>
+                          )}
                           <span className="text-[10px] sm:text-[11px] font-bold text-slate-700 dark:text-slate-300 group-hover:text-orange-600 transition-colors text-center leading-tight mt-1.5 max-w-[76px] sm:max-w-[92px]">{cat.name}</span>
                         </button>
                       )
