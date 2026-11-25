@@ -78,8 +78,11 @@ function AppRoutes() {
         </ProtectedRoute>
       } />
       
-      {/* Dashboard Route */}
-      <Route path="/dashboard" element={
+      {/* Dashboard Route — "/*" so SellerDashboard can deep-link into its own
+          sub-pages (e.g. /dashboard/products/edit/123) while still rendering
+          the same Layout/dashboard element; SellerDashboard reads the extra
+          path segments itself via useLocation(). */}
+      <Route path="/dashboard/*" element={
         <ProtectedRoute>
           {user?.user_type === 'buyer' || user?.user_type === 'influencer' ? (
             <Navigate to="/" replace />
