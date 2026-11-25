@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import { useNavigate, useLocation } from 'react-router-dom';
 import {
   Store, Package, Plus, X, Clock, CheckCircle2, XCircle,
   IndianRupee, Boxes, ImagePlus, Upload, ShoppingBag, Pencil, Trash2, Truck,
@@ -102,6 +103,8 @@ const RevenueChartTooltip = ({ active, payload, label }) => {
 
 const SellerDashboard = () => {
   const { user, updateUser } = useAuth();
+  const navigate = useNavigate();
+  const location = useLocation();
   const [uploadingLogo, setUploadingLogo] = useState(false);
   const [products, setProducts] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -596,7 +599,12 @@ const SellerDashboard = () => {
     setIsOtherCategory(false);
   };
 
-  const openAddForm = () => { resetForm(); setShowAddForm(true); };
+  // activateAddForm/activateEditForm are pure state-setters (no navigation) so the
+  // location-sync effect below can call them when the URL changes (e.g. back button)
+  // without re-triggering a navigation loop. openAddForm/openEditForm are what the UI
+  // actually calls — they just change the URL; the effect does the rest.
+  const activateAddForm = () => { resetForm(); setShowAddForm(true); };
+  const openAddForm = () => navigate('/dashboard/products/new');
 
   // Cartesian product of the two option value lists, e.g. Size: S,M and Color: Gray,Navy
   // becomes 4 rows ({Size: S, Color: Gray}, {Size: S, Color: Navy}, ...). Each row carries
@@ -626,7 +634,9 @@ const SellerDashboard = () => {
     setVariantRowOverrides(prev => ({ ...prev, [key]: { ...prev[key], [field]: value } }));
   };
 
-  const openEditForm = (product) => {
+  const openEditForm = (product) => navigate(`/dashboard/products/edit/${product.id}`);
+
+  const activateEditForm = (product) => {
     const [main, ...extra] = product.images?.length ? product.images : [product.image];
     setForm({
       name: product.name || '',
@@ -656,6 +666,27 @@ const SellerDashboard = () => {
   const updateQaRow = (i, field, value) => setQaRows(rows => rows.map((r, idx) => idx === i ? { ...r, [field]: value } : r));
   const addQaRow = () => setQaRows(rows => [...rows, emptyQaRow()]);
   const removeQaRow = (i) => setQaRows(rows => rows.length > 1 ? rows.filter((_, idx) => idx !== i) : rows);
+
+  // Keeps the Add/Edit Product page in sync with the URL — /dashboard/products/new
+  // and /dashboard/products/edit/:id are real, bookmarkable/back-button-able routes
+  // (App.js mounts this whole dashboard at "/dashboard/*"), not just a client-side
+  // flag. Runs again once `products` finishes loading so a direct link to an edit
+  // URL (page refresh, shared link) still resolves correctly.
+  useEffect(() => {
+    const rest = location.pathname.replace(/^\/dashboard\/?/, '');
+    const segments = rest.split('/').filter(Boolean);
+    if (segments[0] === 'products' && segments[1] === 'new') {
+      setActiveTab('products');
+      if (!showAddForm || editingProduct) activateAddForm();
+    } else if (segments[0] === 'products' && segments[1] === 'edit' && segments[2]) {
+      setActiveTab('products');
+      const product = products.find(p => String(p.id) === segments[2]);
+      if (product && editingProduct?.id !== product.id) activateEditForm(product);
+    } else if (showAddForm) {
+      setShowAddForm(false);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [location.pathname, products]);
 
   const handleDelete = async (product) => {
     if (!window.confirm(`Delete "${product.name}"? This can't be undone.`)) return;
@@ -795,6 +826,7 @@ const SellerDashboard = () => {
       }
       resetForm();
       setShowAddForm(false);
+      navigate('/dashboard');
       fetchProducts();
     } catch (err) {
       const data = err.response?.data;
@@ -1645,7 +1677,7 @@ const SellerDashboard = () => {
             <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100 dark:border-gray-700 bg-white dark:bg-gray-800 sticky top-0 z-10">
               <h2 className="text-lg font-bold text-gray-900 dark:text-white">{editingProduct ? 'Edit Product' : 'Add New Product'}</h2>
               <div className="flex items-center gap-2">
-                <button type="button" onClick={() => setShowAddForm(false)}
+                <button type="button" onClick={() => navigate('/dashboard')}
                   className="px-4 py-2 text-sm font-medium text-gray-600 bg-gray-100 dark:bg-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-200 transition-colors">
                   Cancel
                 </button>
