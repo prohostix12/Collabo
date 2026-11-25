@@ -1487,20 +1487,6 @@ const SellerDashboard = () => {
                       </button>
                     )}
                     <button
-                      onClick={() => setVariantManagerProduct(p)}
-                      title="Manage Variants"
-                      className="p-2 rounded-lg text-gray-500 hover:text-purple-600 hover:bg-purple-50 dark:hover:bg-purple-900/20 transition-colors"
-                    >
-                      <Layers className="w-3.5 h-3.5" />
-                    </button>
-                    <button
-                      onClick={() => openStockPopover(p)}
-                      title="Update Stock"
-                      className="p-2 rounded-lg text-gray-500 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-colors"
-                    >
-                      <Boxes className="w-3.5 h-3.5" />
-                    </button>
-                    <button
                       onClick={() => openEditForm(p)}
                       title="Edit"
                       className="p-2 rounded-lg text-gray-500 hover:text-orange-600 hover:bg-orange-50 dark:hover:bg-orange-900/20 transition-colors"
