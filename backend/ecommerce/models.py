@@ -100,7 +100,10 @@ class Product(models.Model):
 
     @property
     def has_variants(self):
-        return self.variants.exists()
+        # Uses .all() rather than .exists() so a prefetch_related('variants') on the
+        # queryset (e.g. ProductViewSet) is reused instead of issuing a fresh query
+        # per product — exists() always hits the DB, ignoring the prefetch cache.
+        return bool(self.variants.all())
 
     def sync_variant_aggregates(self):
         """Keeps the product's own price/stock as a display-level aggregate of its

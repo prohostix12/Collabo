@@ -159,7 +159,7 @@ class ProductViewSet(viewsets.ModelViewSet):
         return [permissions.IsAuthenticated(), IsSellerOrReadOnly()]
 
     def get_queryset(self):
-        queryset = Product.objects.select_related('seller', 'seller__seller_profile', 'vendor').annotate(
+        queryset = Product.objects.select_related('seller', 'seller__seller_profile', 'vendor').prefetch_related('variants').annotate(
             purchase_count_annotated=db_models.Sum(
                 'orderitem__quantity',
                 filter=~db_models.Q(orderitem__order__status__in=['cancelled', 'returned']),
