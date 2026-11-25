@@ -2669,34 +2669,35 @@ export default function EcommerceMarketplace({ inlineMode = false, onBackToSelec
 
             {/* Flipkart Style Hero Section */}
             <div className="space-y-2 pt-0">
-              {/* Normal Category Strip with icons */}
+              {/* Category Grid — compact isometric-style tiles (navy tile, orange accent, bold label) */}
               <div className="w-full bg-transparent">
-                <div style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }} className="flex items-center justify-between sm:justify-evenly overflow-x-auto overflow-y-hidden scrollbar-hide gap-4 sm:gap-6 px-4 sm:px-6 py-0 w-full max-w-7xl mx-auto snap-x">
+                <div style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }} className="grid grid-rows-2 grid-flow-col auto-cols-[76px] sm:auto-cols-[92px] gap-x-3 sm:gap-x-5 gap-y-4 overflow-x-auto overflow-y-hidden scrollbar-hide px-4 sm:px-6 py-1 w-full max-w-7xl mx-auto snap-x">
                   {!categoriesLoaded ? (
-                    Array.from({ length: 8 }).map((_, i) => (
-                      <div key={i} className="flex flex-col items-center gap-1 min-w-[48px] animate-pulse">
-                        <div className="w-9 h-9 sm:w-11 sm:h-11 rounded-full bg-slate-200 dark:bg-slate-700" />
+                    Array.from({ length: 10 }).map((_, i) => (
+                      <div key={i} className="flex flex-col items-center gap-1.5 animate-pulse">
+                        <div className="w-14 h-14 sm:w-16 sm:h-16 rounded-2xl bg-slate-200 dark:bg-slate-700" />
                         <div className="w-10 h-2 rounded bg-slate-200 dark:bg-slate-700" />
                       </div>
                     ))
                   ) : (
-                    dynamicCategories.map((cat, idx) => {
+                    dynamicCategories.filter(c => c.name !== 'All').map((cat, idx) => {
                       const { Icon } = getCatIcon(cat.name);
                       return (
                         <button
                           key={idx}
                           onClick={() => { setFilterCategory(cat.name); setCurrentView('listing'); }}
-                          className="flex flex-col items-center group min-w-[56px] flex-shrink-0 snap-center"
+                          className="flex flex-col items-center group flex-shrink-0 snap-center"
                         >
-                          <div className="w-9 h-9 flex items-center justify-center transition-transform group-hover:scale-105 relative">
-                            <div className="absolute w-4 h-4 bg-orange-400/90 dark:bg-orange-500/90 rounded-[6px] transform rotate-12 top-1 right-1 z-0"></div>
+                          <div className="w-14 h-14 sm:w-16 sm:h-16 rounded-2xl flex items-center justify-center transition-transform group-hover:scale-105 relative shadow-[0_6px_14px_-4px_rgba(15,23,42,0.35)] bg-gradient-to-br from-[#1E3A52] via-[#16293B] to-[#0F1D2B] overflow-hidden">
+                            <div className="absolute -right-2 -bottom-2 w-7 h-7 bg-orange-500 rounded-xl rotate-12 shadow-md" />
+                            <div className="absolute inset-0 bg-gradient-to-t from-black/10 to-white/10 pointer-events-none" />
                             {(cat.image || storeSettings.category_images?.[cat.name]) ? (
-                              <img loading="lazy" src={cat.image || storeSettings.category_images[cat.name]} alt={cat.name} className="w-full h-full object-contain relative z-10" />
+                              <img loading="lazy" src={cat.image || storeSettings.category_images[cat.name]} alt={cat.name} className="w-8 h-8 sm:w-9 sm:h-9 object-contain relative z-10 drop-shadow" />
                             ) : (
-                              <Icon className="w-7 h-7 text-slate-900 dark:text-slate-100 relative z-10" strokeWidth={1.25} />
+                              <Icon className="w-7 h-7 sm:w-8 sm:h-8 text-white relative z-10 drop-shadow" strokeWidth={1.75} />
                             )}
                           </div>
-                          <span className="text-[11px] font-semibold text-slate-700 dark:text-slate-300 group-hover:text-orange-600 transition-colors whitespace-nowrap mt-0.5">{cat.name}</span>
+                          <span className="text-[10px] sm:text-[11px] font-bold text-slate-700 dark:text-slate-300 group-hover:text-orange-600 transition-colors text-center leading-tight mt-1.5 max-w-[76px] sm:max-w-[92px]">{cat.name}</span>
                         </button>
                       )
                     })
