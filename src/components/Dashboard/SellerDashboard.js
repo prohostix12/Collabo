@@ -4,6 +4,7 @@ import {
   IndianRupee, Boxes, ImagePlus, Upload, ShoppingBag, Pencil, Trash2, Truck,
   TrendingUp, ArrowUpCircle, ArrowDownCircle, ShoppingCart, LayoutGrid, Download, FileSpreadsheet, Search,
   LayoutDashboard, ClipboardList, Tag, Wallet, Star, RotateCcw, Ban, Calendar, Layers,
+  Eye, EyeOff,
 } from 'lucide-react';
 import {
   ResponsiveContainer, ComposedChart, Area, Line, Bar, XAxis, YAxis, CartesianGrid, Tooltip,
@@ -64,6 +65,15 @@ const STATUS_META = {
 // Shown instead of "Live" the moment stock hits 0, so the seller sees it's out of stock without
 // having to open the Update Stock popover. It reverts to "Live" automatically once stock is restocked.
 const OUT_OF_STOCK_META = { label: 'Out of Stock', dot: 'bg-red-400', text: 'text-red-500', bg: 'bg-red-50 dark:bg-red-900/20' };
+// Shown when the seller has deactivated an approved listing (is_active=false) — hidden from
+// buyers but keeps its stock/order history, distinct from admin rejection.
+const INACTIVE_META = { label: 'Inactive', dot: 'bg-gray-400', text: 'text-gray-500', bg: 'bg-gray-100 dark:bg-gray-700/40' };
+
+const productStatusMeta = (p) => {
+  if (p.status === 'approved' && p.is_active === false) return INACTIVE_META;
+  if (p.status === 'approved' && Number(p.stock) <= 0) return OUT_OF_STOCK_META;
+  return STATUS_META[p.status] || STATUS_META.pending;
+};
 
 const RevenueChartTooltip = ({ active, payload, label }) => {
   if (!active || !payload?.length) return null;
@@ -99,6 +109,8 @@ const SellerDashboard = () => {
   const [productSearch, setProductSearch] = useState('');
   const [productCategoryFilter, setProductCategoryFilter] = useState('all');
   const [productStatusFilter, setProductStatusFilter] = useState('all');
+  const [selectedProductIds, setSelectedProductIds] = useState([]);
+  const [togglingActiveId, setTogglingActiveId] = useState(null);
 
   const productCategories = useMemo(
     () => Array.from(new Set(products.map(p => p.category).filter(Boolean))).sort(),
@@ -449,7 +461,7 @@ const SellerDashboard = () => {
   }, []);
 
   useEffect(() => {
-    if ((activeTab === 'payouts' || activeTab === 'overview') && !earnings) fetchEarnings();
+    if ((activeTab === 'payouts' || activeTab === 'overview' || activeTab === 'products') && !earnings) fetchEarnings();
   }, [activeTab, earnings, fetchEarnings]);
 
   const fetchPayouts = useCallback(() => {
@@ -508,6 +520,11 @@ const SellerDashboard = () => {
     if (activeTab === 'orders') fetchOrders(orderStatusFilter);
   }, [activeTab, orderStatusFilter, fetchOrders]);
 
+  // Products tab also shows order/customer counts in its stat row — fetch once, lazily.
+  useEffect(() => {
+    if (activeTab === 'products' && !orders) fetchOrders(null);
+  }, [activeTab, orders, fetchOrders]);
+
   const openStockPopover = (product) => {
     setStockProductId(product.id);
     setStockQty('1');
@@ -550,6 +567,11 @@ const SellerDashboard = () => {
     pending: products.filter(p => p.status === 'pending').length,
     approved: products.filter(p => p.status === 'approved').length,
     rejected: products.filter(p => p.status === 'rejected').length,
+  };
+
+  const productTabStats = {
+    totalOrders: orders?.results ? new Set(orders.results.map(r => r.order_id)).size : 0,
+    customers: orders?.results ? new Set(orders.results.map(r => r.buyer_username).filter(Boolean)).size : 0,
   };
 
   const resetForm = () => { setForm(emptyForm); setUploadedImages([]); setQaRows([emptyQaRow()]); setFormError(''); setEditingProduct(null); };
@@ -598,6 +620,42 @@ const SellerDashboard = () => {
     } finally {
       setDeletingId(null);
     }
+  };
+
+  const handleToggleActive = async (product) => {
+    setTogglingActiveId(product.id);
+    try {
+      await api.post(`/ecommerce/products/${product.id}/toggle-active/`);
+      toast.success(product.is_active === false ? 'Listing activated' : 'Listing deactivated');
+      fetchProducts();
+    } catch (err) {
+      toast.error('Failed to update listing visibility');
+    } finally {
+      setTogglingActiveId(null);
+    }
+  };
+
+  const handleBulkDelete = async () => {
+    if (!window.confirm(`Delete ${selectedProductIds.length} selected product(s)? This can't be undone.`)) return;
+    for (const id of selectedProductIds) {
+      try { await api.delete(`/ecommerce/products/${id}/`); } catch (err) { console.error('Delete failed', id, err); }
+    }
+    setSelectedProductIds([]);
+    toast.success('Selected products deleted');
+    fetchProducts();
+  };
+
+  const exportProductsCsv = (rows) => {
+    const header = ['ID', 'Name', 'Category', 'Price', 'Sell Price', 'Stock', 'Status'];
+    const lines = rows.map(p => [
+      p.id, `"${(p.name || '').replace(/"/g, '""')}"`, p.category, p.price, p.discount_price || p.price, p.stock, productStatusMeta(p).label,
+    ].join(','));
+    const csv = [header.join(','), ...lines].join('\n');
+    const blob = new Blob([csv], { type: 'text/csv' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url; a.download = 'my-products.csv'; a.click();
+    URL.revokeObjectURL(url);
   };
 
   const handleLogoFile = async (file) => {
@@ -718,6 +776,12 @@ const SellerDashboard = () => {
         </div>
         {activeTab === 'products' && (
           <div className="flex items-center gap-2">
+            <button
+              onClick={() => exportProductsCsv(products)}
+              className="flex items-center justify-center gap-1.5 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 text-sm font-semibold px-4 py-2.5 rounded-xl transition-colors"
+            >
+              <Download className="w-4 h-4" /> Export
+            </button>
             <button
               onClick={() => setShowBulk(true)}
               className="flex items-center justify-center gap-1.5 bg-white dark:bg-gray-800 border border-orange-300 dark:border-orange-700 text-orange-600 dark:text-orange-400 hover:bg-orange-50 dark:hover:bg-gray-700 text-sm font-semibold px-4 py-2.5 rounded-xl transition-colors"
@@ -1200,6 +1264,24 @@ const SellerDashboard = () => {
 
       {/* Products list */}
       {activeTab === 'products' && (
+      <div className="space-y-5">
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+          {[
+            { label: 'Total Products', value: counts.all, icon: Package, card: 'bg-violet-100 dark:bg-violet-900/30', iconColor: 'text-violet-700 dark:text-violet-300' },
+            { label: 'Total Revenue', value: earnings ? `₹${Number(earnings.total_revenue).toLocaleString('en-IN')}` : '—', icon: TrendingUp, card: 'bg-emerald-100 dark:bg-emerald-900/30', iconColor: 'text-emerald-700 dark:text-emerald-300' },
+            { label: 'Total Orders', value: productTabStats.totalOrders, icon: ShoppingCart, card: 'bg-sky-100 dark:bg-sky-900/30', iconColor: 'text-sky-700 dark:text-sky-300' },
+            { label: 'Customers', value: productTabStats.customers, icon: ShoppingBag, card: 'bg-orange-100 dark:bg-orange-900/30', iconColor: 'text-orange-700 dark:text-orange-300' },
+          ].map(s => (
+            <div key={s.label} className={`rounded-2xl p-5 shadow-sm transition-all hover:shadow-md ${s.card}`}>
+              <div className="flex items-start justify-between mb-4">
+                <span className="text-[11px] font-bold text-gray-700/70 dark:text-gray-200/70 uppercase tracking-wide">{s.label}</span>
+                <s.icon className={`w-4 h-4 shrink-0 ${s.iconColor}`} />
+              </div>
+              <p className="text-2xl font-extrabold text-gray-900 dark:text-white leading-none">{s.value}</p>
+            </div>
+          ))}
+        </div>
+
       <div className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 shadow-sm overflow-hidden">
         <div className="px-5 py-4 border-b border-gray-100 dark:border-gray-700">
           <h3 className="text-sm font-bold text-gray-900 dark:text-white">My Products</h3>
@@ -1259,18 +1341,36 @@ const SellerDashboard = () => {
         ) : (
           <div>
             <div className="hidden sm:flex items-center gap-3 px-5 py-2 text-[10px] font-bold text-gray-400 dark:text-gray-500 uppercase tracking-wider bg-gray-50/60 dark:bg-gray-900/30">
+              <span className="w-4 shrink-0">
+                <input
+                  type="checkbox"
+                  checked={filteredProducts.length > 0 && filteredProducts.every(p => selectedProductIds.includes(p.id))}
+                  onChange={(e) => {
+                    const ids = filteredProducts.map(p => p.id);
+                    setSelectedProductIds(prev => e.target.checked ? Array.from(new Set([...prev, ...ids])) : prev.filter(id => !ids.includes(id)));
+                  }}
+                  className="w-3.5 h-3.5 accent-orange-500"
+                />
+              </span>
               <span className="w-12 shrink-0" />
               <span className="flex-1 min-w-0">Product</span>
-              <span className="shrink-0">Price</span>
+              <span className="shrink-0 w-28">ID &amp; Create Date</span>
+              <span className="shrink-0 w-20 text-right">Price</span>
               <span className="shrink-0 w-24 text-center">Status</span>
-              <span className="shrink-0 w-[92px] text-right">Actions</span>
+              <span className="shrink-0 w-[112px] text-right">Actions</span>
             </div>
             <div className="divide-y divide-gray-100 dark:divide-gray-700">
             {filteredProducts.map(p => {
               const outOfStock = p.status === 'approved' && Number(p.stock) <= 0;
-              const meta = outOfStock ? OUT_OF_STOCK_META : (STATUS_META[p.status] || STATUS_META.pending);
+              const meta = productStatusMeta(p);
               return (
                 <div key={p.id} className="flex items-center gap-3 px-5 py-3 hover:bg-gray-50/60 dark:hover:bg-gray-900/30 transition-colors">
+                  <input
+                    type="checkbox"
+                    checked={selectedProductIds.includes(p.id)}
+                    onChange={(e) => setSelectedProductIds(prev => e.target.checked ? [...prev, p.id] : prev.filter(id => id !== p.id))}
+                    className="w-3.5 h-3.5 shrink-0 accent-orange-500"
+                  />
                   <img src={p.image} alt={p.name} className="w-12 h-12 rounded-lg object-cover bg-gray-100 dark:bg-gray-700 shrink-0" />
                   <div className="min-w-0 flex-1">
                     <p className="text-sm font-medium text-gray-900 dark:text-white truncate">{p.name}</p>
@@ -1279,11 +1379,30 @@ const SellerDashboard = () => {
                       <p className="text-[11px] text-red-500 mt-0.5">Reason: {p.rejection_reason}</p>
                     )}
                   </div>
-                  <p className="text-sm font-semibold text-gray-900 dark:text-white shrink-0">₹{p.discount_price || p.price}</p>
+                  <div className="shrink-0 w-28 text-xs text-gray-500 dark:text-gray-400">
+                    <div className="font-semibold text-gray-700 dark:text-gray-300">#{p.id}</div>
+                    <div className="text-[10px]">{p.created_at ? new Date(p.created_at).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }) : '—'}</div>
+                  </div>
+                  <div className="shrink-0 w-20 text-right">
+                    <p className="text-sm font-semibold text-gray-900 dark:text-white">₹{p.discount_price || p.price}</p>
+                    {p.discount_price && Number(p.discount_price) !== Number(p.price) && (
+                      <p className="text-[10px] text-gray-400">MRP ₹{p.price}</p>
+                    )}
+                  </div>
                   <span className={`inline-flex items-center gap-1 text-[10px] font-medium capitalize px-2 py-1 rounded-full shrink-0 ${meta.bg} ${meta.text}`}>
                     <span className={`w-1.5 h-1.5 rounded-full ${meta.dot}`} /> {meta.label}
                   </span>
                   <div className="flex items-center gap-1 shrink-0">
+                    {p.status === 'approved' && (
+                      <button
+                        onClick={() => handleToggleActive(p)}
+                        disabled={togglingActiveId === p.id}
+                        title={p.is_active === false ? 'Activate (show to buyers)' : 'Deactivate (hide from buyers, keep history)'}
+                        className={`p-2 rounded-lg transition-colors disabled:opacity-50 ${p.is_active === false ? 'text-gray-400 hover:text-emerald-600 hover:bg-emerald-50 dark:hover:bg-emerald-900/20' : 'text-gray-500 hover:text-gray-700 hover:bg-gray-100 dark:hover:bg-gray-700/40'}`}
+                      >
+                        {p.is_active === false ? <Eye className="w-3.5 h-3.5" /> : <EyeOff className="w-3.5 h-3.5" />}
+                      </button>
+                    )}
                     <button
                       onClick={() => setVariantManagerProduct(p)}
                       title="Manage Variants"
@@ -1320,6 +1439,22 @@ const SellerDashboard = () => {
             </div>
           </div>
         )}
+      </div>
+
+      {selectedProductIds.length > 0 && (
+        <div className="sticky bottom-2 flex items-center gap-2 bg-gray-900 dark:bg-white text-white dark:text-gray-900 px-4 py-2.5 rounded-xl shadow-lg w-fit mx-auto">
+          <span className="text-xs font-bold">{selectedProductIds.length} Selected</span>
+          <button onClick={() => exportProductsCsv(products.filter(p => selectedProductIds.includes(p.id)))} className="flex items-center gap-1 text-[11px] font-bold px-2.5 py-1 rounded-lg hover:bg-white/10 dark:hover:bg-gray-900/10">
+            <Download className="w-3.5 h-3.5" /> Export
+          </button>
+          <button onClick={handleBulkDelete} className="flex items-center gap-1 text-[11px] font-bold px-2.5 py-1 rounded-lg hover:bg-white/10 dark:hover:bg-gray-900/10">
+            <Trash2 className="w-3.5 h-3.5" /> Delete
+          </button>
+          <button onClick={() => setSelectedProductIds([])} className="p-1 rounded-lg hover:bg-white/10 dark:hover:bg-gray-900/10">
+            <X className="w-3.5 h-3.5" />
+          </button>
+        </div>
+      )}
       </div>
       )}
 
