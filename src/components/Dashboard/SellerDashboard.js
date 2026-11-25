@@ -1445,10 +1445,11 @@ const SellerDashboard = () => {
               const outOfStock = p.status === 'approved' && Number(p.stock) <= 0;
               const meta = productStatusMeta(p);
               return (
-                <div key={p.id} className="flex items-center gap-3 px-5 py-3 hover:bg-gray-50/60 dark:hover:bg-gray-900/30 transition-colors">
+                <div key={p.id} onClick={() => openEditForm(p)} className="flex items-center gap-3 px-5 py-3 hover:bg-gray-50/60 dark:hover:bg-gray-900/30 transition-colors cursor-pointer">
                   <input
                     type="checkbox"
                     checked={selectedProductIds.includes(p.id)}
+                    onClick={(e) => e.stopPropagation()}
                     onChange={(e) => setSelectedProductIds(prev => e.target.checked ? [...prev, p.id] : prev.filter(id => id !== p.id))}
                     className="w-3.5 h-3.5 shrink-0 accent-orange-500"
                   />
@@ -1474,7 +1475,7 @@ const SellerDashboard = () => {
                   <span className={`inline-flex items-center gap-1 text-[10px] font-medium capitalize px-2 py-1 rounded-full shrink-0 ${meta.bg} ${meta.text}`}>
                     <span className={`w-1.5 h-1.5 rounded-full ${meta.dot}`} /> {meta.label}
                   </span>
-                  <div className="flex items-center gap-1 shrink-0">
+                  <div className="flex items-center gap-1 shrink-0" onClick={(e) => e.stopPropagation()}>
                     {p.status === 'approved' && (
                       <button
                         onClick={() => handleToggleActive(p)}
@@ -1785,11 +1786,11 @@ const SellerDashboard = () => {
                   <div className="border border-gray-200 dark:border-gray-700 rounded-xl p-4 space-y-3">
                     <h3 className="text-sm font-bold text-gray-900 dark:text-white flex items-center gap-1.5"><Layers className="w-3.5 h-3.5" /> Variants</h3>
                     {editingProduct ? (
-                      <button type="button"
-                        onClick={() => { setShowAddForm(false); setVariantManagerProduct(editingProduct); }}
-                        className="w-full flex items-center justify-center gap-1.5 py-2 text-xs font-semibold text-purple-700 bg-purple-50 dark:bg-purple-900/20 dark:text-purple-400 rounded-lg hover:bg-purple-100 dark:hover:bg-purple-900/30 transition-colors">
-                        <Layers className="w-3.5 h-3.5" /> Manage Variants
-                      </button>
+                      <VariantManagerModal
+                        embedded
+                        product={editingProduct}
+                        onChanged={fetchProducts}
+                      />
                     ) : (
                       <>
                         <p className="text-[11px] text-gray-400">Optional. Add up to 2 options (e.g. Size, Color) with comma-separated values — each combination becomes a real, independently priced/stocked variant once you publish.</p>
