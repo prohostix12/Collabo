@@ -2687,43 +2687,34 @@ export default function EcommerceMarketplace({ inlineMode = false, onBackToSelec
 
             {/* Flipkart Style Hero Section */}
             <div className="space-y-2 pt-0">
-              {/* Category Grid — compact isometric-style tiles (navy tile, orange accent, bold label) */}
+              {/* Category Grid — "Rounded Line" style: navy outline icon, small orange accent dot, bold label */}
               <div className="w-full bg-transparent">
-                <div style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }} className="flex items-start gap-3 sm:gap-5 overflow-x-auto overflow-y-hidden scrollbar-hide px-4 sm:px-6 py-1 w-full max-w-7xl mx-auto snap-x">
+                <div style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }} className="flex items-start gap-4 sm:gap-6 overflow-x-auto overflow-y-hidden scrollbar-hide px-4 sm:px-6 py-1 w-full max-w-7xl mx-auto snap-x">
                   {!categoriesLoaded ? (
                     Array.from({ length: 10 }).map((_, i) => (
                       <div key={i} className="flex flex-col items-center gap-1.5 animate-pulse flex-shrink-0">
-                        <div className="w-10 h-10 sm:w-11 sm:h-11 rounded-2xl bg-slate-200 dark:bg-slate-700" />
+                        <div className="w-10 h-10 rounded-2xl bg-slate-200 dark:bg-slate-700" />
                         <div className="w-10 h-2 rounded bg-slate-200 dark:bg-slate-700" />
                       </div>
                     ))
                   ) : (
                     dynamicCategories.filter(c => c.name !== 'All').map((cat, idx) => {
                       const { Icon } = getCatIcon(cat.name);
-                      const isoArt = CATEGORY_ICON_ART[cat.name];
                       return (
                         <button
                           key={idx}
                           onClick={() => { setFilterCategory(cat.name); setCurrentView('listing'); }}
-                          className="flex flex-col items-center group flex-shrink-0 snap-center w-[64px] sm:w-[72px]"
+                          className="flex flex-col items-center group flex-shrink-0 snap-center w-[68px] sm:w-[76px]"
                         >
-                          {isoArt ? (
-                            // Compact isometric 3D icon, no container/background — matches the reference set exactly.
-                            <div className="w-10 h-10 sm:w-11 sm:h-11 flex items-center justify-center transition-transform group-hover:scale-105">
-                              <img loading="lazy" src={isoArt} alt={cat.name} className="w-full h-full object-contain drop-shadow-md" />
-                            </div>
-                          ) : (
-                            <div className="w-10 h-10 sm:w-11 sm:h-11 rounded-xl flex items-center justify-center transition-transform group-hover:scale-105 relative shadow-[0_4px_10px_-3px_rgba(15,23,42,0.35)] bg-gradient-to-br from-[#1E3A52] via-[#16293B] to-[#0F1D2B] overflow-hidden">
-                              <div className="absolute -right-1.5 -bottom-1.5 w-5 h-5 bg-orange-500 rounded-lg rotate-12 shadow-md" />
-                              <div className="absolute inset-0 bg-gradient-to-t from-black/10 to-white/10 pointer-events-none" />
-                              {(cat.image || storeSettings.category_images?.[cat.name]) ? (
-                                <img loading="lazy" src={cat.image || storeSettings.category_images[cat.name]} alt={cat.name} className="w-6 h-6 object-contain relative z-10 drop-shadow" />
-                              ) : (
-                                <Icon className="w-5 h-5 text-white relative z-10 drop-shadow" strokeWidth={1.75} />
-                              )}
-                            </div>
-                          )}
-                          <span className="text-[10px] sm:text-[11px] font-bold text-slate-700 dark:text-slate-300 group-hover:text-orange-600 transition-colors text-center leading-tight mt-1.5 max-w-[76px] sm:max-w-[92px]">{cat.name}</span>
+                          <div className="w-9 h-9 sm:w-10 sm:h-10 flex items-center justify-center transition-transform group-hover:scale-105 relative">
+                            <span className="absolute -top-0.5 -left-0.5 w-2.5 h-2.5 bg-orange-500 rounded-full ring-2 ring-white dark:ring-slate-950 z-10" />
+                            {(cat.image || storeSettings.category_images?.[cat.name]) ? (
+                              <img loading="lazy" src={cat.image || storeSettings.category_images[cat.name]} alt={cat.name} className="w-full h-full object-contain" />
+                            ) : (
+                              <Icon className="w-8 h-8 sm:w-9 sm:h-9 text-[#101A35] dark:text-white" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" />
+                            )}
+                          </div>
+                          <span className="text-[10px] sm:text-[11px] font-bold text-[#101A35] dark:text-slate-200 group-hover:text-orange-600 transition-colors text-center leading-tight mt-1.5 max-w-[80px]">{cat.name}</span>
                         </button>
                       )
                     })
