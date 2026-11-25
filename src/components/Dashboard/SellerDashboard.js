@@ -1638,11 +1638,11 @@ const SellerDashboard = () => {
         </div>
       )}
 
-      {/* Add Product Modal */}
+      {/* Add/Edit Product — rendered as a full page, not a popup modal */}
       {showAddForm && (
-        <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50 p-4" onClick={() => setShowAddForm(false)}>
-          <div className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 max-w-6xl w-full max-h-[92vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
-            <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100 dark:border-gray-700">
+        <div className="fixed inset-0 bg-gray-50 dark:bg-gray-900 z-50 overflow-y-auto">
+          <div className="max-w-6xl w-full mx-auto min-h-screen">
+            <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100 dark:border-gray-700 bg-white dark:bg-gray-800 sticky top-0 z-10">
               <h2 className="text-lg font-bold text-gray-900 dark:text-white">{editingProduct ? 'Edit Product' : 'Add New Product'}</h2>
               <div className="flex items-center gap-2">
                 <button type="button" onClick={() => setShowAddForm(false)}
