@@ -838,21 +838,21 @@ const SellerDashboard = () => {
           <div className="flex items-center gap-2">
             <button
               onClick={() => exportProductsCsv(products)}
-              className="flex items-center justify-center gap-1.5 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 text-sm font-semibold px-4 py-2.5 rounded-xl transition-colors"
+              className="flex items-center justify-center gap-1 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 text-xs font-semibold px-3 py-1.5 rounded-lg transition-colors"
             >
-              <Download className="w-4 h-4" /> Export
+              <Download className="w-3.5 h-3.5" /> Export
             </button>
             <button
               onClick={() => setShowBulk(true)}
-              className="flex items-center justify-center gap-1.5 bg-white dark:bg-gray-800 border border-orange-300 dark:border-orange-700 text-orange-600 dark:text-orange-400 hover:bg-orange-50 dark:hover:bg-gray-700 text-sm font-semibold px-4 py-2.5 rounded-xl transition-colors"
+              className="flex items-center justify-center gap-1 bg-white dark:bg-gray-800 border border-orange-300 dark:border-orange-700 text-orange-600 dark:text-orange-400 hover:bg-orange-50 dark:hover:bg-gray-700 text-xs font-semibold px-3 py-1.5 rounded-lg transition-colors"
             >
-              <Upload className="w-4 h-4" /> Bulk Upload
+              <Upload className="w-3.5 h-3.5" /> Bulk Upload
             </button>
             <button
               onClick={openAddForm}
-              className="flex items-center justify-center gap-1.5 bg-orange-600 hover:bg-orange-700 text-white text-sm font-semibold px-4 py-2.5 rounded-xl transition-colors shadow-sm"
+              className="flex items-center justify-center gap-1 bg-orange-600 hover:bg-orange-700 text-white text-xs font-semibold px-3 py-1.5 rounded-lg transition-colors shadow-sm"
             >
-              <Plus className="w-4 h-4" /> Add Product
+              <Plus className="w-3.5 h-3.5" /> Add Product
             </button>
           </div>
         )}
