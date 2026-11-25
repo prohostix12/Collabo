@@ -839,6 +839,8 @@ const SellerDashboard = () => {
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900 p-4 sm:p-6 space-y-5">
+      {!showAddForm && (
+      <>
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div className="flex items-center gap-2.5">
@@ -1567,6 +1569,8 @@ const SellerDashboard = () => {
 
         </div>
       </div>
+      </>
+      )}
 
       {/* Bulk upload modal */}
       {showBulk && (
@@ -1672,9 +1676,9 @@ const SellerDashboard = () => {
 
       {/* Add/Edit Product — rendered as a full page, not a popup modal */}
       {showAddForm && (
-        <div className="fixed inset-x-0 bottom-0 top-14 bg-gray-50 dark:bg-gray-900 z-40 overflow-y-auto">
-          <div className="max-w-6xl w-full mx-auto min-h-screen">
-            <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100 dark:border-gray-700 bg-white dark:bg-gray-800 sticky top-0 z-10">
+        <div className="-m-4 sm:-m-6 min-h-screen bg-gray-50 dark:bg-gray-900">
+          <div className="max-w-6xl w-full mx-auto">
+            <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100 dark:border-gray-700 bg-white dark:bg-gray-800">
               <h2 className="text-lg font-bold text-gray-900 dark:text-white">{editingProduct ? 'Edit Product' : 'Add New Product'}</h2>
               <div className="flex items-center gap-2">
                 <button type="button" onClick={() => navigate('/dashboard')}
