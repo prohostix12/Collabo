@@ -860,8 +860,8 @@ const SellerDashboard = () => {
 
       <div className="flex flex-col lg:flex-row gap-5 items-start">
         {/* Sidebar */}
-        <aside className="w-full lg:w-52 shrink-0 bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 shadow-sm p-2 lg:sticky lg:top-4">
-          <nav className="flex lg:flex-col gap-1 overflow-x-auto lg:overflow-visible">
+        <aside className="w-full lg:w-36 shrink-0 lg:sticky lg:top-4">
+          <nav className="flex lg:flex-col gap-0.5 overflow-x-auto lg:overflow-visible">
             {[
               { id: 'overview', label: 'Overview', icon: LayoutDashboard },
               { id: 'orders', label: 'Orders', icon: ClipboardList },
@@ -876,13 +876,13 @@ const SellerDashboard = () => {
               <button
                 key={item.id}
                 onClick={() => setActiveTab(item.id)}
-                className={`flex items-center gap-2 px-3 py-2.5 rounded-xl text-xs font-semibold whitespace-nowrap transition-colors shrink-0 ${
+                className={`flex items-center gap-2 px-2 py-2 rounded-lg text-xs font-medium whitespace-nowrap transition-colors shrink-0 ${
                   activeTab === item.id
                     ? 'bg-orange-50 dark:bg-orange-900/20 text-orange-700 dark:text-orange-400'
                     : 'text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700/50'
                 }`}
               >
-                <item.icon className="w-4 h-4 shrink-0" /> {item.label}
+                <item.icon className="w-3.5 h-3.5 shrink-0" /> {item.label}
               </button>
             ))}
           </nav>

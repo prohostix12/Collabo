@@ -189,6 +189,37 @@ def _order_mail(order, subject, title, intro, extra_rows=(), show_address=False,
 
 # ----- public order events --------------------------------------------------------------
 
+def abandoned_cart(user, item_names, coupon_code=None, discount_pct=10):
+    """Reminder email for a cart left untouched for a while with no order placed.
+    Mirrors notify_abandoned_cart's WhatsApp message — same trigger (tasks.py),
+    same opt-out (requires an email on file), independent send."""
+    if not user.email:
+        return
+    name = user.first_name or user.username
+    items_str = ', '.join(item_names[:3])
+    if len(item_names) > 3:
+        items_str += f' and {len(item_names) - 3} more'
+
+    intro = _intro(f"You left {items_str} in your cart. It's still saved and ready whenever you are.")
+    body = ''
+    if coupon_code:
+        body = _section('Here\'s a little nudge', _facts_html([
+            ('Coupon code', coupon_code),
+            ('Discount', f'{discount_pct}% off'),
+        ]))
+
+    html_body = _wrap_html(
+        'Still thinking it over?', name, intro, body,
+        cta_label='Complete your purchase', cta_url=f'{SITE_URL}/cart',
+    )
+    text = f"Hi {name},\n\nYou left {items_str} in your cart on Collabo. "
+    if coupon_code:
+        text += f"Use code {coupon_code} for {discount_pct}% off. "
+    text += f"Finish your purchase: {SITE_URL}/cart"
+
+    _send(user.email, 'You left something in your cart', text, html_body)
+
+
 def order_placed(order):
     method = (order.payment_method or '').lower()
     paid = order.payment_status == 'completed'
