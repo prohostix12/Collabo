@@ -17,7 +17,7 @@ const textToAttrs = (text) => {
   return out;
 };
 
-const VariantManagerModal = ({ product, onClose, onChanged }) => {
+const VariantManagerModal = ({ product, onClose, onChanged, embedded = false }) => {
   const [variants, setVariants] = useState([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
@@ -138,9 +138,9 @@ const VariantManagerModal = ({ product, onClose, onChanged }) => {
 
   const inputCls = "w-full text-xs border border-gray-200 dark:border-gray-700 rounded-lg px-2.5 py-1.5 bg-white dark:bg-gray-900 focus:outline-none focus:ring-1 focus:ring-orange-400 dark:text-white";
 
-  return (
-    <div className="fixed inset-0 z-[9999] bg-black/50 backdrop-blur-sm flex items-center justify-center p-4" onClick={onClose}>
-      <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl max-w-4xl w-full max-h-[90vh] overflow-hidden flex flex-col" onClick={e => e.stopPropagation()}>
+  const content = (
+    <>
+        {!embedded && (
         <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100 dark:border-gray-700 shrink-0">
           <div>
             <h3 className="text-sm font-bold text-gray-900 dark:text-white">Manage Variants</h3>
@@ -150,6 +150,7 @@ const VariantManagerModal = ({ product, onClose, onChanged }) => {
             <X className="w-4 h-4" />
           </button>
         </div>
+        )}
 
         <div className="flex flex-col sm:flex-row gap-2 px-5 py-3 border-b border-gray-100 dark:border-gray-700 shrink-0">
           <div className="relative flex-1">
@@ -173,7 +174,7 @@ const VariantManagerModal = ({ product, onClose, onChanged }) => {
           </button>
         </div>
 
-        <div className="flex-1 overflow-y-auto px-5 py-3">
+        <div className={embedded ? 'max-h-72 overflow-y-auto px-5 py-3' : 'flex-1 overflow-y-auto px-5 py-3'}>
           {loading ? (
             <div className="flex justify-center py-10">
               <div className="w-6 h-6 border-2 border-gray-300 border-t-orange-500 rounded-full animate-spin" />
@@ -291,6 +292,15 @@ const VariantManagerModal = ({ product, onClose, onChanged }) => {
             </div>
           </div>
         )}
+    </>
+  );
+
+  if (embedded) return content;
+
+  return (
+    <div className="fixed inset-0 z-[9999] bg-black/50 backdrop-blur-sm flex items-center justify-center p-4" onClick={onClose}>
+      <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl max-w-4xl w-full max-h-[90vh] overflow-hidden flex flex-col" onClick={e => e.stopPropagation()}>
+        {content}
       </div>
     </div>
   );
