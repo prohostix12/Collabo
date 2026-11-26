@@ -1,19 +1,17 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { X, Plus, Trash2, Pencil, Save, AlertCircle, Search, Upload } from 'lucide-react';
+import { X, Plus, Trash2, Pencil, Save, AlertCircle, Search } from 'lucide-react';
 import api from '../../services/api';
 import toast from 'react-hot-toast';
+import ColorSwatchPicker from './ColorSwatchPicker';
+import VariantImageGallery from './VariantImageGallery';
 
-const emptyForm = { id: null, attributesText: '', sku: '', price: '', stock: '', low_stock_threshold: '5', image: '', is_active: true };
-
-const MAX_VARIANT_IMAGE_SIZE = 5 * 1024 * 1024;
-const fileToDataUrl = (file) => new Promise((resolve, reject) => {
-  const reader = new FileReader();
-  reader.onloadend = () => resolve(reader.result);
-  reader.onerror = reject;
-  reader.readAsDataURL(file);
-});
+const emptyForm = {
+  id: null, attributesText: '', sku: '', price: '', stock: '', low_stock_threshold: '5',
+  image: '', is_active: true, colors: [], galleryImages: [],
+};
 
 const attrsToText = (attrs) => Object.entries(attrs || {}).map(([k, v]) => `${k}: ${v}`).join(', ');
+const otherAttrsToText = (attrs) => Object.entries(attrs || {}).filter(([k]) => k.toLowerCase() !== 'color').map(([k, v]) => `${k}: ${v}`).join(', ');
 const textToAttrs = (text) => {
   const out = {};
   text.split(',').forEach(part => {
@@ -52,10 +50,13 @@ const VariantManagerModal = ({ product, onClose, onChanged, embedded = false }) 
 
   const openAddForm = () => { setForm(emptyForm); setError(''); setShowForm(true); };
   const openEditForm = (v) => {
+    const colorKey = Object.keys(v.attributes || {}).find(k => k.toLowerCase() === 'color');
     setForm({
-      id: v.id, attributesText: attrsToText(v.attributes), sku: v.sku,
+      id: v.id, attributesText: otherAttrsToText(v.attributes), sku: v.sku,
       price: v.price, stock: v.stock, low_stock_threshold: v.low_stock_threshold,
       image: v.image || '', is_active: v.is_active,
+      colors: colorKey && v.hex_code ? [{ name: v.attributes[colorKey], hex: v.hex_code }] : [],
+      galleryImages: v.gallery_images || [],
     });
     setError('');
     setShowForm(true);
@@ -64,7 +65,8 @@ const VariantManagerModal = ({ product, onClose, onChanged, embedded = false }) 
   const handleSave = async () => {
     setError('');
     const attributes = textToAttrs(form.attributesText);
-    if (Object.keys(attributes).length === 0) return setError('Enter at least one attribute, e.g. "size: M, color: Black"');
+    if (form.colors.length > 0) attributes.Color = form.colors[0].name;
+    if (Object.keys(attributes).length === 0) return setError('Pick a color and/or enter at least one attribute, e.g. "size: M"');
     if (!form.price || Number(form.price) <= 0) return setError('Enter a valid price');
     if (form.stock === '' || Number(form.stock) < 0) return setError('Enter a valid stock quantity');
 
@@ -72,6 +74,7 @@ const VariantManagerModal = ({ product, onClose, onChanged, embedded = false }) 
     const payload = {
       product: product.id,
       attributes,
+      hex_code: form.colors[0]?.hex || '',
       sku: form.sku.trim(),
       price: form.price,
       stock: form.stock,
@@ -80,11 +83,24 @@ const VariantManagerModal = ({ product, onClose, onChanged, embedded = false }) 
       is_active: form.is_active,
     };
     try {
+      let variantId = form.id;
       if (form.id) {
         await api.patch(`/ecommerce/product-variants/${form.id}/`, payload);
         toast.success('Variant updated');
       } else {
-        await api.post('/ecommerce/product-variants/', payload);
+        const res = await api.post('/ecommerce/product-variants/', payload);
+        variantId = res.data.id;
+        // Gallery images added before the variant existed are only staged
+        // locally (VariantImageGallery can't call the real endpoint without
+        // an id yet) — upload them for real now that the variant is saved.
+        const staged = form.galleryImages.filter(img => img._local);
+        for (const img of staged) {
+          try {
+            await api.post(`/ecommerce/product-variants/${variantId}/images/`, { image: img.image, order: img.order });
+          } catch {
+            toast.error('One of the gallery images failed to upload');
+          }
+        }
         toast.success('Variant added');
       }
       setShowForm(false);
@@ -210,7 +226,10 @@ const VariantManagerModal = ({ product, onClose, onChanged, embedded = false }) 
                   <div key={v.id} className={`p-2.5 rounded-lg border space-y-2 ${!v.is_active ? 'border-gray-100 dark:border-gray-700 opacity-60' : v.stock === 0 ? 'border-red-100 bg-red-50/40 dark:border-red-900/40' : v.is_low_stock ? 'border-amber-100 bg-amber-50/40 dark:border-amber-900/40' : 'border-gray-100 dark:border-gray-700'}`}>
                     <div className="flex items-start justify-between gap-2">
                       <div className="min-w-0">
-                        <p className="text-xs font-semibold text-gray-800 dark:text-white truncate">{attrsToText(v.attributes)}</p>
+                        <p className="text-xs font-semibold text-gray-800 dark:text-white truncate flex items-center gap-1.5">
+                          {v.hex_code && <span className="w-2.5 h-2.5 rounded-full border border-gray-300 dark:border-gray-600 shrink-0" style={{ backgroundColor: v.hex_code }} />}
+                          {attrsToText(v.attributes)}
+                        </p>
                         <p className="text-[10px] text-gray-400 font-mono truncate">{v.sku}</p>
                       </div>
                       <div className="flex items-center gap-1 shrink-0">
@@ -261,7 +280,10 @@ const VariantManagerModal = ({ product, onClose, onChanged, embedded = false }) 
               {variants.map(v => (
                 <div key={v.id} className={`flex items-center gap-2 px-2 py-2 rounded-lg border ${!v.is_active ? 'border-gray-100 dark:border-gray-700 opacity-50' : v.stock === 0 ? 'border-red-100 bg-red-50/40 dark:border-red-900/40' : v.is_low_stock ? 'border-amber-100 bg-amber-50/40 dark:border-amber-900/40' : 'border-gray-100 dark:border-gray-700'}`}>
                   <div className="flex-1 min-w-0">
-                    <p className="text-xs font-semibold text-gray-800 dark:text-white truncate">{attrsToText(v.attributes)}</p>
+                    <p className="text-xs font-semibold text-gray-800 dark:text-white truncate flex items-center gap-1.5">
+                      {v.hex_code && <span className="w-2.5 h-2.5 rounded-full border border-gray-300 dark:border-gray-600 shrink-0" style={{ backgroundColor: v.hex_code }} />}
+                      {attrsToText(v.attributes)}
+                    </p>
                     <p className="text-[10px] text-gray-400 font-mono">{v.sku}</p>
                   </div>
                   <div className="w-24 text-right">
@@ -317,14 +339,22 @@ const VariantManagerModal = ({ product, onClose, onChanged, embedded = false }) 
 
         {showForm && (
           <div className="fixed inset-0 z-[10000] bg-black/40 flex items-center justify-center p-4" onClick={() => setShowForm(false)}>
-            <div className="bg-white dark:bg-gray-800 rounded-xl max-w-md w-full p-5 space-y-3" onClick={e => e.stopPropagation()}>
+            <div className="bg-white dark:bg-gray-800 rounded-xl max-w-lg w-full max-h-[85vh] overflow-y-auto p-5 space-y-3" onClick={e => e.stopPropagation()}>
               <h4 className="text-sm font-bold text-gray-900 dark:text-white">{form.id ? 'Edit Variant' : 'Add Variant'}</h4>
               {error && <div className="bg-red-50 border border-red-100 rounded-lg p-2 text-[11px] text-red-600 flex items-start gap-1.5"><AlertCircle className="w-3.5 h-3.5 mt-0.5 shrink-0" />{error}</div>}
+
               <div>
-                <label className="text-[10px] font-bold text-gray-500 uppercase tracking-wide">Attributes *</label>
+                <label className="text-[10px] font-bold text-gray-500 uppercase tracking-wide">Color (optional)</label>
+                <div className="mt-1">
+                  <ColorSwatchPicker colors={form.colors} onChange={(colors) => setForm(f => ({ ...f, colors }))} multiple={false} />
+                </div>
+              </div>
+
+              <div>
+                <label className="text-[10px] font-bold text-gray-500 uppercase tracking-wide">Other Attributes</label>
                 <input type="text" value={form.attributesText} onChange={e => setForm(f => ({ ...f, attributesText: e.target.value }))}
-                  placeholder="size: M, color: Black" className={inputCls + ' mt-1'} />
-                <p className="text-[9px] text-gray-400 mt-0.5">Comma-separated "key: value" pairs</p>
+                  placeholder="size: M, material: Cotton" className={inputCls + ' mt-1'} />
+                <p className="text-[9px] text-gray-400 mt-0.5">Comma-separated "key: value" pairs. At least a color or one attribute here is required.</p>
               </div>
               <div>
                 <label className="text-[10px] font-bold text-gray-500 uppercase tracking-wide">SKU</label>
@@ -341,28 +371,20 @@ const VariantManagerModal = ({ product, onClose, onChanged, embedded = false }) 
                   <input type="number" value={form.stock} onChange={e => setForm(f => ({ ...f, stock: e.target.value }))} className={inputCls + ' mt-1'} />
                 </div>
               </div>
+
               <div>
-                <label className="text-[10px] font-bold text-gray-500 uppercase tracking-wide">Variant Image (optional)</label>
-                <div className="flex gap-2 mt-1">
-                  <input type="text" value={form.image} onChange={e => setForm(f => ({ ...f, image: e.target.value }))}
-                    placeholder="Paste a URL or upload a file" className={inputCls + ' flex-1'} />
-                  <label className="cursor-pointer bg-gray-900 hover:bg-gray-800 text-white font-semibold text-xs px-3 rounded-lg flex items-center justify-center transition-colors shrink-0">
-                    <Upload className="w-3.5 h-3.5" />
-                    <input type="file" accept="image/*" className="hidden"
-                      onChange={async e => {
-                        const file = e.target.files[0];
-                        e.target.value = '';
-                        if (!file) return;
-                        if (file.size > MAX_VARIANT_IMAGE_SIZE) { toast.error('Image must be under 5MB'); return; }
-                        const dataUrl = await fileToDataUrl(file);
-                        setForm(f => ({ ...f, image: dataUrl }));
-                      }} />
-                  </label>
+                <label className="text-[10px] font-bold text-gray-500 uppercase tracking-wide">Images</label>
+                <div className="mt-1">
+                  <VariantImageGallery
+                    variantId={form.id}
+                    primaryImage={form.image}
+                    onPrimaryChange={(image) => setForm(f => ({ ...f, image }))}
+                    images={form.galleryImages}
+                    onImagesChange={(galleryImages) => setForm(f => ({ ...f, galleryImages }))}
+                  />
                 </div>
-                {form.image && (
-                  <img src={form.image} alt="Variant preview" className="w-14 h-14 rounded-lg object-cover border border-gray-200 dark:border-gray-700 mt-2" />
-                )}
               </div>
+
               <label className="flex items-center gap-2 cursor-pointer select-none">
                 <input type="checkbox" checked={form.is_active} onChange={e => setForm(f => ({ ...f, is_active: e.target.checked }))} className="w-3.5 h-3.5" />
                 <span className="text-[11px] text-gray-600 dark:text-gray-300">Active (visible to buyers)</span>

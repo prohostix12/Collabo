@@ -1,6 +1,6 @@
 from rest_framework import serializers
 from django.conf import settings
-from .models import Product, Cart, CartItem, Address, Order, OrderItem, Category, Brand, ProductReview, AffiliateCommission, StoreSettings, CustomerReview, ProductInfluencerMedia, SellerReview, SellerPayout, NewsletterSubscriber, Wishlist, CustomerReferralLink, WalletTransaction, WalletPayout, Vendor, ProductVariant, InventoryMovement
+from .models import Product, Cart, CartItem, Address, Order, OrderItem, Category, Brand, ProductReview, AffiliateCommission, StoreSettings, CustomerReview, ProductInfluencerMedia, SellerReview, SellerPayout, NewsletterSubscriber, Wishlist, CustomerReferralLink, WalletTransaction, WalletPayout, Vendor, ProductVariant, InventoryMovement, VariantImage, VariantChangeLog
 
 class CategorySerializer(serializers.ModelSerializer):
     class Meta:
@@ -22,16 +22,35 @@ def _force_https(url):
         return 'https://' + url[7:]
     return url
 
+class VariantImageSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = VariantImage
+        fields = ['id', 'variant', 'image', 'order']
+        read_only_fields = ['id']
+
+
+class VariantChangeLogSerializer(serializers.ModelSerializer):
+    actor_username = serializers.ReadOnlyField(source='actor.username')
+    variant_sku = serializers.ReadOnlyField(source='variant.sku')
+    product_name = serializers.ReadOnlyField(source='variant.product.name')
+
+    class Meta:
+        model = VariantChangeLog
+        fields = ['id', 'variant', 'variant_sku', 'product_name', 'actor', 'actor_username', 'action', 'changes', 'created_at']
+        read_only_fields = fields
+
+
 class ProductVariantSerializer(serializers.ModelSerializer):
     is_in_stock = serializers.ReadOnlyField()
     is_low_stock = serializers.ReadOnlyField()
     display_image = serializers.ReadOnlyField()
+    gallery_images = VariantImageSerializer(many=True, read_only=True)
 
     class Meta:
         model = ProductVariant
         fields = [
-            'id', 'product', 'sku', 'attributes', 'price', 'stock', 'is_active',
-            'image', 'display_image', 'low_stock_threshold', 'is_in_stock', 'is_low_stock',
+            'id', 'product', 'sku', 'attributes', 'hex_code', 'price', 'stock', 'is_active',
+            'image', 'display_image', 'gallery_images', 'low_stock_threshold', 'is_in_stock', 'is_low_stock',
             'created_at', 'updated_at',
         ]
         read_only_fields = ['id', 'created_at', 'updated_at']

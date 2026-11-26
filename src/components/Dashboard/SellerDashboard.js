@@ -15,6 +15,7 @@ import toast from 'react-hot-toast';
 import { useAuth } from '../../contexts/AuthContext';
 import StoreBuilder from './StoreBuilder';
 import VariantManagerModal from './VariantManagerModal';
+import ColorSwatchPicker from './ColorSwatchPicker';
 
 const emptyForm = {
   name: '',
@@ -148,7 +149,7 @@ const SellerDashboard = () => {
   // comma-separated values. Rows are the cartesian product, editable per-row
   // before the variants are actually created (right after the product itself).
   const [variantOption1, setVariantOption1] = useState({ name: '', values: '' });
-  const [variantOption2, setVariantOption2] = useState({ name: '', values: '' });
+  const [variantColors, setVariantColors] = useState([]); // [{name, hex}]
   const [variantRowOverrides, setVariantRowOverrides] = useState({});
   // "Others" in the category dropdown lets a seller type a category name that
   // isn't in the admin-curated list yet — saved as free text on the product
@@ -595,7 +596,7 @@ const SellerDashboard = () => {
 
   const resetForm = () => {
     setForm(emptyForm); setUploadedImages([]); setQaRows([emptyQaRow()]); setFormError(''); setEditingProduct(null);
-    setVariantOption1({ name: '', values: '' }); setVariantOption2({ name: '', values: '' }); setVariantRowOverrides({});
+    setVariantOption1({ name: '', values: '' }); setVariantColors([]); setVariantRowOverrides({});
     setIsOtherCategory(false);
   };
 
@@ -606,32 +607,48 @@ const SellerDashboard = () => {
   const activateAddForm = () => { resetForm(); setShowAddForm(true); };
   const openAddForm = () => navigate('/dashboard/products/new');
 
-  // Cartesian product of the two option value lists, e.g. Size: S,M and Color: Gray,Navy
-  // becomes 4 rows ({Size: S, Color: Gray}, {Size: S, Color: Navy}, ...). Each row carries
-  // a stable key so per-row price/stock edits (variantRowOverrides) survive re-typing values.
+  // Cartesian product of Option1 values (e.g. Size: S,M) and the selected colors
+  // (e.g. Black, Navy) — becomes 4 rows ({Size: S, Color: Black}, ...). Either can
+  // be used alone (color-only or size-only variants). Each row carries a stable
+  // key so per-row price/stock/images (variantRowOverrides) survive re-typing.
   const variantRows = useMemo(() => {
     const vals1 = variantOption1.name.trim() && variantOption1.values.trim()
       ? variantOption1.values.split(',').map(v => v.trim()).filter(Boolean) : [];
-    const vals2 = variantOption2.name.trim() && variantOption2.values.trim()
-      ? variantOption2.values.split(',').map(v => v.trim()).filter(Boolean) : [];
-    if (vals1.length === 0) return [];
-    const combos = vals2.length > 0
-      ? vals1.flatMap(v1 => vals2.map(v2 => ({ [variantOption1.name.trim()]: v1, [variantOption2.name.trim()]: v2 })))
-      : vals1.map(v1 => ({ [variantOption1.name.trim()]: v1 }));
-    return combos.map(attributes => {
+    const colorList = variantColors;
+    if (vals1.length === 0 && colorList.length === 0) return [];
+
+    let combos;
+    if (vals1.length > 0 && colorList.length > 0) {
+      combos = vals1.flatMap(v1 => colorList.map(c => ({ attributes: { [variantOption1.name.trim()]: v1, Color: c.name }, hex: c.hex })));
+    } else if (vals1.length > 0) {
+      combos = vals1.map(v1 => ({ attributes: { [variantOption1.name.trim()]: v1 }, hex: '' }));
+    } else {
+      combos = colorList.map(c => ({ attributes: { Color: c.name }, hex: c.hex }));
+    }
+
+    return combos.map(({ attributes, hex }) => {
       const key = Object.entries(attributes).map(([k, v]) => `${k}:${v}`).join('|');
       const override = variantRowOverrides[key] || {};
       return {
         key,
         attributes,
+        hex,
         price: override.price ?? form.price ?? '',
         stock: override.stock ?? form.stock ?? '',
+        images: override.images ?? [],
       };
     });
-  }, [variantOption1, variantOption2, variantRowOverrides, form.price, form.stock]);
+  }, [variantOption1, variantColors, variantRowOverrides, form.price, form.stock]);
 
   const updateVariantRow = (key, field, value) => {
     setVariantRowOverrides(prev => ({ ...prev, [key]: { ...prev[key], [field]: value } }));
+  };
+
+  // Appends rather than replacing — safe to call repeatedly in a loop (e.g.
+  // uploading several files at once) without racing against a stale `row.images`
+  // closure the way updateVariantRow(key, 'images', [...row.images, x]) would.
+  const appendVariantRowImage = (key, img) => {
+    setVariantRowOverrides(prev => ({ ...prev, [key]: { ...prev[key], images: [...(prev[key]?.images || []), img] } }));
   };
 
   const openEditForm = (product) => navigate(`/dashboard/products/edit/${product.id}`);
@@ -810,12 +827,19 @@ const SellerDashboard = () => {
           let variantErrors = 0;
           for (const row of variantRows) {
             try {
-              await api.post('/ecommerce/product-variants/', {
+              const vRes = await api.post('/ecommerce/product-variants/', {
                 product: newProductId,
                 attributes: row.attributes,
+                hex_code: row.hex || '',
                 price: Number(row.price) || Number(form.price),
                 stock: Number(row.stock) || 0,
               });
+              const newVariantId = vRes.data.id;
+              for (const img of row.images || []) {
+                try {
+                  await api.post(`/ecommerce/product-variants/${newVariantId}/images/`, { image: img.image, order: img.order });
+                } catch { /* one bad image shouldn't fail the whole variant */ }
+              }
             } catch (err) {
               variantErrors += 1;
             }
@@ -1833,38 +1857,64 @@ const SellerDashboard = () => {
                       />
                     ) : (
                       <>
-                        <p className="text-[11px] text-gray-400">Optional. Add up to 2 options (e.g. Size, Color) with comma-separated values — each combination becomes a real, independently priced/stocked variant once you publish.</p>
+                        <p className="text-[11px] text-gray-400">Optional. Pick colors and/or a second option (e.g. Size) — each combination becomes a real, independently priced/stocked variant once you publish.</p>
+                        <div>
+                          <label className="text-[10px] font-bold text-gray-500 uppercase tracking-wide">Colors</label>
+                          <div className="mt-1">
+                            <ColorSwatchPicker colors={variantColors} onChange={setVariantColors} multiple />
+                          </div>
+                        </div>
                         <div className="grid grid-cols-2 gap-2">
                           <input type="text" value={variantOption1.name} onChange={e => setVariantOption1({ ...variantOption1, name: e.target.value })}
-                            placeholder="Option name (e.g. Size)"
+                            placeholder="Other option name (e.g. Size)"
                             className="border border-gray-200 dark:border-gray-700 rounded-lg px-3 py-2 text-sm bg-white dark:bg-gray-900 focus:outline-none focus:ring-1 focus:ring-orange-400" />
                           <input type="text" value={variantOption1.values} onChange={e => setVariantOption1({ ...variantOption1, values: e.target.value })}
                             placeholder="Values (e.g. S, M, L)"
                             className="border border-gray-200 dark:border-gray-700 rounded-lg px-3 py-2 text-sm bg-white dark:bg-gray-900 focus:outline-none focus:ring-1 focus:ring-orange-400" />
                         </div>
-                        <div className="grid grid-cols-2 gap-2">
-                          <input type="text" value={variantOption2.name} onChange={e => setVariantOption2({ ...variantOption2, name: e.target.value })}
-                            placeholder="Option name (e.g. Color)"
-                            className="border border-gray-200 dark:border-gray-700 rounded-lg px-3 py-2 text-sm bg-white dark:bg-gray-900 focus:outline-none focus:ring-1 focus:ring-orange-400" />
-                          <input type="text" value={variantOption2.values} onChange={e => setVariantOption2({ ...variantOption2, values: e.target.value })}
-                            placeholder="Values (e.g. Gray, Navy)"
-                            className="border border-gray-200 dark:border-gray-700 rounded-lg px-3 py-2 text-sm bg-white dark:bg-gray-900 focus:outline-none focus:ring-1 focus:ring-orange-400" />
-                        </div>
                         {variantRows.length > 0 && (
                           <div className="border border-gray-100 dark:border-gray-700 rounded-lg overflow-hidden">
-                            <div className="grid grid-cols-[1fr_72px_72px] gap-2 px-2 py-1.5 text-[10px] font-bold text-gray-400 uppercase tracking-wide bg-gray-50 dark:bg-gray-900/40">
-                              <span>Variant</span><span>Price</span><span>Stock</span>
+                            <div className="grid grid-cols-[1fr_64px_64px_auto] gap-2 px-2 py-1.5 text-[10px] font-bold text-gray-400 uppercase tracking-wide bg-gray-50 dark:bg-gray-900/40">
+                              <span>Variant</span><span>Price</span><span>Stock</span><span>Images</span>
                             </div>
-                            <div className="divide-y divide-gray-100 dark:divide-gray-700 max-h-48 overflow-y-auto">
+                            <div className="divide-y divide-gray-100 dark:divide-gray-700 max-h-64 overflow-y-auto">
                               {variantRows.map(row => (
-                                <div key={row.key} className="grid grid-cols-[1fr_72px_72px] gap-2 px-2 py-1.5 items-center">
-                                  <span className="text-xs text-gray-600 dark:text-gray-300 truncate">{Object.values(row.attributes).join(' / ')}</span>
+                                <div key={row.key} className="grid grid-cols-[1fr_64px_64px_auto] gap-2 px-2 py-1.5 items-center">
+                                  <span className="text-xs text-gray-600 dark:text-gray-300 truncate flex items-center gap-1.5">
+                                    {row.hex && <span className="w-2.5 h-2.5 rounded-full border border-gray-300 dark:border-gray-600 shrink-0" style={{ backgroundColor: row.hex }} />}
+                                    {Object.values(row.attributes).join(' / ')}
+                                  </span>
                                   <input type="number" min="0" step="0.01" value={row.price}
                                     onChange={e => updateVariantRow(row.key, 'price', e.target.value)}
                                     className="w-full border border-gray-200 dark:border-gray-700 rounded px-1.5 py-1 text-xs bg-white dark:bg-gray-900" />
                                   <input type="number" min="0" value={row.stock}
                                     onChange={e => updateVariantRow(row.key, 'stock', e.target.value)}
                                     className="w-full border border-gray-200 dark:border-gray-700 rounded px-1.5 py-1 text-xs bg-white dark:bg-gray-900" />
+                                  <div className="flex items-center gap-1">
+                                    {(row.images || []).map((img, i) => (
+                                      <div key={i} className="relative group w-7 h-7 shrink-0">
+                                        <img src={img.image} alt="" className="w-full h-full object-cover rounded border border-gray-200 dark:border-gray-700" />
+                                        <button type="button"
+                                          onClick={() => updateVariantRow(row.key, 'images', row.images.filter((_, idx) => idx !== i))}
+                                          className="absolute -top-1 -right-1 w-3 h-3 bg-red-500 text-white rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 text-[8px]">
+                                          ×
+                                        </button>
+                                      </div>
+                                    ))}
+                                    <label className="w-7 h-7 rounded border border-dashed border-gray-300 dark:border-gray-600 flex items-center justify-center cursor-pointer hover:border-orange-400 shrink-0 text-gray-400">
+                                      <Upload className="w-3 h-3" />
+                                      <input type="file" accept="image/*" multiple className="hidden"
+                                        onChange={async e => {
+                                          const files = Array.from(e.target.files || []);
+                                          e.target.value = '';
+                                          for (const file of files) {
+                                            if (file.size > MAX_IMAGE_SIZE) { toast.error(`${file.name} is over 5MB, skipped`); continue; }
+                                            const dataUrl = await fileToDataUrl(file);
+                                            appendVariantRowImage(row.key, { image: dataUrl, order: (row.images || []).length });
+                                          }
+                                        }} />
+                                    </label>
+                                  </div>
                                 </div>
                               ))}
                             </div>
