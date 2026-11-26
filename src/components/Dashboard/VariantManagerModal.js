@@ -6,7 +6,7 @@ import ColorSwatchPicker from './ColorSwatchPicker';
 import VariantImageGallery from './VariantImageGallery';
 
 const emptyForm = {
-  id: null, attributesText: '', sku: '', price: '', stock: '', low_stock_threshold: '5',
+  id: null, attributesText: '', sku: '', regular_price: '', price: '', stock: '', low_stock_threshold: '5',
   image: '', is_active: true, colors: [], galleryImages: [],
 };
 
@@ -53,7 +53,7 @@ const VariantManagerModal = ({ product, onClose, onChanged, embedded = false }) 
     const colorKey = Object.keys(v.attributes || {}).find(k => k.toLowerCase() === 'color');
     setForm({
       id: v.id, attributesText: otherAttrsToText(v.attributes), sku: v.sku,
-      price: v.price, stock: v.stock, low_stock_threshold: v.low_stock_threshold,
+      regular_price: v.regular_price ?? '', price: v.price, stock: v.stock, low_stock_threshold: v.low_stock_threshold,
       image: v.image || '', is_active: v.is_active,
       colors: colorKey && v.hex_code ? [{ name: v.attributes[colorKey], hex: v.hex_code }] : [],
       galleryImages: v.gallery_images || [],
@@ -67,7 +67,8 @@ const VariantManagerModal = ({ product, onClose, onChanged, embedded = false }) 
     const attributes = textToAttrs(form.attributesText);
     if (form.colors.length > 0) attributes.Color = form.colors[0].name;
     if (Object.keys(attributes).length === 0) return setError('Pick a color and/or enter at least one attribute, e.g. "size: M"');
-    if (!form.price || Number(form.price) <= 0) return setError('Enter a valid price');
+    if (!form.price || Number(form.price) <= 0) return setError('Enter a valid selling price');
+    if (form.regular_price && Number(form.regular_price) < Number(form.price)) return setError('Regular price (MRP) cannot be less than the selling price');
     if (form.stock === '' || Number(form.stock) < 0) return setError('Enter a valid stock quantity');
 
     setSaving(true);
@@ -76,6 +77,7 @@ const VariantManagerModal = ({ product, onClose, onChanged, embedded = false }) 
       attributes,
       hex_code: form.colors[0]?.hex || '',
       sku: form.sku.trim(),
+      regular_price: form.regular_price || null,
       price: form.price,
       stock: form.stock,
       low_stock_threshold: form.low_stock_threshold || 5,
@@ -230,7 +232,10 @@ const VariantManagerModal = ({ product, onClose, onChanged, embedded = false }) 
                           {v.hex_code && <span className="w-2.5 h-2.5 rounded-full border border-gray-300 dark:border-gray-600 shrink-0" style={{ backgroundColor: v.hex_code }} />}
                           {attrsToText(v.attributes)}
                         </p>
-                        <p className="text-[10px] text-gray-400 font-mono truncate">{v.sku}</p>
+                        <p className="text-[10px] text-gray-400 font-mono truncate">
+                          {v.sku}
+                          {v.discount_percent > 0 && <span className="text-emerald-600 font-bold ml-1.5">{v.discount_percent}% off</span>}
+                        </p>
                       </div>
                       <div className="flex items-center gap-1 shrink-0">
                         {statusBadge}
@@ -244,7 +249,7 @@ const VariantManagerModal = ({ product, onClose, onChanged, embedded = false }) 
                     </div>
                     <div className="grid grid-cols-2 gap-2">
                       <div>
-                        <label className="text-[9px] font-bold text-gray-400 uppercase tracking-wide">Price</label>
+                        <label className="text-[9px] font-bold text-gray-400 uppercase tracking-wide">Price{v.regular_price ? ` (MRP ₹${v.regular_price})` : ''}</label>
                         <input
                           type="number" defaultValue={v.price}
                           onChange={e => setBulkField(v.id, 'price', e.target.value)}
@@ -284,9 +289,13 @@ const VariantManagerModal = ({ product, onClose, onChanged, embedded = false }) 
                       {v.hex_code && <span className="w-2.5 h-2.5 rounded-full border border-gray-300 dark:border-gray-600 shrink-0" style={{ backgroundColor: v.hex_code }} />}
                       {attrsToText(v.attributes)}
                     </p>
-                    <p className="text-[10px] text-gray-400 font-mono">{v.sku}</p>
+                    <p className="text-[10px] text-gray-400 font-mono">
+                      {v.sku}
+                      {v.discount_percent > 0 && <span className="text-emerald-600 font-bold ml-1.5">{v.discount_percent}% off</span>}
+                    </p>
                   </div>
                   <div className="w-24 text-right">
+                    {v.regular_price && <p className="text-[9px] text-gray-400 line-through">₹{v.regular_price}</p>}
                     <input
                       type="number" defaultValue={v.price}
                       onChange={e => setBulkField(v.id, 'price', e.target.value)}
@@ -363,13 +372,23 @@ const VariantManagerModal = ({ product, onClose, onChanged, embedded = false }) 
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="text-[10px] font-bold text-gray-500 uppercase tracking-wide">Price *</label>
-                  <input type="number" value={form.price} onChange={e => setForm(f => ({ ...f, price: e.target.value }))} className={inputCls + ' mt-1'} />
+                  <label className="text-[10px] font-bold text-gray-500 uppercase tracking-wide">Regular Price / MRP</label>
+                  <input type="number" value={form.regular_price} onChange={e => setForm(f => ({ ...f, regular_price: e.target.value }))}
+                    placeholder="Optional" className={inputCls + ' mt-1'} />
                 </div>
                 <div>
-                  <label className="text-[10px] font-bold text-gray-500 uppercase tracking-wide">Stock *</label>
-                  <input type="number" value={form.stock} onChange={e => setForm(f => ({ ...f, stock: e.target.value }))} className={inputCls + ' mt-1'} />
+                  <label className="text-[10px] font-bold text-gray-500 uppercase tracking-wide">Selling Price *</label>
+                  <input type="number" value={form.price} onChange={e => setForm(f => ({ ...f, price: e.target.value }))} className={inputCls + ' mt-1'} />
                 </div>
+              </div>
+              {form.regular_price && Number(form.regular_price) > Number(form.price || 0) && (
+                <p className="text-[10px] text-emerald-600 font-bold -mt-1.5">
+                  {Math.round((1 - Number(form.price) / Number(form.regular_price)) * 100)}% off
+                </p>
+              )}
+              <div>
+                <label className="text-[10px] font-bold text-gray-500 uppercase tracking-wide">Stock *</label>
+                <input type="number" value={form.stock} onChange={e => setForm(f => ({ ...f, stock: e.target.value }))} className={inputCls + ' mt-1'} />
               </div>
 
               <div>

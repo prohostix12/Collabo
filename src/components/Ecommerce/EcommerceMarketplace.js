@@ -4478,6 +4478,12 @@ export default function EcommerceMarketplace({ inlineMode = false, onBackToSelec
                           <span className="text-2xl font-black dark:text-white">
                             {selectedVariant ? `₹${Number(selectedVariant.price).toLocaleString()}` : `From ₹${selectedProduct.discountPrice.toLocaleString()}`}
                           </span>
+                          {selectedVariant && selectedVariant.regular_price && Number(selectedVariant.regular_price) > Number(selectedVariant.price) && (
+                            <>
+                              <span className="text-slate-400 line-through text-sm">₹{Number(selectedVariant.regular_price).toLocaleString()}</span>
+                              <span className="text-xs font-black text-orange-500 bg-orange-50 dark:bg-orange-950/20 px-2 py-0.5 rounded">-{selectedVariant.discount_percent}% OFF</span>
+                            </>
+                          )}
                         </div>
                       );
                     }
