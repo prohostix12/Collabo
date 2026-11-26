@@ -115,12 +115,16 @@ class Product(models.Model):
         total_stock = active.aggregate(s=models.Sum('stock'))['s']
         if total_stock is None:
             return  # no active variants — leave the product's own price/stock as-is
-        min_price = active.order_by('price').values_list('price', flat=True).first()
         self.stock = total_stock
-        if min_price is not None:
-            self.price = min_price
-            self.discount_price = min_price
-            self.discount_percent = 0
+        # Representative variant for the product-level (listing-card) price: the
+        # cheapest selling price among active variants. Its own regular_price (if
+        # any) becomes the product's "MRP" so a discounted variant still shows a
+        # real strikethrough/discount% on cards, instead of always forcing 0%.
+        cheapest = active.order_by('price').first()
+        if cheapest is not None:
+            self.price = cheapest.regular_price or cheapest.price
+            self.discount_price = cheapest.price
+            self.discount_percent = cheapest.discount_percent
         Product.objects.filter(pk=self.pk).update(
             stock=self.stock, price=self.price,
             discount_price=self.discount_price, discount_percent=self.discount_percent,
@@ -159,7 +163,18 @@ class ProductVariant(models.Model):
     # the serializer — covers the race-condition case two simultaneous saves can't
     # catch via a Python-side query alone.
     attributes_key = models.CharField(max_length=300, editable=False, default='')
-    price = models.DecimalField(max_digits=12, decimal_places=2)
+    # `price` is, and has always been, the SELLING price (what checkout actually
+    # charges) — kept as-is so every existing read/write site (checkout, bulk
+    # price updates, order snapshots, serializers) needs zero changes. `regular_price`
+    # is the new MRP field; nullable because existing rows get it backfilled equal
+    # to `price` in a data migration (so pre-existing variants show 0% discount,
+    # never a fabricated one), and new variants may reasonably skip it too (no MRP
+    # concept = no discount shown, same as a Product with no discount_price set).
+    regular_price = models.DecimalField(
+        max_digits=12, decimal_places=2, null=True, blank=True,
+        help_text="MRP / regular price. Leave blank for no strikethrough price. Must be >= price (selling price).",
+    )
+    price = models.DecimalField(max_digits=12, decimal_places=2, help_text="Selling price — what checkout actually charges.")
     stock = models.PositiveIntegerField(default=0)
     is_active = models.BooleanField(default=True, help_text="Deactivated variants are hidden from buyers but keep their SKU and order history")
     image = models.TextField(blank=True, default='', help_text="Variant-specific image URL or base64 data; falls back to the product's main image if blank. Kept as the primary/cover image even when extra gallery images exist in VariantImage.")
@@ -186,6 +201,14 @@ class ProductVariant(models.Model):
     @property
     def display_image(self):
         return self.image or self.product.image
+
+    @property
+    def discount_percent(self):
+        """Computed, not stored — mirrors Product.save()'s own rounding so the
+        two look consistent wherever both appear side by side."""
+        if not self.regular_price or self.regular_price <= 0 or self.regular_price <= self.price:
+            return 0
+        return int(round((1 - (self.price / self.regular_price)) * 100))
 
     def save(self, *args, **kwargs):
         if not self.seller_id:

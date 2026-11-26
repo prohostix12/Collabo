@@ -44,14 +44,15 @@ class ProductVariantSerializer(serializers.ModelSerializer):
     is_in_stock = serializers.ReadOnlyField()
     is_low_stock = serializers.ReadOnlyField()
     display_image = serializers.ReadOnlyField()
+    discount_percent = serializers.ReadOnlyField()
     gallery_images = VariantImageSerializer(many=True, read_only=True)
 
     class Meta:
         model = ProductVariant
         fields = [
-            'id', 'product', 'sku', 'attributes', 'hex_code', 'price', 'stock', 'is_active',
-            'image', 'display_image', 'gallery_images', 'low_stock_threshold', 'is_in_stock', 'is_low_stock',
-            'created_at', 'updated_at',
+            'id', 'product', 'sku', 'attributes', 'hex_code', 'regular_price', 'price', 'discount_percent',
+            'stock', 'is_active', 'image', 'display_image', 'gallery_images', 'low_stock_threshold',
+            'is_in_stock', 'is_low_stock', 'created_at', 'updated_at',
         ]
         read_only_fields = ['id', 'created_at', 'updated_at']
 
@@ -76,6 +77,14 @@ class ProductVariantSerializer(serializers.ModelSerializer):
                 qs = qs.exclude(pk=self.instance.pk)
             if qs.exists():
                 raise serializers.ValidationError({'sku': 'You already have a variant with this SKU.'})
+
+        # Selling price must never exceed the MRP — check against whichever of
+        # the two fields is actually changing, falling back to the existing
+        # instance's value for the one that isn't in this request.
+        regular_price = attrs.get('regular_price', getattr(self.instance, 'regular_price', None) if self.instance else None)
+        price = attrs.get('price', getattr(self.instance, 'price', None) if self.instance else None)
+        if regular_price is not None and price is not None and price > regular_price:
+            raise serializers.ValidationError({'price': 'Selling price cannot exceed the regular price (MRP).'})
         return attrs
 
 

@@ -427,7 +427,7 @@ class ProductVariantViewSet(viewsets.ModelViewSet):
     # Fields whose before/after values get recorded on every update, for the
     # admin-facing audit trail (VariantChangeLog) — moderation stays instant
     # (no approval gate), this is visibility only.
-    _TRACKED_FIELDS = ['sku', 'price', 'stock', 'is_active', 'attributes', 'hex_code', 'image', 'low_stock_threshold']
+    _TRACKED_FIELDS = ['sku', 'price', 'regular_price', 'stock', 'is_active', 'attributes', 'hex_code', 'image', 'low_stock_threshold']
 
     def perform_update(self, serializer):
         instance = serializer.instance
@@ -495,7 +495,7 @@ class ProductVariantViewSet(viewsets.ModelViewSet):
     @action(detail=False, methods=['post'], url_path='bulk-update')
     def bulk_update(self, request):
         """Bulk price/stock update for variants the caller owns (or any, for admins).
-        Body: {"updates": [{"id": 1, "price": "499.00", "stock": 20}, ...]}"""
+        Body: {"updates": [{"id": 1, "price": "499.00", "regular_price": "699.00", "stock": 20}, ...]}"""
         user = request.user
         is_admin = bool(user.is_staff or user.user_type == 'admin')
         updates = request.data.get('updates', [])
@@ -514,9 +514,14 @@ class ProductVariantViewSet(viewsets.ModelViewSet):
                     errors.append({'id': variant_id, 'error': 'Not your variant'})
                     continue
 
-                old_stock, old_price = variant.stock, variant.price
+                old_stock, old_price, old_regular_price = variant.stock, variant.price, variant.regular_price
                 if 'price' in row:
                     variant.price = row['price']
+                if 'regular_price' in row:
+                    variant.regular_price = row['regular_price'] or None
+                if variant.regular_price is not None and Decimal(str(variant.price)) > Decimal(str(variant.regular_price)):
+                    errors.append({'id': variant_id, 'error': 'Selling price cannot exceed the regular price (MRP)'})
+                    continue
                 if 'stock' in row:
                     try:
                         variant.stock = int(row['stock'])
@@ -528,6 +533,8 @@ class ProductVariantViewSet(viewsets.ModelViewSet):
                 log_changes = {}
                 if 'price' in row and variant.price != old_price:
                     log_changes['price'] = {'old': str(old_price), 'new': str(variant.price)}
+                if 'regular_price' in row and variant.regular_price != old_regular_price:
+                    log_changes['regular_price'] = {'old': str(old_regular_price), 'new': str(variant.regular_price)}
                 if 'stock' in row and variant.stock != old_stock:
                     log_changes['stock'] = {'old': old_stock, 'new': variant.stock}
                 if log_changes:
@@ -797,6 +804,24 @@ def create_order_for_user(user, data):
     from ecommerce.models import ProductReview
 
     for item in cart_items:
+        # Re-validate everything server-side at the moment of purchase — never
+        # trust that what passed these checks when the item was added to the
+        # cart (possibly hours/days ago) still holds. Nothing here trusts any
+        # price/stock/status value the frontend might have sent; all of it is
+        # re-read from the DB rows just locked above.
+        if item.product.status != 'approved' or item.product.is_active is False:
+            raise OrderCreationError(f'Product {item.product.name} is no longer available for purchase')
+
+        if item.variant:
+            # Belongs-to-product is enforced at add-to-cart time (get_object_or_404
+            # ProductVariant, product=product) and by CartItem's own FKs, but a
+            # defense-in-depth check here costs nothing and catches any future
+            # code path that doesn't go through add_item.
+            if item.variant.product_id != item.product_id:
+                raise OrderCreationError(f'Product {item.product.name}: selected option does not belong to this product')
+            if not item.variant.is_active:
+                raise OrderCreationError(f'Product {item.product.name}: the selected option is no longer available')
+
         # Check stock — variant-level stock takes priority when the item is a
         # specific size/colour/etc.; legacy non-variant products use the
         # product's own stock exactly as before.
@@ -804,6 +829,8 @@ def create_order_for_user(user, data):
         if available_stock < item.quantity:
             raise OrderCreationError(f'Product {item.product.name} is out of stock or insufficient quantity')
 
+        # Current selling price, read fresh from the just-locked row — the
+        # frontend never gets to supply its own price for an order line.
         unit_price = item.variant.price if item.variant else item.product.discount_price
         item_subtotal = unit_price * item.quantity
         subtotal += item_subtotal

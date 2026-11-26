@@ -633,6 +633,7 @@ const SellerDashboard = () => {
         key,
         attributes,
         hex,
+        regularPrice: override.regularPrice ?? '',
         price: override.price ?? form.price ?? '',
         stock: override.stock ?? form.stock ?? '',
         images: override.images ?? [],
@@ -831,6 +832,7 @@ const SellerDashboard = () => {
                 product: newProductId,
                 attributes: row.attributes,
                 hex_code: row.hex || '',
+                regular_price: row.regularPrice ? Number(row.regularPrice) : null,
                 price: Number(row.price) || Number(form.price),
                 stock: Number(row.stock) || 0,
               });
@@ -1874,16 +1876,19 @@ const SellerDashboard = () => {
                         </div>
                         {variantRows.length > 0 && (
                           <div className="border border-gray-100 dark:border-gray-700 rounded-lg overflow-hidden">
-                            <div className="grid grid-cols-[1fr_64px_64px_auto] gap-2 px-2 py-1.5 text-[10px] font-bold text-gray-400 uppercase tracking-wide bg-gray-50 dark:bg-gray-900/40">
-                              <span>Variant</span><span>Price</span><span>Stock</span><span>Images</span>
+                            <div className="grid grid-cols-[1fr_64px_64px_64px_auto] gap-2 px-2 py-1.5 text-[10px] font-bold text-gray-400 uppercase tracking-wide bg-gray-50 dark:bg-gray-900/40">
+                              <span>Variant</span><span>MRP</span><span>Price</span><span>Stock</span><span>Images</span>
                             </div>
                             <div className="divide-y divide-gray-100 dark:divide-gray-700 max-h-64 overflow-y-auto">
                               {variantRows.map(row => (
-                                <div key={row.key} className="grid grid-cols-[1fr_64px_64px_auto] gap-2 px-2 py-1.5 items-center">
+                                <div key={row.key} className="grid grid-cols-[1fr_64px_64px_64px_auto] gap-2 px-2 py-1.5 items-center">
                                   <span className="text-xs text-gray-600 dark:text-gray-300 truncate flex items-center gap-1.5">
                                     {row.hex && <span className="w-2.5 h-2.5 rounded-full border border-gray-300 dark:border-gray-600 shrink-0" style={{ backgroundColor: row.hex }} />}
                                     {Object.values(row.attributes).join(' / ')}
                                   </span>
+                                  <input type="number" min="0" step="0.01" value={row.regularPrice} placeholder="Optional"
+                                    onChange={e => updateVariantRow(row.key, 'regularPrice', e.target.value)}
+                                    className="w-full border border-gray-200 dark:border-gray-700 rounded px-1.5 py-1 text-xs bg-white dark:bg-gray-900" />
                                   <input type="number" min="0" step="0.01" value={row.price}
                                     onChange={e => updateVariantRow(row.key, 'price', e.target.value)}
                                     className="w-full border border-gray-200 dark:border-gray-700 rounded px-1.5 py-1 text-xs bg-white dark:bg-gray-900" />
