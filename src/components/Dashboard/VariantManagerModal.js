@@ -34,6 +34,7 @@ const VariantManagerModal = ({ product, onClose, onChanged, embedded = false }) 
   const [error, setError] = useState('');
   const [bulkRows, setBulkRows] = useState({}); // { [id]: {price, stock} } pending edits for bulk save
   const [bulkSaving, setBulkSaving] = useState(false);
+  const [confirmTarget, setConfirmTarget] = useState(null); // variant pending delete confirmation
 
   const fetchVariants = useCallback(() => {
     setLoading(true);
@@ -116,8 +117,12 @@ const VariantManagerModal = ({ product, onClose, onChanged, embedded = false }) 
     }
   };
 
-  const handleDelete = async (v) => {
-    if (!window.confirm(`Remove variant "${attrsToText(v.attributes)}" (SKU ${v.sku})? This cannot be undone.`)) return;
+  const handleDelete = (v) => setConfirmTarget(v);
+
+  const confirmDelete = async () => {
+    const v = confirmTarget;
+    if (!v) return;
+    setConfirmTarget(null);
     try {
       await api.delete(`/ecommerce/product-variants/${v.id}/`);
       toast.success('Variant removed');
@@ -414,6 +419,34 @@ const VariantManagerModal = ({ product, onClose, onChanged, embedded = false }) 
                 </button>
                 <button type="button" onClick={handleSave} disabled={saving} className="flex-1 py-2 text-xs font-bold text-white bg-orange-600 hover:bg-orange-700 rounded-lg disabled:opacity-50 transition-colors">
                   {saving ? 'Saving...' : 'Save'}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {confirmTarget && (
+          <div className="fixed inset-0 z-[10000] bg-black/50 flex items-center justify-center p-4" onClick={() => setConfirmTarget(null)}>
+            <div className="bg-white dark:bg-gray-800 rounded-xl shadow-xl max-w-sm w-full p-5" onClick={e => e.stopPropagation()}>
+              <div className="flex items-start gap-3">
+                <div className="w-9 h-9 rounded-full bg-red-50 dark:bg-red-950/30 flex items-center justify-center shrink-0">
+                  <Trash2 className="w-4 h-4 text-red-600" />
+                </div>
+                <div>
+                  <h3 className="text-sm font-bold text-gray-800 dark:text-gray-100">Remove this variant?</h3>
+                  <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                    "{attrsToText(confirmTarget.attributes)}" (SKU {confirmTarget.sku}) will be permanently removed. This cannot be undone.
+                  </p>
+                </div>
+              </div>
+              <div className="flex gap-2 mt-5">
+                <button type="button" onClick={() => setConfirmTarget(null)}
+                  className="flex-1 py-2 text-xs font-bold text-gray-600 bg-gray-100 dark:bg-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors">
+                  Cancel
+                </button>
+                <button type="button" onClick={confirmDelete}
+                  className="flex-1 py-2 text-xs font-bold text-white bg-red-600 hover:bg-red-700 rounded-lg transition-colors">
+                  Remove
                 </button>
               </div>
             </div>

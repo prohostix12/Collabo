@@ -158,6 +158,7 @@ const SellerDashboard = () => {
   const [submitting, setSubmitting] = useState(false);
   const [formError, setFormError] = useState('');
   const [deletingId, setDeletingId] = useState(null);
+  const [confirmDialog, setConfirmDialog] = useState(null); // { title, message, confirmLabel, onConfirm }
   const [activeTab, setActiveTab] = useState('overview');
   const [analytics, setAnalytics] = useState(null);
   const [analyticsLoading, setAnalyticsLoading] = useState(false);
@@ -706,18 +707,25 @@ const SellerDashboard = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [location.pathname, products]);
 
-  const handleDelete = async (product) => {
-    if (!window.confirm(`Delete "${product.name}"? This can't be undone.`)) return;
-    setDeletingId(product.id);
-    try {
-      await api.delete(`/ecommerce/products/${product.id}/`);
-      toast.success('Product deleted');
-      fetchProducts();
-    } catch (err) {
-      toast.error(err.response?.data?.error || 'Failed to delete product');
-    } finally {
-      setDeletingId(null);
-    }
+  const handleDelete = (product) => {
+    setConfirmDialog({
+      title: 'Delete this product?',
+      message: `"${product.name}" will be permanently removed. This can't be undone.`,
+      confirmLabel: 'Delete',
+      onConfirm: async () => {
+        setConfirmDialog(null);
+        setDeletingId(product.id);
+        try {
+          await api.delete(`/ecommerce/products/${product.id}/`);
+          toast.success('Product deleted');
+          fetchProducts();
+        } catch (err) {
+          toast.error(err.response?.data?.error || 'Failed to delete product');
+        } finally {
+          setDeletingId(null);
+        }
+      },
+    });
   };
 
   const handleToggleActive = async (product) => {
@@ -733,14 +741,21 @@ const SellerDashboard = () => {
     }
   };
 
-  const handleBulkDelete = async () => {
-    if (!window.confirm(`Delete ${selectedProductIds.length} selected product(s)? This can't be undone.`)) return;
-    for (const id of selectedProductIds) {
-      try { await api.delete(`/ecommerce/products/${id}/`); } catch (err) { console.error('Delete failed', id, err); }
-    }
-    setSelectedProductIds([]);
-    toast.success('Selected products deleted');
-    fetchProducts();
+  const handleBulkDelete = () => {
+    setConfirmDialog({
+      title: 'Delete selected products?',
+      message: `${selectedProductIds.length} selected product(s) will be permanently removed. This can't be undone.`,
+      confirmLabel: 'Delete all',
+      onConfirm: async () => {
+        setConfirmDialog(null);
+        for (const id of selectedProductIds) {
+          try { await api.delete(`/ecommerce/products/${id}/`); } catch (err) { console.error('Delete failed', id, err); }
+        }
+        setSelectedProductIds([]);
+        toast.success('Selected products deleted');
+        fetchProducts();
+      },
+    });
   };
 
   const exportProductsCsv = (rows) => {
@@ -2059,6 +2074,32 @@ const SellerDashboard = () => {
           onClose={() => setVariantManagerProduct(null)}
           onChanged={() => fetchProducts()}
         />
+      )}
+
+      {confirmDialog && (
+        <div className="fixed inset-0 z-[10000] bg-black/50 flex items-center justify-center p-4" onClick={() => setConfirmDialog(null)}>
+          <div className="bg-white dark:bg-gray-800 rounded-xl shadow-xl max-w-sm w-full p-5" onClick={e => e.stopPropagation()}>
+            <div className="flex items-start gap-3">
+              <div className="w-9 h-9 rounded-full bg-red-50 dark:bg-red-950/30 flex items-center justify-center shrink-0">
+                <Trash2 className="w-4 h-4 text-red-600" />
+              </div>
+              <div>
+                <h3 className="text-sm font-bold text-gray-800 dark:text-gray-100">{confirmDialog.title}</h3>
+                <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">{confirmDialog.message}</p>
+              </div>
+            </div>
+            <div className="flex gap-2 mt-5">
+              <button type="button" onClick={() => setConfirmDialog(null)}
+                className="flex-1 py-2 text-xs font-bold text-gray-600 bg-gray-100 dark:bg-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors">
+                Cancel
+              </button>
+              <button type="button" onClick={confirmDialog.onConfirm}
+                className="flex-1 py-2 text-xs font-bold text-white bg-red-600 hover:bg-red-700 rounded-lg transition-colors">
+                {confirmDialog.confirmLabel || 'Confirm'}
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );
