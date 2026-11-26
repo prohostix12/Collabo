@@ -1597,6 +1597,12 @@ export default function EcommerceMarketplace({ inlineMode = false, onBackToSelec
     return variants.find(v => attrKeys.every(k => (v.attributes || {})[k] === selectedAttrs[k])) || null;
   }, [selectedProduct, selectedAttrs, variantAttributeGroups]);
 
+  // Swap the main gallery image to the chosen variant's own photo (falls back to
+  // the product's main image, same as ProductVariant.display_image server-side).
+  useEffect(() => {
+    if (selectedVariant?.image) setActiveDetailImage(selectedVariant.image);
+  }, [selectedVariant]);
+
   // Sync / fetch products
   const [allProducts, setAllProducts] = useState([]);
 
