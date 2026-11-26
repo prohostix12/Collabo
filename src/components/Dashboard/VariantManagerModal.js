@@ -1,9 +1,17 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { X, Plus, Trash2, Pencil, Save, AlertCircle, Search } from 'lucide-react';
+import { X, Plus, Trash2, Pencil, Save, AlertCircle, Search, Upload } from 'lucide-react';
 import api from '../../services/api';
 import toast from 'react-hot-toast';
 
 const emptyForm = { id: null, attributesText: '', sku: '', price: '', stock: '', low_stock_threshold: '5', image: '', is_active: true };
+
+const MAX_VARIANT_IMAGE_SIZE = 5 * 1024 * 1024;
+const fileToDataUrl = (file) => new Promise((resolve, reject) => {
+  const reader = new FileReader();
+  reader.onloadend = () => resolve(reader.result);
+  reader.onerror = reject;
+  reader.readAsDataURL(file);
+});
 
 const attrsToText = (attrs) => Object.entries(attrs || {}).map(([k, v]) => `${k}: ${v}`).join(', ');
 const textToAttrs = (text) => {
@@ -334,8 +342,26 @@ const VariantManagerModal = ({ product, onClose, onChanged, embedded = false }) 
                 </div>
               </div>
               <div>
-                <label className="text-[10px] font-bold text-gray-500 uppercase tracking-wide">Variant Image URL (optional)</label>
-                <input type="text" value={form.image} onChange={e => setForm(f => ({ ...f, image: e.target.value }))} className={inputCls + ' mt-1'} />
+                <label className="text-[10px] font-bold text-gray-500 uppercase tracking-wide">Variant Image (optional)</label>
+                <div className="flex gap-2 mt-1">
+                  <input type="text" value={form.image} onChange={e => setForm(f => ({ ...f, image: e.target.value }))}
+                    placeholder="Paste a URL or upload a file" className={inputCls + ' flex-1'} />
+                  <label className="cursor-pointer bg-gray-900 hover:bg-gray-800 text-white font-semibold text-xs px-3 rounded-lg flex items-center justify-center transition-colors shrink-0">
+                    <Upload className="w-3.5 h-3.5" />
+                    <input type="file" accept="image/*" className="hidden"
+                      onChange={async e => {
+                        const file = e.target.files[0];
+                        e.target.value = '';
+                        if (!file) return;
+                        if (file.size > MAX_VARIANT_IMAGE_SIZE) { toast.error('Image must be under 5MB'); return; }
+                        const dataUrl = await fileToDataUrl(file);
+                        setForm(f => ({ ...f, image: dataUrl }));
+                      }} />
+                  </label>
+                </div>
+                {form.image && (
+                  <img src={form.image} alt="Variant preview" className="w-14 h-14 rounded-lg object-cover border border-gray-200 dark:border-gray-700 mt-2" />
+                )}
               </div>
               <label className="flex items-center gap-2 cursor-pointer select-none">
                 <input type="checkbox" checked={form.is_active} onChange={e => setForm(f => ({ ...f, is_active: e.target.checked }))} className="w-3.5 h-3.5" />
