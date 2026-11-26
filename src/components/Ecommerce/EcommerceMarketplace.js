@@ -101,6 +101,26 @@ const DiscountBadge = ({ price, discounted, className = '' }) => {
 // legacy behaviour for non-variant products).
 const cartItemUnitPrice = (item) => item.variant ? Number(item.variant.price) : item.product.discountPrice;
 
+// De-duplicated {name, hex, image} per color value across a product's variants
+// (image falls back to the product's own photo if that variant has none),
+// used for the compact swatch row on listing cards. Returns [] for legacy
+// non-variant products or variant products with no color-like attribute.
+const getColorSwatches = (product) => {
+  if (!product?.variants || product.variants.length === 0) return [];
+  const colorKey = product.variants
+    .flatMap(v => Object.keys(v.attributes || {}))
+    .find(k => k.toLowerCase() === 'color');
+  if (!colorKey) return [];
+  const seen = new Map();
+  product.variants.forEach(v => {
+    const name = (v.attributes || {})[colorKey];
+    if (name && !seen.has(name)) {
+      seen.set(name, { name, hex: v.hex_code || '#CCCCCC', image: v.display_image || product.image });
+    }
+  });
+  return Array.from(seen.values());
+};
+
 // Shared cart-item -> frontend-shape mapper, used everywhere the cart is
 // fetched/updated so the selected variant (if any) travels with it consistently.
 const formatCartItem = (item) => ({
@@ -1067,6 +1087,10 @@ export default function EcommerceMarketplace({ inlineMode = false, onBackToSelec
 
   // Image gallery details view state
   const [activeDetailImage, setActiveDetailImage] = useState('');
+  // Listing-card color-swatch preview: {[productId]: imageUrl} — purely a hover/
+  // click preview, doesn't touch the actual selected variant (that only happens
+  // on the PDP), so Add to Cart from the card still adds the base product.
+  const [cardImageOverride, setCardImageOverride] = useState({});
   const [lightboxImage, setLightboxImage] = useState(null);
 
   // Auth state
@@ -1590,6 +1614,21 @@ export default function EcommerceMarketplace({ inlineMode = false, onBackToSelec
     return groups;
   }, [selectedProduct]);
 
+  // Which attribute (if any) is the "color" one, so it can render as real HEX
+  // swatches instead of generic text pills — and a value->hex lookup built from
+  // whichever variant carries that hex (same color name should share one hex
+  // across variants, e.g. across sizes, but we don't enforce that server-side).
+  const colorAttrKey = Object.keys(variantAttributeGroups).find(k => k.toLowerCase() === 'color');
+  const colorHexMap = React.useMemo(() => {
+    if (!colorAttrKey) return {};
+    const map = {};
+    (selectedProduct?.variants || []).forEach(v => {
+      const val = (v.attributes || {})[colorAttrKey];
+      if (val && v.hex_code && !map[val]) map[val] = v.hex_code;
+    });
+    return map;
+  }, [selectedProduct, colorAttrKey]);
+
   const selectedVariant = React.useMemo(() => {
     const variants = selectedProduct?.variants || [];
     if (variants.length === 0) return null;
@@ -1597,11 +1636,26 @@ export default function EcommerceMarketplace({ inlineMode = false, onBackToSelec
     return variants.find(v => attrKeys.every(k => (v.attributes || {})[k] === selectedAttrs[k])) || null;
   }, [selectedProduct, selectedAttrs, variantAttributeGroups]);
 
-  // Swap the main gallery image to the chosen variant's own photo (falls back to
-  // the product's main image, same as ProductVariant.display_image server-side).
+  // Switch the main image whenever the resolved variant changes (e.g. customer
+  // picks a different color) — jumps straight to that variant's own cover shot.
   useEffect(() => {
-    if (selectedVariant?.image) setActiveDetailImage(selectedVariant.image);
-  }, [selectedVariant]);
+    if (selectedVariant?.display_image) {
+      setActiveDetailImage(selectedVariant.display_image);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedVariant?.id]);
+
+  // Gallery shown on the PDP: the resolved variant's own cover + gallery images
+  // when one is selected (and has any), else the product's own image list —
+  // keeps legacy non-variant products (and variants with no gallery yet)
+  // working exactly as before.
+  const displayImages = React.useMemo(() => {
+    if (selectedVariant) {
+      const imgs = [selectedVariant.display_image, ...(selectedVariant.gallery_images || []).map(g => g.image)].filter(Boolean);
+      if (imgs.length > 0) return Array.from(new Set(imgs));
+    }
+    return selectedProduct?.images || [];
+  }, [selectedVariant, selectedProduct]);
 
   // Sync / fetch products
   const [allProducts, setAllProducts] = useState([]);
@@ -3991,11 +4045,11 @@ export default function EcommerceMarketplace({ inlineMode = false, onBackToSelec
                       </button>
 
                       {/* Image */}
-                      <div 
+                      <div
                         onClick={() => { setSelectedProduct(prod); setCurrentView('details'); }}
                         className="w-full aspect-square rounded-2xl overflow-hidden bg-slate-50 dark:bg-slate-800 cursor-pointer mb-4"
                       >
-                        <ProductImage src={prod.image} alt={prod.name} imgClassName="group-hover:scale-105 transition-transform duration-500" />
+                        <ProductImage src={cardImageOverride[prod.id] || prod.image} alt={prod.name} imgClassName="group-hover:scale-105 transition-transform duration-500" />
                       </div>
 
                       {/* Details */}
@@ -4018,6 +4072,29 @@ export default function EcommerceMarketplace({ inlineMode = false, onBackToSelec
                           <span className="text-xs sm:text-sm font-black dark:text-slate-200">{prod.rating}</span>
                           {prod.purchaseCount > 0 && <span className="hidden sm:inline text-[10px] sm:text-xs font-medium text-slate-400">({prod.purchaseCount} bought)</span>}
                         </div>
+
+                        {/* Color swatches (max 4 + remaining-count), compact — click swaps the card image only */}
+                        {(() => {
+                          const swatches = getColorSwatches(prod);
+                          if (swatches.length === 0) return null;
+                          const shown = swatches.slice(0, 4);
+                          const remaining = swatches.length - shown.length;
+                          return (
+                            <div className="flex items-center gap-1" onClick={e => e.stopPropagation()}>
+                              {shown.map(sw => (
+                                <button
+                                  key={sw.name}
+                                  type="button"
+                                  title={sw.name}
+                                  onClick={() => setCardImageOverride(prev => ({ ...prev, [prod.id]: sw.image }))}
+                                  className={`w-4 h-4 rounded-full border shrink-0 transition-all ${cardImageOverride[prod.id] === sw.image ? 'border-orange-500 scale-110' : 'border-slate-200 dark:border-slate-700'}`}
+                                  style={{ backgroundColor: sw.hex }}
+                                />
+                              ))}
+                              {remaining > 0 && <span className="text-[9px] text-slate-400 font-bold">+{remaining}</span>}
+                            </div>
+                          );
+                        })()}
 
                         {/* Pricing */}
                         <div className="flex items-baseline gap-1 sm:gap-2 pt-0.5 sm:pt-1">
@@ -4111,9 +4188,9 @@ export default function EcommerceMarketplace({ inlineMode = false, onBackToSelec
               {/* LEFT -- Gallery + sub-images */}
               <div className="lg:col-span-6 lg:sticky lg:top-20 self-start">
                 <div className="flex gap-4">
-                  {selectedProduct.images && selectedProduct.images.length > 1 && (
+                  {displayImages && displayImages.length > 1 && (
                     <div className="flex flex-col gap-3 overflow-y-auto max-h-[500px] hide-scrollbar w-16 shrink-0">
-                      {selectedProduct.images.map((img, idx) => (
+                      {displayImages.map((img, idx) => (
                         <button key={idx} onClick={() => setActiveDetailImage(img)}
                           className={`shrink-0 w-16 h-16 bg-white dark:bg-slate-900 border rounded-2xl p-1 overflow-hidden transition-all ${activeDetailImage === img ? 'border-orange-500 scale-105 shadow-sm' : 'border-slate-200 dark:border-slate-800'}`}>
                           <img loading="lazy" src={img} className="w-full h-full object-cover rounded-xl" alt="thumb" />
@@ -4136,9 +4213,9 @@ export default function EcommerceMarketplace({ inlineMode = false, onBackToSelec
                     <img loading="lazy" src={activeDetailImage} alt={selectedProduct.name} className="max-h-full object-cover rounded-2xl" />
                   </div>
                 </div>
-                {selectedProduct.images && selectedProduct.images.length > 1 && (
+                {displayImages && displayImages.length > 1 && (
                   <div className="grid grid-cols-2 gap-4 pt-4">
-                    {selectedProduct.images.filter(img => img !== selectedProduct.image).map((img, idx) => (
+                    {displayImages.filter(img => img !== activeDetailImage).map((img, idx) => (
                       <div
                         key={idx}
                         onClick={() => setLightboxImage(img)}
@@ -4247,7 +4324,9 @@ export default function EcommerceMarketplace({ inlineMode = false, onBackToSelec
 
                   {selectedProduct.has_variants && (
                     <div className="space-y-3">
-                      {Object.entries(variantAttributeGroups).map(([attrName, values]) => (
+                      {Object.entries(variantAttributeGroups).map(([attrName, values]) => {
+                        const isColorAttr = attrName === colorAttrKey;
+                        return (
                         <div key={attrName} className="space-y-1.5">
                           <p className="text-xs font-bold text-slate-500 dark:text-slate-400 capitalize">
                             {attrName}{selectedAttrs[attrName] ? <span className="text-slate-900 dark:text-white">: {selectedAttrs[attrName]}</span> : null}
@@ -4264,6 +4343,30 @@ export default function EcommerceMarketplace({ inlineMode = false, onBackToSelec
                                 (v.attributes || {})[attrName] === val && v.is_in_stock &&
                                 Object.entries(selectedAttrs).every(([k, sv]) => k === attrName || (v.attributes || {})[k] === sv)
                               );
+
+                              if (isColorAttr) {
+                                const hex = colorHexMap[val] || '#CCCCCC';
+                                return (
+                                  <button
+                                    key={val}
+                                    type="button"
+                                    title={val}
+                                    disabled={!wouldMatch}
+                                    onClick={() => setSelectedAttrs(prev => ({ ...prev, [attrName]: val }))}
+                                    className={`relative w-9 h-9 rounded-full border-2 shrink-0 transition-all ${
+                                      isChosen ? 'border-orange-500 scale-110 shadow-sm' : wouldMatch ? 'border-slate-200 dark:border-slate-700 hover:scale-105' : 'border-slate-100 dark:border-slate-800 cursor-not-allowed'
+                                    } ${!wouldMatch ? 'opacity-30' : wouldMatch && !wouldBeInStock ? 'opacity-50' : ''}`}
+                                    style={{ backgroundColor: hex }}
+                                  >
+                                    {!wouldMatch && (
+                                      <span className="absolute inset-0 flex items-center justify-center">
+                                        <span className="w-full h-[1.5px] bg-slate-400 rotate-45" />
+                                      </span>
+                                    )}
+                                  </button>
+                                );
+                              }
+
                               return (
                                 <button
                                   key={val}
@@ -4282,7 +4385,8 @@ export default function EcommerceMarketplace({ inlineMode = false, onBackToSelec
                             })}
                           </div>
                         </div>
-                      ))}
+                        );
+                      })}
 
                       {selectedVariant ? (
                         <div className="flex items-center gap-2 text-[11px]">
