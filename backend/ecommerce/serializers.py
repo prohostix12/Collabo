@@ -33,10 +33,21 @@ class VariantChangeLogSerializer(serializers.ModelSerializer):
     actor_username = serializers.ReadOnlyField(source='actor.username')
     variant_sku = serializers.ReadOnlyField(source='variant.sku')
     product_name = serializers.ReadOnlyField(source='variant.product.name')
+    product_id = serializers.ReadOnlyField(source='variant.product.id')
+    seller_username = serializers.ReadOnlyField(source='variant.seller.username')
+
+    def get_actor_role(self, obj):
+        if obj.actor and (obj.actor.is_staff or obj.actor.user_type == 'admin'):
+            return 'Admin'
+        return 'Seller' if obj.actor else ''
+    actor_role = serializers.SerializerMethodField()
 
     class Meta:
         model = VariantChangeLog
-        fields = ['id', 'variant', 'variant_sku', 'product_name', 'actor', 'actor_username', 'action', 'changes', 'created_at']
+        fields = [
+            'id', 'variant', 'variant_sku', 'product_id', 'product_name', 'seller_username',
+            'actor', 'actor_username', 'actor_role', 'action', 'changes', 'created_at',
+        ]
         read_only_fields = fields
 
 
@@ -86,6 +97,23 @@ class ProductVariantSerializer(serializers.ModelSerializer):
         if regular_price is not None and price is not None and price > regular_price:
             raise serializers.ValidationError({'price': 'Selling price cannot exceed the regular price (MRP).'})
         return attrs
+
+
+class AdminProductVariantSerializer(ProductVariantSerializer):
+    """Same as ProductVariantSerializer but with extra read-only context fields
+    (product/seller identity) so the admin variant-management table doesn't need
+    N+1 follow-up requests per row. Write validation is unchanged (inherited)."""
+    product_name = serializers.ReadOnlyField(source='product.name')
+    product_image = serializers.ReadOnlyField(source='product.image')
+    seller_username = serializers.ReadOnlyField(source='seller.username')
+    seller_store_name = serializers.SerializerMethodField()
+
+    def get_seller_store_name(self, obj):
+        profile = getattr(obj.seller, 'seller_profile', None)
+        return profile.store_name if profile else ''
+
+    class Meta(ProductVariantSerializer.Meta):
+        fields = ProductVariantSerializer.Meta.fields + ['product_name', 'product_image', 'seller_username', 'seller_store_name']
 
 
 class InventoryMovementSerializer(serializers.ModelSerializer):
