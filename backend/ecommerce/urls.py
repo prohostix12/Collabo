@@ -18,7 +18,7 @@ from .views import (
     gupshup_webhook,
     CustomerReferralLinkViewSet, WalletView, AdminWalletsView,
     wallet_withdraw, WalletPayoutHistoryView, AdminWalletPayoutListView, admin_process_wallet_payout,
-    ProductVariantViewSet, InventoryMovementListView,
+    ProductVariantViewSet, InventoryMovementListView, VariantChangeLogListView,
 )
 
 router = DefaultRouter()
@@ -77,5 +77,6 @@ urlpatterns = [
     path('newsletter/broadcast/', NewsletterBroadcastView.as_view(), name='newsletter-broadcast'),
     path('gupshup/webhook/', gupshup_webhook, name='gupshup-webhook'),
     path('inventory-movements/', InventoryMovementListView.as_view(), name='inventory-movements'),
+    path('variant-change-log/', VariantChangeLogListView.as_view(), name='variant-change-log'),
     path('', include(router.urls)),
 ]

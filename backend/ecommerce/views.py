@@ -24,13 +24,14 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.exceptions import PermissionDenied
 from django.db import transaction
 from django.shortcuts import get_object_or_404
-from .models import Product, Cart, CartItem, Address, Order, OrderItem, Category, Brand, ProductReview, AffiliateCommission, StoreSettings, CustomerReview, ReferralClick, ProductInfluencerMedia, Wishlist, CustomerReferralLink, WalletTransaction, WalletPayout, Vendor, ProductVariant, InventoryMovement
+from .models import Product, Cart, CartItem, Address, Order, OrderItem, Category, Brand, ProductReview, AffiliateCommission, StoreSettings, CustomerReview, ReferralClick, ProductInfluencerMedia, Wishlist, CustomerReferralLink, WalletTransaction, WalletPayout, Vendor, ProductVariant, InventoryMovement, VariantImage, VariantChangeLog
 from .serializers import (
     ProductSerializer, CartSerializer, CartItemSerializer,
     AddressSerializer, OrderSerializer, OrderItemSerializer,
     CategorySerializer, BrandSerializer, ProductReviewSerializer, StoreSettingsSerializer, CustomerReviewSerializer,
     ProductInfluencerMediaSerializer, WishlistSerializer, CustomerReferralLinkSerializer, WalletTransactionSerializer,
-    WalletPayoutSerializer, VendorSerializer, ProductVariantSerializer, InventoryMovementSerializer
+    WalletPayoutSerializer, VendorSerializer, ProductVariantSerializer, InventoryMovementSerializer,
+    VariantImageSerializer, VariantChangeLogSerializer,
 )
 
 DEFAULT_CATEGORIES = [
@@ -412,7 +413,63 @@ class ProductVariantViewSet(viewsets.ModelViewSet):
         user = self.request.user
         if not (user.is_staff or user.user_type == 'admin') and product.seller_id != user.id:
             raise PermissionDenied("You can only add variants to your own products.")
-        serializer.save(seller=product.seller)
+        variant = serializer.save(seller=product.seller)
+        VariantChangeLog.objects.create(
+            variant=variant, actor=user, action='created',
+            changes={
+                'sku': {'old': None, 'new': variant.sku},
+                'attributes': {'old': None, 'new': variant.attributes},
+                'price': {'old': None, 'new': str(variant.price)},
+                'stock': {'old': None, 'new': variant.stock},
+            },
+        )
+
+    # Fields whose before/after values get recorded on every update, for the
+    # admin-facing audit trail (VariantChangeLog) — moderation stays instant
+    # (no approval gate), this is visibility only.
+    _TRACKED_FIELDS = ['sku', 'price', 'stock', 'is_active', 'attributes', 'hex_code', 'image', 'low_stock_threshold']
+
+    def perform_update(self, serializer):
+        instance = serializer.instance
+        old_values = {f: getattr(instance, f) for f in self._TRACKED_FIELDS}
+        variant = serializer.save()
+        changes = {}
+        for f in self._TRACKED_FIELDS:
+            old_val, new_val = old_values[f], getattr(variant, f)
+            if old_val != new_val:
+                changes[f] = {'old': str(old_val), 'new': str(new_val)}
+        if changes:
+            VariantChangeLog.objects.create(variant=variant, actor=self.request.user, action='updated', changes=changes)
+
+    def perform_destroy(self, instance):
+        VariantChangeLog.objects.create(
+            variant=None, actor=self.request.user, action='deleted',
+            changes={
+                'sku': {'old': instance.sku, 'new': None},
+                'product': {'old': instance.product.name, 'new': None},
+                'attributes': {'old': instance.attributes, 'new': None},
+            },
+        )
+        instance.delete()
+
+    @action(detail=True, methods=['post', 'delete'], url_path='images', permission_classes=[permissions.IsAuthenticated, IsSellerOrReadOnly])
+    def images(self, request, pk=None):
+        """POST {"image": "<url or base64>", "order": 0} to add a gallery image.
+        DELETE {"image_id": <id>} to remove one. Seller-ownership enforced via
+        get_object() (same queryset scoping as the rest of this viewset)."""
+        variant = self.get_object()
+        if request.method == 'POST':
+            image = (request.data.get('image') or '').strip()
+            if not image:
+                return Response({'error': 'image is required'}, status=status.HTTP_400_BAD_REQUEST)
+            img = VariantImage.objects.create(variant=variant, image=image, order=request.data.get('order', 0))
+            return Response(VariantImageSerializer(img).data, status=status.HTTP_201_CREATED)
+        else:
+            image_id = request.data.get('image_id')
+            deleted, _ = VariantImage.objects.filter(id=image_id, variant=variant).delete()
+            if not deleted:
+                return Response({'error': 'Not found'}, status=status.HTTP_404_NOT_FOUND)
+            return Response(status=status.HTTP_204_NO_CONTENT)
 
     @action(detail=True, methods=['post'], url_path='adjust-stock')
     def adjust_stock(self, request, pk=None):
@@ -457,7 +514,7 @@ class ProductVariantViewSet(viewsets.ModelViewSet):
                     errors.append({'id': variant_id, 'error': 'Not your variant'})
                     continue
 
-                old_stock = variant.stock
+                old_stock, old_price = variant.stock, variant.price
                 if 'price' in row:
                     variant.price = row['price']
                 if 'stock' in row:
@@ -467,6 +524,14 @@ class ProductVariantViewSet(viewsets.ModelViewSet):
                         errors.append({'id': variant_id, 'error': 'stock must be an integer'})
                         continue
                 variant.save()
+
+                log_changes = {}
+                if 'price' in row and variant.price != old_price:
+                    log_changes['price'] = {'old': str(old_price), 'new': str(variant.price)}
+                if 'stock' in row and variant.stock != old_stock:
+                    log_changes['stock'] = {'old': old_stock, 'new': variant.stock}
+                if log_changes:
+                    VariantChangeLog.objects.create(variant=variant, actor=user, action='updated', changes=log_changes)
 
                 if 'stock' in row and variant.stock != old_stock:
                     InventoryMovement.objects.create(
@@ -495,6 +560,29 @@ class InventoryMovementListView(generics.ListAPIView):
         variant_id = self.request.query_params.get('variant')
         if variant_id:
             qs = qs.filter(variant_id=variant_id)
+        return qs
+
+
+class VariantChangeLogListView(generics.ListAPIView):
+    """Read-only audit trail of seller edits to variants (price/stock/attributes/
+    active-status/create/delete) — changes are never blocked by this, it's visibility
+    only. Sellers see their own variants' history; admins see everything."""
+    serializer_class = VariantChangeLogSerializer
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get_queryset(self):
+        user = self.request.user
+        qs = VariantChangeLog.objects.select_related('variant', 'variant__product', 'actor')
+        if not (user.is_staff or user.user_type == 'admin'):
+            # variant__seller=user covers create/update logs; deleted-variant logs
+            # have variant=null, so fall back to "this seller was the actor".
+            qs = qs.filter(Q(variant__seller=user) | Q(actor=user, variant__isnull=True))
+        variant_id = self.request.query_params.get('variant')
+        if variant_id:
+            qs = qs.filter(variant_id=variant_id)
+        product_id = self.request.query_params.get('product')
+        if product_id:
+            qs = qs.filter(variant__product_id=product_id)
         return qs
 
 

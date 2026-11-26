@@ -162,7 +162,11 @@ class ProductVariant(models.Model):
     price = models.DecimalField(max_digits=12, decimal_places=2)
     stock = models.PositiveIntegerField(default=0)
     is_active = models.BooleanField(default=True, help_text="Deactivated variants are hidden from buyers but keep their SKU and order history")
-    image = models.TextField(blank=True, default='', help_text="Variant-specific image URL or base64 data; falls back to the product's main image if blank")
+    image = models.TextField(blank=True, default='', help_text="Variant-specific image URL or base64 data; falls back to the product's main image if blank. Kept as the primary/cover image even when extra gallery images exist in VariantImage.")
+    hex_code = models.CharField(
+        max_length=7, blank=True, default='',
+        help_text="Optional '#rrggbb' swatch colour for this variant (only meaningful when attributes includes a colour-like key). Purely cosmetic — never used for matching/uniqueness.",
+    )
     low_stock_threshold = models.PositiveIntegerField(default=5)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
@@ -203,6 +207,41 @@ class ProductVariant(models.Model):
     def __str__(self):
         attrs = ', '.join(f"{k}: {v}" for k, v in (self.attributes or {}).items())
         return f"{self.product.name} ({attrs}) - {self.sku}"
+
+
+class VariantImage(models.Model):
+    """Extra gallery images for a variant, beyond its single cover `image` field —
+    e.g. a colour variant that needs 4-5 product shots, not just one."""
+    variant = models.ForeignKey(ProductVariant, on_delete=models.CASCADE, related_name='gallery_images')
+    image = models.TextField(help_text="Image URL or base64 data")
+    order = models.PositiveIntegerField(default=0, help_text="Display order; lower shows first")
+
+    class Meta:
+        ordering = ['order', 'id']
+
+    def __str__(self):
+        return f"Image for {self.variant.sku} (#{self.order})"
+
+
+class VariantChangeLog(models.Model):
+    """Audit trail for seller edits to a variant's price/stock/active-status/
+    attributes — separate from InventoryMovement (which only covers stock deltas).
+    Changes go live immediately (no admin approval gate); this exists purely so
+    admins can review what changed, by whom, and when."""
+    # SET_NULL (not CASCADE) so a "deleted" log entry survives the variant it
+    # describes actually being deleted — product/sku are duplicated into `changes`
+    # at write time so the log stays readable once variant is null.
+    variant = models.ForeignKey(ProductVariant, on_delete=models.SET_NULL, null=True, blank=True, related_name='change_logs')
+    actor = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, related_name='variant_changes')
+    action = models.CharField(max_length=20, choices=(('created', 'Created'), ('updated', 'Updated'), ('deleted', 'Deleted')))
+    changes = models.JSONField(default=dict, blank=True, help_text="{field: {'old': ..., 'new': ...}} for changed fields only")
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return f"{self.action} on {self.variant_id} by {self.actor}"
 
 
 class InventoryMovement(models.Model):
