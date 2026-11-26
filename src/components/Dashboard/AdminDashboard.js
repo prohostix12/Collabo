@@ -21,6 +21,8 @@ import EcommerceMarketplace from '../Ecommerce/EcommerceMarketplace';
 import StoreContentEditor from './StoreContentEditor';
 import BrandOutreach from './BrandOutreach';
 import StoreBuilder from './StoreBuilder';
+import AdminVariantManagement from './AdminVariantManagement';
+import AdminVariantHistory from './AdminVariantHistory';
 
 const AdminDashboard = () => {
   const { user } = useAuth();
@@ -94,6 +96,8 @@ const AdminDashboard = () => {
     { id: 'users', label: 'User Management', icon: Users },
     { id: 'seller-approvals', label: 'Seller Approvals', icon: Store },
     { id: 'product-approvals', label: 'Product Approvals', icon: Package },
+    { id: 'variant-management', label: 'Variant Management', icon: Package },
+    { id: 'variant-history', label: 'Variant Change History', icon: Clock },
     { id: 'seller-payouts', label: 'Seller Payouts', icon: DollarSign },
     { id: 'store', label: 'Store Content', icon: ShoppingBag },
     { id: 'support', label: 'Support Tickets', icon: AlertCircle },
@@ -716,6 +720,22 @@ const AdminDashboard = () => {
               )}
             </div>
           </div>
+        )}
+
+        {activeTab === 'variant-management' && (
+          <>
+            {user?.is_staff || user?.user_type === 'admin'
+              ? <AdminVariantManagement />
+              : <div className="p-4 text-center text-gray-500">Access denied. Admins only.</div>}
+          </>
+        )}
+
+        {activeTab === 'variant-history' && (
+          <>
+            {user?.is_staff || user?.user_type === 'admin'
+              ? <AdminVariantHistory />
+              : <div className="p-4 text-center text-gray-500">Access denied. Admins only.</div>}
+          </>
         )}
 
         {activeTab === 'seller-payouts' && (

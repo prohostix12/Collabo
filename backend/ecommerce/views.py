@@ -31,7 +31,7 @@ from .serializers import (
     CategorySerializer, BrandSerializer, ProductReviewSerializer, StoreSettingsSerializer, CustomerReviewSerializer,
     ProductInfluencerMediaSerializer, WishlistSerializer, CustomerReferralLinkSerializer, WalletTransactionSerializer,
     WalletPayoutSerializer, VendorSerializer, ProductVariantSerializer, InventoryMovementSerializer,
-    VariantImageSerializer, VariantChangeLogSerializer,
+    VariantImageSerializer, VariantChangeLogSerializer, AdminProductVariantSerializer,
 )
 
 DEFAULT_CATEGORIES = [
@@ -381,10 +381,16 @@ class ProductVariantViewSet(viewsets.ModelViewSet):
     permission_classes = [permissions.IsAuthenticated, IsSellerOrReadOnly]
     filter_backends = [filters.SearchFilter, filters.OrderingFilter]
     search_fields = ['sku', 'product__name']
-    ordering_fields = ['price', 'stock', 'created_at']
+    ordering_fields = ['price', 'regular_price', 'stock', 'created_at', 'updated_at']
+
+    def get_serializer_class(self):
+        user = self.request.user if self.request.user.is_authenticated else None
+        if user and (user.is_staff or user.user_type == 'admin'):
+            return AdminProductVariantSerializer
+        return ProductVariantSerializer
 
     def get_queryset(self):
-        queryset = ProductVariant.objects.select_related('product', 'seller').all()
+        queryset = ProductVariant.objects.select_related('product', 'seller', 'seller__seller_profile').all()
         user = self.request.user if self.request.user.is_authenticated else None
         is_admin = bool(user and (user.is_staff or user.user_type == 'admin'))
 
@@ -405,6 +411,42 @@ class ProductVariantViewSet(viewsets.ModelViewSet):
             queryset = queryset.filter(stock=0)
         elif stock_filter == 'low':
             queryset = queryset.filter(stock__gt=0, stock__lte=F('low_stock_threshold'))
+        elif stock_filter == 'in':
+            queryset = queryset.filter(stock__gt=F('low_stock_threshold'))
+
+        # The following filters are mainly for the admin variant-management
+        # table, but are harmless under seller/buyer scoping above since the
+        # role filter has already been applied to `queryset` by this point.
+        if is_admin:
+            seller_id = self.request.query_params.get('seller')
+            if seller_id:
+                queryset = queryset.filter(seller_id=seller_id)
+
+        colour = self.request.query_params.get('colour') or self.request.query_params.get('color')
+        if colour:
+            queryset = queryset.filter(
+                Q(hex_code__iexact=colour) | Q(attributes__icontains=colour)
+            )
+
+        status_filter = self.request.query_params.get('status')
+        if status_filter == 'active':
+            queryset = queryset.filter(is_active=True)
+        elif status_filter == 'inactive':
+            queryset = queryset.filter(is_active=False)
+
+        price_min = self.request.query_params.get('price_min')
+        if price_min:
+            queryset = queryset.filter(price__gte=price_min)
+        price_max = self.request.query_params.get('price_max')
+        if price_max:
+            queryset = queryset.filter(price__lte=price_max)
+
+        modified_after = self.request.query_params.get('modified_after')
+        if modified_after:
+            queryset = queryset.filter(updated_at__gte=modified_after)
+        modified_before = self.request.query_params.get('modified_before')
+        if modified_before:
+            queryset = queryset.filter(updated_at__lte=modified_before)
 
         return queryset
 
@@ -462,14 +504,46 @@ class ProductVariantViewSet(viewsets.ModelViewSet):
             image = (request.data.get('image') or '').strip()
             if not image:
                 return Response({'error': 'image is required'}, status=status.HTTP_400_BAD_REQUEST)
-            img = VariantImage.objects.create(variant=variant, image=image, order=request.data.get('order', 0))
+            order = request.data.get('order', 0)
+            img = VariantImage.objects.create(variant=variant, image=image, order=order)
+            VariantChangeLog.objects.create(
+                variant=variant, actor=request.user, action='image_added',
+                changes={'image': {'old': None, 'new': image}, 'order': {'old': None, 'new': order}},
+            )
             return Response(VariantImageSerializer(img).data, status=status.HTTP_201_CREATED)
         else:
             image_id = request.data.get('image_id')
-            deleted, _ = VariantImage.objects.filter(id=image_id, variant=variant).delete()
-            if not deleted:
+            removed_image = VariantImage.objects.filter(id=image_id, variant=variant).first()
+            if not removed_image:
                 return Response({'error': 'Not found'}, status=status.HTTP_404_NOT_FOUND)
+            old_image_value = removed_image.image
+            removed_image.delete()
+            VariantChangeLog.objects.create(
+                variant=variant, actor=request.user, action='image_removed',
+                changes={'image': {'old': old_image_value, 'new': None}},
+            )
             return Response(status=status.HTTP_204_NO_CONTENT)
+
+    @action(detail=True, methods=['post'], url_path='activate')
+    def activate(self, request, pk=None):
+        return self._set_active(request, True)
+
+    @action(detail=True, methods=['post'], url_path='deactivate')
+    def deactivate(self, request, pk=None):
+        return self._set_active(request, False)
+
+    def _set_active(self, request, value):
+        variant = self.get_object()
+        if variant.is_active == value:
+            return Response(ProductVariantSerializer(variant, context={'request': request}).data)
+        old_value = variant.is_active
+        variant.is_active = value
+        variant.save(update_fields=['is_active'])
+        VariantChangeLog.objects.create(
+            variant=variant, actor=request.user, action='updated',
+            changes={'is_active': {'old': old_value, 'new': value}},
+        )
+        return Response(ProductVariantSerializer(variant, context={'request': request}).data)
 
     @action(detail=True, methods=['post'], url_path='adjust-stock')
     def adjust_stock(self, request, pk=None):
@@ -590,6 +664,24 @@ class VariantChangeLogListView(generics.ListAPIView):
         product_id = self.request.query_params.get('product')
         if product_id:
             qs = qs.filter(variant__product_id=product_id)
+        sku = self.request.query_params.get('sku')
+        if sku:
+            qs = qs.filter(variant__sku__icontains=sku)
+        seller_id = self.request.query_params.get('seller')
+        if seller_id:
+            qs = qs.filter(variant__seller_id=seller_id)
+        actor_id = self.request.query_params.get('actor')
+        if actor_id:
+            qs = qs.filter(actor_id=actor_id)
+        action_filter = self.request.query_params.get('action')
+        if action_filter:
+            qs = qs.filter(action=action_filter)
+        date_from = self.request.query_params.get('date_from')
+        if date_from:
+            qs = qs.filter(created_at__gte=date_from)
+        date_to = self.request.query_params.get('date_to')
+        if date_to:
+            qs = qs.filter(created_at__lte=date_to)
         return qs
 
 

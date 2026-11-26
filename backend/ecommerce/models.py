@@ -256,7 +256,10 @@ class VariantChangeLog(models.Model):
     # at write time so the log stays readable once variant is null.
     variant = models.ForeignKey(ProductVariant, on_delete=models.SET_NULL, null=True, blank=True, related_name='change_logs')
     actor = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, related_name='variant_changes')
-    action = models.CharField(max_length=20, choices=(('created', 'Created'), ('updated', 'Updated'), ('deleted', 'Deleted')))
+    action = models.CharField(max_length=20, choices=(
+        ('created', 'Created'), ('updated', 'Updated'), ('deleted', 'Deleted'),
+        ('image_added', 'Image Added'), ('image_removed', 'Image Removed'),
+    ))
     changes = models.JSONField(default=dict, blank=True, help_text="{field: {'old': ..., 'new': ...}} for changed fields only")
     created_at = models.DateTimeField(auto_now_add=True)
 

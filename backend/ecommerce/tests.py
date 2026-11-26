@@ -9,7 +9,7 @@ from django.test import TestCase, override_settings
 from rest_framework.test import APIClient
 
 from accounts.models import SellerProfile
-from .models import Address, Cart, CartItem, Order, OrderItem, Product, ProductVariant
+from .models import Address, Cart, CartItem, Order, OrderItem, Product, ProductVariant, VariantChangeLog
 
 User = get_user_model()
 
@@ -323,3 +323,175 @@ class CheckoutVariantValidationTests(TestCase):
         variant.refresh_from_db()
         self.assertEqual(variant.stock, 0)
         self.assertEqual(OrderItem.objects.filter(variant=variant).count(), 1)
+
+
+class AdminVariantManagementTests(TestCase):
+    """Phase 4: admin-wide variant visibility/management and the variant audit trail."""
+
+    def setUp(self):
+        self.admin = User.objects.create_user(email='vadmin@example.com', username='vadmin', password='pass12345!',
+                                               user_type='admin', is_staff=True)
+        self.seller1 = User.objects.create_user(email='vsellerA@example.com', username='vsellerA', password='pass12345!', user_type='seller')
+        self.seller2 = User.objects.create_user(email='vsellerB@example.com', username='vsellerB', password='pass12345!', user_type='seller')
+        SellerProfile.objects.create(user=self.seller1, store_name='Seller A Store', verification_status='approved')
+        SellerProfile.objects.create(user=self.seller2, store_name='Seller B Store', verification_status='approved')
+        self.product1 = Product.objects.create(seller=self.seller1, name='Admin Test Shirt', category='Fashion',
+                                                 price=Decimal('500'), discount_price=Decimal('500'), stock=0, status='approved')
+        self.product2 = Product.objects.create(seller=self.seller2, name='Admin Test Shoe', category='Footwear',
+                                                 price=Decimal('800'), discount_price=Decimal('800'), stock=0, status='approved')
+        self.variant1 = ProductVariant.objects.create(product=self.product1, attributes={'Color': 'Black'},
+                                                       regular_price=Decimal('1000'), price=Decimal('800'), stock=10, hex_code='#000000')
+        self.variant2 = ProductVariant.objects.create(product=self.product2, attributes={'Color': 'White'},
+                                                       regular_price=Decimal('1200'), price=Decimal('1200'), stock=5, hex_code='#ffffff')
+
+    def test_admin_can_view_all_marketplace_variants(self):
+        client = APIClient()
+        client.force_authenticate(self.admin)
+        r = client.get('/api/ecommerce/product-variants/')
+        self.assertEqual(r.status_code, 200)
+        ids = {row['id'] for row in r.json()['results']}
+        self.assertIn(self.variant1.id, ids)
+        self.assertIn(self.variant2.id, ids)
+        row1 = next(row for row in r.json()['results'] if row['id'] == self.variant1.id)
+        self.assertEqual(row1['seller_username'], 'vsellerA')
+        self.assertEqual(row1['product_name'], 'Admin Test Shirt')
+
+    def test_admin_can_filter_variants_by_seller_and_product(self):
+        client = APIClient()
+        client.force_authenticate(self.admin)
+        r = client.get(f'/api/ecommerce/product-variants/?seller={self.seller1.id}')
+        ids = {row['id'] for row in r.json()['results']}
+        self.assertEqual(ids, {self.variant1.id})
+
+        r2 = client.get(f'/api/ecommerce/product-variants/?product={self.product2.id}')
+        ids2 = {row['id'] for row in r2.json()['results']}
+        self.assertEqual(ids2, {self.variant2.id})
+
+    def test_seller_cannot_access_another_sellers_variants(self):
+        client = APIClient()
+        client.force_authenticate(self.seller2)
+        r = client.get('/api/ecommerce/product-variants/')
+        ids = {row['id'] for row in r.json()['results']}
+        self.assertNotIn(self.variant1.id, ids)
+        # Direct object access to another seller's variant must also fail.
+        r2 = client.patch(f'/api/ecommerce/product-variants/{self.variant1.id}/', {'price': '1'}, format='json')
+        self.assertIn(r2.status_code, (403, 404))
+
+    def test_unauthenticated_users_cannot_access_admin_style_listing(self):
+        client = APIClient()
+        r = client.get('/api/ecommerce/variant-change-log/')
+        self.assertEqual(r.status_code, 401)
+
+    def test_admin_can_activate_and_deactivate_a_variant(self):
+        client = APIClient()
+        client.force_authenticate(self.admin)
+        r = client.post(f'/api/ecommerce/product-variants/{self.variant1.id}/deactivate/')
+        self.assertEqual(r.status_code, 200)
+        self.variant1.refresh_from_db()
+        self.assertFalse(self.variant1.is_active)
+        self.assertTrue(VariantChangeLog.objects.filter(variant=self.variant1, changes__has_key='is_active').exists())
+
+        r2 = client.post(f'/api/ecommerce/product-variants/{self.variant1.id}/activate/')
+        self.assertEqual(r2.status_code, 200)
+        self.variant1.refresh_from_db()
+        self.assertTrue(self.variant1.is_active)
+
+    def test_deactivating_does_not_delete_historical_records(self):
+        client = APIClient()
+        client.force_authenticate(self.admin)
+        client.post(f'/api/ecommerce/product-variants/{self.variant1.id}/deactivate/')
+        self.assertTrue(ProductVariant.objects.filter(pk=self.variant1.id).exists())
+        self.variant1.refresh_from_db()
+        self.assertEqual(self.variant1.stock, 10)
+
+    def test_price_change_creates_audit_record_with_old_and_new_values(self):
+        client = APIClient()
+        client.force_authenticate(self.seller1)
+        r = client.patch(f'/api/ecommerce/product-variants/{self.variant1.id}/', {'price': '750'}, format='json')
+        self.assertEqual(r.status_code, 200, r.content)
+        log = VariantChangeLog.objects.filter(variant=self.variant1, action='updated').latest('created_at')
+        self.assertEqual(log.changes['price']['old'], '800.00')
+        self.assertEqual(log.changes['price']['new'], '750.00')
+        self.assertEqual(log.actor_id, self.seller1.id)
+
+    def test_stock_change_is_recorded_in_audit_log(self):
+        client = APIClient()
+        client.force_authenticate(self.seller1)
+        client.patch(f'/api/ecommerce/product-variants/{self.variant1.id}/', {'stock': 3}, format='json')
+        log = VariantChangeLog.objects.filter(variant=self.variant1, action='updated').latest('created_at')
+        self.assertEqual(log.changes['stock']['old'], '10')
+        self.assertEqual(log.changes['stock']['new'], '3')
+
+    def test_colour_and_hex_change_is_recorded(self):
+        client = APIClient()
+        client.force_authenticate(self.seller1)
+        client.patch(f'/api/ecommerce/product-variants/{self.variant1.id}/', {'hex_code': '#112233'}, format='json')
+        log = VariantChangeLog.objects.filter(variant=self.variant1, action='updated').latest('created_at')
+        self.assertEqual(log.changes['hex_code']['old'], '#000000')
+        self.assertEqual(log.changes['hex_code']['new'], '#112233')
+
+    def test_image_addition_and_removal_are_recorded(self):
+        client = APIClient()
+        client.force_authenticate(self.seller1)
+        r = client.post(f'/api/ecommerce/product-variants/{self.variant1.id}/images/', {'image': 'http://x/img.jpg', 'order': 0}, format='json')
+        self.assertEqual(r.status_code, 201, r.content)
+        image_id = r.json()['id']
+        self.assertTrue(VariantChangeLog.objects.filter(variant=self.variant1, action='image_added').exists())
+
+        r2 = client.delete(f'/api/ecommerce/product-variants/{self.variant1.id}/images/', {'image_id': image_id}, format='json')
+        self.assertEqual(r2.status_code, 204)
+        self.assertTrue(VariantChangeLog.objects.filter(variant=self.variant1, action='image_removed').exists())
+
+    def test_existing_audit_records_remain_accessible_after_further_changes(self):
+        client = APIClient()
+        client.force_authenticate(self.seller1)
+        client.patch(f'/api/ecommerce/product-variants/{self.variant1.id}/', {'price': '750'}, format='json')
+        first_log_count = VariantChangeLog.objects.filter(variant=self.variant1).count()
+        client.patch(f'/api/ecommerce/product-variants/{self.variant1.id}/', {'stock': 2}, format='json')
+        self.assertEqual(VariantChangeLog.objects.filter(variant=self.variant1).count(), first_log_count + 1)
+        # Both old logs are still queryable, newest first.
+        admin_client = APIClient()
+        admin_client.force_authenticate(self.admin)
+        r = admin_client.get(f'/api/ecommerce/variant-change-log/?variant={self.variant1.id}')
+        self.assertEqual(r.status_code, 200)
+        self.assertGreaterEqual(len(r.json()['results']), 2)
+
+    def test_variant_history_pagination_and_filters_return_correct_results(self):
+        client = APIClient()
+        client.force_authenticate(self.seller1)
+        client.patch(f'/api/ecommerce/product-variants/{self.variant1.id}/', {'price': '700'}, format='json')
+
+        admin_client = APIClient()
+        admin_client.force_authenticate(self.admin)
+        r = admin_client.get(f'/api/ecommerce/variant-change-log/?seller={self.seller1.id}&action=updated')
+        self.assertEqual(r.status_code, 200)
+        for row in r.json()['results']:
+            self.assertEqual(row['action'], 'updated')
+            self.assertEqual(row['seller_username'], 'vsellerA')
+
+        r2 = admin_client.get(f'/api/ecommerce/variant-change-log/?seller={self.seller2.id}')
+        ids2 = {row['id'] for row in r2.json()['results']}
+        own_logs = {log.id for log in VariantChangeLog.objects.filter(variant__seller=self.seller1)}
+        self.assertFalse(ids2 & own_logs)
+
+    def test_existing_seller_variant_management_continues_working(self):
+        client = APIClient()
+        client.force_authenticate(self.seller1)
+        r = client.post('/api/ecommerce/product-variants/', {
+            'product': self.product1.id, 'attributes': {'Color': 'Red'}, 'price': '500', 'stock': 5,
+        }, format='json')
+        self.assertEqual(r.status_code, 201, r.content)
+
+    def test_customer_pdp_and_checkout_unaffected_by_admin_changes(self):
+        """A buyer listing active variants of an approved product sees normal
+        (non-admin) serializer fields and is unaffected by the admin-only
+        serializer/queryset additions made in this phase."""
+        buyer = User.objects.create_user(email='vbuyer3@example.com', username='vbuyer3', password='pass12345!', user_type='buyer')
+        client = APIClient()
+        client.force_authenticate(buyer)
+        r = client.get(f'/api/ecommerce/product-variants/?product={self.product1.id}')
+        self.assertEqual(r.status_code, 200)
+        ids = {row['id'] for row in r.json()['results']}
+        self.assertIn(self.variant1.id, ids)
+        row = next(row for row in r.json()['results'] if row['id'] == self.variant1.id)
+        self.assertNotIn('seller_username', row)
