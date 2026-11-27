@@ -1522,14 +1522,14 @@ export default function SellOnCollabo({ page = 'home' }) {
               href={user ? '/dashboard' : '/'}
               className="px-4 sm:px-5 py-2 rounded-full bg-white/85 backdrop-blur-xs border border-[#0C2538] text-[#0C2538] hover:bg-white text-[12.5px] sm:text-[13px] font-semibold transition-colors"
             >
-              {user ? 'Dashboard' : 'Seller Login'}
+              Seller Login
             </a>
             {user ? (
               <a
                 href="/dashboard"
                 className="px-5 sm:px-6 py-2 rounded-full bg-[#F26B3A] hover:bg-[#E05A2B] text-white text-[12.5px] sm:text-[13px] font-bold shadow-sm transition-colors"
               >
-                Go to Dashboard
+                Start Selling
               </a>
             ) : (
               <button
