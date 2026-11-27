@@ -396,6 +396,33 @@ const StoreContentEditor = () => {
           </div>
         </Card>
 
+        {/* Homepage Discovery Tabs (New Arrivals / Best Sellers) */}
+        <Card icon={TrendingUp} title="Homepage Discovery Section">
+          <p className="text-xs text-gray-400">
+            Controls the "New Arrivals" / "Best Sellers" tabbed strip shown on the storefront homepage, just below the hero banner.
+          </p>
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-semibold text-gray-600">Show "New Arrivals" tab</span>
+            <button
+              type="button"
+              onClick={() => set('show_new_arrivals_section', !(settings.show_new_arrivals_section ?? true))}
+              className={`relative w-10 h-5 rounded-full transition-colors shrink-0 ${(settings.show_new_arrivals_section ?? true) ? 'bg-emerald-500' : 'bg-gray-300'}`}
+            >
+              <span className={`absolute top-0.5 left-0.5 w-4 h-4 bg-white rounded-full shadow transition-transform ${(settings.show_new_arrivals_section ?? true) ? 'translate-x-5' : 'translate-x-0'}`} />
+            </button>
+          </div>
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-semibold text-gray-600">Show "Best Sellers" tab</span>
+            <button
+              type="button"
+              onClick={() => set('show_best_sellers_section', !(settings.show_best_sellers_section ?? true))}
+              className={`relative w-10 h-5 rounded-full transition-colors shrink-0 ${(settings.show_best_sellers_section ?? true) ? 'bg-rose-500' : 'bg-gray-300'}`}
+            >
+              <span className={`absolute top-0.5 left-0.5 w-4 h-4 bg-white rounded-full shadow transition-transform ${(settings.show_best_sellers_section ?? true) ? 'translate-x-5' : 'translate-x-0'}`} />
+            </button>
+          </div>
+        </Card>
+
         {/* Trending Products */}
         <Card icon={TrendingUp} title="Trending Products (pick up to 4)">
           <p className="text-xs text-gray-400">Leave empty to auto-show products 5–8 from your catalog.</p>

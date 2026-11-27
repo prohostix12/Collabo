@@ -3577,6 +3577,8 @@ export default function EcommerceMarketplace({ inlineMode = false, onBackToSelec
                 wishlist={wishlist}
                 setSelectedProduct={setSelectedProduct}
                 setCurrentView={setCurrentView}
+                showNewArrivals={storeSettings.show_new_arrivals_section ?? true}
+                showBestSellers={storeSettings.show_best_sellers_section ?? true}
               />
             </div>
 
