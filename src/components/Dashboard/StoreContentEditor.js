@@ -421,6 +421,45 @@ const StoreContentEditor = () => {
               <span className={`absolute top-0.5 left-0.5 w-4 h-4 bg-white rounded-full shadow transition-transform ${(settings.show_best_sellers_section ?? true) ? 'translate-x-5' : 'translate-x-0'}`} />
             </button>
           </div>
+
+          <div className="grid grid-cols-2 gap-3 pt-1">
+            <Field label="Layout">
+              <select
+                value={settings.discovery_layout_mode || 'tabs'}
+                onChange={e => set('discovery_layout_mode', e.target.value)}
+                className={inputCls}
+              >
+                <option value="tabs">One section, 2 tab buttons</option>
+                <option value="separate">Two separate sections</option>
+              </select>
+            </Field>
+            <Field label="Position on homepage">
+              <select
+                value={settings.discovery_section_position || 'middle'}
+                onChange={e => set('discovery_section_position', e.target.value)}
+                className={inputCls}
+              >
+                <option value="top">Top — right after the hero banner</option>
+                <option value="middle">Middle — after Weekly Best Deals</option>
+                <option value="bottom">Bottom — after Shop By Category</option>
+              </select>
+            </Field>
+          </div>
+
+          <div className="grid grid-cols-2 gap-3 pt-1">
+            <Field label='"New Arrivals" title'>
+              <input type="text" value={settings.new_arrivals_title || ''} onChange={e => set('new_arrivals_title', e.target.value)} className={inputCls} placeholder="New Arrivals" />
+            </Field>
+            <Field label='"New Arrivals" subtitle'>
+              <input type="text" value={settings.new_arrivals_subtitle || ''} onChange={e => set('new_arrivals_subtitle', e.target.value)} className={inputCls} placeholder="Freshly listed products, newest first" />
+            </Field>
+            <Field label='"Best Sellers" title'>
+              <input type="text" value={settings.best_sellers_title || ''} onChange={e => set('best_sellers_title', e.target.value)} className={inputCls} placeholder="Best Sellers" />
+            </Field>
+            <Field label='"Best Sellers" subtitle'>
+              <input type="text" value={settings.best_sellers_subtitle || ''} onChange={e => set('best_sellers_subtitle', e.target.value)} className={inputCls} placeholder="Ranked by units actually sold" />
+            </Field>
+          </div>
         </Card>
 
         {/* Trending Products */}

@@ -2494,6 +2494,28 @@ export default function EcommerceMarketplace({ inlineMode = false, onBackToSelec
 
   const isAdminUser = !!(user && (user.is_staff || user.is_superuser || user.user_type === 'admin'));
 
+  // Admin-configurable "New Arrivals" / "Best Sellers" homepage strip — a single
+  // node built once so it can be dropped at whichever anchor point the admin
+  // chose (discovery_section_position), instead of a single hardcoded spot.
+  const discoverySectionNode = (
+    <DiscoverySections
+      productsList={productsList}
+      addToCart={addToCart}
+      toggleWishlist={toggleWishlist}
+      wishlist={wishlist}
+      setSelectedProduct={setSelectedProduct}
+      setCurrentView={setCurrentView}
+      showNewArrivals={storeSettings.show_new_arrivals_section ?? true}
+      showBestSellers={storeSettings.show_best_sellers_section ?? true}
+      layoutMode={storeSettings.discovery_layout_mode || 'tabs'}
+      newArrivalsTitle={storeSettings.new_arrivals_title || 'New Arrivals'}
+      newArrivalsSubtitle={storeSettings.new_arrivals_subtitle || 'Freshly listed products, newest first'}
+      bestSellersTitle={storeSettings.best_sellers_title || 'Best Sellers'}
+      bestSellersSubtitle={storeSettings.best_sellers_subtitle || 'Ranked by units actually sold'}
+    />
+  );
+  const discoverySectionPosition = storeSettings.discovery_section_position || 'middle';
+
   // Friendly name for the welcome banner: never show a raw email address.
   const welcomeName = (() => {
     if (!user) return '?';
@@ -2781,6 +2803,8 @@ export default function EcommerceMarketplace({ inlineMode = false, onBackToSelec
         {/* VIEW: HOME */}
         {currentView === 'home' && (
           <div className="space-y-8">
+
+            {discoverySectionPosition === 'top' && discoverySectionNode}
 
             {/* Flipkart Style Hero Section */}
             <div className="space-y-1.5 pt-0">
@@ -3570,16 +3594,7 @@ export default function EcommerceMarketplace({ inlineMode = false, onBackToSelec
                 />
               )}
 
-              <DiscoverySections
-                productsList={productsList}
-                addToCart={addToCart}
-                toggleWishlist={toggleWishlist}
-                wishlist={wishlist}
-                setSelectedProduct={setSelectedProduct}
-                setCurrentView={setCurrentView}
-                showNewArrivals={storeSettings.show_new_arrivals_section ?? true}
-                showBestSellers={storeSettings.show_best_sellers_section ?? true}
-              />
+              {discoverySectionPosition === 'middle' && discoverySectionNode}
             </div>
 
             {/* Shop By Category Grid + Side Ad */}
@@ -3629,6 +3644,8 @@ export default function EcommerceMarketplace({ inlineMode = false, onBackToSelec
             })()}
 
 
+
+            {discoverySectionPosition === 'bottom' && discoverySectionNode}
 
             <CollaboAdBanner handleInviteFriendsClick={handleInviteFriendsClick} />
 

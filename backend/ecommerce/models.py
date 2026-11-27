@@ -734,6 +734,22 @@ class StoreSettings(models.Model):
         default=True,
         help_text='Show/hide the "Best Sellers" tab in the homepage discovery section'
     )
+    discovery_layout_mode = models.CharField(
+        max_length=20,
+        choices=(('tabs', 'One section with tab buttons'), ('separate', 'Two separate stacked sections')),
+        default='tabs',
+        help_text='How New Arrivals and Best Sellers are displayed together on the homepage'
+    )
+    discovery_section_position = models.CharField(
+        max_length=20,
+        choices=(('top', 'Top — right after the hero banner'), ('middle', 'Middle — after Weekly Best Deals'), ('bottom', 'Bottom — after Shop By Category')),
+        default='middle',
+        help_text='Where the New Arrivals / Best Sellers section appears on the homepage'
+    )
+    new_arrivals_title = models.CharField(max_length=60, default='New Arrivals')
+    new_arrivals_subtitle = models.CharField(max_length=120, default='Freshly listed products, newest first')
+    best_sellers_title = models.CharField(max_length=60, default='Best Sellers')
+    best_sellers_subtitle = models.CharField(max_length=120, default='Ranked by units actually sold')
 
     # Trending Phones Section
     trending_phones_title = models.CharField(max_length=100, default='Trending Phones')
