@@ -1,4 +1,5 @@
 import React, { useState, useCallback, useEffect } from 'react';
+import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import api from '../../services/api';
 import {
@@ -6,6 +7,7 @@ import {
   ArrowRight, ArrowLeft, ArrowUp, CheckCircle, ChevronDown, ChevronUp, Eye, EyeOff,
   Mail, Lock, User, Phone, AlertCircle, Upload, X, MapPin,
   FileText, CreditCard, Building2, Layers, Megaphone, Tag, UploadCloud, LayoutDashboard, Wallet,
+  Headphones, Percent, Gift, Clock, Zap,
 } from 'lucide-react';
 import { SELLER_TERMS_INTRO, SELLER_TERMS_SECTIONS } from './sellerTerms';
 import { getRoundedCategoryIcon } from './CategoryIcons';
@@ -165,113 +167,472 @@ const SUPPORT_TOPICS = [
   { value: 'other', label: 'Other Query' },
 ];
 
+const STEP_ILLUSTRATION_IMAGES = {
+  account: '/images/seller-step-1-account.jpg',
+  kyc: '/images/seller-step-2-kyc.jpg',
+  list: '/images/seller-step-3-products.jpg',
+  earn: '/images/seller-step-4-earning.jpg',
+};
+
+function StepIllustration({ type, alt = '' }) {
+  return (
+    <img
+      src={STEP_ILLUSTRATION_IMAGES[type]}
+      alt={alt}
+      loading="lazy"
+      className="w-[148px] h-[148px] object-contain mix-blend-multiply select-none pointer-events-none"
+    />
+  );
+}
+
+function ToolBadgeIcon({ id, className = 'w-11 h-11' }) {
+  switch (id) {
+    case 'collabo-ads':
+      return (
+        <svg viewBox="0 0 44 44" fill="none" className={className} aria-hidden="true">
+          <rect width="44" height="44" rx="14" fill="#EAF5F5" />
+          <rect x="10" y="25" width="5" height="9" rx="2" fill="#8CCAC7" />
+          <rect x="18" y="20" width="5" height="14" rx="2" fill="#1B6B6B" />
+          <rect x="26" y="15" width="5" height="19" rx="2" fill="#F26B3A" />
+          <path d="M11 20L19.5 13.5L25 16.5L33 9.5" stroke="#0C2538" strokeWidth="2.3" strokeLinecap="round" strokeLinejoin="round" />
+          <path d="M27.5 9.5H33V15" stroke="#0C2538" strokeWidth="2.3" strokeLinecap="round" strokeLinejoin="round" />
+          <circle cx="34.5" cy="22" r="2.2" fill="#FBBF24" />
+        </svg>
+      );
+    case 'creators':
+      return (
+        <svg viewBox="0 0 44 44" fill="none" className={className} aria-hidden="true">
+          <rect width="44" height="44" rx="14" fill="#FFF3EE" />
+          <path d="M11 20.5C11 18.8 12.3 17.5 14 17.5H17.5L28 12.2C29.1 11.6 30.5 12.4 30.5 13.7V28.3C30.5 29.6 29.1 30.4 28 29.8L17.5 24.5H14C12.3 24.5 11 23.2 11 21.5V20.5Z" fill="#FFFFFF" stroke="#0C2538" strokeWidth="2.1" strokeLinejoin="round" />
+          <path d="M17.5 17.5V24.5L28 29.8C29.1 30.4 30.5 29.6 30.5 28.3V13.7C30.5 12.4 29.1 11.6 28 12.2L17.5 17.5Z" fill="#F26B3A" fillOpacity="0.22" />
+          <path d="M15 24.5L16.8 31.2C17.1 32.3 18.2 33 19.3 32.7C20.4 32.4 21 31.3 20.7 30.2L19.2 25.4" stroke="#0C2538" strokeWidth="2.1" strokeLinecap="round" strokeLinejoin="round" />
+          <path d="M34 16.5C35.8 18 36.5 20.2 36 22.8" stroke="#F26B3A" strokeWidth="2.3" strokeLinecap="round" />
+          <path d="M33.5 10.5L34.3 12.4L36.2 13.2L34.3 14L33.5 15.9L32.7 14L30.8 13.2L32.7 12.4Z" fill="#1B6B6B" />
+        </svg>
+      );
+    case 'deals':
+      return (
+        <svg viewBox="0 0 44 44" fill="none" className={className} aria-hidden="true">
+          <rect width="44" height="44" rx="14" fill="#EAF5F5" />
+          <path d="M12 13.5C12 11.8 13.3 10.5 15 10.5H22.2C23.1 10.5 23.9 10.8 24.5 11.5L33.2 20.2C34.5 21.5 34.5 23.6 33.2 24.9L25.4 32.7C24.1 34 22 34 20.7 32.7L12 24C11.3 23.4 11 22.6 11 21.7V14.5C11 13.9 11.4 13.5 12 13.5Z" fill="#FFFFFF" stroke="#0C2538" strokeWidth="2.1" strokeLinejoin="round" />
+          <circle cx="16.8" cy="16.3" r="2.1" fill="#F26B3A" />
+          <path d="M19.5 26.5L26.5 19.5" stroke="#1B6B6B" strokeWidth="2.3" strokeLinecap="round" />
+          <circle cx="20.2" cy="20.5" r="1.5" fill="#1B6B6B" />
+          <circle cx="25.8" cy="25.5" r="1.5" fill="#F26B3A" />
+          <path d="M33.5 11.5L34.2 13.2L35.9 13.9L34.2 14.6L33.5 16.3L32.8 14.6L31.1 13.9L32.8 13.2Z" fill="#F26B3A" />
+        </svg>
+      );
+    case 'csv':
+      return (
+        <svg viewBox="0 0 44 44" fill="none" className={className} aria-hidden="true">
+          <rect width="44" height="44" rx="14" fill="#FFF3EE" />
+          <path d="M15.2 28.5H13.5C10.5 28.5 8.5 26.3 8.5 23.6C8.5 21.2 10.2 19.1 12.6 18.8C13.6 14.5 17.4 11.5 22 11.5C27.2 11.5 31.3 15.5 31.5 20.6C33.8 21.1 35.5 23 35.5 25.3C35.5 27.1 34.3 28.5 32.3 28.5H28.8" fill="#FFFFFF" stroke="#0C2538" strokeWidth="2.1" strokeLinecap="round" strokeLinejoin="round" />
+          <circle cx="22" cy="27.5" r="6.8" fill="#1B6B6B" />
+          <path d="M22 30.8V24.5M19.2 27L22 24.2L24.8 27" stroke="#FFFFFF" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" />
+          <circle cx="31.5" cy="13.5" r="2.2" fill="#F26B3A" />
+        </svg>
+      );
+    case 'dashboard':
+      return (
+        <svg viewBox="0 0 44 44" fill="none" className={className} aria-hidden="true">
+          <rect width="44" height="44" rx="14" fill="#EAF5F5" />
+          <rect x="9.5" y="10.5" width="25" height="23" rx="5" fill="#FFFFFF" stroke="#0C2538" strokeWidth="2.1" />
+          <path d="M9.5 17.5H34.5" stroke="#0C2538" strokeWidth="1.9" />
+          <circle cx="13.8" cy="14" r="1.3" fill="#F26B3A" />
+          <circle cx="17.8" cy="14" r="1.3" fill="#FBBF24" />
+          <circle cx="21.8" cy="14" r="1.3" fill="#1B6B6B" />
+          <rect x="13" y="21" width="7.5" height="8.5" rx="2" fill="#EAF5F5" stroke="#1B6B6B" strokeWidth="1.6" />
+          <rect x="23.5" y="21" width="7.5" height="4" rx="1.5" fill="#F26B3A" />
+          <rect x="23.5" y="26.8" width="7.5" height="2.7" rx="1.2" fill="#0C2538" fillOpacity="0.25" />
+        </svg>
+      );
+    default:
+      return (
+        <svg viewBox="0 0 44 44" fill="none" className={className} aria-hidden="true">
+          <rect width="44" height="44" rx="14" fill="#FFF3EE" />
+          <rect x="9.5" y="15.5" width="24" height="17.5" rx="4.5" fill="#FFFFFF" stroke="#0C2538" strokeWidth="2.1" />
+          <path d="M12.5 15.5V13.8C12.5 12.1 13.8 11 15.5 11H28.5" stroke="#0C2538" strokeWidth="2.1" strokeLinecap="round" />
+          <rect x="23.5" y="21.2" width="10" height="6" rx="3" fill="#1B6B6B" />
+          <circle cx="26.8" cy="24.2" r="1.2" fill="#FFFFFF" />
+          <circle cx="30.5" cy="13.5" r="5.8" fill="#F26B3A" stroke="#FFFFFF" strokeWidth="1.8" />
+          <text x="30.5" y="16.4" textAnchor="middle" fill="#FFFFFF" fontSize="8.5" fontWeight="800" fontFamily="sans-serif">₹</text>
+        </svg>
+      );
+  }
+}
+
+const GROWING_GRAPH_CSS = `
+@keyframes cg-bar-1 {
+  0%, 4%   { transform: scaleY(0); opacity: 0; }
+  16%, 86% { transform: scaleY(1); opacity: 1; }
+  94%, 100%{ transform: scaleY(0); opacity: 0; }
+}
+@keyframes cg-bar-2 {
+  0%, 11%  { transform: scaleY(0); opacity: 0; }
+  23%, 86% { transform: scaleY(1); opacity: 1; }
+  94%, 100%{ transform: scaleY(0); opacity: 0; }
+}
+@keyframes cg-bar-3 {
+  0%, 18%  { transform: scaleY(0); opacity: 0; }
+  30%, 86% { transform: scaleY(1); opacity: 1; }
+  94%, 100%{ transform: scaleY(0); opacity: 0; }
+}
+@keyframes cg-bar-4 {
+  0%, 25%  { transform: scaleY(0); opacity: 0; }
+  37%, 86% { transform: scaleY(1); opacity: 1; }
+  94%, 100%{ transform: scaleY(0); opacity: 0; }
+}
+@keyframes cg-bar-5 {
+  0%, 32%  { transform: scaleY(0); opacity: 0; }
+  44%, 86% { transform: scaleY(1); opacity: 1; }
+  94%, 100%{ transform: scaleY(0); opacity: 0; }
+}
+@keyframes cg-arrow-reveal {
+  0%, 16%  { transform: translateX(-235px); }
+  52%, 86% { transform: translateX(0px); }
+  94%, 100%{ transform: translateX(-235px); }
+}
+@keyframes cg-arrow-fade {
+  0%, 16%  { opacity: 0; }
+  22%, 86% { opacity: 1; }
+  94%, 100%{ opacity: 0; }
+}
+@keyframes cg-sparkle {
+  0%, 46%  { transform: scale(0); opacity: 0; }
+  56%      { transform: scale(1.2); opacity: 1; }
+  64%, 86% { transform: scale(1); opacity: 0.9; }
+  94%, 100%{ transform: scale(0); opacity: 0; }
+}
+.cg-bar { transform-box: fill-box; transform-origin: 50% 100%; }
+.cg-b1 { animation: cg-bar-1 5s cubic-bezier(0.22, 1, 0.36, 1) infinite; }
+.cg-b2 { animation: cg-bar-2 5s cubic-bezier(0.22, 1, 0.36, 1) infinite; }
+.cg-b3 { animation: cg-bar-3 5s cubic-bezier(0.22, 1, 0.36, 1) infinite; }
+.cg-b4 { animation: cg-bar-4 5s cubic-bezier(0.22, 1, 0.36, 1) infinite; }
+.cg-b5 { animation: cg-bar-5 5s cubic-bezier(0.22, 1, 0.36, 1) infinite; }
+.cg-arrow-clip-rect { animation: cg-arrow-reveal 5s cubic-bezier(0.35, 0, 0.2, 1) infinite; }
+.cg-arrow-group { animation: cg-arrow-fade 5s ease-in-out infinite; }
+.cg-spark { transform-box: fill-box; transform-origin: center; animation: cg-sparkle 5s ease-out infinite; }
+@media (prefers-reduced-motion: reduce) {
+  .cg-b1, .cg-b2, .cg-b3, .cg-b4, .cg-b5, .cg-arrow-clip-rect, .cg-arrow-group, .cg-spark {
+    animation: none !important;
+    transform: none !important;
+    opacity: 1 !important;
+  }
+}
+`;
+
+function GrowingGraphIllustration() {
+  return (
+    <div className="w-full max-w-[320px] mx-auto select-none pointer-events-none">
+      <style>{GROWING_GRAPH_CSS}</style>
+      <svg viewBox="0 0 340 270" fill="none" className="w-full h-auto" aria-hidden="true">
+        <defs>
+          <linearGradient id="cg-front" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stopColor="#35A7A7" />
+            <stop offset="55%" stopColor="#1B6B6B" />
+            <stop offset="100%" stopColor="#0E4450" />
+          </linearGradient>
+          <linearGradient id="cg-side" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stopColor="#145663" />
+            <stop offset="100%" stopColor="#092E38" />
+          </linearGradient>
+          <linearGradient id="cg-top" x1="0" y1="0" x2="1" y2="1">
+            <stop offset="0%" stopColor="#72D1CE" />
+            <stop offset="100%" stopColor="#2B8E8E" />
+          </linearGradient>
+          <linearGradient id="cg-arrow" x1="0" y1="1" x2="1" y2="0">
+            <stop offset="0%" stopColor="#E05524" />
+            <stop offset="50%" stopColor="#F26B3A" />
+            <stop offset="100%" stopColor="#FF965A" />
+          </linearGradient>
+          <radialGradient id="cg-glow" cx="50%" cy="50%" r="50%">
+            <stop offset="0%" stopColor="#BCE4E4" stopOpacity="0.55" />
+            <stop offset="100%" stopColor="#BCE4E4" stopOpacity="0" />
+          </radialGradient>
+          <filter id="cg-shadow" x="-15%" y="-15%" width="130%" height="135%">
+            <feDropShadow dx="0" dy="8" stdDeviation="6" floodColor="#0C2538" floodOpacity="0.16" />
+          </filter>
+          <clipPath id="cg-arrow-clip">
+            <rect className="cg-arrow-clip-rect" x="40" y="0" width="235" height="175" />
+          </clipPath>
+        </defs>
+
+        {/* Soft ambient teal glow */}
+        <circle cx="176" cy="148" r="112" fill="url(#cg-glow)" />
+
+        {/* Warm subtle ground pedestal */}
+        <ellipse cx="172" cy="238" rx="134" ry="15" fill="#FDE4D6" fillOpacity="0.8" />
+        <ellipse cx="172" cy="236" rx="116" ry="9" fill="#0C2538" fillOpacity="0.06" />
+
+        {/* 5 Rising 3D Isometric Collabo Teal Bars (animated 1 -> 5) */}
+        {[
+          { x: 52, y: 174, h: 60, cls: 'cg-b1' },
+          { x: 100, y: 152, h: 82, cls: 'cg-b2' },
+          { x: 148, y: 128, h: 106, cls: 'cg-b3' },
+          { x: 196, y: 102, h: 132, cls: 'cg-b4' },
+          { x: 244, y: 74, h: 160, cls: 'cg-b5' },
+        ].map((b, i) => (
+          <g key={i} className={`cg-bar ${b.cls}`} filter="url(#cg-shadow)">
+            {/* Front face */}
+            <rect x={b.x} y={b.y} width="30" height={b.h} rx="2" fill="url(#cg-front)" />
+            {/* Right 3D side face */}
+            <polygon
+              points={`${b.x + 30},${b.y} ${b.x + 40},${b.y - 7} ${b.x + 40},${b.y + b.h - 7} ${b.x + 30},${b.y + b.h}`}
+              fill="url(#cg-side)"
+            />
+            {/* Top 3D cap */}
+            <polygon
+              points={`${b.x},${b.y} ${b.x + 10},${b.y - 7} ${b.x + 40},${b.y - 7} ${b.x + 30},${b.y}`}
+              fill="url(#cg-top)"
+            />
+          </g>
+        ))}
+
+        {/* Sweeping 3D Coral-Orange Upward Growth Arrow (bottom-left -> top-right) */}
+        <g clipPath="url(#cg-arrow-clip)" className="cg-arrow-group" filter="url(#cg-shadow)">
+          <path
+            d="M54 148 C118 128 176 92 224 38 L208 35 C205 34.5 204.5 30.5 207.2 29.2 L248 14 C251 12.8 254.2 15.5 253.4 18.6 L243 60 C242.2 63 238.4 63.5 236.8 60.8 L229 48 C184 102 126 136 58 153 C53.5 154.2 50.5 149.2 54 148 Z"
+            fill="url(#cg-arrow)"
+          />
+        </g>
+
+        {/* Crisp minimal sparkle accents */}
+        <circle className="cg-spark" cx="96" cy="92" r="3" fill="#F26B3A" opacity="0.85" />
+        <circle className="cg-spark" cx="298" cy="54" r="3.5" fill="#1B6B6B" opacity="0.7" />
+        <path className="cg-spark" d="M168 46L170 51L175 53L170 55L168 60L166 55L161 53L166 51Z" fill="#F26B3A" opacity="0.85" />
+      </svg>
+    </div>
+  );
+}
+
+function WhyCollaboIcon({ type }) {
+  if (type === 'ease') {
+    return (
+      <svg viewBox="0 0 52 52" fill="none" className="w-[52px] h-[52px] shrink-0" aria-hidden="true">
+        <defs>
+          <linearGradient id="wc-bolt" x1="16" y1="10" x2="36" y2="42" gradientUnits="userSpaceOnUse">
+            <stop offset="0%" stopColor="#FF9154" />
+            <stop offset="55%" stopColor="#F26B3A" />
+            <stop offset="100%" stopColor="#D94E1F" />
+          </linearGradient>
+        </defs>
+        <circle cx="26" cy="26" r="25" fill="#FFF2EB" stroke="#FFE0D1" strokeWidth="1.2" />
+        <path
+          d="M28.6 11.5L16.8 27.6C16.2 28.4 16.8 29.5 17.8 29.5H24.6L22.6 39.8C22.4 40.9 23.8 41.6 24.5 40.7L35.4 24.8C36 24 35.4 22.9 34.4 22.9H27.7L30.5 12.6C30.8 11.5 29.3 10.6 28.6 11.5Z"
+          fill="url(#wc-bolt)"
+        />
+        <circle cx="37.5" cy="15.5" r="2" fill="#FBBF24" />
+      </svg>
+    );
+  }
+  if (type === 'influencers') {
+    return (
+      <svg viewBox="0 0 52 52" fill="none" className="w-[52px] h-[52px] shrink-0" aria-hidden="true">
+        <defs>
+          <linearGradient id="wc-teal" x1="14" y1="14" x2="38" y2="40" gradientUnits="userSpaceOnUse">
+            <stop offset="0%" stopColor="#2B8E8E" />
+            <stop offset="100%" stopColor="#0E4754" />
+          </linearGradient>
+        </defs>
+        <circle cx="26" cy="26" r="25" fill="#EBF6F7" stroke="#CFE9EB" strokeWidth="1.2" />
+        {/* Side silhouettes */}
+        <circle cx="16.5" cy="22.5" r="3.4" fill="#5CB3B3" />
+        <path d="M11 33.5C11 30.2 13.4 28 16.5 28C18.2 28 19.6 28.7 20.6 29.8" fill="#5CB3B3" />
+        <circle cx="35.5" cy="22.5" r="3.4" fill="#5CB3B3" />
+        <path d="M41 33.5C41 30.2 38.6 28 35.5 28C33.8 28 32.4 28.7 31.4 29.8" fill="#5CB3B3" />
+        {/* Front center creator */}
+        <circle cx="26" cy="20" r="4.6" fill="url(#wc-teal)" />
+        <path d="M17.5 35.5C17.5 30.6 21.1 27.2 26 27.2C30.9 27.2 34.5 30.6 34.5 35.5C34.5 36.3 33.8 37 33 37H19C18.2 37 17.5 36.3 17.5 35.5Z" fill="url(#wc-teal)" />
+        <circle cx="35.5" cy="14" r="2" fill="#F26B3A" />
+      </svg>
+    );
+  }
+  return (
+    <svg viewBox="0 0 52 52" fill="none" className="w-[52px] h-[52px] shrink-0" aria-hidden="true">
+      <defs>
+        <linearGradient id="wc-mega" x1="16" y1="14" x2="38" y2="36" gradientUnits="userSpaceOnUse">
+          <stop offset="0%" stopColor="#FF9154" />
+          <stop offset="55%" stopColor="#F26B3A" />
+          <stop offset="100%" stopColor="#D94E1F" />
+        </linearGradient>
+      </defs>
+      <circle cx="26" cy="26" r="25" fill="#FFF2EB" stroke="#FFE0D1" strokeWidth="1.2" />
+      {/* Handle */}
+      <path d="M17.5 27.5L19.8 35.6C20.2 36.8 21.5 37.5 22.7 37.1C23.8 36.8 24.4 35.6 24.1 34.4L22.2 28" fill="#135562" />
+      {/* Mouthpiece */}
+      <rect x="12.5" y="21.5" width="7.5" height="7.5" rx="3" fill="#0C2538" />
+      {/* Bold Coral Megaphone Cone */}
+      <path
+        d="M19.5 21.5L32.8 14.2C34.1 13.5 35.6 14.4 35.6 15.9V34.1C35.6 35.6 34.1 36.5 32.8 35.8L19.5 28.5V21.5Z"
+        fill="url(#wc-mega)"
+      />
+      {/* Soundwaves */}
+      <path d="M38.8 20.5C40.6 22.3 41.2 24.9 40.4 27.5" stroke="#1B6B6B" strokeWidth="2.4" strokeLinecap="round" />
+      <path d="M38.2 15.8L39.2 17.5L41 18.2L39.2 19L38.2 20.8L37.4 19L35.6 18.2L37.4 17.5Z" fill="#F26B3A" />
+    </svg>
+  );
+}
+
+const SUPPORT_SCENE_CSS = `
+@keyframes sup-float-a {
+  0%, 100% { transform: translateY(0px); }
+  50%      { transform: translateY(-7px); }
+}
+@keyframes sup-float-b {
+  0%, 100% { transform: translateY(0px); }
+  50%      { transform: translateY(7px); }
+}
+@keyframes sup-msg-1 {
+  0%, 4%   { opacity: 0; transform: translateY(10px) scale(0.96); }
+  14%, 88% { opacity: 1; transform: translateY(0px) scale(1); }
+  95%, 100%{ opacity: 0; transform: translateY(-6px) scale(0.98); }
+}
+@keyframes sup-typing {
+  0%, 18%  { opacity: 0; transform: scale(0.9); }
+  24%, 40% { opacity: 1; transform: scale(1); }
+  45%, 100%{ opacity: 0; transform: scale(0.9); }
+}
+@keyframes sup-msg-2 {
+  0%, 42%  { opacity: 0; transform: translateY(10px) scale(0.96); }
+  52%, 88% { opacity: 1; transform: translateY(0px) scale(1); }
+  95%, 100%{ opacity: 0; transform: translateY(-6px) scale(0.98); }
+}
+@keyframes sup-status {
+  0%, 58%  { opacity: 0; transform: translateY(8px) scale(0.95); }
+  66%, 88% { opacity: 1; transform: translateY(0px) scale(1); }
+  95%, 100%{ opacity: 0; transform: translateY(4px) scale(0.95); }
+}
+@keyframes sup-dot {
+  0%, 80%, 100% { transform: translateY(0); opacity: 0.45; }
+  40%           { transform: translateY(-3.5px); opacity: 1; }
+}
+.sup-float-a { animation: sup-float-a 4.2s ease-in-out infinite; }
+.sup-float-b { animation: sup-float-b 4.8s ease-in-out infinite; }
+.sup-msg-1   { animation: sup-msg-1 6.5s cubic-bezier(0.22, 1, 0.36, 1) infinite; }
+.sup-typing  { animation: sup-typing 6.5s ease-in-out infinite; }
+.sup-msg-2   { animation: sup-msg-2 6.5s cubic-bezier(0.22, 1, 0.36, 1) infinite; }
+.sup-status  { animation: sup-status 6.5s cubic-bezier(0.22, 1, 0.36, 1) infinite; }
+.sup-dot-1   { animation: sup-dot 1.1s ease-in-out infinite; }
+.sup-dot-2   { animation: sup-dot 1.1s ease-in-out 0.16s infinite; }
+.sup-dot-3   { animation: sup-dot 1.1s ease-in-out 0.32s infinite; }
+@media (prefers-reduced-motion: reduce) {
+  .sup-float-a, .sup-float-b, .sup-msg-1, .sup-msg-2, .sup-status {
+    animation: none !important;
+    opacity: 1 !important;
+    transform: none !important;
+  }
+  .sup-typing { display: none !important; }
+}
+`;
+
 function SellerSupportIllustration() {
   return (
-    <svg viewBox="0 0 420 340" fill="none" className="w-full max-w-[380px] mx-auto" aria-hidden="true">
-      {/* Soft warm peach/orange halo backdrop */}
-      <circle cx="222" cy="175" r="132" fill="#FFF7ED" />
-      <circle cx="222" cy="175" r="102" fill="#FFEDD5" fillOpacity="0.65" />
+    <div className="relative w-full max-w-[430px] mx-auto py-8 px-3 sm:px-6 select-none pointer-events-none" aria-hidden="true">
+      <style>{SUPPORT_SCENE_CSS}</style>
 
-      {/* Subtle decorative motion arcs */}
-      <path d="M98 228C88 242 96 266 118 274" stroke="#1B2741" strokeWidth="1.8" strokeLinecap="round" />
-      <circle cx="88" cy="218" r="3" fill="#F97316" />
-      <path d="M352 132C362 152 362 178 352 198" stroke="#1B2741" strokeWidth="1.8" strokeLinecap="round" strokeDasharray="3 5" />
+      {/* Soft ambient Collabo teal & coral glow orbs */}
+      <div className="absolute top-6 left-4 w-52 h-52 rounded-full bg-[#1B6B6B]/12 blur-3xl" />
+      <div className="absolute bottom-4 right-4 w-52 h-52 rounded-full bg-[#F26B3A]/14 blur-3xl" />
 
-      {/* Floating chat bubbles (top-left) */}
-      <path
-        d="M110 74C110 64.6 121 57 134.5 57H162C175.5 57 186.5 64.6 186.5 74C186.5 83.4 175.5 91 162 91H134.5L118 100L121.5 88.5C114.5 85.4 110 80.1 110 74Z"
-        fill="#FB923C"
-      />
-      <path
-        d="M142 104C142 94.6 153 87 166.5 87H196C209.5 87 220.5 94.6 220.5 104C220.5 113.4 209.5 121 196 121H170L155 130L158.5 118.5C148.5 115.6 142 110.2 142 104Z"
-        fill="#FFFFFF"
-        stroke="#FDBA74"
-        strokeWidth="1.6"
-      />
-      <path d="M162 102H196M162 109H184" stroke="#1B2741" strokeWidth="2.2" strokeLinecap="round" />
+      {/* Top-Left Floating 24x7 Badge */}
+      <div className="sup-float-a absolute top-1 left-0 sm:-left-2 z-20 bg-white rounded-2xl px-3.5 py-2.5 shadow-[0_10px_28px_rgba(12,37,56,0.12)] border border-slate-100 flex items-center gap-2.5">
+        <span className="w-8 h-8 rounded-xl bg-[#EAF5F5] text-[#1B6B6B] flex items-center justify-center">
+          <Headphones className="w-4 h-4" strokeWidth={2.2} />
+        </span>
+        <div className="leading-tight">
+          <p className="text-[11px] font-extrabold text-[#0C2538]">24×7 Support</p>
+          <p className="text-[9.5px] font-medium text-emerald-600 flex items-center gap-1 mt-0.5">
+            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-ping" />
+            Desk Online
+          </p>
+        </div>
+      </div>
 
-      {/* Floating support icons (top-right) */}
-      <g transform="translate(262 46)">
-        <circle cx="20" cy="20" r="19" fill="#FFFFFF" stroke="#1B2741" strokeWidth="1.8" />
-        <path
-          d="M15.2 13.8C15.7 13.3 16.5 13.3 17 13.8L18.6 15.4C19.1 15.9 19.1 16.7 18.6 17.2L17.6 18.2C18.3 19.6 19.4 20.7 20.8 21.4L21.8 20.4C22.3 19.9 23.1 19.9 23.6 20.4L25.2 22C25.7 22.5 25.7 23.3 25.2 23.8L24.1 24.9C23.1 25.9 21.5 26.2 20.2 25.6C17.2 24.2 14.8 21.8 13.4 18.8C12.8 17.5 13.1 15.9 14.1 14.9L15.2 13.8Z"
-          fill="#F97316"
-        />
-      </g>
-      <g transform="translate(306 72)">
-        <circle cx="19" cy="19" r="18" fill="#FFFFFF" stroke="#1B2741" strokeWidth="1.8" />
-        <rect x="10.5" y="13" width="17" height="12" rx="2" fill="#F97316" />
-        <path d="M11.5 14L19 19.5L26.5 14" stroke="#FFFFFF" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
-      </g>
-      <g transform="translate(328 118)">
-        <circle cx="20" cy="20" r="19" fill="#FFFFFF" stroke="#1B2741" strokeWidth="1.8" />
-        <text x="20" y="24" textAnchor="middle" fill="#EA580C" fontSize="11" fontWeight="800" fontFamily="sans-serif">
-          24/7
-        </text>
-      </g>
+      {/* Top-Right Floating Ticket Mail Badge */}
+      <div className="sup-float-b absolute top-4 right-0 sm:-right-2 z-20 bg-white rounded-2xl px-3.5 py-2 shadow-[0_10px_28px_rgba(12,37,56,0.12)] border border-slate-100 flex items-center gap-2">
+        <span className="w-7 h-7 rounded-lg bg-[#FFF3EE] text-[#F26B3A] flex items-center justify-center">
+          <Mail className="w-3.5 h-3.5" strokeWidth={2.2} />
+        </span>
+        <span className="text-[10.5px] font-bold text-[#0C2538]">Direct Replies</span>
+      </div>
 
-      {/* Support Agent */}
-      {/* Body / Orange sweater */}
-      <path
-        d="M150 264C150 226 172 194 206 188L248 188C284 194 316 220 318 264H150Z"
-        fill="#F97316"
-      />
-      {/* Left waving arm */}
-      <path
-        d="M174 204L142 184L130 162"
-        stroke="#F97316"
-        strokeWidth="22"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-      {/* Waving hand */}
-      <path
-        d="M126 164L116 146C115 144 117 141.5 119.5 143L126 148V137C126 135 129 135 129.5 137L131.5 146L134 138C134.5 136 137.5 136.5 137.5 139L136.5 152C136.5 158 132 164 126 164Z"
-        fill="#FFFFFF"
-        stroke="#1B2741"
-        strokeWidth="1.8"
-        strokeLinejoin="round"
-      />
-      {/* Neck & Collar */}
-      <path d="M214 174V192C214 198 228 198 228 192V174" fill="#FFFFFF" stroke="#1B2741" strokeWidth="1.8" />
-      {/* Head */}
-      <ellipse cx="222" cy="150" rx="20" ry="24" fill="#FFFFFF" stroke="#1B2741" strokeWidth="2" />
-      {/* Hair */}
-      <path
-        d="M201 146C198 130 208 118 224 118C236 118 244 125 244 137C238 131 230 132 224 137C217 143 207 144 201 146Z"
-        fill="#1B2741"
-      />
-      {/* Headset */}
-      <path d="M202 146C202 128 211 118 223 118C235 118 243 128 243 145" stroke="#1B2741" strokeWidth="2.4" strokeLinecap="round" />
-      <rect x="239" y="140" width="8" height="14" rx="4" fill="#F97316" stroke="#1B2741" strokeWidth="1.6" />
-      <path d="M242 154C240 162 232 165 224 164" stroke="#1B2741" strokeWidth="1.8" strokeLinecap="round" />
-      <circle cx="223" cy="164" r="2.2" fill="#1B2741" />
+      {/* Central Interactive-Style Support Desk Card */}
+      <div className="relative z-10 bg-white rounded-2xl shadow-[0_20px_52px_rgba(12,37,56,0.11)] border border-slate-200/80 overflow-hidden mt-4">
+        {/* Header */}
+        <div className="px-4 py-3 bg-gradient-to-r from-[#0C2538] via-[#134652] to-[#1B6B6B] flex items-center justify-between">
+          <div className="flex items-center gap-2.5">
+            <div className="w-8 h-8 rounded-full bg-white p-1 shadow-xs flex items-center justify-center shrink-0">
+              <img src="/favicon-192.png" alt="Collabo" className="w-full h-full object-contain" />
+            </div>
+            <div className="leading-tight">
+              <p className="text-[11.5px] font-bold text-white">Collabo Seller Support</p>
+              <p className="text-[9.5px] text-teal-100/90 flex items-center gap-1">
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
+                Active ticket desk
+              </p>
+            </div>
+          </div>
+          <span className="text-[9.5px] font-bold text-white/90 bg-white/15 px-2.5 py-0.5 rounded-full">
+            Live Help
+          </span>
+        </div>
 
-      {/* Right resting hand */}
-      <path
-        d="M294 252C298 246 312 246 316 254C319 260 315 266 306 266H292"
-        fill="#FFFFFF"
-        stroke="#1B2741"
-        strokeWidth="1.8"
-        strokeLinecap="round"
-      />
+        {/* Animated Conversation Area */}
+        <div className="p-4 sm:p-5 bg-[#F8FBFD] space-y-3 min-h-[215px] relative">
+          {/* Seller Message */}
+          <div className="sup-msg-1 flex justify-end">
+            <div className="max-w-[82%] bg-[#F26B3A] text-white rounded-2xl rounded-br-sm px-3.5 py-2.5 shadow-sm">
+              <p className="text-[11.5px] font-medium leading-snug">
+                Hi! How can I bulk upload my catalog &amp; track payouts?
+              </p>
+              <p className="text-[9px] text-orange-100/90 text-right mt-1">Seller · Just now</p>
+            </div>
+          </div>
 
-      {/* Desktop Monitor */}
-      <path d="M188 262L180 284H224L216 262" fill="#FED7AA" stroke="#1B2741" strokeWidth="2" strokeLinejoin="round" />
-      <path d="M168 284H236" stroke="#1B2741" strokeWidth="2.4" strokeLinecap="round" />
-      <path
-        d="M128 190C128 185.6 131.6 182 136 182H250C254.4 182 258 185.6 258 190V256C258 260.4 254.4 264 250 264H136C131.6 264 128 260.4 128 256V190Z"
-        fill="#FFFFFF"
-        stroke="#1B2741"
-        strokeWidth="2.2"
-      />
-      {/* Monitor Collabo orange badge */}
-      <circle cx="193" cy="223" r="14" fill="#FFF7ED" stroke="#F97316" strokeWidth="2" />
-      <path d="M187 223L191 227L199 219" stroke="#F97316" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" />
+          {/* Typing Indicator (briefly shown before support replies) */}
+          <div className="sup-typing absolute left-4 sm:left-5 top-[88px] flex items-center gap-2">
+            <div className="w-6 h-6 rounded-full bg-white border border-slate-200 p-0.5 shadow-xs flex items-center justify-center shrink-0">
+              <img src="/favicon-192.png" alt="Collabo" className="w-full h-full object-contain" />
+            </div>
+            <div className="bg-white border border-slate-200/80 rounded-2xl rounded-bl-sm px-3 py-2 shadow-xs flex items-center gap-1">
+              <span className="sup-dot-1 w-1.5 h-1.5 rounded-full bg-[#1B6B6B]" />
+              <span className="sup-dot-2 w-1.5 h-1.5 rounded-full bg-[#1B6B6B]" />
+              <span className="sup-dot-3 w-1.5 h-1.5 rounded-full bg-[#1B6B6B]" />
+            </div>
+          </div>
 
-      {/* Desk surface */}
-      <path d="M84 284H344" stroke="#1B2741" strokeWidth="2.2" strokeLinecap="round" />
-    </svg>
+          {/* Collabo Support Reply */}
+          <div className="sup-msg-2 flex items-end gap-2">
+            <div className="w-6 h-6 rounded-full bg-white border border-slate-200 p-0.5 shadow-xs flex items-center justify-center shrink-0">
+              <img src="/favicon-192.png" alt="Collabo" className="w-full h-full object-contain" />
+            </div>
+            <div className="max-w-[82%] bg-white border border-slate-200/80 text-[#0C2538] rounded-2xl rounded-bl-sm px-3.5 py-2.5 shadow-xs">
+              <p className="text-[11.5px] leading-snug">
+                Import your CSV directly in <span className="font-bold text-[#1B6B6B]">Seller Dashboard</span> — payouts settle to your bank in 7 days!
+              </p>
+              <p className="text-[9px] text-gray-400 mt-1">Collabo Support · Instant</p>
+            </div>
+          </div>
+
+          {/* Animated Ticket Status Pill */}
+          <div className="sup-status pt-1 flex items-center justify-between bg-emerald-50 border border-emerald-200/80 rounded-xl px-3 py-2">
+            <span className="inline-flex items-center gap-1.5 text-[10.5px] font-bold text-emerald-800">
+              <CheckCircle className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+              Ticket Tracked in Dashboard
+            </span>
+            <span className="font-mono text-[10px] font-bold text-[#1B6B6B] bg-white px-2 py-0.5 rounded border border-emerald-200/70">
+              #TKT-LIVE
+            </span>
+          </div>
+        </div>
+      </div>
+
+      {/* Bottom-Right Floating Shield Trust Pill */}
+      <div className="sup-float-a absolute bottom-1 right-2 sm:right-0 z-20 bg-white rounded-full px-3.5 py-1.5 shadow-[0_8px_24px_rgba(12,37,56,0.12)] border border-slate-100 flex items-center gap-1.5">
+        <Shield className="w-3.5 h-3.5 text-[#F26B3A]" />
+        <span className="text-[10.5px] font-bold text-[#0C2538]">Dedicated Seller Team</span>
+      </div>
+    </div>
   );
 }
 
@@ -344,9 +705,6 @@ function SellerSupportSection({ user }) {
               <h2 className="text-2xl sm:text-4xl font-extrabold tracking-tight text-[#1B2741] leading-tight">
                 Still wondering? <span className="text-orange-500">Let&apos;s talk</span>
               </h2>
-              <p className="text-sm text-gray-600 leading-relaxed mt-2.5 max-w-lg">
-                Have a question about onboarding, KYC, shipping, or payouts? Raise a ticket with the Collabo Seller Support team and track replies directly in your account.
-              </p>
             </div>
 
             {createdTicket ? (
@@ -378,20 +736,6 @@ function SellerSupportSection({ user }) {
               </div>
             ) : (
               <form onSubmit={handleSubmit} className="space-y-3.5 max-w-md">
-                {!user && (
-                  <div className="bg-orange-50 border border-orange-200 rounded-xl px-4 py-3 flex items-center justify-between gap-3">
-                    <p className="text-xs text-orange-900">
-                      Log in to raise a support ticket linked to your Collabo account.
-                    </p>
-                    <a
-                      href="/"
-                      className="shrink-0 bg-orange-500 hover:bg-orange-600 text-white text-[11px] font-bold px-3.5 py-1.5 rounded-lg transition-colors"
-                    >
-                      Login
-                    </a>
-                  </div>
-                )}
-
                 {error && (
                   <div className="bg-red-50 border border-red-200 rounded-xl px-3.5 py-2.5 text-xs text-red-600 flex items-start gap-2">
                     <AlertCircle className="w-4 h-4 mt-0.5 shrink-0" />
@@ -1046,22 +1390,43 @@ function SellerRegistrationWidget() {
   );
 }
 
-export default function SellOnCollabo() {
+export default function SellOnCollabo({ page = 'home' }) {
+  const navigate = useNavigate();
+  const location = useLocation();
+  const isHowItWorksPage = page === 'how-it-works' || location.pathname === '/sell/how-it-works';
+
   const [openFaq, setOpenFaq] = useState(null);
   const { user } = useAuth();
   const [hubStats, setHubStats] = useState(null);
   const [categories, setCategories] = useState([]);
   const [storeSettings, setStoreSettings] = useState(null);
   const [showGoTop, setShowGoTop] = useState(false);
+  const [isScrolled, setIsScrolled] = useState(false);
   const [selectedTool, setSelectedTool] = useState(null);
   // Keep the form collapsed on first load; show it once the seller taps "Start Selling",
   // or immediately if they're already logged in / mid-application (so they can resume).
-  const [showRegister, setShowRegister] = useState(!!user);
+  const [showRegister, setShowRegister] = useState(!!user || location.hash === '#register');
 
   const revealRegister = () => {
     setSelectedTool(null);
     setShowRegister(true);
-    const el = document.getElementById('register');
+    if (!isHowItWorksPage) {
+      navigate('/sell/how-it-works#register');
+      return;
+    }
+    setTimeout(() => {
+      const el = document.getElementById('register');
+      if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }, 50);
+  };
+
+  const goToSellSection = (hash) => (e) => {
+    e.preventDefault();
+    if (isHowItWorksPage) {
+      navigate(`/sell#${hash}`);
+      return;
+    }
+    const el = document.getElementById(hash);
     if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
   };
 
@@ -1072,78 +1437,97 @@ export default function SellOnCollabo() {
   }, []);
 
   useEffect(() => {
-    const onScroll = () => setShowGoTop(window.scrollY > 420);
+    const onScroll = () => {
+      setShowGoTop(window.scrollY > 420);
+      setIsScrolled(window.scrollY > 24);
+    };
     window.addEventListener('scroll', onScroll, { passive: true });
     return () => window.removeEventListener('scroll', onScroll);
   }, []);
 
-  const heroBannerSrc = storeSettings?.seller_hub_banner_image || '/images/seller-hero-banner.jpg';
+  useEffect(() => {
+    if (location.hash === '#register') {
+      setShowRegister(true);
+    }
+    if (location.hash) {
+      const targetId = location.hash.replace('#', '');
+      const timer = setTimeout(() => {
+        const el = document.getElementById(targetId);
+        if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }, 80);
+      return () => clearTimeout(timer);
+    }
+    window.scrollTo({ top: 0, behavior: 'instant' });
+  }, [location.pathname, location.hash]);
+
+  const heroBannerSrc = storeSettings?.seller_hub_banner_image || '/images/seller-hero-modern.jpg';
 
   return (
     <div className="min-h-screen bg-white text-gray-900">
-      {/* Top Utility Strip */}
-      <div className="bg-[#F4F6F8] border-b border-gray-200">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 py-2 flex items-center justify-between gap-4 text-[12px] text-gray-600">
-          <p className="truncate">
-            Already selling on Collabo?{' '}
-            <a href={user ? '/dashboard' : '/'} className="text-[#027CD5] hover:underline font-medium">
-              {user ? 'Open your Seller Dashboard to manage orders and payouts' : 'Sign in to manage your store, orders, and payouts'}
-            </a>
-          </p>
-          <a href="/" className="hidden sm:inline text-[11px] font-medium text-gray-500 hover:text-orange-600 transition-colors shrink-0">
-            ← Back to Collabo Store
+      {/* Main Header — Transparent over Hero at top, frosted white on scroll */}
+      <nav
+        className={`z-50 transition-all duration-200 ${
+          !isHowItWorksPage
+            ? isScrolled
+              ? 'fixed top-0 left-0 right-0 bg-white/95 backdrop-blur-md border-b border-gray-100 shadow-xs'
+              : 'fixed top-0 left-0 right-0 bg-transparent border-b border-transparent'
+            : 'sticky top-0 bg-white/95 backdrop-blur-sm border-b border-gray-100'
+        }`}
+      >
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 h-16 sm:h-[72px] flex items-center justify-between gap-4">
+          <a href="/" className="flex items-center shrink-0">
+            <span className="inline-flex items-center h-10 w-[118px] sm:w-[132px] overflow-hidden shrink-0">
+              <img
+                src="/collabo-logo.png"
+                alt="Collabo"
+                className="h-10 sm:h-11 w-auto object-contain scale-[1.95] origin-left"
+              />
+            </span>
           </a>
-        </div>
-      </div>
 
-      {/* Main Sticky Header */}
-      <nav className="sticky top-0 z-50 bg-white border-b border-gray-200 shadow-[0_1px_4px_rgba(0,0,0,0.04)]">
-        <div className="max-w-7xl mx-auto pl-4 sm:pl-6 pr-0 h-16 flex items-center justify-between gap-4">
-          <div className="flex items-center gap-8 min-w-0">
-            <a href="/" className="flex items-center gap-3 shrink-0">
-              <span className="inline-flex items-center h-10 w-[108px] sm:w-[122px] overflow-hidden shrink-0">
-                <img
-                  src="/collabo-logo.png"
-                  alt="Collabo"
-                  className="h-10 sm:h-11 w-auto object-contain scale-[1.9] origin-left"
-                />
-              </span>
-              <div className="leading-none border-l border-gray-200 pl-3">
-                <span className="block text-[10px] font-semibold text-gray-500 tracking-wide">Sell on</span>
-                <span className="block text-[15px] font-extrabold text-[#1B2741] tracking-tight">Collabo</span>
-              </div>
+          <div className="hidden lg:flex items-center gap-8">
+            <Link
+              to="/sell"
+              className={`text-[13.5px] transition-colors pb-1 ${
+                !isHowItWorksPage
+                  ? 'font-bold text-[#0C2538] border-b-2 border-[#F26B3A]'
+                  : 'font-medium text-gray-600 hover:text-[#0C2538]'
+              }`}
+            >
+              Sell Online
+            </Link>
+            <Link
+              to="/sell/how-it-works"
+              className={`text-[13.5px] transition-colors pb-1 ${
+                isHowItWorksPage
+                  ? 'font-bold text-[#0C2538] border-b-2 border-[#F26B3A]'
+                  : 'font-medium text-gray-600 hover:text-[#0C2538]'
+              }`}
+            >
+              How It Works
+            </Link>
+            <a href="/sell#benefits" onClick={goToSellSection('benefits')} className="text-[13.5px] font-medium text-gray-600 hover:text-[#0C2538] transition-colors">
+              Seller Benefits
             </a>
-
-            <div className="hidden lg:flex items-center gap-7">
-              <a href="#how-it-works" className="text-[13px] font-medium text-gray-700 hover:text-orange-600 transition-colors">
-                How It Works
-              </a>
-              <a href="#pricing" className="text-[13px] font-medium text-gray-700 hover:text-orange-600 transition-colors">
-                Pricing
-              </a>
-              <a href="#benefits" className="text-[13px] font-medium text-gray-700 hover:text-orange-600 transition-colors">
-                Seller Tools
-              </a>
-              <a href="#categories" className="text-[13px] font-medium text-gray-700 hover:text-orange-600 transition-colors">
-                Categories
-              </a>
-              <a href="#support" className="text-[13px] font-medium text-gray-700 hover:text-orange-600 transition-colors">
-                Support
-              </a>
-            </div>
+            <a href="/sell#pricing" onClick={goToSellSection('pricing')} className="text-[13.5px] font-medium text-gray-600 hover:text-[#0C2538] transition-colors">
+              Pricing
+            </a>
+            <a href="/sell#support" onClick={goToSellSection('support')} className="text-[13.5px] font-medium text-gray-600 hover:text-[#0C2538] transition-colors">
+              Support
+            </a>
           </div>
 
-          <div className="flex items-center h-full shrink-0">
+          <div className="flex items-center gap-2.5 sm:gap-3 shrink-0">
             <a
               href={user ? '/dashboard' : '/'}
-              className="px-4 sm:px-6 text-[13px] font-semibold text-gray-700 hover:text-[#027CD5] transition-colors"
+              className="px-4 sm:px-5 py-2 rounded-full bg-white/85 backdrop-blur-xs border border-[#0C2538] text-[#0C2538] hover:bg-white text-[12.5px] sm:text-[13px] font-semibold transition-colors"
             >
-              {user ? 'Dashboard' : 'Login'}
+              {user ? 'Dashboard' : 'Seller Login'}
             </a>
             {user ? (
               <a
                 href="/dashboard"
-                className="h-full px-6 sm:px-8 bg-orange-500 hover:bg-orange-600 text-white text-[13px] sm:text-[14px] font-bold flex items-center justify-center transition-colors"
+                className="px-5 sm:px-6 py-2 rounded-full bg-[#F26B3A] hover:bg-[#E05A2B] text-white text-[12.5px] sm:text-[13px] font-bold shadow-sm transition-colors"
               >
                 Go to Dashboard
               </a>
@@ -1151,7 +1535,7 @@ export default function SellOnCollabo() {
               <button
                 type="button"
                 onClick={revealRegister}
-                className="h-full px-6 sm:px-8 bg-orange-500 hover:bg-orange-600 text-white text-[13px] sm:text-[14px] font-bold flex items-center justify-center transition-colors"
+                className="px-5 sm:px-6 py-2 rounded-full bg-[#F26B3A] hover:bg-[#E05A2B] text-white text-[12.5px] sm:text-[13px] font-bold shadow-sm transition-colors"
               >
                 Start Selling
               </button>
@@ -1160,450 +1544,721 @@ export default function SellOnCollabo() {
         </div>
       </nav>
 
-      {/* Full-Width Photographic Hero Banner (Flipkart Seller Hub style) */}
-      <section className="relative w-full bg-[#1B2741] overflow-hidden">
-        <div className="relative w-full h-[320px] sm:h-[390px] lg:h-[440px] max-w-[1600px] mx-auto">
-          <img
-            src={heroBannerSrc}
-            alt="Sell on Collabo"
-            className="w-full h-full object-cover object-[20%_center] sm:object-center"
-          />
-          {/* Clean readability gradient on the right half for crisp HTML typography */}
-          <div className="absolute inset-0 bg-gradient-to-r from-[#0F172A]/25 via-[#0F172A]/55 to-[#0F172A]/90 sm:from-transparent sm:via-[#0F172A]/40 sm:to-[#0F172A]/92" />
-
-          <div className="absolute inset-0 max-w-7xl mx-auto px-4 sm:px-6 flex items-center justify-end">
-            <div className="w-full sm:w-[54%] lg:w-[46%] text-left sm:pl-6 space-y-4">
+      {isHowItWorksPage ? (
+        <>
+          {/* Dedicated How It Works Page — 4-Step Journey + Collabo Seller Hub Onboarding */}
+          <section id="how-it-works" className="bg-[#F5F7FA] border-b border-gray-200">
+            <div className="max-w-6xl mx-auto px-4 sm:px-6 py-12 sm:py-16 space-y-14">
               <div>
-                <p className="text-5xl sm:text-6xl lg:text-7xl font-black text-white tracking-tight leading-none drop-shadow-[0_4px_16px_rgba(0,0,0,0.45)]">
-                  0%
-                </p>
-                <p className="text-2xl sm:text-3xl lg:text-4xl font-black text-white uppercase tracking-tight leading-tight drop-shadow-[0_2px_10px_rgba(0,0,0,0.45)] mt-1">
-                  Commission Charge<span className="text-orange-400">*</span>
-                </p>
-              </div>
-
-              <div className="space-y-2 pt-1">
-                <div>
-                  <span className="inline-block bg-[#1B2741] border border-white/15 text-white text-xs sm:text-sm lg:text-base font-bold px-4 py-1.5 -skew-x-6 shadow-lg">
-                    <span className="inline-block skew-x-6">₹0 listing cost &amp; 0% commission on sales</span>
+                <div className="text-center mb-10">
+                  <span className="inline-block text-[11px] font-bold uppercase tracking-wider text-[#1B6B6B] bg-teal-50 border border-teal-200 px-3 py-1 rounded-full mb-3">
+                    Step-by-Step Guide
                   </span>
+                  <h1 className="text-3xl sm:text-4xl font-extrabold text-[#0C2538] tracking-tight">
+                    How selling on <span className="text-[#1B6B6B]">Collabo</span> works
+                  </h1>
+                  <p className="text-xs sm:text-sm text-gray-500 mt-2">
+                    4 simple steps from registration to your first payout
+                  </p>
                 </div>
-                <div>
-                  <span className="inline-block bg-orange-500 text-white text-xs sm:text-sm lg:text-base font-extrabold px-4 py-1.5 -skew-x-6 shadow-lg">
-                    <span className="inline-block skew-x-6">Launch your store &amp; reach buyers with creators</span>
-                  </span>
-                </div>
-              </div>
-
-              <div className="pt-2 flex flex-wrap items-center gap-3">
-                <button
-                  type="button"
-                  onClick={revealRegister}
-                  className="bg-orange-500 hover:bg-orange-600 text-white text-xs sm:text-sm font-bold px-6 py-3 rounded-lg shadow-lg transition-colors inline-flex items-center gap-2"
-                >
-                  Start Selling <ArrowRight className="w-4 h-4" />
-                </button>
-                <a
-                  href="#pricing"
-                  className="bg-white/15 hover:bg-white/25 backdrop-blur-sm text-white border border-white/30 text-xs sm:text-sm font-semibold px-5 py-3 rounded-lg transition-colors"
-                >
-                  View Fees
-                </a>
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* 4-Column Stats Bar (Flipkart Seller Hub style — 100% real backend stats & policies) */}
-      <section className="bg-white border-b border-gray-200 shadow-[0_2px_10px_rgba(0,0,0,0.03)]">
-        <div className="max-w-6xl mx-auto px-4 sm:px-6 py-6 sm:py-7">
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-y-5 lg:gap-y-0 lg:divide-x divide-gray-200">
-            {[
-              { v: '24×7', l: 'Seller Support' },
-              { v: '0%', l: 'Platform Commission' },
-              { v: hubStats ? String(hubStats.products_listed) : '—', l: 'Products Listed' },
-              { v: '7 Days', l: 'Payment Settlement' },
-            ].map((s) => (
-              <div key={s.l} className="text-center px-3">
-                <p className="text-2xl sm:text-[30px] font-bold text-[#027CD5] tracking-tight leading-tight">{s.v}</p>
-                <p className="text-xs sm:text-[13px] font-medium text-gray-600 mt-1">{s.l}</p>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* Seller Onboarding & Registration Section (preserves 100% of SellerRegistrationWidget logic) */}
-      <section id="register" className="bg-[#F5F7FA] border-b border-gray-200 scroll-mt-16">
-        <div className="max-w-6xl mx-auto px-4 sm:px-6 py-12 sm:py-16">
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-10 items-start">
-            <div className="lg:col-span-6 space-y-6 pt-1">
-              <div>
-                <span className="inline-block text-[11px] font-bold uppercase tracking-wider text-[#027CD5] bg-blue-50 border border-blue-100 px-3 py-1 rounded-full mb-3">
-                  Collabo Seller Hub
-                </span>
-                <h1 className="text-2xl sm:text-3xl font-bold text-[#1B2741] leading-snug">
-                  Start selling online on <span className="text-orange-600">Collabo</span> in minutes
-                </h1>
-                <p className="text-sm text-gray-600 leading-relaxed mt-2.5">
-                  Create your seller account, submit your KYC details, and list your products with zero listing charges.
-                </p>
-              </div>
-
-              {/* Documents Checklist (Flipkart Seller Hub style) */}
-              <div>
-                <p className="text-xs font-bold uppercase tracking-wider text-gray-500 mb-3">
-                  All you need to sell on Collabo
-                </p>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  {[
-                    { icon: FileText, title: 'GSTIN & PAN', desc: 'Valid 15-digit GSTIN and 10-character PAN card' },
-                    { icon: CreditCard, title: 'Bank Account', desc: 'Active bank account with IFSC for 7-day payouts' },
-                    { icon: Building2, title: 'Pickup Address', desc: 'Business or warehouse address for courier pickup' },
-                    { icon: Layers, title: 'Product Catalog', desc: 'Add items manually or bulk import via CSV' },
-                  ].map((item) => (
-                    <div key={item.title} className="bg-white rounded-xl border border-gray-200 p-4 flex items-start gap-3">
-                      <div className="w-9 h-9 rounded-lg bg-blue-50 text-[#027CD5] flex items-center justify-center shrink-0">
-                        <item.icon className="w-4 h-4" />
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
+                  {STEPS_INFO.map((s, i) => (
+                    <div key={i} className="bg-white rounded-xl p-6 border border-gray-200 relative shadow-sm">
+                      <div className="w-10 h-10 bg-blue-50 border border-blue-100 rounded-xl flex items-center justify-center mb-4">
+                        <span className="text-xs font-extrabold text-[#027CD5]">{s.step}</span>
                       </div>
-                      <div>
-                        <p className="text-xs font-bold text-gray-900">{item.title}</p>
-                        <p className="text-[11px] text-gray-500 leading-relaxed mt-0.5">{item.desc}</p>
-                      </div>
+                      <h3 className="text-sm font-bold text-gray-900 mb-1.5">{s.title}</h3>
+                      <p className="text-[12px] text-gray-500 leading-relaxed">{s.desc}</p>
+                      {i < STEPS_INFO.length - 1 && (
+                        <ArrowRight className="hidden lg:block absolute -right-3.5 top-1/2 -translate-y-1/2 w-5 h-5 text-[#027CD5] bg-[#F5F7FA] rounded-full p-0.5 z-10" />
+                      )}
                     </div>
                   ))}
                 </div>
               </div>
 
-              {/* Real Platform Highlights */}
-              <div className="space-y-2.5 pt-1">
-                {[
-                  '0% commission charge & zero listing fees',
-                  'Integrated shipping with Shiprocket courier partners',
-                  'Creators & influencers can promote your products',
-                  '7-day payment settlement directly to your bank account',
-                ].map((t, i) => (
-                  <div key={i} className="flex items-start gap-2.5">
-                    <CheckCircle className="w-4 h-4 text-emerald-500 mt-0.5 shrink-0" />
-                    <span className="text-[13px] text-gray-700">{t}</span>
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            <div className="lg:col-span-6 bg-white rounded-2xl border border-gray-200/90 shadow-[0_10px_34px_rgba(15,23,42,0.07)] overflow-hidden lg:sticky lg:top-20">
-              {/* Top brand accent bar */}
-              <div className="h-1.5 w-full bg-gradient-to-r from-[#1B2741] via-[#027CD5] to-orange-500" />
-
-              {/* Structured Card Header */}
-              <div className="px-6 sm:px-7 py-5 bg-[#F8FAFC] border-b border-gray-200/80 flex items-center justify-between gap-3">
-                <div className="flex items-center gap-3.5">
-                  <div className="w-11 h-11 bg-white border border-orange-200/80 rounded-xl shadow-sm flex items-center justify-center shrink-0">
-                    <Store className="w-5 h-5 text-orange-600" />
-                  </div>
-                  <div>
-                    <h2 className="text-[16px] font-bold text-[#1B2741] leading-snug">Become a Collabo Seller</h2>
-                    <p className="text-[11px] text-gray-500 mt-0.5">Official seller onboarding &amp; KYC verification</p>
-                  </div>
-                </div>
-                <span className="hidden sm:inline-flex items-center gap-1 text-[10px] font-bold uppercase tracking-wider text-emerald-700 bg-emerald-50 border border-emerald-200 px-2.5 py-1 rounded-full shrink-0">
-                  <CheckCircle className="w-3 h-3" /> Free Setup
-                </span>
-              </div>
-
-              <div className="p-6 sm:p-7">
-                {showRegister ? (
-                  <SellerRegistrationWidget />
-                ) : (
-                  <div className="space-y-6">
-                    {/* 3-Step Onboarding Preview */}
-                    <div className="space-y-3.5">
-                      <p className="text-[11px] font-bold uppercase tracking-wider text-gray-400">
-                        Quick Onboarding Process
+              {/* Collabo Seller Hub — Onboarding & Registration (preserves 100% of SellerRegistrationWidget logic) */}
+              <div id="register" className="pt-10 border-t border-gray-200/80 scroll-mt-20">
+                <div className="grid grid-cols-1 lg:grid-cols-12 gap-10 items-start">
+                  <div className="lg:col-span-6 space-y-6 pt-1">
+                    <div>
+                      <span className="inline-block text-[11px] font-bold uppercase tracking-wider text-[#027CD5] bg-blue-50 border border-blue-100 px-3 py-1 rounded-full mb-3">
+                        Collabo Seller Hub
+                      </span>
+                      <h2 className="text-2xl sm:text-3xl font-bold text-[#1B2741] leading-snug">
+                        Start selling online on <span className="text-orange-600">Collabo</span> in minutes
+                      </h2>
+                      <p className="text-sm text-gray-600 leading-relaxed mt-2.5">
+                        Create your seller account, submit your KYC details, and list your products with zero listing charges.
                       </p>
-                      {[
-                        { num: '1', title: 'Create Seller Account', desc: 'Sign up with your business name, email, and 10-digit phone number.' },
-                        { num: '2', title: 'Submit Business & KYC Details', desc: 'Add store address, GSTIN, PAN card, bank account, and categories.' },
-                        { num: '3', title: 'Approval & Start Selling', desc: 'Profile reviewed within 24–48 hours — start listing with ₹0 fees.' },
-                      ].map((step) => (
-                        <div key={step.num} className="flex items-start gap-3">
-                          <span className="w-6 h-6 rounded-full bg-blue-50 border border-blue-200 text-[#027CD5] text-[11px] font-extrabold flex items-center justify-center shrink-0 mt-0.5">
-                            {step.num}
-                          </span>
-                          <div>
-                            <p className="text-[13px] font-semibold text-gray-900 leading-snug">{step.title}</p>
-                            <p className="text-[11.5px] text-gray-500 leading-relaxed mt-0.5">{step.desc}</p>
+                    </div>
+
+                    {/* Documents Checklist */}
+                    <div>
+                      <p className="text-xs font-bold uppercase tracking-wider text-gray-500 mb-3">
+                        All you need to sell on Collabo
+                      </p>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        {[
+                          { icon: FileText, title: 'GSTIN & PAN', desc: 'Valid 15-digit GSTIN and 10-character PAN card' },
+                          { icon: CreditCard, title: 'Bank Account', desc: 'Active bank account with IFSC for 7-day payouts' },
+                          { icon: Building2, title: 'Pickup Address', desc: 'Business or warehouse address for courier pickup' },
+                          { icon: Layers, title: 'Product Catalog', desc: 'Add items manually or bulk import via CSV' },
+                        ].map((item) => (
+                          <div key={item.title} className="bg-white rounded-xl border border-gray-200 p-4 flex items-start gap-3">
+                            <div className="w-9 h-9 rounded-lg bg-blue-50 text-[#027CD5] flex items-center justify-center shrink-0">
+                              <item.icon className="w-4 h-4" />
+                            </div>
+                            <div>
+                              <p className="text-xs font-bold text-gray-900">{item.title}</p>
+                              <p className="text-[11px] text-gray-500 leading-relaxed mt-0.5">{item.desc}</p>
+                            </div>
                           </div>
+                        ))}
+                      </div>
+                    </div>
+
+                    {/* Real Platform Highlights */}
+                    <div className="space-y-2.5 pt-1">
+                      {[
+                        '0% commission charge & zero listing fees',
+                        'Integrated shipping with Shiprocket courier partners',
+                        'Creators & influencers can promote your products',
+                        '7-day payment settlement directly to your bank account',
+                      ].map((t, i) => (
+                        <div key={i} className="flex items-start gap-2.5">
+                          <CheckCircle className="w-4 h-4 text-emerald-500 mt-0.5 shrink-0" />
+                          <span className="text-[13px] text-gray-700">{t}</span>
                         </div>
                       ))}
                     </div>
+                  </div>
 
-                    {/* Key Factual Terms Strip */}
-                    <div className="grid grid-cols-3 divide-x divide-gray-200 bg-[#F8FAFC] border border-gray-200/80 rounded-xl py-3 text-center">
-                      <div>
-                        <p className="text-sm font-extrabold text-[#1B2741]">₹0</p>
-                        <p className="text-[10px] font-medium text-gray-500 mt-0.5">Listing Fee</p>
+                  <div className="lg:col-span-6 bg-white rounded-2xl border border-gray-200/90 shadow-[0_10px_34px_rgba(15,23,42,0.07)] overflow-hidden lg:sticky lg:top-20">
+                    {/* Top brand accent bar */}
+                    <div className="h-1.5 w-full bg-gradient-to-r from-[#1B2741] via-[#027CD5] to-orange-500" />
+
+                    {/* Structured Card Header */}
+                    <div className="px-6 sm:px-7 py-5 bg-[#F8FAFC] border-b border-gray-200/80 flex items-center justify-between gap-3">
+                      <div className="flex items-center gap-3.5">
+                        <div className="w-11 h-11 bg-white border border-orange-200/80 rounded-xl shadow-sm flex items-center justify-center shrink-0">
+                          <Store className="w-5 h-5 text-orange-600" />
+                        </div>
+                        <div>
+                          <h2 className="text-[16px] font-bold text-[#1B2741] leading-snug">Become a Collabo Seller</h2>
+                          <p className="text-[11px] text-gray-500 mt-0.5">Official seller onboarding &amp; KYC verification</p>
+                        </div>
                       </div>
-                      <div>
-                        <p className="text-sm font-extrabold text-[#1B2741]">0%</p>
-                        <p className="text-[10px] font-medium text-gray-500 mt-0.5">Commission</p>
-                      </div>
-                      <div>
-                        <p className="text-sm font-extrabold text-[#1B2741]">7 Days</p>
-                        <p className="text-[10px] font-medium text-gray-500 mt-0.5">Settlement</p>
-                      </div>
+                      <span className="hidden sm:inline-flex items-center gap-1 text-[10px] font-bold uppercase tracking-wider text-emerald-700 bg-emerald-50 border border-emerald-200 px-2.5 py-1 rounded-full shrink-0">
+                        <CheckCircle className="w-3 h-3" /> Free Setup
+                      </span>
                     </div>
 
-                    {/* Primary CTA */}
-                    <div className="space-y-3">
+                    <div className="p-6 sm:p-7">
+                      {showRegister ? (
+                        <SellerRegistrationWidget />
+                      ) : (
+                        <div className="space-y-6">
+                          {/* 3-Step Onboarding Preview */}
+                          <div className="space-y-3.5">
+                            <p className="text-[11px] font-bold uppercase tracking-wider text-gray-400">
+                              Quick Onboarding Process
+                            </p>
+                            {[
+                              { num: '1', title: 'Create Seller Account', desc: 'Sign up with your business name, email, and 10-digit phone number.' },
+                              { num: '2', title: 'Submit Business & KYC Details', desc: 'Add store address, GSTIN, PAN card, bank account, and categories.' },
+                              { num: '3', title: 'Approval & Start Selling', desc: 'Profile reviewed within 24–48 hours — start listing with ₹0 fees.' },
+                            ].map((step) => (
+                              <div key={step.num} className="flex items-start gap-3">
+                                <span className="w-6 h-6 rounded-full bg-blue-50 border border-blue-200 text-[#027CD5] text-[11px] font-extrabold flex items-center justify-center shrink-0 mt-0.5">
+                                  {step.num}
+                                </span>
+                                <div>
+                                  <p className="text-[13px] font-semibold text-gray-900 leading-snug">{step.title}</p>
+                                  <p className="text-[11.5px] text-gray-500 leading-relaxed mt-0.5">{step.desc}</p>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+
+                          {/* Key Factual Terms Strip */}
+                          <div className="grid grid-cols-3 divide-x divide-gray-200 bg-[#F8FAFC] border border-gray-200/80 rounded-xl py-3 text-center">
+                            <div>
+                              <p className="text-sm font-extrabold text-[#1B2741]">₹0</p>
+                              <p className="text-[10px] font-medium text-gray-500 mt-0.5">Listing Fee</p>
+                            </div>
+                            <div>
+                              <p className="text-sm font-extrabold text-[#1B2741]">0%</p>
+                              <p className="text-[10px] font-medium text-gray-500 mt-0.5">Commission</p>
+                            </div>
+                            <div>
+                              <p className="text-sm font-extrabold text-[#1B2741]">7 Days</p>
+                              <p className="text-[10px] font-medium text-gray-500 mt-0.5">Settlement</p>
+                            </div>
+                          </div>
+
+                          {/* Primary CTA */}
+                          <div className="space-y-3">
+                            <button
+                              type="button"
+                              onClick={() => setShowRegister(true)}
+                              className="w-full bg-orange-500 hover:bg-orange-600 text-white text-[14px] font-bold py-3.5 rounded-xl transition-colors shadow-sm flex items-center justify-center gap-2"
+                            >
+                              Start Selling <ArrowRight className="w-4 h-4" />
+                            </button>
+
+                            <div className="flex items-center justify-between text-[11px] text-gray-500 pt-1">
+                              <span className="inline-flex items-center gap-1.5">
+                                <Shield className="w-3.5 h-3.5 text-emerald-500" />
+                                Secure KYC verification
+                              </span>
+                              <span>
+                                Already a seller?{' '}
+                                <a href="/" className="text-[#027CD5] font-semibold hover:underline">
+                                  Login
+                                </a>
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </section>
+        </>
+      ) : (
+        <>
+          {/* Full-Viewport Hero Wrapper: Navbar + Split Hero + 5-Column Strip = exact 100vh on desktop */}
+          <div className="lg:h-screen lg:min-h-[600px] lg:max-h-[960px] flex flex-col bg-white">
+            {/* Modern Collabo Split Editorial Hero Section (fills viewport above 5-column bar) */}
+            <section className="relative bg-white overflow-hidden lg:flex-1 lg:flex">
+              <div className="max-w-7xl mx-auto px-4 sm:px-6 w-full lg:flex lg:items-stretch">
+                <div className="grid grid-cols-1 lg:grid-cols-12 items-center w-full lg:h-full">
+                  {/* Left: Bold Headline & Pill CTAs (subtext removed) */}
+                  <div className="lg:col-span-6 relative z-20 pt-24 pb-10 sm:pt-28 sm:pb-12 lg:py-20 lg:pr-4">
+                    <h1 className="text-4xl sm:text-5xl lg:text-[58px] font-extrabold text-[#0C2538] leading-[1.08] tracking-tight">
+                      Grow your business
+                      <br />
+                      with <span className="text-[#1B6B6B]">Collabo</span>
+                    </h1>
+
+                    <div className="mt-8 sm:mt-9 flex flex-wrap items-center gap-3.5">
                       <button
                         type="button"
-                        onClick={() => setShowRegister(true)}
-                        className="w-full bg-orange-500 hover:bg-orange-600 text-white text-[14px] font-bold py-3.5 rounded-xl transition-colors shadow-sm flex items-center justify-center gap-2"
+                        onClick={revealRegister}
+                        className="bg-[#F26B3A] hover:bg-[#E05A2B] text-white text-sm font-bold px-7 py-3.5 rounded-full shadow-[0_8px_22px_rgba(242,107,58,0.28)] transition-all inline-flex items-center gap-2"
                       >
                         Start Selling <ArrowRight className="w-4 h-4" />
                       </button>
-
-                      <div className="flex items-center justify-between text-[11px] text-gray-500 pt-1">
-                        <span className="inline-flex items-center gap-1.5">
-                          <Shield className="w-3.5 h-3.5 text-emerald-500" />
-                          Secure KYC verification
-                        </span>
-                        <span>
-                          Already a seller?{' '}
-                          <a href="/" className="text-[#027CD5] font-semibold hover:underline">
-                            Login
-                          </a>
-                        </span>
-                      </div>
+                      <a
+                        href="#benefits"
+                        onClick={goToSellSection('benefits')}
+                        className="border border-[#0C2538] text-[#0C2538] hover:bg-slate-50 text-sm font-bold px-7 py-3.5 rounded-full transition-colors"
+                      >
+                        Explore Seller Benefits
+                      </a>
                     </div>
                   </div>
-                )}
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
 
-      {/* Top Categories Section (with Rounded Line icons) */}
-      {categories.length > 0 && (
-        <section id="categories" className="bg-white border-b border-gray-200 scroll-mt-16">
-          <div className="max-w-6xl mx-auto px-4 sm:px-6 py-14">
-            <div className="text-center mb-9">
-              <h2 className="text-2xl font-bold text-[#1B2741]">Sell across top categories</h2>
-              <p className="text-xs sm:text-sm text-gray-500 mt-1.5">List products in categories shoppers browse on Collabo</p>
-            </div>
-            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3.5">
-              {categories.map((c) => {
-                const IconComp = getRoundedCategoryIcon(c.name);
-                return (
-                  <div
-                    key={c.id}
-                    className="bg-[#F8FAFC] border border-gray-200/80 rounded-xl p-4 flex flex-col items-center justify-center text-center hover:border-[#027CD5]/40 hover:bg-blue-50/30 hover:shadow-sm transition-all"
-                  >
-                    <IconComp className="w-9 h-9 text-[#1B2741] mb-2.5" />
-                    <p className="text-[12px] font-semibold text-gray-800 leading-tight">{c.name}</p>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-        </section>
-      )}
-
-      {/* How It Works — 4-Step Flipkart Seller Journey */}
-      <section id="how-it-works" className="bg-[#F5F7FA] border-b border-gray-200 scroll-mt-16">
-        <div className="max-w-6xl mx-auto px-4 sm:px-6 py-14">
-          <div className="text-center mb-10">
-            <h2 className="text-2xl font-bold text-[#1B2741]">How selling on Collabo works</h2>
-            <p className="text-xs sm:text-sm text-gray-500 mt-1.5">4 simple steps from registration to your first payout</p>
-          </div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
-            {STEPS_INFO.map((s, i) => (
-              <div key={i} className="bg-white rounded-xl p-6 border border-gray-200 relative shadow-sm">
-                <div className="w-10 h-10 bg-blue-50 border border-blue-100 rounded-xl flex items-center justify-center mb-4">
-                  <span className="text-xs font-extrabold text-[#027CD5]">{s.step}</span>
-                </div>
-                <h3 className="text-sm font-bold text-gray-900 mb-1.5">{s.title}</h3>
-                <p className="text-[12px] text-gray-500 leading-relaxed">{s.desc}</p>
-                {i < STEPS_INFO.length - 1 && (
-                  <ArrowRight className="hidden lg:block absolute -right-3.5 top-1/2 -translate-y-1/2 w-5 h-5 text-[#027CD5] bg-[#F5F7FA] rounded-full p-0.5 z-10" />
-                )}
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* Access Our Tools to Grow Faster (Flipkart Seller Hub style) */}
-      <section id="benefits" className="relative bg-gradient-to-b from-[#EFF7FF] via-[#F4F9FF] to-[#E9F3FF] border-b border-blue-100/80 overflow-hidden scroll-mt-16">
-        <div className="max-w-6xl mx-auto px-4 sm:px-6 pt-14 pb-16">
-          <div className="max-w-3xl">
-            <h2 className="text-2xl sm:text-4xl font-extrabold tracking-tight leading-tight">
-              <span className="text-[#027CD5]">Built-in tools to scale your store</span>{' '}
-              <span className="text-[#1B2741]">on Collabo</span>
-            </h2>
-            <p className="text-sm sm:text-[15px] text-gray-600 leading-relaxed mt-3">
-              Everything you need to run your storefront smoothly — from quick catalog upload and creator-driven discovery to doorstep shipping and timely bank payouts.
-            </p>
-          </div>
-
-          {/* Signature faded watermark display text peeking behind the cards */}
-          <div
-            aria-hidden="true"
-            className="select-none pointer-events-none mt-6 sm:mt-8 leading-none font-extrabold tracking-tight text-5xl sm:text-7xl lg:text-[84px] bg-gradient-to-b from-[#027CD5]/45 via-[#027CD5]/18 to-transparent bg-clip-text text-transparent"
-          >
-            Seller Tools
-          </div>
-
-          {/* 3x2 Floating White Tool Cards */}
-          <div className="relative z-10 -mt-5 sm:-mt-8 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5 sm:gap-6">
-            {SELLER_GROWTH_TOOLS.map((tool) => (
-              <div
-                key={tool.id}
-                className="bg-white rounded-2xl p-6 shadow-[0_8px_28px_rgba(15,23,42,0.06)] border border-white/90 hover:shadow-[0_14px_36px_rgba(2,124,213,0.12)] hover:-translate-y-0.5 transition-all flex flex-col justify-between min-h-[210px]"
-              >
-                <div>
-                  <div className="flex items-center gap-3.5 mb-4">
-                    <div className="w-11 h-11 rounded-xl bg-[#EBF5FF] border border-blue-100 flex items-center justify-center shrink-0">
-                      <tool.icon className="w-5 h-5 text-[#027CD5]" strokeWidth={1.8} />
+                  {/* Right: Close-up Seller Photo with Smooth Half-Circle Edge & Tucked Teal/Coral Arc */}
+                  <div className="lg:col-span-6 relative h-[310px] sm:h-[390px] lg:h-full -mx-4 sm:-mx-6 lg:mx-0">
+                    {/* Bold Coral + Deep Teal True Half-Circle tucked cleanly behind the curved photo edge */}
+                    <div
+                      aria-hidden="true"
+                      className="hidden lg:block absolute -left-28 -bottom-[220px] w-[440px] h-[440px] rounded-full bg-[#F26B3A] z-10 pointer-events-none overflow-hidden"
+                    >
+                      <div className="absolute inset-3.5 rounded-full bg-[#135562]" />
                     </div>
-                    <h3 className="text-[16px] font-bold text-gray-900 leading-snug">{tool.title}</h3>
+
+                    {/* Photo container with full-height smooth semi-circle left edge */}
+                    <div className="relative z-20 w-full lg:w-[calc(100%+max(0px,(100vw-80rem)/2)+1.5rem)] h-full overflow-hidden lg:rounded-tl-[100vh]">
+                      <img
+                        src={heroBannerSrc}
+                        alt="Grow your business with Collabo"
+                        className="w-full h-full object-cover object-[85%_18%] scale-[1.22] origin-[82%_26%]"
+                      />
+                    </div>
                   </div>
-                  <p className="text-[13px] text-gray-600 leading-relaxed">{tool.desc}</p>
-                </div>
-                <div className="pt-5">
-                  <button
-                    type="button"
-                    onClick={() => setSelectedTool(tool)}
-                    className="inline-flex items-center gap-1.5 text-[13px] font-semibold text-gray-800 hover:text-[#027CD5] transition-colors cursor-pointer"
-                  >
-                    Learn More <ArrowRight className="w-3.5 h-3.5" />
-                  </button>
                 </div>
               </div>
-            ))}
-          </div>
-        </div>
-      </section>
+            </section>
 
-      {/* Fees & Commission — Collabo Branded 2-Column Showcase */}
-      <section id="pricing" className="bg-[#F5F7FA] border-b border-gray-200 scroll-mt-16">
-        <div className="max-w-6xl mx-auto px-4 sm:px-6 py-14 sm:py-16">
-          <div className="text-center max-w-2xl mx-auto mb-10">
-            <span className="inline-block text-[11px] font-bold uppercase tracking-wider text-orange-600 bg-orange-50 border border-orange-200 px-3 py-1 rounded-full mb-3">
-              Transparent Pricing
-            </span>
-            <h2 className="text-2xl sm:text-3xl font-extrabold text-[#1B2741] tracking-tight">
-              Keep more of every sale on <span className="text-orange-500">Collabo</span>
-            </h2>
-            <p className="text-xs sm:text-sm text-gray-500 mt-2">
-              No hidden subscriptions, no listing charges, and 0% commission — built for growing Indian sellers.
-            </p>
-          </div>
-
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-stretch">
-            {/* Left: Collabo Zero-Commission Spotlight Card */}
-            <div className="lg:col-span-5 bg-gradient-to-br from-[#1B2741] via-[#1E2E4D] to-[#111A2E] text-white rounded-2xl p-7 sm:p-8 shadow-xl relative overflow-hidden flex flex-col justify-between">
-              <div className="absolute -top-16 -right-16 w-48 h-48 rounded-full bg-orange-500/20 blur-3xl pointer-events-none" />
-              <div className="absolute -bottom-16 -left-16 w-44 h-44 rounded-full bg-sky-500/15 blur-3xl pointer-events-none" />
-
-              <div className="relative z-10 space-y-5">
-                <span className="inline-flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider text-orange-300 bg-orange-500/15 border border-orange-400/30 px-3 py-1 rounded-full">
-                  Collabo Seller Plan
-                </span>
-
-                <div>
-                  <div className="flex items-baseline gap-2.5">
-                    <span className="text-5xl sm:text-6xl font-black tracking-tight text-white leading-none">0%</span>
-                    <span className="text-lg font-bold text-orange-400">Commission</span>
-                  </div>
-                  <p className="text-xs sm:text-[13px] text-slate-300 leading-relaxed mt-3">
-                    List your catalog for free and receive payouts straight to your bank account every 7 business days.
-                  </p>
-                </div>
-
-                <div className="space-y-2.5 pt-2 border-t border-white/10">
+            {/* 5-Column Icon Highlights Bar — pinned flush to the bottom of the 100vh hero */}
+            <section className="shrink-0 bg-white border-y border-gray-200/90">
+              <div className="max-w-7xl mx-auto px-4 sm:px-6 py-4 sm:py-5">
+                <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-y-5 lg:gap-y-0 lg:divide-x divide-gray-200">
                   {[
-                    'Unlimited product listings with ₹0 upfront fee',
-                    'No monthly or annual subscription charges',
-                    'Full Seller Dashboard, analytics & CSV import',
-                    'Direct bank withdrawals starting at ₹100',
+                    { icon: Headphones, v: '24×7', l: 'seller support' },
+                    { icon: MapPin, v: '19,000+', l: 'pincodes served' },
+                    { icon: Percent, v: '0%', l: 'commission' },
+                    { icon: Gift, v: 'Free', l: 'product listing' },
+                    { icon: Users, v: '1 lakh+', l: 'influencers across India' },
                   ].map((item) => (
-                    <div key={item} className="flex items-start gap-2.5 text-[12.5px] text-slate-200">
-                      <CheckCircle className="w-4 h-4 text-orange-400 mt-0.5 shrink-0" />
-                      <span>{item}</span>
+                    <div key={item.l} className="flex items-center justify-center gap-3 px-3">
+                      <item.icon className="w-7 h-7 text-[#0C2538] shrink-0" strokeWidth={1.6} />
+                      <div className="text-left leading-tight">
+                        <p className="text-[15px] sm:text-[16px] font-extrabold text-[#0C2538]">{item.v}</p>
+                        <p className="text-[12px] text-gray-600 mt-0.5">{item.l}</p>
+                      </div>
                     </div>
                   ))}
                 </div>
               </div>
+            </section>
+          </div>
 
-              <div className="relative z-10 pt-7">
-                <button
-                  type="button"
-                  onClick={revealRegister}
-                  className="w-full bg-orange-500 hover:bg-orange-600 text-white text-sm font-bold py-3 rounded-xl shadow-lg transition-colors flex items-center justify-center gap-2"
-                >
-                  Start Selling for ₹0 <ArrowRight className="w-4 h-4" />
-                </button>
+          {/* A Platform Built for Sellers Strip (right below Hero) */}
+          <section className="bg-white pt-8 sm:pt-10 pb-2">
+            <div className="max-w-7xl mx-auto px-4 sm:px-6">
+              <div className="bg-[#F4F7FA] border border-slate-200/75 rounded-2xl px-6 sm:px-9 py-6 sm:py-7 flex flex-col lg:flex-row items-center justify-between gap-6 lg:gap-8">
+                {/* Left: Bold 2-line Headline */}
+                <div className="text-center lg:text-left shrink-0">
+                  <h2 className="text-xl sm:text-[23px] font-extrabold text-[#0C2538] leading-snug tracking-tight">
+                    A platform built
+                    <br />
+                    for sellers, by <span className="text-[#1B6B6B]">India</span>
+                  </h2>
+                </div>
+
+                {/* Hairline Vertical Divider */}
+                <div className="hidden lg:block w-px h-12 bg-slate-300/80 shrink-0" />
+
+                {/* Center: Description */}
+                <p className="text-[13px] sm:text-[14px] text-slate-600 leading-relaxed text-center lg:text-left max-w-md">
+                  From fashion to home essentials, beauty to electronics — list your products across diverse categories on Collabo and reach customers nationwide.
+                </p>
+
+                {/* Right: 5 Circular Studio Product Showcase Medallions */}
+                <div className="flex items-center justify-center gap-2.5 sm:gap-3 shrink-0 flex-wrap">
+                  {[
+                    { src: '/images/seller-strip-dress.jpg', alt: 'Fashion & Apparel', bg: 'bg-[#E8F4FA]' },
+                    { src: '/images/seller-strip-sofa.jpg', alt: 'Furniture & Home', bg: 'bg-[#FAF1EB]' },
+                    { src: '/images/seller-strip-headphones.jpg', alt: 'Electronics', bg: 'bg-[#EDF2F7]' },
+                    { src: '/images/seller-strip-beauty.jpg', alt: 'Beauty & Personal Care', bg: 'bg-[#FFF0EC]' },
+                    { src: '/images/seller-strip-teddy.jpg', alt: 'Kids & Toys', bg: 'bg-[#F2F4F7]' },
+                  ].map((prod) => (
+                    <div
+                      key={prod.alt}
+                      title={prod.alt}
+                      className={`w-14 h-14 sm:w-16 sm:h-16 rounded-full ${prod.bg} border-2 border-white shadow-xs overflow-hidden flex items-center justify-center transition-transform duration-200 hover:scale-105`}
+                    >
+                      <img
+                        src={prod.src}
+                        alt={prod.alt}
+                        loading="lazy"
+                        className="w-full h-full object-cover"
+                      />
+                    </div>
+                  ))}
+                </div>
               </div>
             </div>
+          </section>
 
-            {/* Right: Quick Metric Tiles + Detailed Fee Table */}
-            <div className="lg:col-span-7 flex flex-col gap-5">
-              <div className="grid grid-cols-3 gap-3.5">
+          {/* How Selling on Collabo Works — 4 Illustrated Pastel Cards (Collabo Theme) */}
+          <section className="bg-white border-b border-gray-200">
+            <div className="max-w-6xl mx-auto px-4 sm:px-6 py-14 sm:py-16">
+              <div className="text-center mb-24">
+                <h2 className="text-2xl sm:text-3xl font-extrabold text-[#0C2538] tracking-tight">
+                  How selling on <span className="text-[#1B6B6B]">Collabo</span> works
+                </h2>
+                <div className="w-14 h-1 rounded-full bg-gradient-to-r from-[#F26B3A] to-[#1B6B6B] mx-auto mt-3" />
+                <p className="text-xs sm:text-sm text-gray-500 mt-2.5">
+                  4 simple steps from registration to your first payout
+                </p>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-x-4 gap-y-24 pt-2">
                 {[
-                  { value: '₹0', label: 'Listing & Setup', accent: 'text-orange-600 bg-orange-50 border-orange-100' },
-                  { value: '7 Days', label: 'Bank Settlement', accent: 'text-[#027CD5] bg-blue-50 border-blue-100' },
-                  { value: '₹100', label: 'Min. Withdrawal', accent: 'text-emerald-600 bg-emerald-50 border-emerald-100' },
-                ].map((tile) => (
-                  <div key={tile.label} className="bg-white rounded-2xl border border-gray-200/90 p-4 sm:p-5 text-center shadow-sm">
-                    <span className={`inline-block text-lg sm:text-2xl font-extrabold px-2.5 py-0.5 rounded-lg border ${tile.accent}`}>
-                      {tile.value}
-                    </span>
-                    <p className="text-[11px] sm:text-xs font-semibold text-gray-600 mt-2">{tile.label}</p>
+                  {
+                    ...STEPS_INFO[0],
+                    type: 'account',
+                    cardBg: 'bg-[#FFF5F0] border-[#FDE0D2]',
+                    cta: 'Start Registration',
+                    onClick: revealRegister,
+                  },
+                  {
+                    ...STEPS_INFO[1],
+                    type: 'kyc',
+                    cardBg: 'bg-[#FFF9EB] border-[#FDE8BE]',
+                    cta: 'KYC Checklist',
+                    onClick: () => navigate('/sell/how-it-works#register'),
+                  },
+                  {
+                    ...STEPS_INFO[2],
+                    type: 'list',
+                    cardBg: 'bg-[#EDF8F7] border-[#CBEBE8]',
+                    cta: 'Explore Tools',
+                    onClick: goToSellSection('benefits'),
+                  },
+                  {
+                    ...STEPS_INFO[3],
+                    type: 'earn',
+                    cardBg: 'bg-[#F0F6FF] border-[#D6E6FF]',
+                    cta: 'View Payouts',
+                    onClick: goToSellSection('pricing'),
+                  },
+                ].map((item) => (
+                  <div
+                    key={item.step}
+                    className={`relative rounded-2xl border ${item.cardBg} px-5 pt-24 pb-7 text-center flex flex-col justify-between transition-all hover:shadow-md hover:-translate-y-0.5`}
+                  >
+                    {/* Overlapping Studio-Grade Collabo Illustration */}
+                    <div className="absolute -top-[74px] left-1/2 -translate-x-1/2">
+                      <StepIllustration type={item.type} alt={item.title} />
+                    </div>
+
+                    <div className="pt-2">
+                      <span className="inline-block text-[10px] font-extrabold tracking-widest uppercase text-[#1B6B6B] mb-1.5">
+                        Step {item.step}
+                      </span>
+                      <h3 className="text-[17px] font-extrabold text-[#0C2538] mb-2.5">
+                        {item.title}
+                      </h3>
+                      <p className="text-[13px] text-gray-600 leading-relaxed min-h-[58px]">
+                        {item.desc}
+                      </p>
+                    </div>
+
+                    <div className="pt-5">
+                      <button
+                        type="button"
+                        onClick={item.onClick}
+                        className="inline-flex items-center justify-center gap-1.5 bg-white hover:bg-[#F26B3A] text-[#0C2538] hover:text-white border border-[#F26B3A]/40 hover:border-[#F26B3A] text-[11.5px] font-bold uppercase tracking-wider px-5 py-2.5 rounded-lg shadow-xs transition-colors"
+                      >
+                        {item.cta} <ArrowRight className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
                   </div>
                 ))}
               </div>
+            </div>
+          </section>
 
-              <div className="bg-white rounded-2xl border border-gray-200/90 shadow-sm overflow-hidden flex-1 flex flex-col">
-                <div className="px-6 py-4 bg-[#F8FAFC] border-b border-gray-200/80 flex items-center justify-between gap-2">
-                  <span className="text-sm font-bold text-[#1B2741]">Complete Fee Breakdown</span>
-                  <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-700 bg-emerald-50 border border-emerald-200 px-2.5 py-0.5 rounded-full">
-                    No Hidden Charges
-                  </span>
+          {/* Why Collaborate with Collabo? — 3-Column Showcase (right after How Selling Works) */}
+          <section className="relative bg-gradient-to-r from-white via-[#F7FBFD] to-[#EFF7FA] border-b border-slate-200/80 overflow-hidden">
+            <div className="max-w-7xl mx-auto px-4 sm:px-6 py-14 sm:py-16">
+              <div className="grid grid-cols-1 lg:grid-cols-12 gap-10 lg:gap-6 items-center">
+                {/* Left: Heading, Copy & Pill CTA */}
+                <div className="lg:col-span-4 space-y-5 text-center lg:text-left">
+                  <h2 className="text-3xl sm:text-4xl font-extrabold text-[#0C2538] leading-[1.12] tracking-tight">
+                    Why Collaborate
+                    <br />
+                    with <span className="text-[#F26B3A]">Collabo?</span>
+                  </h2>
+                  <p className="text-sm sm:text-[15px] text-gray-600 leading-relaxed max-w-sm mx-auto lg:mx-0">
+                    Join a growing community of sellers and take your business to the next level.
+                  </p>
+                  <div className="pt-1">
+                    <button
+                      type="button"
+                      onClick={revealRegister}
+                      className="bg-[#F26B3A] hover:bg-[#E05A2B] text-white text-sm font-bold px-8 py-3.5 rounded-full shadow-[0_8px_22px_rgba(242,107,58,0.28)] transition-all inline-flex items-center gap-2"
+                    >
+                      Start Selling <ArrowRight className="w-4 h-4" />
+                    </button>
+                  </div>
                 </div>
-                <div className="divide-y divide-gray-100 flex-1">
+
+                {/* Center: 3D Growing Graph Only */}
+                <div className="lg:col-span-4 flex items-center justify-center">
+                  <GrowingGraphIllustration />
+                </div>
+
+                {/* Right: 3 Stacked Highlight Cards */}
+                <div className="lg:col-span-4 space-y-4">
                   {[
-                    { l: 'Listing Fee', sub: 'Add products manually or via bulk CSV import', v: 'Free', h: true },
-                    { l: 'Monthly Charge', sub: 'Zero recurring store or platform subscription', v: 'Free', h: true },
-                    { l: 'Platform Commission', sub: '0% commission charge on your product sales', v: '0% Commission', h: true },
-                    { l: 'Payment Settlement', sub: 'Credited to your verified bank after delivery', v: '7 business days', h: false },
-                    { l: 'Minimum Withdrawal', sub: 'Withdraw available balance anytime', v: '₹100', h: false },
-                  ].map((f) => (
-                    <div key={f.l} className="px-6 py-3.5 flex items-center justify-between gap-4 hover:bg-slate-50/70 transition-colors">
-                      <div>
-                        <p className="text-[13px] font-semibold text-gray-900">{f.l}</p>
-                        <p className="text-[11px] text-gray-500 mt-0.5">{f.sub}</p>
+                    {
+                      type: 'ease',
+                      title: 'Ease of Doing Business',
+                      desc: 'Simple registration, smooth onboarding and a seller-friendly platform.',
+                    },
+                    {
+                      type: 'influencers',
+                      title: 'Grow – High Volume Influencers',
+                      desc: 'Reach more customers with our 1 lakh+ influencer network.',
+                    },
+                    {
+                      type: 'support',
+                      title: 'Additional Support',
+                      desc: 'Run powerful promotional campaigns with 0% commission & ₹0 registration fee.',
+                    },
+                  ].map((card) => (
+                    <div
+                      key={card.title}
+                      className="bg-white rounded-2xl px-5 py-4 shadow-[0_8px_26px_rgba(12,37,56,0.06)] border border-slate-100 flex items-center gap-4 hover:shadow-[0_12px_30px_rgba(27,107,107,0.1)] hover:-translate-y-0.5 transition-all"
+                    >
+                      <WhyCollaboIcon type={card.type} />
+                      <div className="min-w-0">
+                        <h3 className="text-[14.5px] font-bold text-[#0C2538] leading-snug">{card.title}</h3>
+                        <p className="text-[12.5px] text-gray-500 leading-relaxed mt-0.5">{card.desc}</p>
                       </div>
-                      <span
-                        className={`text-[12px] font-bold px-3 py-1 rounded-full shrink-0 ${
-                          f.h
-                            ? 'bg-emerald-50 text-emerald-700 border border-emerald-200/80'
-                            : 'bg-slate-100 text-[#1B2741]'
-                        }`}
-                      >
-                        {f.v}
-                      </span>
                     </div>
                   ))}
                 </div>
               </div>
             </div>
-          </div>
-        </div>
-      </section>
+          </section>
+
+          {/* Built-in Tools to Scale Your Store on Collabo — Split Cards + Laptop Showcase */}
+          <section id="benefits" className="relative bg-gradient-to-br from-[#F4FAFC] via-[#F8FBFD] to-[#ECF5F8] border-b border-slate-200/80 overflow-hidden scroll-mt-16">
+            {/* Subtle bottom-left Collabo teal + coral corner arc */}
+            <svg
+              aria-hidden="true"
+              viewBox="0 0 180 120"
+              className="hidden lg:block absolute left-0 bottom-0 w-40 h-28 pointer-events-none"
+            >
+              <path d="M0,20 C65,25 120,62 155,120 L0,120 Z" fill="#F26B3A" />
+              <path d="M0,34 C58,40 108,72 138,120 L0,120 Z" fill="#135562" />
+            </svg>
+
+            {/* Sweeping soft teal backdrop curve behind the right laptop */}
+            <div
+              aria-hidden="true"
+              className="hidden lg:block absolute -right-24 top-6 w-[440px] h-[440px] rounded-tl-[260px] rounded-bl-[120px] bg-[#1B6B6B]/12 pointer-events-none"
+            />
+
+            <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 py-14 sm:py-16">
+              <div className="grid grid-cols-1 lg:grid-cols-12 gap-10 lg:gap-8 items-center">
+                {/* Left 8 cols: Heading + Compact 3x2 Horizontal Tool Cards */}
+                <div className="lg:col-span-8 space-y-8">
+                  <div className="max-w-2xl">
+                    <h2 className="text-2xl sm:text-4xl font-extrabold tracking-tight leading-tight text-[#0C2538]">
+                      Built-in tools to scale your store on{' '}
+                      <span className="text-[#1B6B6B]">Collabo</span>
+                    </h2>
+                    <p className="text-sm sm:text-[15px] text-gray-600 leading-relaxed mt-2.5">
+                      Everything you need to run your storefront smoothly — from quick catalog upload to creator-driven discovery and timely payouts.
+                    </p>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                    {SELLER_GROWTH_TOOLS.map((tool) => (
+                      <button
+                        key={tool.id}
+                        type="button"
+                        onClick={() => setSelectedTool(tool)}
+                        className="group text-left bg-white rounded-2xl p-4 sm:p-5 shadow-[0_6px_22px_rgba(12,37,56,0.05)] border border-slate-200/70 hover:border-[#1B6B6B]/40 hover:shadow-[0_12px_30px_rgba(27,107,107,0.11)] hover:-translate-y-0.5 transition-all flex items-start gap-3.5"
+                      >
+                        <div className="shrink-0 transition-transform duration-200 group-hover:scale-105">
+                          <ToolBadgeIcon id={tool.id} className="w-12 h-12" />
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          <h3 className="text-[14px] font-bold text-[#0C2538] leading-snug group-hover:text-[#1B6B6B] transition-colors">
+                            {tool.title}
+                          </h3>
+                          <p className="text-[12px] text-gray-500 leading-relaxed mt-1 line-clamp-2">
+                            {tool.desc}
+                          </p>
+                          <span className="inline-flex items-center gap-1 text-[11px] font-bold text-[#F26B3A] mt-2.5">
+                            Learn More <ArrowRight className="w-3 h-3 transition-transform group-hover:translate-x-0.5" />
+                          </span>
+                        </div>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Right 4 cols: Crisp Collabo Seller Dashboard Laptop Showcase */}
+                <div className="lg:col-span-4 relative flex items-center justify-center pt-4 lg:pt-6">
+                  {/* Decorative teal leaves behind laptop */}
+                  <svg
+                    aria-hidden="true"
+                    viewBox="0 0 80 120"
+                    className="hidden sm:block absolute -left-3 bottom-6 w-14 h-24 text-[#135562] pointer-events-none"
+                  >
+                    <path d="M40 115 C38 80 36 45 34 10" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" fill="none" />
+                    <ellipse cx="22" cy="82" rx="12" ry="6" transform="rotate(-30 22 82)" fill="currentColor" />
+                    <ellipse cx="52" cy="68" rx="12" ry="6" transform="rotate(28 52 68)" fill="currentColor" opacity="0.85" />
+                    <ellipse cx="20" cy="52" rx="11" ry="5.5" transform="rotate(-32 20 52)" fill="currentColor" opacity="0.9" />
+                    <ellipse cx="48" cy="36" rx="10" ry="5" transform="rotate(26 48 36)" fill="currentColor" opacity="0.8" />
+                  </svg>
+
+                  {/* Laptop Mockup */}
+                  <div className="relative w-full max-w-[340px]">
+                    {/* Floating Top-Right Growth Card */}
+                    <div className="absolute -top-6 -right-3 z-20 bg-white rounded-xl p-3 shadow-[0_10px_28px_rgba(12,37,56,0.14)] border border-slate-100">
+                      <span className="absolute top-2 right-2 w-2 h-2 rounded-full bg-[#F26B3A]" />
+                      <svg viewBox="0 0 64 42" className="w-14 h-9" aria-hidden="true">
+                        <path d="M6 22 L24 14 L38 18 L56 6" stroke="#1B6B6B" strokeWidth="2.8" strokeLinecap="round" strokeLinejoin="round" fill="none" />
+                        <path d="M48 6 H56 V14" stroke="#1B6B6B" strokeWidth="2.8" strokeLinecap="round" strokeLinejoin="round" fill="none" />
+                        <rect x="8" y="28" width="8" height="10" rx="2" fill="#CCEBE8" />
+                        <rect x="21" y="24" width="8" height="14" rx="2" fill="#8CCAC7" />
+                        <rect x="34" y="21" width="8" height="17" rx="2" fill="#1B6B6B" />
+                        <rect x="47" y="16" width="8" height="22" rx="2" fill="#F26B3A" />
+                      </svg>
+                    </div>
+
+                    {/* Screen Frame */}
+                    <div className="relative z-10 rounded-t-2xl border-[6px] border-[#0C2538] bg-white shadow-[0_18px_40px_rgba(12,37,56,0.16)] overflow-hidden">
+                      {/* Mini Dashboard Top Bar */}
+                      <div className="px-3.5 py-2.5 bg-[#F8FAFC] border-b border-slate-100 flex items-center justify-between">
+                        <div className="flex items-center gap-1.5">
+                          <span className="w-2 h-2 rounded-full bg-[#F26B3A]" />
+                          <span className="text-[10px] font-extrabold text-[#0C2538] tracking-tight">Collabo Seller</span>
+                        </div>
+                        <div className="flex items-center gap-1">
+                          <span className="w-10 h-1.5 rounded-full bg-slate-200" />
+                          <span className="w-4 h-4 rounded-full bg-[#EAF5F5] border border-[#1B6B6B]/20" />
+                        </div>
+                      </div>
+
+                      {/* Mini Dashboard Content */}
+                      <div className="p-3.5 space-y-3">
+                        <div className="grid grid-cols-12 gap-2.5">
+                          {/* Mini Stats + Chart */}
+                          <div className="col-span-7 bg-[#F8FAFC] rounded-xl p-2.5 border border-slate-100 space-y-2">
+                            <div className="flex items-center justify-between">
+                              <span className="text-[9px] font-bold text-gray-500">Store Growth</span>
+                              <span className="text-[9px] font-extrabold text-emerald-600 bg-emerald-50 px-1.5 py-0.5 rounded">0% Fee</span>
+                            </div>
+                            <div className="flex items-end gap-1.5 h-12 pt-1">
+                              {[32, 48, 40, 66, 58, 84, 96].map((h, i) => (
+                                <div
+                                  key={i}
+                                  style={{ height: `${h}%` }}
+                                  className={`flex-1 rounded-t-sm ${i >= 5 ? 'bg-[#F26B3A]' : 'bg-[#1B6B6B]/75'}`}
+                                />
+                              ))}
+                            </div>
+                          </div>
+
+                          {/* Mini Featured Product */}
+                          <div className="col-span-5 bg-[#FFF5F0] rounded-xl p-2.5 border border-[#FDE2D5] flex flex-col items-center justify-center text-center">
+                            <div className="w-10 h-10 rounded-xl bg-white shadow-xs flex items-center justify-center mb-1.5">
+                              <Headphones className="w-5 h-5 text-[#0C2538]" />
+                            </div>
+                            <span className="text-[8.5px] font-bold text-[#0C2538]">Top Product</span>
+                            <span className="text-[8px] font-semibold text-[#F26B3A]">Sponsored Ad</span>
+                          </div>
+                        </div>
+
+                        {/* Mini Bottom Product Strip */}
+                        <div className="grid grid-cols-4 gap-2">
+                          {[
+                            { bg: 'bg-[#FFF5F0]', dot: 'bg-[#F26B3A]' },
+                            { bg: 'bg-[#EDF8F7]', dot: 'bg-[#1B6B6B]' },
+                            { bg: 'bg-[#FFF9EB]', dot: 'bg-amber-400' },
+                            { bg: 'bg-[#F0F6FF]', dot: 'bg-[#027CD5]' },
+                          ].map((tile, i) => (
+                            <div key={i} className={`${tile.bg} rounded-lg p-2 flex flex-col items-center gap-1`}>
+                              <span className={`w-4 h-4 rounded-md ${tile.dot} opacity-80`} />
+                              <span className="w-7 h-1 rounded-full bg-slate-300/80" />
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Silver Laptop Base */}
+                    <div className="relative z-10 -mx-4 h-3.5 bg-gradient-to-b from-slate-200 via-slate-100 to-slate-300 rounded-b-xl border-t border-slate-300 flex items-center justify-center shadow-md">
+                      <span className="w-14 h-1 rounded-full bg-slate-400/50" />
+                    </div>
+                    <div className="mx-2 h-2 bg-slate-900/10 blur-md rounded-full" />
+                  </div>
+                </div>
+              </div>
+            </div>
+          </section>
+
+          {/* Fees & Commission — Compact, Standard Collabo Split Card */}
+          <section id="pricing" className="bg-[#F6FAFB] border-b border-slate-200/80 scroll-mt-16">
+            <div className="max-w-6xl mx-auto px-4 sm:px-6 py-10 sm:py-12">
+              <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-2 mb-6">
+                <div>
+                  <span className="inline-block text-[10.5px] font-bold uppercase tracking-wider text-[#1B6B6B] bg-[#EAF5F5] border border-[#CBEBE8] px-2.5 py-0.5 rounded-full mb-2">
+                    Transparent Pricing
+                  </span>
+                  <h2 className="text-2xl sm:text-3xl font-extrabold text-[#0C2538] tracking-tight">
+                    Keep more of every sale on <span className="text-[#1B6B6B]">Collabo</span>
+                  </h2>
+                </div>
+                <p className="text-xs sm:text-[13px] text-gray-500 max-w-sm">
+                  No hidden subscriptions, no listing charges, and 0% commission.
+                </p>
+              </div>
+
+              <div className="bg-white rounded-2xl border border-slate-200/90 shadow-[0_10px_30px_rgba(12,37,56,0.06)] overflow-hidden grid grid-cols-1 lg:grid-cols-12">
+                {/* Left: Collabo Teal-Navy 0% Commission Panel */}
+                <div className="lg:col-span-5 bg-gradient-to-br from-[#0C2538] via-[#123F4B] to-[#1B6B6B] text-white p-6 sm:p-7 relative overflow-hidden flex flex-col justify-between gap-5">
+                  <div className="absolute -top-14 -right-14 w-40 h-40 rounded-full bg-[#F26B3A]/20 blur-3xl pointer-events-none" />
+
+                  <div className="relative z-10 space-y-4">
+                    <div className="flex items-baseline gap-2.5">
+                      <span className="text-5xl font-black tracking-tight text-white leading-none">0%</span>
+                      <span className="text-base font-bold text-[#FF965A]">Commission</span>
+                    </div>
+                    <p className="text-xs sm:text-[13px] text-slate-200/90 leading-relaxed">
+                      List your catalog for free and receive payouts straight to your bank every 7 business days.
+                    </p>
+                    <div className="space-y-2 pt-2 border-t border-white/15">
+                      {[
+                        'Unlimited product listings with ₹0 upfront fee',
+                        'Zero monthly or annual subscription charges',
+                        'Full Seller Dashboard, analytics & CSV import',
+                      ].map((item) => (
+                        <div key={item} className="flex items-center gap-2 text-[12px] text-slate-100">
+                          <CheckCircle className="w-3.5 h-3.5 text-[#FF965A] shrink-0" />
+                          <span>{item}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div className="relative z-10">
+                    <button
+                      type="button"
+                      onClick={revealRegister}
+                      className="w-full sm:w-auto bg-[#F26B3A] hover:bg-[#E05A2B] text-white text-xs sm:text-sm font-bold px-7 py-2.5 rounded-full shadow-md transition-colors inline-flex items-center justify-center gap-2"
+                    >
+                      Start Selling for ₹0 <ArrowRight className="w-4 h-4" />
+                    </button>
+                  </div>
+                </div>
+
+                {/* Right: Compact Complete Fee Breakdown */}
+                <div className="lg:col-span-7 p-6 sm:p-7 flex flex-col justify-center">
+                  <div className="flex items-center justify-between gap-2 pb-3.5 mb-1 border-b border-slate-100">
+                    <span className="text-sm font-bold text-[#0C2538]">Complete Fee Breakdown</span>
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-[#1B6B6B] bg-[#EAF5F5] border border-[#CBEBE8] px-2.5 py-0.5 rounded-full">
+                      No Hidden Charges
+                    </span>
+                  </div>
+
+                  <div className="divide-y divide-slate-100">
+                    {[
+                      { l: 'Listing Fee', sub: 'Manual or bulk CSV catalog upload', v: 'Free', h: true },
+                      { l: 'Monthly Charge', sub: 'No recurring store subscription', v: 'Free', h: true },
+                      { l: 'Platform Commission', sub: 'Zero commission on product sales', v: '0% Commission', h: true },
+                      { l: 'Payment Settlement', sub: 'Direct bank transfer after delivery', v: '7 business days', h: false },
+                      { l: 'Minimum Withdrawal', sub: 'Withdraw available balance anytime', v: '₹100', h: false },
+                    ].map((f) => (
+                      <div key={f.l} className="py-2.5 flex items-center justify-between gap-4">
+                        <div className="min-w-0">
+                          <span className="text-[13px] font-semibold text-[#0C2538]">{f.l}</span>
+                          <span className="hidden sm:inline text-[11.5px] text-gray-400 ml-2">· {f.sub}</span>
+                        </div>
+                        <span
+                          className={`text-[11.5px] font-bold px-3 py-0.5 rounded-full shrink-0 ${
+                            f.h
+                              ? 'bg-[#EAF5F5] text-[#1B6B6B] border border-[#CBEBE8]'
+                              : 'bg-slate-100 text-[#0C2538]'
+                          }`}
+                        >
+                          {f.v}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            </div>
+          </section>
+        </>
+      )}
 
       {/* FAQ */}
       <section id="faq" className="bg-white border-b border-gray-200 scroll-mt-16">
@@ -1677,9 +2332,7 @@ export default function SellOnCollabo() {
           >
             <div className="px-6 py-5 bg-[#F4F9FF] border-b border-blue-100 flex items-start justify-between gap-4">
               <div className="flex items-center gap-3.5">
-                <div className="w-11 h-11 rounded-xl bg-white border border-blue-100 shadow-sm flex items-center justify-center shrink-0">
-                  <selectedTool.icon className="w-5 h-5 text-[#027CD5]" strokeWidth={1.9} />
-                </div>
+                <ToolBadgeIcon id={selectedTool.id} className="w-12 h-12 shrink-0" />
                 <div>
                   <span className="inline-block text-[10px] font-bold uppercase tracking-wider text-[#027CD5] bg-blue-100/70 px-2 py-0.5 rounded mb-1">
                     {selectedTool.badge}
