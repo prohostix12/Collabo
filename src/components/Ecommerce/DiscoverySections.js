@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { Heart, Star, ShoppingBag, Sparkles, Flame } from 'lucide-react';
 
 /**
@@ -6,8 +6,14 @@ import { Heart, Star, ShoppingBag, Sparkles, Flame } from 'lucide-react';
  * text: "New Arrivals" sorts by actual listing creation date, "Best Sellers"
  * sorts by actual units sold (Product.purchase_count from confirmed orders).
  */
-const DiscoverySections = ({ productsList = [], addToCart, toggleWishlist, wishlist = [], setSelectedProduct, setCurrentView }) => {
-  const [tab, setTab] = useState('new');
+const DiscoverySections = ({ productsList = [], addToCart, toggleWishlist, wishlist = [], setSelectedProduct, setCurrentView, showNewArrivals = true, showBestSellers = true }) => {
+  const [tab, setTab] = useState(showNewArrivals ? 'new' : 'best');
+
+  useEffect(() => {
+    if (tab === 'new' && !showNewArrivals) setTab('best');
+    else if (tab === 'best' && !showBestSellers) setTab('new');
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [showNewArrivals, showBestSellers]);
 
   const newArrivals = useMemo(() => {
     return [...productsList]
@@ -23,6 +29,8 @@ const DiscoverySections = ({ productsList = [], addToCart, toggleWishlist, wishl
       .slice(0, 10);
   }, [productsList]);
 
+  if (!showNewArrivals && !showBestSellers) return null;
+
   const display = tab === 'new' ? newArrivals : bestSellers;
   if (newArrivals.length === 0 && bestSellers.length === 0) return null;
 
@@ -30,18 +38,22 @@ const DiscoverySections = ({ productsList = [], addToCart, toggleWishlist, wishl
     <section className="mt-8 sm:mt-12 mb-10">
       <div className="flex items-center justify-between gap-4 mb-5">
         <div className="flex items-center gap-2">
-          <button
-            onClick={() => setTab('new')}
-            className={`flex items-center gap-1.5 px-4 py-2 rounded-full text-xs sm:text-sm font-black transition-all border ${tab === 'new' ? 'bg-slate-950 text-white border-slate-950 shadow-md' : 'bg-white dark:bg-slate-900 text-slate-500 border-slate-200 dark:border-slate-700'}`}
-          >
-            <Sparkles className="w-3.5 h-3.5" /> New Arrivals
-          </button>
-          <button
-            onClick={() => setTab('best')}
-            className={`flex items-center gap-1.5 px-4 py-2 rounded-full text-xs sm:text-sm font-black transition-all border ${tab === 'best' ? 'bg-slate-950 text-white border-slate-950 shadow-md' : 'bg-white dark:bg-slate-900 text-slate-500 border-slate-200 dark:border-slate-700'}`}
-          >
-            <Flame className="w-3.5 h-3.5" /> Best Sellers
-          </button>
+          {showNewArrivals && (
+            <button
+              onClick={() => setTab('new')}
+              className={`flex items-center gap-1.5 px-4 py-2 rounded-full text-xs sm:text-sm font-black transition-all border ${tab === 'new' ? 'bg-slate-950 text-white border-slate-950 shadow-md' : 'bg-white dark:bg-slate-900 text-slate-500 border-slate-200 dark:border-slate-700'}`}
+            >
+              <Sparkles className="w-3.5 h-3.5" /> New Arrivals
+            </button>
+          )}
+          {showBestSellers && (
+            <button
+              onClick={() => setTab('best')}
+              className={`flex items-center gap-1.5 px-4 py-2 rounded-full text-xs sm:text-sm font-black transition-all border ${tab === 'best' ? 'bg-slate-950 text-white border-slate-950 shadow-md' : 'bg-white dark:bg-slate-900 text-slate-500 border-slate-200 dark:border-slate-700'}`}
+            >
+              <Flame className="w-3.5 h-3.5" /> Best Sellers
+            </button>
+          )}
         </div>
         <p className="hidden sm:block text-[11px] text-slate-400 font-semibold">
           {tab === 'new' ? 'Freshly listed products, newest first' : 'Ranked by units actually sold'}

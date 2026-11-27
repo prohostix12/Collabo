@@ -309,6 +309,7 @@ class StoreSettingsSerializer(serializers.ModelSerializer):
             'category_images',
             'show_deals_section', 'deals_timer_hours', 'deals_cycle_anchor', 'deals_product_ids', 'trending_product_ids',
             'show_weekly_deals_section', 'weekly_deals_timer_hours', 'weekly_deals_cycle_anchor', 'weekly_deals_product_ids',
+            'show_new_arrivals_section', 'show_best_sellers_section',
             'trending_phones_title', 'trending_phones_subtitle', 'trending_phones_product_ids',
             'coupon_codes', 'testimonials',
             'footer_tagline', 'copyright_text',

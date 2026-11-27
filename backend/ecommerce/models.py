@@ -726,6 +726,14 @@ class StoreSettings(models.Model):
         blank=True,
         help_text='List of product IDs to show in Trending section (up to 4)'
     )
+    show_new_arrivals_section = models.BooleanField(
+        default=True,
+        help_text='Show/hide the "New Arrivals" tab in the homepage discovery section'
+    )
+    show_best_sellers_section = models.BooleanField(
+        default=True,
+        help_text='Show/hide the "Best Sellers" tab in the homepage discovery section'
+    )
 
     # Trending Phones Section
     trending_phones_title = models.CharField(max_length=100, default='Trending Phones')
