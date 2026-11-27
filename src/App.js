@@ -57,7 +57,8 @@ function AppRoutes() {
     <Routes>
       {/* Public Routes */}
       <Route path="/" element={<EcommerceMarketplace />} />
-      <Route path="/sell" element={<SellOnCollabo />} />
+      <Route path="/sell" element={<SellOnCollabo page="home" />} />
+      <Route path="/sell/how-it-works" element={<SellOnCollabo page="how-it-works" />} />
       <Route path="/store/:slug" element={<StorePage />} />
       <Route path="/about" element={<AboutPage />} />
       <Route path="/services" element={<ServicesPage />} />
