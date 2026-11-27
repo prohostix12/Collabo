@@ -1551,36 +1551,8 @@ export default function SellOnCollabo({ page = 'home' }) {
           {/* Dedicated How It Works Page — 4-Step Journey + Collabo Seller Hub Onboarding */}
           <section id="how-it-works" className="bg-[#F5F7FA] border-b border-gray-200">
             <div className="max-w-6xl mx-auto px-4 sm:px-6 py-12 sm:py-16 space-y-14">
-              <div>
-                <div className="text-center mb-10">
-                  <span className="inline-block text-[11px] font-bold uppercase tracking-wider text-[#1B6B6B] bg-teal-50 border border-teal-200 px-3 py-1 rounded-full mb-3">
-                    Step-by-Step Guide
-                  </span>
-                  <h1 className="text-3xl sm:text-4xl font-extrabold text-[#0C2538] tracking-tight">
-                    How selling on <span className="text-[#1B6B6B]">Collabo</span> works
-                  </h1>
-                  <p className="text-xs sm:text-sm text-gray-500 mt-2">
-                    4 simple steps from registration to your first payout
-                  </p>
-                </div>
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
-                  {STEPS_INFO.map((s, i) => (
-                    <div key={i} className="bg-white rounded-xl p-6 border border-gray-200 relative shadow-sm">
-                      <div className="w-10 h-10 bg-blue-50 border border-blue-100 rounded-xl flex items-center justify-center mb-4">
-                        <span className="text-xs font-extrabold text-[#027CD5]">{s.step}</span>
-                      </div>
-                      <h3 className="text-sm font-bold text-gray-900 mb-1.5">{s.title}</h3>
-                      <p className="text-[12px] text-gray-500 leading-relaxed">{s.desc}</p>
-                      {i < STEPS_INFO.length - 1 && (
-                        <ArrowRight className="hidden lg:block absolute -right-3.5 top-1/2 -translate-y-1/2 w-5 h-5 text-[#027CD5] bg-[#F5F7FA] rounded-full p-0.5 z-10" />
-                      )}
-                    </div>
-                  ))}
-                </div>
-              </div>
-
               {/* Collabo Seller Hub — Onboarding & Registration (preserves 100% of SellerRegistrationWidget logic) */}
-              <div id="register" className="pt-10 border-t border-gray-200/80 scroll-mt-20">
+              <div id="register" className="scroll-mt-20">
                 <div className="grid grid-cols-1 lg:grid-cols-12 gap-10 items-start">
                   <div className="lg:col-span-6 space-y-6 pt-1">
                     <div>
