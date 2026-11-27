@@ -1396,7 +1396,7 @@ export default function SellOnCollabo({ page = 'home' }) {
   const isHowItWorksPage = page === 'how-it-works' || location.pathname === '/sell/how-it-works';
 
   const [openFaq, setOpenFaq] = useState(null);
-  const { user } = useAuth();
+  const { user, loading: authLoading } = useAuth();
   const [hubStats, setHubStats] = useState(null);
   const [categories, setCategories] = useState([]);
   const [storeSettings, setStoreSettings] = useState(null);
@@ -1518,18 +1518,20 @@ export default function SellOnCollabo({ page = 'home' }) {
           </div>
 
           <div className="flex items-center gap-2.5 sm:gap-3 shrink-0">
-            <a
-              href={user ? '/dashboard' : '/'}
-              className="px-4 sm:px-5 py-2 rounded-full bg-white/85 backdrop-blur-xs border border-[#0C2538] text-[#0C2538] hover:bg-white text-[12.5px] sm:text-[13px] font-semibold transition-colors"
-            >
-              Seller Login
-            </a>
-            {user ? (
+            {!user && !authLoading && (
+              <a
+                href="/"
+                className="px-4 sm:px-5 py-2 rounded-full bg-white/85 backdrop-blur-xs border border-[#0C2538] text-[#0C2538] hover:bg-white text-[12.5px] sm:text-[13px] font-semibold transition-colors"
+              >
+                Seller Login
+              </a>
+            )}
+            {user && (user.user_type === 'seller' || user.seller_profile?.verification_status === 'approved') ? (
               <a
                 href="/dashboard"
                 className="px-5 sm:px-6 py-2 rounded-full bg-[#F26B3A] hover:bg-[#E05A2B] text-white text-[12.5px] sm:text-[13px] font-bold shadow-sm transition-colors"
               >
-                Start Selling
+                Go to Dashboard
               </a>
             ) : (
               <button
